@@ -63,8 +63,19 @@ export default function SpaceCanvas({
   const [newBed, setNewBed] = useState({
     name: '',
     type: 'raised_bed',
-    width: 48,
-    height: 48
+    width: '',
+    height: '',
+    unit: 'ft',
+    dimensions: ''
+  });
+
+  const [showBulkAdd, setShowBulkAdd] = useState(false);
+  const [bulkAdd, setBulkAdd] = useState({
+    count: 4,
+    base_name: 'Raised Bed',
+    dimensions: '4x8',
+    unit: 'ft',
+    type: 'raised_bed'
   });
 
   const canvasRef = useRef(null);
@@ -87,13 +98,46 @@ export default function SpaceCanvas({
     setHasChanges(true);
   };
 
+  const parseDimensions = (input) => {
+    const match = input.match(/(\d+\.?\d*)\s*[xX×]\s*(\d+\.?\d*)/);
+    if (match) {
+      return { width: parseFloat(match[1]), height: parseFloat(match[2]) };
+    }
+    return null;
+  };
+
+  const toInches = (value, unit) => {
+    if (value === '' || value === null || value === undefined) return 0;
+    return unit === 'ft' ? parseFloat(value) * 12 : parseFloat(value);
+  };
+
   const handleAddBed = async () => {
     if (!newBed.name.trim()) return;
     
+    let width = newBed.width;
+    let height = newBed.height;
+
+    // Parse dimension shorthand if provided
+    if (newBed.dimensions) {
+      const parsed = parseDimensions(newBed.dimensions);
+      if (parsed) {
+        width = toInches(parsed.width, newBed.unit);
+        height = toInches(parsed.height, newBed.unit);
+      }
+    } else {
+      width = toInches(width, newBed.unit);
+      height = toInches(height, newBed.unit);
+    }
+
+    if (width <= 0 || height <= 0) {
+      toast.error('Width and height must be greater than 0');
+      return;
+    }
+
     saveState();
     const gridSize = space.grid_size || 12;
-    const gridCols = Math.floor(newBed.width / gridSize);
-    const gridRows = Math.floor(newBed.height / gridSize);
+    const gridCols = Math.floor(width / gridSize);
+    const gridRows = Math.floor(height / gridSize);
 
     try {
       const bed = await base44.entities.Bed.create({
@@ -101,8 +145,8 @@ export default function SpaceCanvas({
         garden_id: gardenId,
         name: newBed.name,
         type: newBed.type,
-        width: newBed.width,
-        height: newBed.height,
+        width,
+        height,
         grid_columns: gridCols,
         grid_rows: gridRows,
         position_x: 50,
@@ -112,11 +156,55 @@ export default function SpaceCanvas({
 
       setBeds([...beds, bed]);
       setShowAddBed(false);
-      setNewBed({ name: '', type: 'raised_bed', width: 48, height: 48 });
+      setNewBed({ name: '', type: 'raised_bed', width: '', height: '', unit: 'ft', dimensions: '' });
       toast.success('Bed added!');
     } catch (error) {
       console.error('Error adding bed:', error);
       toast.error('Failed to add bed');
+    }
+  };
+
+  const handleBulkAddBeds = async () => {
+    const parsed = parseDimensions(bulkAdd.dimensions);
+    if (!parsed) {
+      toast.error('Invalid dimensions format. Use "4x8" format.');
+      return;
+    }
+
+    const width = toInches(parsed.width, bulkAdd.unit);
+    const height = toInches(parsed.height, bulkAdd.unit);
+    const count = parseInt(bulkAdd.count);
+    const gridSize = space.grid_size || 12;
+    const gridCols = Math.floor(width / gridSize);
+    const gridRows = Math.floor(height / gridSize);
+
+    saveState();
+    const newBeds = [];
+
+    try {
+      for (let i = 0; i < count; i++) {
+        const bed = await base44.entities.Bed.create({
+          space_id: space.id,
+          garden_id: gardenId,
+          name: i === 0 ? bulkAdd.base_name : `${bulkAdd.base_name} ${i + 1}`,
+          type: bulkAdd.type,
+          width,
+          height,
+          grid_columns: gridCols,
+          grid_rows: gridRows,
+          position_x: 50 + (i % 3) * (width + 24),
+          position_y: 50 + Math.floor(i / 3) * (height + 24),
+          color: BED_TYPES.find(t => t.value === bulkAdd.type)?.color
+        });
+        newBeds.push(bed);
+      }
+
+      setBeds([...beds, ...newBeds]);
+      setShowBulkAdd(false);
+      toast.success(`Added ${count} beds!`);
+    } catch (error) {
+      console.error('Error bulk adding beds:', error);
+      toast.error('Failed to add beds');
     }
   };
 
@@ -221,6 +309,15 @@ export default function SpaceCanvas({
           >
             <Plus className="w-4 h-4" />
             Add Bed
+          </Button>
+          <Button 
+            onClick={() => setShowBulkAdd(true)}
+            size="sm"
+            variant="outline"
+            className="gap-2"
+          >
+            <Plus className="w-4 h-4" />
+            Bulk Add
           </Button>
           <Button 
             variant="outline" 
@@ -381,31 +478,68 @@ export default function SpaceCanvas({
                 </SelectContent>
               </Select>
             </div>
+            <div>
+              <Label htmlFor="dimensions">Dimensions (e.g., "4x8") or enter separately below</Label>
+              <div className="flex gap-2 mt-2">
+                <Input
+                  id="dimensions"
+                  placeholder="4x8"
+                  value={newBed.dimensions}
+                  onChange={(e) => setNewBed({ ...newBed, dimensions: e.target.value })}
+                  className="flex-1"
+                />
+                <Select 
+                  value={newBed.unit} 
+                  onValueChange={(v) => setNewBed({ ...newBed, unit: v })}
+                >
+                  <SelectTrigger className="w-20">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="ft">Feet</SelectItem>
+                    <SelectItem value="in">Inches</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <div className="relative">
+              <div className="absolute inset-0 flex items-center">
+                <div className="w-full border-t border-gray-200" />
+              </div>
+              <div className="relative flex justify-center text-xs">
+                <span className="px-2 bg-white text-gray-500">OR</span>
+              </div>
+            </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <Label htmlFor="width">Width (inches)</Label>
+                <Label htmlFor="width">Width</Label>
                 <Input
                   id="width"
                   type="number"
                   value={newBed.width}
-                  onChange={(e) => setNewBed({ ...newBed, width: parseInt(e.target.value) || 0 })}
+                  onChange={(e) => setNewBed({ ...newBed, width: e.target.value, dimensions: '' })}
+                  onBlur={(e) => {
+                    if (e.target.value === '') setNewBed({ ...newBed, width: '' });
+                  }}
+                  placeholder="48"
                   className="mt-2"
                 />
               </div>
               <div>
-                <Label htmlFor="height">Length (inches)</Label>
+                <Label htmlFor="height">Length</Label>
                 <Input
                   id="height"
                   type="number"
                   value={newBed.height}
-                  onChange={(e) => setNewBed({ ...newBed, height: parseInt(e.target.value) || 0 })}
+                  onChange={(e) => setNewBed({ ...newBed, height: e.target.value, dimensions: '' })}
+                  onBlur={(e) => {
+                    if (e.target.value === '') setNewBed({ ...newBed, height: '' });
+                  }}
+                  placeholder="96"
                   className="mt-2"
                 />
               </div>
             </div>
-            <p className="text-sm text-gray-500">
-              Grid: {Math.floor(newBed.width / 12)} × {Math.floor(newBed.height / 12)} cells (1 ft spacing)
-            </p>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowAddBed(false)}>Cancel</Button>
@@ -415,6 +549,90 @@ export default function SpaceCanvas({
               className="bg-emerald-600 hover:bg-emerald-700"
             >
               Add Bed
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Bulk Add Dialog */}
+      <Dialog open={showBulkAdd} onOpenChange={setShowBulkAdd}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Bulk Add Beds</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="count">Number of Beds</Label>
+              <Input
+                id="count"
+                type="number"
+                value={bulkAdd.count}
+                onChange={(e) => setBulkAdd({ ...bulkAdd, count: e.target.value })}
+                className="mt-2"
+              />
+            </div>
+            <div>
+              <Label htmlFor="baseName">Base Name</Label>
+              <Input
+                id="baseName"
+                placeholder="Raised Bed"
+                value={bulkAdd.base_name}
+                onChange={(e) => setBulkAdd({ ...bulkAdd, base_name: e.target.value })}
+                className="mt-2"
+              />
+              <p className="text-xs text-gray-500 mt-1">
+                Names: "{bulkAdd.base_name}", "{bulkAdd.base_name} 2", etc.
+              </p>
+            </div>
+            <div>
+              <Label>Bed Type</Label>
+              <Select 
+                value={bulkAdd.type} 
+                onValueChange={(v) => setBulkAdd({ ...bulkAdd, type: v })}
+              >
+                <SelectTrigger className="mt-2">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {BED_TYPES.map((type) => (
+                    <SelectItem key={type.value} value={type.value}>
+                      {type.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label htmlFor="bulkDimensions">Dimensions (e.g., "4x8")</Label>
+              <div className="flex gap-2 mt-2">
+                <Input
+                  id="bulkDimensions"
+                  value={bulkAdd.dimensions}
+                  onChange={(e) => setBulkAdd({ ...bulkAdd, dimensions: e.target.value })}
+                  className="flex-1"
+                />
+                <Select 
+                  value={bulkAdd.unit} 
+                  onValueChange={(v) => setBulkAdd({ ...bulkAdd, unit: v })}
+                >
+                  <SelectTrigger className="w-20">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="ft">Feet</SelectItem>
+                    <SelectItem value="in">Inches</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowBulkAdd(false)}>Cancel</Button>
+            <Button 
+              onClick={handleBulkAddBeds}
+              className="bg-emerald-600 hover:bg-emerald-700"
+            >
+              Create {bulkAdd.count} Beds
             </Button>
           </DialogFooter>
         </DialogContent>
