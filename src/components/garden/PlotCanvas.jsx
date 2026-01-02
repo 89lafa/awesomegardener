@@ -59,7 +59,8 @@ const GALLON_SIZES = [
   { value: 20, footprint: 24 }, { value: 30, footprint: 30 }
 ];
 
-export default function PlotCanvas({ garden, plot, mode = 'layout', onPlotUpdate }) {
+export default function PlotCanvas({ garden, plot, mode = 'layout', safeMode = false, onPlotUpdate }) {
+  // ALL HOOKS MUST BE CALLED UNCONDITIONALLY AT TOP LEVEL
   const canvasRef = useRef(null);
   const [items, setItems] = useState([]);
   const [selectedItem, setSelectedItem] = useState(null);
@@ -94,17 +95,20 @@ export default function PlotCanvas({ garden, plot, mode = 'layout', onPlotUpdate
     item_type: 'RAISED_BED'
   });
 
+  // UNCONDITIONAL HOOK - Load items when plot changes
   useEffect(() => {
     if (plot) {
       loadItems();
     }
   }, [plot]);
 
+  // UNCONDITIONAL HOOK - Load planting counts (guarded inside)
   useEffect(() => {
-    if (items.length > 0) {
-      loadPlantingCounts();
-    }
-  }, [items]);
+    // Skip in safe mode or if no items
+    if (safeMode || items.length === 0) return;
+    
+    loadPlantingCounts();
+  }, [items, safeMode]);
 
   const loadItems = async () => {
     try {
@@ -328,7 +332,11 @@ export default function PlotCanvas({ garden, plot, mode = 'layout', onPlotUpdate
       if (clickedItem) {
         setSelectedItem(clickedItem);
         
-        if (mode === 'planting') {
+        // Safe mode: only layout behavior
+        if (safeMode) {
+          setDraggingItem(clickedItem);
+          setDragOffset({ x: x - clickedItem.x, y: y - clickedItem.y });
+        } else if (mode === 'planting') {
           // Open planting view in planting mode
           setShowPlantingView(clickedItem);
         } else {
@@ -345,7 +353,8 @@ export default function PlotCanvas({ garden, plot, mode = 'layout', onPlotUpdate
   };
 
   const handleCanvasMouseMove = (e) => {
-    if (!draggingItem || mode === 'planting') return;
+    // Skip if not dragging or in planting mode (unless safe mode forces layout)
+    if (!draggingItem || (mode === 'planting' && !safeMode)) return;
 
     const rect = canvasRef.current.getBoundingClientRect();
     let x = (e.clientX - rect.left) / zoom - dragOffset.x;
@@ -485,7 +494,7 @@ export default function PlotCanvas({ garden, plot, mode = 'layout', onPlotUpdate
       </Card>
       )}
 
-      {mode === 'planting' && !showPlantingView && (
+      {!safeMode && mode === 'planting' && !showPlantingView && (
         <Card className="w-64 flex-shrink-0">
           <CardContent className="p-4">
             <div className="text-center text-sm text-gray-600">
@@ -511,8 +520,8 @@ export default function PlotCanvas({ garden, plot, mode = 'layout', onPlotUpdate
         </Card>
       )}
 
-      {/* Planting View Drawer */}
-      {showPlantingView && (
+      {/* Planting View Drawer - Skip in safe mode */}
+      {!safeMode && showPlantingView && (
         <Card className="w-96 flex-shrink-0 overflow-hidden flex flex-col">
           <React.Suspense fallback={
             <div className="flex items-center justify-center h-64">
@@ -612,7 +621,7 @@ export default function PlotCanvas({ garden, plot, mode = 'layout', onPlotUpdate
                 backgroundColor: getItemColor(item.item_type),
                 transform: `rotate(${item.rotation}deg)`,
                 transformOrigin: 'center',
-                cursor: mode === 'planting' ? 'pointer' : 'grab'
+                cursor: (mode === 'planting' && !safeMode) ? 'pointer' : 'grab'
               }}
             >
               {/* Row lines for row-based items */}

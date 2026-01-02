@@ -34,6 +34,10 @@ import ErrorBoundary from '@/components/common/ErrorBoundary';
 
 export default function MyGarden() {
   const [searchParams, setSearchParams] = useSearchParams();
+  
+  // SAFE MODE: Disable planting layer if ?safe=1
+  const safeMode = searchParams.get('safe') === '1';
+  
   const [user, setUser] = useState(null);
   const [gardens, setGardens] = useState([]);
   const [activeGarden, setActiveGarden] = useState(null);
@@ -226,7 +230,11 @@ export default function MyGarden() {
     );
   }
 
+  // Keyboard shortcuts - unconditional hook
   useEffect(() => {
+    // Skip if safe mode
+    if (safeMode) return;
+    
     const handleKeyPress = (e) => {
       if (e.key === 'l' || e.key === 'L') {
         setMode('layout');
@@ -236,15 +244,22 @@ export default function MyGarden() {
     };
     window.addEventListener('keydown', handleKeyPress);
     return () => window.removeEventListener('keydown', handleKeyPress);
-  }, []);
+  }, [safeMode]);
 
   return (
     <ErrorBoundary fallbackTitle="My Garden Error" fallbackMessage="Failed to load My Garden. This might be due to missing data or a component error.">
       <div className="h-[calc(100vh-8rem)] flex flex-col">
+        {/* Safe Mode Banner */}
+        {safeMode && (
+          <div className="bg-orange-50 border border-orange-200 px-4 py-2 text-sm mb-2 rounded">
+            <strong>SAFE MODE:</strong> Planting features disabled. Remove ?safe=1 from URL to enable.
+          </div>
+        )}
+        
         {/* Debug Banner - Dev Only */}
         {isDev && activeGarden && (
           <div className="bg-yellow-50 border border-yellow-200 px-4 py-2 text-xs mb-2 rounded">
-            <strong>Debug:</strong> Garden: {activeGarden.id.slice(0,8)} | Plot: {plot?.id?.slice(0,8) || 'loading'} | Mode: {mode}
+            <strong>Debug:</strong> Garden: {activeGarden.id.slice(0,8)} | Plot: {plot?.id?.slice(0,8) || 'loading'} | Mode: {mode} | Safe: {safeMode ? 'ON' : 'OFF'}
           </div>
         )}
         {/* Header with Garden Selector and Mode Toggle */}
@@ -270,26 +285,28 @@ export default function MyGarden() {
           </div>
           <div className="flex items-center gap-3">
             {/* Mode Toggle */}
-            <div className="flex items-center bg-gray-100 rounded-lg p-1">
-              <Button
-                size="sm"
-                variant={mode === 'layout' ? 'default' : 'ghost'}
-                onClick={() => setMode('layout')}
-                className="gap-2"
-              >
-                <Layout className="w-4 h-4" />
-                Layout <span className="text-xs opacity-60">(L)</span>
-              </Button>
-              <Button
-                size="sm"
-                variant={mode === 'planting' ? 'default' : 'ghost'}
-                onClick={() => setMode('planting')}
-                className="gap-2"
-              >
-                <Sprout className="w-4 h-4" />
-                Planting <span className="text-xs opacity-60">(P)</span>
-              </Button>
-            </div>
+            {!safeMode && (
+              <div className="flex items-center bg-gray-100 rounded-lg p-1">
+                <Button
+                  size="sm"
+                  variant={mode === 'layout' ? 'default' : 'ghost'}
+                  onClick={() => setMode('layout')}
+                  className="gap-2"
+                >
+                  <Layout className="w-4 h-4" />
+                  Layout <span className="text-xs opacity-60">(L)</span>
+                </Button>
+                <Button
+                  size="sm"
+                  variant={mode === 'planting' ? 'default' : 'ghost'}
+                  onClick={() => setMode('planting')}
+                  className="gap-2"
+                >
+                  <Sprout className="w-4 h-4" />
+                  Planting <span className="text-xs opacity-60">(P)</span>
+                </Button>
+              </div>
+            )}
             <Button 
               onClick={() => setShowCreateGarden(true)}
               variant="outline"
@@ -307,7 +324,8 @@ export default function MyGarden() {
             <PlotCanvas 
               garden={activeGarden}
               plot={plot}
-              mode={mode}
+              mode={safeMode ? 'layout' : mode}
+              safeMode={safeMode}
               onPlotUpdate={loadPlot}
             />
           </ErrorBoundary>
