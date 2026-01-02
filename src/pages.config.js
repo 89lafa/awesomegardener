@@ -13,6 +13,7 @@ import SeedStash from './pages/SeedStash';
 import Settings from './pages/Settings';
 import AdminDataImport from './pages/AdminDataImport';
 import EditorReviewQueue from './pages/EditorReviewQueue';
+import PlantCatalogV2 from './pages/PlantCatalogV2';
 import __Layout from './Layout.jsx';
 
 
@@ -32,6 +33,7 @@ export const PAGES = {
     "Settings": Settings,
     "AdminDataImport": AdminDataImport,
     "EditorReviewQueue": EditorReviewQueue,
+    "PlantCatalogV2": PlantCatalogV2,
 }
 
 export const pagesConfig = {
