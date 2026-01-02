@@ -33,15 +33,16 @@ import { Card, CardContent } from '@/components/ui/card';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 
-// Lazy load planting components to prevent blocking canvas
-let PlantingViewRaisedBed, PlantingViewGreenhouse, PlantingViewContainer;
-try {
-  PlantingViewRaisedBed = require('@/components/garden/PlantingViewRaisedBed').default;
-  PlantingViewGreenhouse = require('@/components/garden/PlantingViewGreenhouse').default;
-  PlantingViewContainer = require('@/components/garden/PlantingViewContainer').default;
-} catch (error) {
-  console.warn('Planting components not available:', error);
-}
+// Lazy import planting components
+const PlantingViewRaisedBed = React.lazy(() => 
+  import('@/components/garden/PlantingViewRaisedBed').catch(() => ({ default: () => <div>Module unavailable</div> }))
+);
+const PlantingViewGreenhouse = React.lazy(() => 
+  import('@/components/garden/PlantingViewGreenhouse').catch(() => ({ default: () => <div>Module unavailable</div> }))
+);
+const PlantingViewContainer = React.lazy(() => 
+  import('@/components/garden/PlantingViewContainer').catch(() => ({ default: () => <div>Module unavailable</div> }))
+);
 
 const ITEM_TYPES = [
   { value: 'RAISED_BED', label: 'Raised Bed', color: '#8B7355', defaultDims: '4x8', defaultUnit: 'ft', usesGrid: true },
@@ -513,64 +514,42 @@ export default function PlotCanvas({ garden, plot, mode = 'layout', onPlotUpdate
       {/* Planting View Drawer */}
       {showPlantingView && (
         <Card className="w-96 flex-shrink-0 overflow-hidden flex flex-col">
-          {(() => {
-            if (!PlantingViewRaisedBed || !PlantingViewGreenhouse || !PlantingViewContainer) {
-              return (
-                <div className="p-6 text-center">
-                  <p className="text-gray-600 mb-2">Planting module unavailable</p>
-                  <Button onClick={() => setShowPlantingView(null)} className="mt-4">Close</Button>
-                </div>
-              );
-            }
-
-            try {
-              if (showPlantingView.item_type === 'RAISED_BED' && PlantingViewRaisedBed) {
-                return (
-                  <PlantingViewRaisedBed 
-                    item={showPlantingView} 
-                    garden={garden}
-                    onClose={() => { setShowPlantingView(null); loadPlantingCounts(); }}
-                    onUpdate={() => loadPlantingCounts()}
-                  />
-                );
-              }
-              if (showPlantingView.item_type === 'GREENHOUSE' && PlantingViewGreenhouse) {
-                return (
-                  <PlantingViewGreenhouse 
-                    item={showPlantingView} 
-                    garden={garden}
-                    onClose={() => { setShowPlantingView(null); loadPlantingCounts(); }}
-                    onUpdate={() => loadPlantingCounts()}
-                  />
-                );
-              }
-              if ((showPlantingView.item_type === 'GROW_BAG' || showPlantingView.item_type === 'CONTAINER') && PlantingViewContainer) {
-                return (
-                  <PlantingViewContainer 
-                    item={showPlantingView} 
-                    garden={garden}
-                    onClose={() => { setShowPlantingView(null); loadPlantingCounts(); }}
-                    onUpdate={() => loadPlantingCounts()}
-                  />
-                );
-              }
-              return (
-                <div className="p-6 text-center">
-                  <p className="text-gray-600">Unsupported item type: {showPlantingView.item_type}</p>
-                  <Button onClick={() => setShowPlantingView(null)} className="mt-4">Close</Button>
-                </div>
-              );
-            } catch (error) {
-              console.error('Planting view error:', error);
-              return (
-                <div className="p-6 text-center">
-                  <p className="text-red-600 mb-2">Planting module error</p>
-                  <p className="text-sm text-gray-600 mb-4">{error.message}</p>
-                  <Button onClick={() => setShowPlantingView(null)}>Close</Button>
-                </div>
-              );
-            }
-          })()}
+          <React.Suspense fallback={
+            <div className="flex items-center justify-center h-64">
+              <Loader2 className="w-8 h-8 animate-spin text-emerald-600" />
+            </div>
+          }>
+            {showPlantingView.item_type === 'RAISED_BED' && (
+              <PlantingViewRaisedBed 
+                item={showPlantingView} 
+                garden={garden}
+                onClose={() => { setShowPlantingView(null); loadPlantingCounts(); }}
+                onUpdate={() => loadPlantingCounts()}
+              />
+            )}
+            {showPlantingView.item_type === 'GREENHOUSE' && (
+              <PlantingViewGreenhouse 
+                item={showPlantingView} 
+                garden={garden}
+                onClose={() => { setShowPlantingView(null); loadPlantingCounts(); }}
+                onUpdate={() => loadPlantingCounts()}
+              />
+            )}
+            {(showPlantingView.item_type === 'GROW_BAG' || showPlantingView.item_type === 'CONTAINER') && (
+              <PlantingViewContainer 
+                item={showPlantingView} 
+                garden={garden}
+                onClose={() => { setShowPlantingView(null); loadPlantingCounts(); }}
+                onUpdate={() => loadPlantingCounts()}
+              />
+            )}
+            {!['RAISED_BED', 'GREENHOUSE', 'GROW_BAG', 'CONTAINER'].includes(showPlantingView.item_type) && (
+              <div className="p-6 text-center">
+                <p className="text-gray-600">Unsupported item type: {showPlantingView.item_type}</p>
+                <Button onClick={() => setShowPlantingView(null)} className="mt-4">Close</Button>
+              </div>
+            )}
+          </React.Suspense>
         </Card>
       )}
 
