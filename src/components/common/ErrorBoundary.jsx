@@ -25,10 +25,6 @@ class ErrorBoundary extends React.Component {
     window.location.reload();
   };
 
-  handleBackToDashboard = () => {
-    window.location.href = '/Dashboard';
-  };
-
   render() {
     if (this.state.hasError) {
       return (
@@ -52,15 +48,10 @@ class ErrorBoundary extends React.Component {
                 </div>
               )}
 
-              <div className="flex gap-2 justify-center">
-                <Button onClick={this.handleReload} className="gap-2">
-                  <RefreshCw className="w-4 h-4" />
-                  Reload Page
-                </Button>
-                <Button onClick={this.handleBackToDashboard} variant="outline" className="gap-2">
-                  Back to Dashboard
-                </Button>
-              </div>
+              <Button onClick={this.handleReload} className="gap-2">
+                <RefreshCw className="w-4 h-4" />
+                Reload Page
+              </Button>
             </CardContent>
           </Card>
         </div>

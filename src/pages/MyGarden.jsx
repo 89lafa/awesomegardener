@@ -6,9 +6,7 @@ import {
   Plus, 
   Settings,
   Loader2,
-  ChevronDown,
-  Layout,
-  Sprout
+  ChevronDown
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -34,10 +32,6 @@ import ErrorBoundary from '@/components/common/ErrorBoundary';
 
 export default function MyGarden() {
   const [searchParams, setSearchParams] = useSearchParams();
-  
-  // SAFE MODE: Disable planting layer if ?safe=1
-  const safeMode = searchParams.get('safe') === '1';
-  
   const [user, setUser] = useState(null);
   const [gardens, setGardens] = useState([]);
   const [activeGarden, setActiveGarden] = useState(null);
@@ -46,7 +40,6 @@ export default function MyGarden() {
   const [showCreateGarden, setShowCreateGarden] = useState(false);
   const [newGardenName, setNewGardenName] = useState('');
   const [creating, setCreating] = useState(false);
-  const [mode, setMode] = useState('layout'); // 'layout' or 'planting'
 
   useEffect(() => {
     loadData();
@@ -188,20 +181,8 @@ export default function MyGarden() {
     return (
       <div className="flex items-center justify-center h-64">
         <Loader2 className="w-8 h-8 animate-spin text-emerald-600" />
-        <span className="ml-3 text-gray-600">Loading gardens...</span>
       </div>
     );
-  }
-
-  // Debug info (dev mode)
-  const isDev = process.env.NODE_ENV === 'development';
-  if (isDev && activeGarden) {
-    console.log('MyGarden Debug:', {
-      activeGardenId: activeGarden?.id,
-      plotId: plot?.id,
-      mode,
-      hasPlot: !!plot
-    });
   }
 
   // No gardens state
@@ -230,39 +211,10 @@ export default function MyGarden() {
     );
   }
 
-  // Keyboard shortcuts - unconditional hook
-  useEffect(() => {
-    // Skip if safe mode
-    if (safeMode) return;
-    
-    const handleKeyPress = (e) => {
-      if (e.key === 'l' || e.key === 'L') {
-        setMode('layout');
-      } else if (e.key === 'p' || e.key === 'P') {
-        setMode('planting');
-      }
-    };
-    window.addEventListener('keydown', handleKeyPress);
-    return () => window.removeEventListener('keydown', handleKeyPress);
-  }, [safeMode]);
-
   return (
-    <ErrorBoundary fallbackTitle="My Garden Error" fallbackMessage="Failed to load My Garden. This might be due to missing data or a component error.">
+    <ErrorBoundary fallbackTitle="Garden Error">
       <div className="h-[calc(100vh-8rem)] flex flex-col">
-        {/* Safe Mode Banner */}
-        {safeMode && (
-          <div className="bg-orange-50 border border-orange-200 px-4 py-2 text-sm mb-2 rounded">
-            <strong>SAFE MODE:</strong> Planting features disabled. Remove ?safe=1 from URL to enable.
-          </div>
-        )}
-        
-        {/* Debug Banner - Dev Only */}
-        {isDev && activeGarden && (
-          <div className="bg-yellow-50 border border-yellow-200 px-4 py-2 text-xs mb-2 rounded">
-            <strong>Debug:</strong> Garden: {activeGarden.id.slice(0,8)} | Plot: {plot?.id?.slice(0,8) || 'loading'} | Mode: {mode} | Safe: {safeMode ? 'ON' : 'OFF'}
-          </div>
-        )}
-        {/* Header with Garden Selector and Mode Toggle */}
+        {/* Header with Garden Selector */}
         <div className="flex items-center justify-between pb-4 border-b">
           <div className="flex items-center gap-3">
             <TreeDeciduous className="w-6 h-6 text-emerald-600" />
@@ -283,58 +235,24 @@ export default function MyGarden() {
               <h1 className="text-xl lg:text-2xl font-bold text-gray-900">{activeGarden?.name}</h1>
             )}
           </div>
-          <div className="flex items-center gap-3">
-            {/* Mode Toggle */}
-            {!safeMode && (
-              <div className="flex items-center bg-gray-100 rounded-lg p-1">
-                <Button
-                  size="sm"
-                  variant={mode === 'layout' ? 'default' : 'ghost'}
-                  onClick={() => setMode('layout')}
-                  className="gap-2"
-                >
-                  <Layout className="w-4 h-4" />
-                  Layout <span className="text-xs opacity-60">(L)</span>
-                </Button>
-                <Button
-                  size="sm"
-                  variant={mode === 'planting' ? 'default' : 'ghost'}
-                  onClick={() => setMode('planting')}
-                  className="gap-2"
-                >
-                  <Sprout className="w-4 h-4" />
-                  Planting <span className="text-xs opacity-60">(P)</span>
-                </Button>
-              </div>
-            )}
-            <Button 
-              onClick={() => setShowCreateGarden(true)}
-              variant="outline"
-              className="gap-2"
-            >
-              <Plus className="w-4 h-4" />
-              New Garden
-            </Button>
-          </div>
+          <Button 
+            onClick={() => setShowCreateGarden(true)}
+            variant="outline"
+            className="gap-2"
+          >
+            <Plus className="w-4 h-4" />
+            New Garden
+          </Button>
         </div>
 
         {/* Plot Canvas */}
-        {activeGarden && plot ? (
-          <ErrorBoundary fallbackTitle="Canvas Error" fallbackMessage="The garden canvas failed to render. Try refreshing the page.">
-            <PlotCanvas 
-              garden={activeGarden}
-              plot={plot}
-              mode={safeMode ? 'layout' : mode}
-              safeMode={safeMode}
-              onPlotUpdate={loadPlot}
-            />
-          </ErrorBoundary>
-        ) : activeGarden && !plot ? (
-          <div className="flex-1 flex items-center justify-center">
-            <Loader2 className="w-8 h-8 animate-spin text-emerald-600" />
-            <span className="ml-3 text-gray-600">Loading plot...</span>
-          </div>
-        ) : null}
+        {activeGarden && plot && (
+          <PlotCanvas 
+            garden={activeGarden}
+            plot={plot}
+            onPlotUpdate={loadPlot}
+          />
+        )}
       </div>
 
       {/* Create Garden Dialog */}
