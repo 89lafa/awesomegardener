@@ -595,37 +595,34 @@ export default function PlantCatalog() {
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
         <AnimatePresence>
           {filteredTypes.map((type, index) => (
-            <motion.div
-              key={type.id}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0 }}
-              transition={{ delay: index * 0.03 }}
-            >
-              <Card 
-                className="cursor-pointer hover:shadow-lg transition-all duration-200 group"
-                onClick={() => setSelectedType(type)}
+            <Link key={type.id} to={createPageUrl('PlantCatalogDetail') + `?id=${type.id}`}>
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0 }}
+                transition={{ delay: index * 0.03 }}
               >
-                <CardContent className="p-4 text-center">
-                  <div className={`w-16 h-16 rounded-2xl mx-auto mb-3 flex items-center justify-center text-3xl ${
-                    type.color || 'bg-emerald-100'
-                  } group-hover:scale-110 transition-transform`}>
-                    {type.icon || '🌱'}
-                  </div>
-                  <h3 className="font-semibold text-gray-900">{type.common_name || type.name}</h3>
-                  {type.scientific_name && (
-                    <p className="text-xs text-gray-500 italic truncate">{type.scientific_name}</p>
-                  )}
-                  <p className="text-xs text-gray-400 capitalize mt-1">{type.category}</p>
-                  <div className="flex items-center justify-center gap-1 mt-2 text-emerald-600 text-sm opacity-0 group-hover:opacity-100 transition-opacity">
-                    <span>Browse</span>
-                    <ChevronRight className="w-4 h-4" />
-                  </div>
-                </CardContent>
+                <Card className="cursor-pointer hover:shadow-lg transition-all duration-200 group">
+                  <CardContent className="p-4 text-center">
+                    <div className={`w-16 h-16 rounded-2xl mx-auto mb-3 flex items-center justify-center text-3xl ${
+                      type.color || 'bg-emerald-100'
+                    } group-hover:scale-110 transition-transform`}>
+                      {type.icon || '🌱'}
+                    </div>
+                    <h3 className="font-semibold text-gray-900">{type.common_name || type.name}</h3>
+                    {type.scientific_name && (
+                      <p className="text-xs text-gray-500 italic truncate">{type.scientific_name}</p>
+                    )}
+                    <p className="text-xs text-gray-400 capitalize mt-1">{type.category}</p>
+                    <div className="flex items-center justify-center gap-1 mt-2 text-emerald-600 text-sm opacity-0 group-hover:opacity-100 transition-opacity">
+                      <span>Browse</span>
+                      <ChevronRight className="w-4 h-4" />
+                    </div>
+                  </CardContent>
                 </Card>
-                </motion.div>
-                </Link>
-                ))}
+              </motion.div>
+            </Link>
+          ))}
         </AnimatePresence>
       </div>
 
