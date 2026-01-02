@@ -11,10 +11,10 @@ import Landing from './pages/Landing';
 import Onboarding from './pages/Onboarding';
 import PlantCatalog from './pages/PlantCatalog';
 import PlantCatalogV2 from './pages/PlantCatalogV2';
+import PlotBuilder from './pages/PlotBuilder';
 import PublicGarden from './pages/PublicGarden';
 import SeedStash from './pages/SeedStash';
 import Settings from './pages/Settings';
-import PlotBuilder from './pages/PlotBuilder';
 import __Layout from './Layout.jsx';
 
 
@@ -32,10 +32,10 @@ export const PAGES = {
     "Onboarding": Onboarding,
     "PlantCatalog": PlantCatalog,
     "PlantCatalogV2": PlantCatalogV2,
+    "PlotBuilder": PlotBuilder,
     "PublicGarden": PublicGarden,
     "SeedStash": SeedStash,
     "Settings": Settings,
-    "PlotBuilder": PlotBuilder,
 }
 
 export const pagesConfig = {

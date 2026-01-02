@@ -43,6 +43,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { toast } from 'sonner';
 import { motion, AnimatePresence } from 'framer-motion';
 import AdBanner from '@/components/monetization/AdBanner';
+import ErrorBoundary from '@/components/common/ErrorBoundary';
 
 const CATEGORIES = ['vegetable', 'fruit', 'herb', 'flower', 'other'];
 
@@ -550,7 +551,8 @@ export default function PlantCatalog() {
 
   // Main Catalog View
   return (
-    <div className="space-y-6">
+    <ErrorBoundary fallbackTitle="Plant Catalog Error" fallbackMessage="Unable to load plant catalog. Please refresh the page.">
+      <div className="space-y-6">
       <div>
         <h1 className="text-2xl lg:text-3xl font-bold text-gray-900">Plant Catalog</h1>
         <p className="text-gray-600 mt-1">Browse plants and varieties for your garden</p>
@@ -623,6 +625,7 @@ export default function PlantCatalog() {
           <p className="text-gray-600">Try adjusting your search or filters</p>
         </div>
       )}
-    </div>
+      </div>
+    </ErrorBoundary>
   );
 }
