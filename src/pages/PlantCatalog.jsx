@@ -76,7 +76,7 @@ export default function PlantCatalog() {
 
   const loadPlantTypes = async () => {
     try {
-      const types = await base44.entities.PlantType.list('name');
+      const types = await base44.entities.PlantType.list('common_name');
       setPlantTypes(types);
     } catch (error) {
       console.error('Error loading plant types:', error);
@@ -163,7 +163,9 @@ export default function PlantCatalog() {
   };
 
   const filteredTypes = plantTypes.filter(type => {
-    const matchesSearch = type.name.toLowerCase().includes(searchQuery.toLowerCase());
+    const name = type.common_name || type.name || '';
+    const matchesSearch = name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                         type.scientific_name?.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesCategory = selectedCategory === 'all' || type.category === selectedCategory;
     return matchesSearch && matchesCategory;
   });
@@ -304,16 +306,29 @@ export default function PlantCatalog() {
 
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl lg:text-3xl font-bold text-gray-900">{selectedType.name}</h1>
-            <p className="text-gray-600 mt-1 capitalize">{selectedType.category}</p>
+            <h1 className="text-2xl lg:text-3xl font-bold text-gray-900">
+              {selectedType.common_name || selectedType.name}
+            </h1>
+            {selectedType.scientific_name && (
+              <p className="text-gray-600 mt-1 italic">{selectedType.scientific_name}</p>
+            )}
+            <p className="text-gray-500 mt-1 capitalize">{selectedType.category}</p>
           </div>
-          <Button 
-            onClick={() => setShowAddVariety(true)}
-            className="bg-emerald-600 hover:bg-emerald-700 gap-2"
-          >
-            <Plus className="w-4 h-4" />
-            Add Variety
-          </Button>
+          <div className="flex gap-2">
+            <Link to={createPageUrl('PlantCatalogV2')}>
+              <Button variant="outline" className="gap-2">
+                <BookOpen className="w-4 h-4" />
+                Advanced Catalog
+              </Button>
+            </Link>
+            <Button 
+              onClick={() => setShowAddVariety(true)}
+              className="bg-emerald-600 hover:bg-emerald-700 gap-2"
+            >
+              <Plus className="w-4 h-4" />
+              Add Variety
+            </Button>
+          </div>
         </div>
 
         <AdBanner placement="top_banner" pageType="catalog" plantTypeId={selectedType.id} />
