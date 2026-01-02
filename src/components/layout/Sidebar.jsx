@@ -21,8 +21,6 @@ import {
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 
-import { Shield, Database } from 'lucide-react';
-
 const getNavItems = (userRole, isEditor) => {
   const items = [
     { name: 'Dashboard', icon: LayoutDashboard, page: 'Dashboard' },
