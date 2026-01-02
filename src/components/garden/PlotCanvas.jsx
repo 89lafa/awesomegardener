@@ -118,6 +118,42 @@ export default function PlotCanvas({ garden, plot, onPlotUpdate }) {
     return `${baseLabel} ${existingWithType.length + 1}`;
   };
 
+  const calculateLayoutSchema = (itemType, width, height, metadata) => {
+    if (itemType.usesGrid && metadata.gridEnabled) {
+      const gridSize = metadata.gridSize || 12;
+      return {
+        type: 'grid',
+        grid_size: gridSize,
+        columns: Math.floor(width / gridSize),
+        rows: Math.floor(height / gridSize)
+      };
+    }
+    if (itemType.usesRows) {
+      return {
+        type: 'rows',
+        rows: metadata.rowCount || Math.floor(width / (metadata.rowSpacing || 18)),
+        row_spacing: metadata.rowSpacing || 18
+      };
+    }
+    if (itemType.usesGallons || itemType.usesSize) {
+      return { type: 'slots', slots: 1 };
+    }
+    return { type: 'slots', slots: 10 };
+  };
+
+  const calculateCapacity = (layoutSchema) => {
+    if (layoutSchema.type === 'grid') {
+      return layoutSchema.columns * layoutSchema.rows;
+    }
+    if (layoutSchema.type === 'rows') {
+      return layoutSchema.rows;
+    }
+    if (layoutSchema.type === 'slots') {
+      return layoutSchema.slots || 1;
+    }
+    return 0;
+  };
+
   const handleAddItem = async () => {
     const itemType = ITEM_TYPES.find(t => t.value === newItem.item_type);
     let width, height;
@@ -177,6 +213,20 @@ export default function PlotCanvas({ garden, plot, onPlotUpdate }) {
           rotation: 0,
           z_index: items.length + i,
           metadata
+        });
+
+        // Auto-create PlantingSpace
+        const layoutSchema = calculateLayoutSchema(itemType, width, height, metadata);
+        const capacity = calculateCapacity(layoutSchema);
+
+        await base44.entities.PlantingSpace.create({
+          garden_id: garden.id,
+          plot_item_id: item.id,
+          space_type: item.item_type,
+          name: label,
+          capacity,
+          layout_schema,
+          is_active: true
         });
 
         newItems.push(item);
@@ -321,14 +371,37 @@ export default function PlotCanvas({ garden, plot, onPlotUpdate }) {
   };
 
   const handleDeleteItem = async (item) => {
-    if (!confirm(`Delete "${item.label}"?`)) return;
     try {
+      // Check if there's a PlantingSpace with plantings
+      const spaces = await base44.entities.PlantingSpace.filter({ plot_item_id: item.id });
+      if (spaces.length > 0) {
+        const space = spaces[0];
+        const plantings = await base44.entities.PlantInstance.filter({ space_id: space.id });
+        
+        if (plantings.length > 0) {
+          const confirmed = confirm(
+            `"${item.label}" has ${plantings.length} plantings. Delete item and all plantings?`
+          );
+          if (!confirmed) return;
+          
+          // Delete all plantings
+          for (const planting of plantings) {
+            await base44.entities.PlantInstance.delete(planting.id);
+          }
+        }
+        
+        // Delete PlantingSpace
+        await base44.entities.PlantingSpace.delete(space.id);
+      }
+      
+      // Delete PlotItem
       await base44.entities.PlotItem.delete(item.id);
       setItems(items.filter(i => i.id !== item.id));
       setSelectedItem(null);
       toast.success('Item deleted');
     } catch (error) {
       console.error('Error deleting:', error);
+      toast.error('Failed to delete item');
     }
   };
 

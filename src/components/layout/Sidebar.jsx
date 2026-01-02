@@ -22,16 +22,17 @@ import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 
 const getNavItems = (userRole, isEditor) => {
-  const items = [
-    { name: 'Dashboard', icon: LayoutDashboard, page: 'Dashboard' },
-    { name: 'My Garden', icon: TreeDeciduous, page: 'MyGarden' },
-    { name: 'Plant Catalog', icon: BookOpen, page: 'PlantCatalog' },
-    { name: 'Seed Stash', icon: Package, page: 'SeedStash' },
-    { name: 'Grow Lists', icon: ListChecks, page: 'GrowLists' },
-    { name: 'Calendar', icon: Calendar, page: 'CalendarTasks' },
-    { name: 'Community', icon: Globe, page: 'Community' },
-    { name: 'Feature Requests', icon: Lightbulb, page: 'FeatureRequests' },
-  ];
+    const items = [
+      { name: 'Dashboard', icon: LayoutDashboard, page: 'Dashboard' },
+      { name: 'Plot Builder', icon: Hammer, page: 'MyGarden' },
+      { name: 'My Garden', icon: TreeDeciduous, page: 'GardenPlanting' },
+      { name: 'Plant Catalog', icon: BookOpen, page: 'PlantCatalog' },
+      { name: 'Seed Stash', icon: Package, page: 'SeedStash' },
+      { name: 'Grow Lists', icon: ListChecks, page: 'GrowLists' },
+      { name: 'Calendar', icon: Calendar, page: 'CalendarTasks' },
+      { name: 'Community', icon: Globe, page: 'Community' },
+      { name: 'Feature Requests', icon: Lightbulb, page: 'FeatureRequests' },
+    ];
 
   if (isEditor || userRole === 'admin') {
     items.push({ name: 'Review Queue', icon: Shield, page: 'EditorReviewQueue' });
