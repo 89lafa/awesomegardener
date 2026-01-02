@@ -31,6 +31,9 @@ import {
 import { Card, CardContent } from '@/components/ui/card';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
+import PlantingViewRaisedBed from './PlantingViewRaisedBed';
+import PlantingViewGreenhouse from './PlantingViewGreenhouse';
+import PlantingViewContainer from './PlantingViewContainer';
 
 const ITEM_TYPES = [
   { value: 'RAISED_BED', label: 'Raised Bed', color: '#8B7355', defaultDims: '4x8', defaultUnit: 'ft', usesGrid: true },
@@ -47,7 +50,7 @@ const GALLON_SIZES = [
   { value: 20, footprint: 24 }, { value: 30, footprint: 30 }
 ];
 
-export default function PlotCanvas({ garden, plot, onPlotUpdate }) {
+export default function PlotCanvas({ garden, plot, mode = 'layout', onPlotUpdate }) {
   const canvasRef = useRef(null);
   const [items, setItems] = useState([]);
   const [selectedItem, setSelectedItem] = useState(null);
@@ -58,6 +61,8 @@ export default function PlotCanvas({ garden, plot, onPlotUpdate }) {
   const [showAddItem, setShowAddItem] = useState(false);
   const [showBulkAdd, setShowBulkAdd] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [plantingCounts, setPlantingCounts] = useState({});
+  const [showPlantingView, setShowPlantingView] = useState(null);
 
   const [newItem, setNewItem] = useState({
     item_type: 'RAISED_BED',
@@ -86,6 +91,12 @@ export default function PlotCanvas({ garden, plot, onPlotUpdate }) {
     }
   }, [plot]);
 
+  useEffect(() => {
+    if (items.length > 0) {
+      loadPlantingCounts();
+    }
+  }, [items]);
+
   const loadItems = async () => {
     try {
       const itemsData = await base44.entities.PlotItem.filter({ 
@@ -97,6 +108,19 @@ export default function PlotCanvas({ garden, plot, onPlotUpdate }) {
       console.error('Error loading items:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadPlantingCounts = async () => {
+    try {
+      const plantings = await base44.entities.Planting.filter({ garden_id: garden.id });
+      const counts = {};
+      plantings.forEach(p => {
+        counts[p.item_id] = (counts[p.item_id] || 0) + 1;
+      });
+      setPlantingCounts(counts);
+    } catch (error) {
+      console.error('Error loading planting counts:', error);
     }
   };
 
@@ -280,15 +304,22 @@ export default function PlotCanvas({ garden, plot, onPlotUpdate }) {
 
     if (clickedItem) {
       setSelectedItem(clickedItem);
-      setDraggingItem(clickedItem);
-      setDragOffset({ x: x - clickedItem.x, y: y - clickedItem.y });
+      
+      if (mode === 'planting') {
+        // Open planting view in planting mode
+        setShowPlantingView(clickedItem);
+      } else {
+        // Enable dragging in layout mode
+        setDraggingItem(clickedItem);
+        setDragOffset({ x: x - clickedItem.x, y: y - clickedItem.y });
+      }
     } else {
       setSelectedItem(null);
     }
   };
 
   const handleCanvasMouseMove = (e) => {
-    if (!draggingItem) return;
+    if (!draggingItem || mode === 'planting') return;
 
     const rect = canvasRef.current.getBoundingClientRect();
     let x = (e.clientX - rect.left) / zoom - dragOffset.x;
@@ -357,15 +388,16 @@ export default function PlotCanvas({ garden, plot, onPlotUpdate }) {
   return (
     <div className="flex-1 flex gap-4 mt-4 min-h-0">
       {/* Left Toolbar */}
-      <Card className="w-64 flex-shrink-0">
-        <CardContent className="p-4 space-y-2">
-          <Button 
-            onClick={() => setShowAddItem(true)}
-            className="w-full bg-emerald-600 hover:bg-emerald-700 gap-2"
-          >
-            <Plus className="w-4 h-4" />
-            Add Item
-          </Button>
+      {mode === 'layout' && (
+        <Card className="w-64 flex-shrink-0">
+          <CardContent className="p-4 space-y-2">
+            <Button 
+              onClick={() => setShowAddItem(true)}
+              className="w-full bg-emerald-600 hover:bg-emerald-700 gap-2"
+            >
+              <Plus className="w-4 h-4" />
+              Add Item
+            </Button>
 
           <div className="pt-4 border-t space-y-2">
             <h4 className="font-semibold text-sm">View</h4>
@@ -425,6 +457,63 @@ export default function PlotCanvas({ garden, plot, onPlotUpdate }) {
           )}
         </CardContent>
       </Card>
+      )}
+
+      {mode === 'planting' && !showPlantingView && (
+        <Card className="w-64 flex-shrink-0">
+          <CardContent className="p-4">
+            <div className="text-center text-sm text-gray-600">
+              <Sprout className="w-12 h-12 text-emerald-600 mx-auto mb-3" />
+              <p className="font-medium mb-2">Planting Mode</p>
+              <p>Click any bed, greenhouse, or container to plant.</p>
+            </div>
+            {items.length > 0 && (
+              <div className="mt-4 pt-4 border-t space-y-2">
+                <h4 className="text-xs font-semibold text-gray-500 uppercase">Summary</h4>
+                {items.map(item => {
+                  const count = plantingCounts[item.id] || 0;
+                  if (count === 0) return null;
+                  return (
+                    <div key={item.id} className="text-xs">
+                      <span className="font-medium">{item.label}:</span> {count} planted
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Planting View Drawer */}
+      {showPlantingView && (
+        <Card className="w-96 flex-shrink-0 overflow-hidden flex flex-col">
+          {showPlantingView.item_type === 'RAISED_BED' && (
+            <PlantingViewRaisedBed 
+              item={showPlantingView} 
+              garden={garden}
+              onClose={() => { setShowPlantingView(null); loadPlantingCounts(); }}
+              onUpdate={() => loadPlantingCounts()}
+            />
+          )}
+          {showPlantingView.item_type === 'GREENHOUSE' && (
+            <PlantingViewGreenhouse 
+              item={showPlantingView} 
+              garden={garden}
+              onClose={() => { setShowPlantingView(null); loadPlantingCounts(); }}
+              onUpdate={() => loadPlantingCounts()}
+            />
+          )}
+          {(showPlantingView.item_type === 'GROW_BAG' || showPlantingView.item_type === 'CONTAINER') && (
+            <PlantingViewContainer 
+              item={showPlantingView} 
+              garden={garden}
+              onClose={() => { setShowPlantingView(null); loadPlantingCounts(); }}
+              onUpdate={() => loadPlantingCounts()}
+            />
+          )}
+        </Card>
+      )}
 
       {/* Canvas */}
       <div className="flex-1 bg-gray-50 rounded-xl overflow-auto p-8">
@@ -485,7 +574,7 @@ export default function PlotCanvas({ garden, plot, onPlotUpdate }) {
                 backgroundColor: getItemColor(item.item_type),
                 transform: `rotate(${item.rotation}deg)`,
                 transformOrigin: 'center',
-                cursor: 'grab'
+                cursor: mode === 'planting' ? 'pointer' : 'grab'
               }}
             >
               {/* Row lines for row-based items */}
@@ -514,6 +603,11 @@ export default function PlotCanvas({ garden, plot, onPlotUpdate }) {
                 }}
               >
                 {item.label}
+                {plantingCounts[item.id] > 0 && (
+                  <span className="ml-2 text-xs bg-white/30 px-2 py-0.5 rounded">
+                    {plantingCounts[item.id]}
+                  </span>
+                )}
               </span>
             </div>
           ))}

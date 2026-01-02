@@ -6,7 +6,9 @@ import {
   Plus, 
   Settings,
   Loader2,
-  ChevronDown
+  ChevronDown,
+  Layout,
+  Sprout
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -40,6 +42,7 @@ export default function MyGarden() {
   const [showCreateGarden, setShowCreateGarden] = useState(false);
   const [newGardenName, setNewGardenName] = useState('');
   const [creating, setCreating] = useState(false);
+  const [mode, setMode] = useState('layout'); // 'layout' or 'planting'
 
   useEffect(() => {
     loadData();
@@ -211,10 +214,22 @@ export default function MyGarden() {
     );
   }
 
+  useEffect(() => {
+    const handleKeyPress = (e) => {
+      if (e.key === 'l' || e.key === 'L') {
+        setMode('layout');
+      } else if (e.key === 'p' || e.key === 'P') {
+        setMode('planting');
+      }
+    };
+    window.addEventListener('keydown', handleKeyPress);
+    return () => window.removeEventListener('keydown', handleKeyPress);
+  }, []);
+
   return (
     <ErrorBoundary fallbackTitle="Garden Error">
       <div className="h-[calc(100vh-8rem)] flex flex-col">
-        {/* Header with Garden Selector */}
+        {/* Header with Garden Selector and Mode Toggle */}
         <div className="flex items-center justify-between pb-4 border-b">
           <div className="flex items-center gap-3">
             <TreeDeciduous className="w-6 h-6 text-emerald-600" />
@@ -235,14 +250,37 @@ export default function MyGarden() {
               <h1 className="text-xl lg:text-2xl font-bold text-gray-900">{activeGarden?.name}</h1>
             )}
           </div>
-          <Button 
-            onClick={() => setShowCreateGarden(true)}
-            variant="outline"
-            className="gap-2"
-          >
-            <Plus className="w-4 h-4" />
-            New Garden
-          </Button>
+          <div className="flex items-center gap-3">
+            {/* Mode Toggle */}
+            <div className="flex items-center bg-gray-100 rounded-lg p-1">
+              <Button
+                size="sm"
+                variant={mode === 'layout' ? 'default' : 'ghost'}
+                onClick={() => setMode('layout')}
+                className="gap-2"
+              >
+                <Layout className="w-4 h-4" />
+                Layout <span className="text-xs opacity-60">(L)</span>
+              </Button>
+              <Button
+                size="sm"
+                variant={mode === 'planting' ? 'default' : 'ghost'}
+                onClick={() => setMode('planting')}
+                className="gap-2"
+              >
+                <Sprout className="w-4 h-4" />
+                Planting <span className="text-xs opacity-60">(P)</span>
+              </Button>
+            </div>
+            <Button 
+              onClick={() => setShowCreateGarden(true)}
+              variant="outline"
+              className="gap-2"
+            >
+              <Plus className="w-4 h-4" />
+              New Garden
+            </Button>
+          </div>
         </div>
 
         {/* Plot Canvas */}
@@ -250,6 +288,7 @@ export default function MyGarden() {
           <PlotCanvas 
             garden={activeGarden}
             plot={plot}
+            mode={mode}
             onPlotUpdate={loadPlot}
           />
         )}
