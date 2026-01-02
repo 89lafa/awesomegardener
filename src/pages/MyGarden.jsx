@@ -184,8 +184,20 @@ export default function MyGarden() {
     return (
       <div className="flex items-center justify-center h-64">
         <Loader2 className="w-8 h-8 animate-spin text-emerald-600" />
+        <span className="ml-3 text-gray-600">Loading gardens...</span>
       </div>
     );
+  }
+
+  // Debug info (dev mode)
+  const isDev = process.env.NODE_ENV === 'development';
+  if (isDev && activeGarden) {
+    console.log('MyGarden Debug:', {
+      activeGardenId: activeGarden?.id,
+      plotId: plot?.id,
+      mode,
+      hasPlot: !!plot
+    });
   }
 
   // No gardens state
@@ -227,8 +239,14 @@ export default function MyGarden() {
   }, []);
 
   return (
-    <ErrorBoundary fallbackTitle="Garden Error">
+    <ErrorBoundary fallbackTitle="My Garden Error" fallbackMessage="Failed to load My Garden. This might be due to missing data or a component error.">
       <div className="h-[calc(100vh-8rem)] flex flex-col">
+        {/* Debug Banner - Dev Only */}
+        {isDev && activeGarden && (
+          <div className="bg-yellow-50 border border-yellow-200 px-4 py-2 text-xs mb-2 rounded">
+            <strong>Debug:</strong> Garden: {activeGarden.id.slice(0,8)} | Plot: {plot?.id?.slice(0,8) || 'loading'} | Mode: {mode}
+          </div>
+        )}
         {/* Header with Garden Selector and Mode Toggle */}
         <div className="flex items-center justify-between pb-4 border-b">
           <div className="flex items-center gap-3">
@@ -284,14 +302,21 @@ export default function MyGarden() {
         </div>
 
         {/* Plot Canvas */}
-        {activeGarden && plot && (
-          <PlotCanvas 
-            garden={activeGarden}
-            plot={plot}
-            mode={mode}
-            onPlotUpdate={loadPlot}
-          />
-        )}
+        {activeGarden && plot ? (
+          <ErrorBoundary fallbackTitle="Canvas Error" fallbackMessage="The garden canvas failed to render. Try refreshing the page.">
+            <PlotCanvas 
+              garden={activeGarden}
+              plot={plot}
+              mode={mode}
+              onPlotUpdate={loadPlot}
+            />
+          </ErrorBoundary>
+        ) : activeGarden && !plot ? (
+          <div className="flex-1 flex items-center justify-center">
+            <Loader2 className="w-8 h-8 animate-spin text-emerald-600" />
+            <span className="ml-3 text-gray-600">Loading plot...</span>
+          </div>
+        ) : null}
       </div>
 
       {/* Create Garden Dialog */}

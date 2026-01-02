@@ -100,13 +100,20 @@ export default function PlotCanvas({ garden, plot, mode = 'layout', onPlotUpdate
 
   const loadItems = async () => {
     try {
+      if (!garden?.id || !plot?.id) {
+        console.error('Missing garden or plot ID');
+        setLoading(false);
+        return;
+      }
       const itemsData = await base44.entities.PlotItem.filter({ 
         garden_id: garden.id,
         plot_id: plot.id 
       }, 'z_index');
-      setItems(itemsData);
+      setItems(itemsData || []);
     } catch (error) {
       console.error('Error loading items:', error);
+      toast.error('Failed to load plot items');
+      setItems([]);
     } finally {
       setLoading(false);
     }
@@ -114,14 +121,18 @@ export default function PlotCanvas({ garden, plot, mode = 'layout', onPlotUpdate
 
   const loadPlantingCounts = async () => {
     try {
-      const plantings = await base44.entities.Planting.filter({ garden_id: garden.id });
+      const plantings = await base44.entities.Planting.filter({ garden_id: garden?.id });
       const counts = {};
-      plantings.forEach(p => {
-        counts[p.item_id] = (counts[p.item_id] || 0) + 1;
+      (plantings || []).forEach(p => {
+        if (p.item_id) {
+          counts[p.item_id] = (counts[p.item_id] || 0) + 1;
+        }
       });
       setPlantingCounts(counts);
     } catch (error) {
       console.error('Error loading planting counts:', error);
+      // Non-blocking - planting counts are optional
+      setPlantingCounts({});
     }
   };
 
@@ -294,28 +305,34 @@ export default function PlotCanvas({ garden, plot, mode = 'layout', onPlotUpdate
   };
 
   const handleCanvasMouseDown = (e) => {
-    const rect = canvasRef.current.getBoundingClientRect();
-    const x = (e.clientX - rect.left) / zoom;
-    const y = (e.clientY - rect.top) / zoom;
+    if (!canvasRef.current) return;
+    
+    try {
+      const rect = canvasRef.current.getBoundingClientRect();
+      const x = (e.clientX - rect.left) / zoom;
+      const y = (e.clientY - rect.top) / zoom;
 
-    const clickedItem = [...items].reverse().find(item => {
-      return x >= item.x && x <= item.x + item.width &&
-             y >= item.y && y <= item.y + item.height;
-    });
+      const clickedItem = [...(items || [])].reverse().find(item => {
+        return x >= item.x && x <= item.x + item.width &&
+               y >= item.y && y <= item.y + item.height;
+      });
 
-    if (clickedItem) {
-      setSelectedItem(clickedItem);
-      
-      if (mode === 'planting') {
-        // Open planting view in planting mode
-        setShowPlantingView(clickedItem);
+      if (clickedItem) {
+        setSelectedItem(clickedItem);
+        
+        if (mode === 'planting') {
+          // Open planting view in planting mode
+          setShowPlantingView(clickedItem);
+        } else {
+          // Enable dragging in layout mode
+          setDraggingItem(clickedItem);
+          setDragOffset({ x: x - clickedItem.x, y: y - clickedItem.y });
+        }
       } else {
-        // Enable dragging in layout mode
-        setDraggingItem(clickedItem);
-        setDragOffset({ x: x - clickedItem.x, y: y - clickedItem.y });
+        setSelectedItem(null);
       }
-    } else {
-      setSelectedItem(null);
+    } catch (error) {
+      console.error('Canvas mouse down error:', error);
     }
   };
 
@@ -468,10 +485,10 @@ export default function PlotCanvas({ garden, plot, mode = 'layout', onPlotUpdate
               <p className="font-medium mb-2">Planting Mode</p>
               <p>Click any bed, greenhouse, or container to plant.</p>
             </div>
-            {items.length > 0 && (
+            {(items || []).length > 0 && (
               <div className="mt-4 pt-4 border-t space-y-2">
                 <h4 className="text-xs font-semibold text-gray-500 uppercase">Summary</h4>
-                {items.map(item => {
+                {(items || []).map(item => {
                   const count = plantingCounts[item.id] || 0;
                   if (count === 0) return null;
                   return (
@@ -486,33 +503,58 @@ export default function PlotCanvas({ garden, plot, mode = 'layout', onPlotUpdate
         </Card>
       )}
 
-      {/* Planting View Drawer */}
+      {/* Planting View Drawer - Wrapped in ErrorBoundary */}
       {showPlantingView && (
         <Card className="w-96 flex-shrink-0 overflow-hidden flex flex-col">
-          {showPlantingView.item_type === 'RAISED_BED' && (
-            <PlantingViewRaisedBed 
-              item={showPlantingView} 
-              garden={garden}
-              onClose={() => { setShowPlantingView(null); loadPlantingCounts(); }}
-              onUpdate={() => loadPlantingCounts()}
-            />
-          )}
-          {showPlantingView.item_type === 'GREENHOUSE' && (
-            <PlantingViewGreenhouse 
-              item={showPlantingView} 
-              garden={garden}
-              onClose={() => { setShowPlantingView(null); loadPlantingCounts(); }}
-              onUpdate={() => loadPlantingCounts()}
-            />
-          )}
-          {(showPlantingView.item_type === 'GROW_BAG' || showPlantingView.item_type === 'CONTAINER') && (
-            <PlantingViewContainer 
-              item={showPlantingView} 
-              garden={garden}
-              onClose={() => { setShowPlantingView(null); loadPlantingCounts(); }}
-              onUpdate={() => loadPlantingCounts()}
-            />
-          )}
+          {(() => {
+            try {
+              if (showPlantingView.item_type === 'RAISED_BED') {
+                return (
+                  <PlantingViewRaisedBed 
+                    item={showPlantingView} 
+                    garden={garden}
+                    onClose={() => { setShowPlantingView(null); loadPlantingCounts(); }}
+                    onUpdate={() => loadPlantingCounts()}
+                  />
+                );
+              }
+              if (showPlantingView.item_type === 'GREENHOUSE') {
+                return (
+                  <PlantingViewGreenhouse 
+                    item={showPlantingView} 
+                    garden={garden}
+                    onClose={() => { setShowPlantingView(null); loadPlantingCounts(); }}
+                    onUpdate={() => loadPlantingCounts()}
+                  />
+                );
+              }
+              if (showPlantingView.item_type === 'GROW_BAG' || showPlantingView.item_type === 'CONTAINER') {
+                return (
+                  <PlantingViewContainer 
+                    item={showPlantingView} 
+                    garden={garden}
+                    onClose={() => { setShowPlantingView(null); loadPlantingCounts(); }}
+                    onUpdate={() => loadPlantingCounts()}
+                  />
+                );
+              }
+              return (
+                <div className="p-6 text-center">
+                  <p className="text-gray-600">Unsupported item type: {showPlantingView.item_type}</p>
+                  <Button onClick={() => setShowPlantingView(null)} className="mt-4">Close</Button>
+                </div>
+              );
+            } catch (error) {
+              console.error('Planting view error:', error);
+              return (
+                <div className="p-6 text-center">
+                  <p className="text-red-600 mb-2">Planting module error</p>
+                  <p className="text-sm text-gray-600 mb-4">{error.message}</p>
+                  <Button onClick={() => setShowPlantingView(null)}>Close</Button>
+                </div>
+              );
+            }
+          })()}
         </Card>
       )}
 
@@ -560,7 +602,7 @@ export default function PlotCanvas({ garden, plot, mode = 'layout', onPlotUpdate
           )}
 
           {/* Items */}
-          {items.map((item) => (
+          {(items || []).map((item) => (
             <div
               key={item.id}
               className={cn(

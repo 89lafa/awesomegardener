@@ -32,14 +32,20 @@ export default function PlantingViewGreenhouse({ item, garden, onClose, onUpdate
 
   const loadData = async () => {
     try {
+      if (!item?.id) {
+        throw new Error('Invalid item');
+      }
       const [plantingsData, typesData] = await Promise.all([
         base44.entities.Planting.filter({ item_id: item.id }),
         base44.entities.PlantType.list('common_name', 100)
       ]);
-      setPlantings(plantingsData);
-      setPlantTypes(typesData);
+      setPlantings(plantingsData || []);
+      setPlantTypes(typesData || []);
     } catch (error) {
       console.error('Error loading data:', error);
+      toast.error('Failed to load planting data');
+      setPlantings([]);
+      setPlantTypes([]);
     } finally {
       setLoading(false);
     }
