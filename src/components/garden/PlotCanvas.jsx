@@ -31,9 +31,9 @@ import {
 import { Card, CardContent } from '@/components/ui/card';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
-import PlantingViewRaisedBed from './PlantingViewRaisedBed';
-import PlantingViewGreenhouse from './PlantingViewGreenhouse';
-import PlantingViewContainer from './PlantingViewContainer';
+import PlantingViewRaisedBed from '@/components/garden/PlantingViewRaisedBed';
+import PlantingViewGreenhouse from '@/components/garden/PlantingViewGreenhouse';
+import PlantingViewContainer from '@/components/garden/PlantingViewContainer';
 
 const ITEM_TYPES = [
   { value: 'RAISED_BED', label: 'Raised Bed', color: '#8B7355', defaultDims: '4x8', defaultUnit: 'ft', usesGrid: true },
