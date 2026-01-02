@@ -266,10 +266,10 @@ export default function Dashboard() {
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-            <Link to={createPageUrl('Gardens') + '?action=new'}>
+            <Link to={createPageUrl('Gardens')}>
               <Button variant="outline" className="w-full h-auto py-4 flex-col gap-2">
                 <TreeDeciduous className="w-5 h-5 text-emerald-600" />
-                <span>New Garden</span>
+                <span>View Gardens</span>
               </Button>
             </Link>
             <Link to={createPageUrl('SeedStash') + '?action=new'}>
