@@ -9,6 +9,8 @@ import GrowLists from './pages/GrowLists';
 import CalendarTasks from './pages/CalendarTasks';
 import Community from './pages/Community';
 import PublicGarden from './pages/PublicGarden';
+import FeatureRequests from './pages/FeatureRequests';
+import Settings from './pages/Settings';
 import __Layout from './Layout.jsx';
 
 
@@ -24,6 +26,8 @@ export const PAGES = {
     "CalendarTasks": CalendarTasks,
     "Community": Community,
     "PublicGarden": PublicGarden,
+    "FeatureRequests": FeatureRequests,
+    "Settings": Settings,
 }
 
 export const pagesConfig = {
