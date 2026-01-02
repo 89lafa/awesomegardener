@@ -86,7 +86,7 @@ export default function Dashboard() {
   };
 
   const stats = [
-    { label: 'Gardens', value: gardens.length, icon: TreeDeciduous, color: 'bg-emerald-100 text-emerald-600', href: 'Gardens' },
+    { label: 'Gardens', value: gardens.length, icon: TreeDeciduous, color: 'bg-emerald-100 text-emerald-600', href: 'MyGarden' },
     { label: 'Open Tasks', value: tasks.length, icon: Calendar, color: 'bg-blue-100 text-blue-600', href: 'CalendarTasks' },
     { label: 'Seeds', value: seedCount, icon: Package, color: 'bg-amber-100 text-amber-600', href: 'SeedStash' },
     { label: 'Grow Lists', value: growListCount, icon: ListChecks, color: 'bg-purple-100 text-purple-600', href: 'GrowLists' },
@@ -205,7 +205,7 @@ export default function Dashboard() {
               <TreeDeciduous className="w-5 h-5 text-emerald-600" />
               Your Gardens
             </CardTitle>
-            <Link to={createPageUrl('Gardens')}>
+            <Link to={createPageUrl('MyGarden')}>
               <Button variant="ghost" size="sm" className="gap-1">
                 All <ArrowRight className="w-4 h-4" />
               </Button>
@@ -216,7 +216,7 @@ export default function Dashboard() {
               <div className="text-center py-8">
                 <Sprout className="w-12 h-12 text-gray-300 mx-auto mb-3" />
                 <p className="text-gray-600 mb-4">No gardens yet</p>
-                <Link to={createPageUrl('Gardens') + '?action=new'}>
+                <Link to={createPageUrl('MyGarden')}>
                   <Button size="sm" className="bg-emerald-600 hover:bg-emerald-700">
                     <Plus className="w-4 h-4 mr-2" />
                     Create Garden
@@ -266,7 +266,7 @@ export default function Dashboard() {
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-            <Link to={createPageUrl('Gardens') + '?action=new'}>
+            <Link to={createPageUrl('MyGarden')}>
               <Button variant="outline" className="w-full h-auto py-4 flex-col gap-2">
                 <TreeDeciduous className="w-5 h-5 text-emerald-600" />
                 <span>New Garden</span>
