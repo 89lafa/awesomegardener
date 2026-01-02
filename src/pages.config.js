@@ -1,4 +1,6 @@
+import AdminDataCleanup from './pages/AdminDataCleanup';
 import AdminDataImport from './pages/AdminDataImport';
+import CalendarPlanner from './pages/CalendarPlanner';
 import CalendarTasks from './pages/CalendarTasks';
 import Community from './pages/Community';
 import Dashboard from './pages/Dashboard';
@@ -8,6 +10,7 @@ import GardenBuilder from './pages/GardenBuilder';
 import Gardens from './pages/Gardens';
 import GrowLists from './pages/GrowLists';
 import Landing from './pages/Landing';
+import MyGarden from './pages/MyGarden';
 import Onboarding from './pages/Onboarding';
 import PlantCatalog from './pages/PlantCatalog';
 import PlantCatalogV2 from './pages/PlantCatalogV2';
@@ -15,14 +18,14 @@ import PlotBuilder from './pages/PlotBuilder';
 import PublicGarden from './pages/PublicGarden';
 import SeedStash from './pages/SeedStash';
 import Settings from './pages/Settings';
-import AdminDataCleanup from './pages/AdminDataCleanup';
-import MyGarden from './pages/MyGarden';
-import CalendarPlanner from './pages/CalendarPlanner';
+import PlantCatalogDetail from './pages/PlantCatalogDetail';
 import __Layout from './Layout.jsx';
 
 
 export const PAGES = {
+    "AdminDataCleanup": AdminDataCleanup,
     "AdminDataImport": AdminDataImport,
+    "CalendarPlanner": CalendarPlanner,
     "CalendarTasks": CalendarTasks,
     "Community": Community,
     "Dashboard": Dashboard,
@@ -32,6 +35,7 @@ export const PAGES = {
     "Gardens": Gardens,
     "GrowLists": GrowLists,
     "Landing": Landing,
+    "MyGarden": MyGarden,
     "Onboarding": Onboarding,
     "PlantCatalog": PlantCatalog,
     "PlantCatalogV2": PlantCatalogV2,
@@ -39,9 +43,7 @@ export const PAGES = {
     "PublicGarden": PublicGarden,
     "SeedStash": SeedStash,
     "Settings": Settings,
-    "AdminDataCleanup": AdminDataCleanup,
-    "MyGarden": MyGarden,
-    "CalendarPlanner": CalendarPlanner,
+    "PlantCatalogDetail": PlantCatalogDetail,
 }
 
 export const pagesConfig = {
