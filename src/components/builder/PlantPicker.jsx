@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
-import { Search, Sprout, Package, Plus, X, Loader2 } from 'lucide-react';
+import { Search, Sprout, Package, Plus, X, Loader2, ChevronRight } from 'lucide-react';
+import ErrorBoundary from '@/components/common/ErrorBoundary';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
@@ -146,7 +147,8 @@ export default function PlantPicker({
   });
 
   return (
-    <Dialog open={open} onOpenChange={(o) => !o && resetAndClose()}>
+    <ErrorBoundary fallbackTitle="Plant Picker Error" fallbackMessage="Unable to load plant picker. Please refresh and try again.">
+      <Dialog open={open} onOpenChange={(o) => !o && resetAndClose()}>
       <DialogContent className="max-w-lg max-h-[80vh] flex flex-col">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
@@ -185,6 +187,13 @@ export default function PlantPicker({
             {loading ? (
               <div className="flex items-center justify-center h-40">
                 <Loader2 className="w-6 h-6 animate-spin text-emerald-600" />
+              </div>
+            ) : plantTypes.length === 0 ? (
+              <div className="text-center py-8">
+                <Sprout className="w-12 h-12 text-gray-300 mx-auto mb-3" />
+                <p className="text-gray-600 mb-2">Plant catalog is empty</p>
+                <p className="text-sm text-gray-500">Admin must import taxonomy or add plant types first.</p>
+                <p className="text-xs text-gray-400 mt-2">Admin → Data Imports → Import Plant Taxonomy</p>
               </div>
             ) : selectedGroup && !selectedType ? (
               <div className="space-y-4">
@@ -351,5 +360,6 @@ export default function PlantPicker({
         </div>
       </DialogContent>
     </Dialog>
+    </ErrorBoundary>
   );
 }
