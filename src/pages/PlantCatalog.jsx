@@ -197,6 +197,23 @@ export default function PlantCatalog() {
     );
   }
 
+  // Empty state when no plant types
+  if (plantTypes.length === 0 && !selectedType) {
+    return (
+      <div className="space-y-6">
+        <h1 className="text-2xl lg:text-3xl font-bold text-gray-900">Plant Catalog</h1>
+        <Card className="py-16">
+          <CardContent className="text-center">
+            <Sprout className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">Plant catalog is empty</h3>
+            <p className="text-gray-600">Admin must import taxonomy or add plant types first.</p>
+            <p className="text-sm text-gray-500 mt-2">Admin → Data Imports → Import Plant Taxonomy</p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
   // Variety Detail View
   if (selectedVariety) {
     return (

@@ -13,6 +13,7 @@ import {
   Check,
   Loader2
 } from 'lucide-react';
+import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -55,6 +56,14 @@ export default function Onboarding() {
   };
 
   const handleNext = () => {
+    // Validate frost dates if on frost step
+    if (currentStep === 2) {
+      if (!formData.last_frost_date || !formData.first_frost_date) {
+        toast.error('Please enter both frost dates to continue');
+        return;
+      }
+    }
+    
     if (currentStep < steps.length - 1) {
       setCurrentStep(currentStep + 1);
     }
@@ -67,6 +76,8 @@ export default function Onboarding() {
   };
 
   const handleComplete = async () => {
+    if (loading) return; // Prevent double-submit
+    
     setLoading(true);
     try {
       // Update user profile
@@ -89,18 +100,19 @@ export default function Onboarding() {
         privacy: 'private'
       });
 
-      // Create a default space
-      await base44.entities.GardenSpace.create({
+      // Create default plot for the garden
+      await base44.entities.GardenPlot.create({
         garden_id: garden.id,
-        name: 'Main Garden',
-        type: 'raised_bed_area',
-        canvas_width: 800,
-        canvas_height: 600
+        width: 480, // 40 feet in inches
+        height: 720, // 60 feet in inches
+        units: 'ft',
+        shape_type: 'RECTANGLE'
       });
 
       navigate(createPageUrl('Dashboard'));
     } catch (error) {
       console.error('Error completing onboarding:', error);
+      toast.error('Failed to complete setup. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -197,31 +209,47 @@ export default function Onboarding() {
       case 'frost':
         return (
           <div className="space-y-6">
-            <div className="p-4 bg-emerald-50 rounded-xl border border-emerald-100">
-              <p className="text-sm text-emerald-800">
-                Frost dates help us calculate the best planting windows for your area. 
-                You can adjust these later in settings.
+            <div className="p-4 bg-blue-50 rounded-xl border border-blue-200">
+              <h4 className="font-semibold text-blue-900 mb-2 flex items-center gap-2">
+                <Thermometer className="w-4 h-4" />
+                Don't know your frost dates?
+              </h4>
+              <p className="text-sm text-blue-800 mb-3">
+                Most gardeners don't. Use this free tool to look them up, then return here and enter the dates.
+              </p>
+              <a
+                href="https://www.almanac.com/gardening/frostdates"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 text-sm font-medium text-blue-600 hover:text-blue-700"
+              >
+                Open Almanac Frost Dates Lookup →
+              </a>
+              <p className="text-xs text-blue-600 mt-2">
+                Tip: Use your ZIP or city on that page to get your average last spring frost and first fall frost
               </p>
             </div>
             <div>
-              <Label htmlFor="last_frost">Average Last Frost Date (Spring)</Label>
+              <Label htmlFor="last_frost">Last Spring Frost Date (32°F) *</Label>
               <Input
                 id="last_frost"
                 type="date"
                 value={formData.last_frost_date}
                 onChange={(e) => handleChange('last_frost_date', e.target.value)}
                 className="mt-2"
+                required
               />
               <p className="text-sm text-gray-500 mt-1">When your area typically sees the last frost in spring</p>
             </div>
             <div>
-              <Label htmlFor="first_frost">Average First Frost Date (Fall)</Label>
+              <Label htmlFor="first_frost">First Fall Frost Date (32°F) *</Label>
               <Input
                 id="first_frost"
                 type="date"
                 value={formData.first_frost_date}
                 onChange={(e) => handleChange('first_frost_date', e.target.value)}
                 className="mt-2"
+                required
               />
               <p className="text-sm text-gray-500 mt-1">When your area typically sees the first frost in fall</p>
             </div>

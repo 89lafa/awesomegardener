@@ -523,9 +523,14 @@ export default function SeedStash() {
                     <SelectValue placeholder="Select type" />
                   </SelectTrigger>
                   <SelectContent>
-                    {plantTypes.map((type) => (
-                      <SelectItem key={type.id} value={type.name}>{type.name}</SelectItem>
-                    ))}
+                    {plantTypes
+                      .filter(type => type.common_name || type.name)
+                      .sort((a, b) => (a.common_name || a.name).localeCompare(b.common_name || b.name))
+                      .map((type) => (
+                        <SelectItem key={type.id} value={type.common_name || type.name}>
+                          {type.common_name || type.name}
+                        </SelectItem>
+                      ))}
                   </SelectContent>
                 </Select>
               </div>

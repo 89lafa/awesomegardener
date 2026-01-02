@@ -75,7 +75,8 @@ export default function Gardens() {
   };
 
   const handleCreate = async () => {
-    if (!formData.name.trim()) return;
+    if (!formData.name.trim() || saving) return; // Prevent double-submit
+    
     setSaving(true);
     try {
       const garden = await base44.entities.Garden.create({
@@ -84,13 +85,13 @@ export default function Gardens() {
         privacy: formData.privacy
       });
       
-      // Create default space
-      await base44.entities.GardenSpace.create({
+      // Create default plot
+      await base44.entities.GardenPlot.create({
         garden_id: garden.id,
-        name: 'Main Area',
-        type: 'raised_bed_area',
-        canvas_width: 800,
-        canvas_height: 600
+        width: 480, // 40 feet
+        height: 720, // 60 feet
+        units: 'ft',
+        shape_type: 'RECTANGLE'
       });
 
       setGardens([garden, ...gardens]);
