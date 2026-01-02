@@ -17,6 +17,7 @@ import SeedStash from './pages/SeedStash';
 import Settings from './pages/Settings';
 import AdminDataCleanup from './pages/AdminDataCleanup';
 import MyGarden from './pages/MyGarden';
+import CalendarPlanner from './pages/CalendarPlanner';
 import __Layout from './Layout.jsx';
 
 
@@ -40,6 +41,7 @@ export const PAGES = {
     "Settings": Settings,
     "AdminDataCleanup": AdminDataCleanup,
     "MyGarden": MyGarden,
+    "CalendarPlanner": CalendarPlanner,
 }
 
 export const pagesConfig = {
