@@ -32,9 +32,16 @@ import {
 import { Card, CardContent } from '@/components/ui/card';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
-import PlantingViewRaisedBed from '@/components/garden/PlantingViewRaisedBed';
-import PlantingViewGreenhouse from '@/components/garden/PlantingViewGreenhouse';
-import PlantingViewContainer from '@/components/garden/PlantingViewContainer';
+
+// Lazy load planting components to prevent blocking canvas
+let PlantingViewRaisedBed, PlantingViewGreenhouse, PlantingViewContainer;
+try {
+  PlantingViewRaisedBed = require('@/components/garden/PlantingViewRaisedBed').default;
+  PlantingViewGreenhouse = require('@/components/garden/PlantingViewGreenhouse').default;
+  PlantingViewContainer = require('@/components/garden/PlantingViewContainer').default;
+} catch (error) {
+  console.warn('Planting components not available:', error);
+}
 
 const ITEM_TYPES = [
   { value: 'RAISED_BED', label: 'Raised Bed', color: '#8B7355', defaultDims: '4x8', defaultUnit: 'ft', usesGrid: true },
@@ -503,12 +510,21 @@ export default function PlotCanvas({ garden, plot, mode = 'layout', onPlotUpdate
         </Card>
       )}
 
-      {/* Planting View Drawer - Wrapped in ErrorBoundary */}
+      {/* Planting View Drawer */}
       {showPlantingView && (
         <Card className="w-96 flex-shrink-0 overflow-hidden flex flex-col">
           {(() => {
+            if (!PlantingViewRaisedBed || !PlantingViewGreenhouse || !PlantingViewContainer) {
+              return (
+                <div className="p-6 text-center">
+                  <p className="text-gray-600 mb-2">Planting module unavailable</p>
+                  <Button onClick={() => setShowPlantingView(null)} className="mt-4">Close</Button>
+                </div>
+              );
+            }
+
             try {
-              if (showPlantingView.item_type === 'RAISED_BED') {
+              if (showPlantingView.item_type === 'RAISED_BED' && PlantingViewRaisedBed) {
                 return (
                   <PlantingViewRaisedBed 
                     item={showPlantingView} 
@@ -518,7 +534,7 @@ export default function PlotCanvas({ garden, plot, mode = 'layout', onPlotUpdate
                   />
                 );
               }
-              if (showPlantingView.item_type === 'GREENHOUSE') {
+              if (showPlantingView.item_type === 'GREENHOUSE' && PlantingViewGreenhouse) {
                 return (
                   <PlantingViewGreenhouse 
                     item={showPlantingView} 
@@ -528,7 +544,7 @@ export default function PlotCanvas({ garden, plot, mode = 'layout', onPlotUpdate
                   />
                 );
               }
-              if (showPlantingView.item_type === 'GROW_BAG' || showPlantingView.item_type === 'CONTAINER') {
+              if ((showPlantingView.item_type === 'GROW_BAG' || showPlantingView.item_type === 'CONTAINER') && PlantingViewContainer) {
                 return (
                   <PlantingViewContainer 
                     item={showPlantingView} 
