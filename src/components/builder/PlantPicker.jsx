@@ -30,13 +30,18 @@ export default function PlantPicker({
   cellCol 
 }) {
   const [searchQuery, setSearchQuery] = useState('');
+  const [groups, setGroups] = useState([]);
   const [plantTypes, setPlantTypes] = useState([]);
   const [varieties, setVarieties] = useState([]);
   const [seedStash, setSeedStash] = useState([]);
+  const [traitDefinitions, setTraitDefinitions] = useState([]);
+  const [traitTemplates, setTraitTemplates] = useState([]);
+  const [selectedGroup, setSelectedGroup] = useState(null);
   const [selectedType, setSelectedType] = useState(null);
   const [selectedVariety, setSelectedVariety] = useState(null);
   const [loading, setLoading] = useState(true);
   const [plannedDate, setPlannedDate] = useState('');
+  const [varietyTraits, setVarietyTraits] = useState({});
 
   useEffect(() => {
     if (open) {
@@ -47,23 +52,36 @@ export default function PlantPicker({
   useEffect(() => {
     if (selectedType) {
       loadVarieties(selectedType.id);
+      loadTraits(selectedType.id);
     }
   }, [selectedType]);
 
   const loadData = async () => {
     setLoading(true);
     try {
-      const [types, seeds] = await Promise.all([
-        base44.entities.PlantType.list('name'),
-        base44.entities.SeedLot.filter({ is_wishlist: false })
+      const [groupsData, types, seeds, traits, templates] = await Promise.all([
+        base44.entities.PlantGroup.list('sort_order'),
+        base44.entities.PlantType.list('common_name'),
+        base44.entities.SeedLot.filter({ is_wishlist: false }),
+        base44.entities.TraitDefinition.list(),
+        base44.entities.PlantTypeTraitTemplate.list()
       ]);
+      setGroups(groupsData);
       setPlantTypes(types);
       setSeedStash(seeds);
+      setTraitDefinitions(traits);
+      setTraitTemplates(templates);
     } catch (error) {
       console.error('Error loading plant data:', error);
     } finally {
       setLoading(false);
     }
+  };
+
+  const loadTraits = (typeId) => {
+    const templates = traitTemplates.filter(t => t.plant_type_id === typeId);
+    const relevantTraits = templates.map(t => traitDefinitions.find(td => td.id === t.trait_id)).filter(Boolean);
+    return relevantTraits;
   };
 
   const loadVarieties = async (typeId) => {
@@ -80,14 +98,15 @@ export default function PlantPicker({
 
   const handleSelectFromCatalog = (type, variety = null) => {
     const displayName = variety 
-      ? `${type.name} - ${variety.variety_name}`
-      : type.name;
+      ? `${type.common_name || type.name} - ${variety.variety_name}`
+      : type.common_name || type.name;
 
     onSelect({
       plant_type_id: type.id,
       variety_id: variety?.id,
       display_name: displayName,
-      planned_plant_out_date: plannedDate || null
+      planned_plant_out_date: plannedDate || null,
+      traits: variety ? varietyTraits : {}
     });
     resetAndClose();
   };
@@ -115,9 +134,11 @@ export default function PlantPicker({
     onClose();
   };
 
-  const filteredTypes = plantTypes.filter(t => 
-    t.name.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const filteredTypes = plantTypes.filter(t => {
+    const name = t.common_name || t.name || '';
+    if (selectedGroup && t.plant_group_id !== selectedGroup.id) return false;
+    return name.toLowerCase().includes(searchQuery.toLowerCase());
+  });
 
   const filteredSeeds = seedStash.filter(s => {
     const name = s.variety_name || s.plant_type_name || s.custom_name || '';
@@ -165,6 +186,45 @@ export default function PlantPicker({
               <div className="flex items-center justify-center h-40">
                 <Loader2 className="w-6 h-6 animate-spin text-emerald-600" />
               </div>
+            ) : selectedGroup && !selectedType ? (
+              <div className="space-y-4">
+                <div className="flex items-center gap-2">
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    onClick={() => setSelectedGroup(null)}
+                  >
+                    <X className="w-4 h-4 mr-1" />
+                    Back
+                  </Button>
+                  <span className="font-medium">{selectedGroup.name}</span>
+                </div>
+                <ScrollArea className="h-60">
+                  <div className="space-y-2">
+                    {filteredTypes.map((type) => (
+                      <button
+                        key={type.id}
+                        onClick={() => setSelectedType(type)}
+                        className="w-full p-3 text-left rounded-lg border hover:bg-gray-50 transition-colors"
+                      >
+                        <div className="flex items-center gap-2">
+                          <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-lg ${
+                            type.color || 'bg-emerald-100'
+                          }`}>
+                            {type.icon || '🌱'}
+                          </div>
+                          <div>
+                            <p className="font-medium text-sm">{type.common_name || type.name}</p>
+                            {type.scientific_name && (
+                              <p className="text-xs text-gray-500 italic">{type.scientific_name}</p>
+                            )}
+                          </div>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                </ScrollArea>
+              </div>
             ) : selectedType ? (
               <div className="space-y-4">
                 <div className="flex items-center gap-2">
@@ -176,7 +236,7 @@ export default function PlantPicker({
                     <X className="w-4 h-4 mr-1" />
                     Back
                   </Button>
-                  <span className="font-medium">{selectedType.name}</span>
+                  <span className="font-medium">{selectedType.common_name || selectedType.name}</span>
                 </div>
 
                 <ScrollArea className="h-60">
@@ -186,7 +246,7 @@ export default function PlantPicker({
                       onClick={() => handleSelectFromCatalog(selectedType)}
                       className="w-full p-3 text-left rounded-lg border hover:bg-gray-50 transition-colors"
                     >
-                      <p className="font-medium">{selectedType.name} (Generic)</p>
+                      <p className="font-medium">{selectedType.common_name || selectedType.name} (Generic)</p>
                       <p className="text-sm text-gray-500">No specific variety</p>
                     </button>
 
@@ -217,24 +277,20 @@ export default function PlantPicker({
               </div>
             ) : (
               <ScrollArea className="h-60">
-                <div className="grid grid-cols-2 gap-2">
-                  {filteredTypes.map((type) => (
+                <div className="space-y-2">
+                  {groups.map((group) => (
                     <button
-                      key={type.id}
-                      onClick={() => setSelectedType(type)}
-                      className="p-3 text-left rounded-lg border hover:bg-gray-50 transition-colors"
+                      key={group.id}
+                      onClick={() => setSelectedGroup(group)}
+                      className="w-full p-3 text-left rounded-lg border hover:bg-gray-50 transition-colors"
                     >
-                      <div className="flex items-center gap-2">
-                        <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-lg ${
-                          type.color || 'bg-emerald-100'
-                        }`}>
-                          {type.icon || '🌱'}
-                        </div>
-                        <div>
-                          <p className="font-medium text-sm">{type.name}</p>
-                          <p className="text-xs text-gray-500 capitalize">{type.category}</p>
-                        </div>
+                      <div className="flex items-center justify-between">
+                        <span className="font-medium">{group.name}</span>
+                        <ChevronRight className="w-4 h-4 text-gray-400" />
                       </div>
+                      {group.description && (
+                        <p className="text-sm text-gray-500 mt-1">{group.description}</p>
+                      )}
                     </button>
                   ))}
                 </div>
