@@ -6,6 +6,9 @@ import GardenBuilder from './pages/GardenBuilder';
 import PlantCatalog from './pages/PlantCatalog';
 import SeedStash from './pages/SeedStash';
 import GrowLists from './pages/GrowLists';
+import CalendarTasks from './pages/CalendarTasks';
+import Community from './pages/Community';
+import PublicGarden from './pages/PublicGarden';
 import __Layout from './Layout.jsx';
 
 
@@ -18,6 +21,9 @@ export const PAGES = {
     "PlantCatalog": PlantCatalog,
     "SeedStash": SeedStash,
     "GrowLists": GrowLists,
+    "CalendarTasks": CalendarTasks,
+    "Community": Community,
+    "PublicGarden": PublicGarden,
 }
 
 export const pagesConfig = {
