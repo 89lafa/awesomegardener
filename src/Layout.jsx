@@ -78,6 +78,7 @@ export default function Layout({ children, currentPageName }) {
           collapsed={sidebarCollapsed} 
           onToggle={() => setSidebarCollapsed(!sidebarCollapsed)}
           currentPage={currentPageName}
+          user={user}
         />
       </div>
 
@@ -98,6 +99,7 @@ export default function Layout({ children, currentPageName }) {
           collapsed={false} 
           onToggle={() => setMobileMenuOpen(false)}
           currentPage={currentPageName}
+          user={user}
         />
       </div>
 

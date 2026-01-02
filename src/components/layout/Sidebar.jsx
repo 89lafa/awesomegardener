@@ -14,25 +14,44 @@ import {
   Settings,
   ChevronLeft,
   ChevronRight,
-  Sprout
+  Sprout,
+  Shield,
+  Database
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 
-const navItems = [
-  { name: 'Dashboard', icon: LayoutDashboard, page: 'Dashboard' },
-  { name: 'My Gardens', icon: TreeDeciduous, page: 'Gardens' },
-  { name: 'Garden Builder', icon: Hammer, page: 'GardenBuilder' },
-  { name: 'Plant Catalog', icon: BookOpen, page: 'PlantCatalog' },
-  { name: 'Seed Stash', icon: Package, page: 'SeedStash' },
-  { name: 'Grow Lists', icon: ListChecks, page: 'GrowLists' },
-  { name: 'Calendar', icon: Calendar, page: 'CalendarTasks' },
-  { name: 'Community', icon: Globe, page: 'Community' },
-  { name: 'Feature Requests', icon: Lightbulb, page: 'FeatureRequests' },
-  { name: 'Settings', icon: Settings, page: 'Settings' },
-];
+import { Shield, Database } from 'lucide-react';
 
-export default function Sidebar({ collapsed, onToggle, currentPage }) {
+const getNavItems = (userRole, isEditor) => {
+  const items = [
+    { name: 'Dashboard', icon: LayoutDashboard, page: 'Dashboard' },
+    { name: 'My Gardens', icon: TreeDeciduous, page: 'Gardens' },
+    { name: 'Garden Builder', icon: Hammer, page: 'GardenBuilder' },
+    { name: 'Plant Catalog', icon: BookOpen, page: 'PlantCatalog' },
+    { name: 'Seed Stash', icon: Package, page: 'SeedStash' },
+    { name: 'Grow Lists', icon: ListChecks, page: 'GrowLists' },
+    { name: 'Calendar', icon: Calendar, page: 'CalendarTasks' },
+    { name: 'Community', icon: Globe, page: 'Community' },
+    { name: 'Feature Requests', icon: Lightbulb, page: 'FeatureRequests' },
+  ];
+
+  if (isEditor || userRole === 'admin') {
+    items.push({ name: 'Review Queue', icon: Shield, page: 'EditorReviewQueue' });
+  }
+
+  if (userRole === 'admin') {
+    items.push({ name: 'Data Import', icon: Database, page: 'AdminDataImport' });
+  }
+
+  items.push({ name: 'Settings', icon: Settings, page: 'Settings' });
+  
+  return items;
+};
+
+export default function Sidebar({ collapsed, onToggle, currentPage, user }) {
+  const navItems = getNavItems(user?.role, user?.is_editor);
+
   return (
     <aside className={cn(
       "fixed left-0 top-0 h-full bg-[#1a2e12] text-white transition-all duration-300 z-50 flex flex-col",
