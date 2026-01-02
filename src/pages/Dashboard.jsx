@@ -228,7 +228,7 @@ export default function Dashboard() {
                 {gardens.map((garden) => (
                   <Link 
                     key={garden.id}
-                    to={createPageUrl('GardenBuilder') + `?gardenId=${garden.id}`}
+                    to={createPageUrl('MyGarden') + `?gardenId=${garden.id}`}
                     className="block"
                   >
                     <div className="flex items-center gap-3 p-3 rounded-xl hover:bg-gray-50 transition-colors">
