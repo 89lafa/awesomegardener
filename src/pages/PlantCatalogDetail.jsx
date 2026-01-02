@@ -38,15 +38,26 @@ export default function PlantCatalogDetail() {
 
   const loadPlantType = async () => {
     try {
+      // Validate plantTypeId
+      if (!plantTypeId) {
+        console.error('No plantTypeId provided');
+        setNotFound(true);
+        setLoading(false);
+        return;
+      }
+
+      console.log('Loading plant type:', plantTypeId);
       const types = await base44.entities.PlantType.filter({ id: plantTypeId });
       
       if (types.length === 0) {
+        console.error('Plant type not found:', plantTypeId);
         setNotFound(true);
         setLoading(false);
         return;
       }
 
       const type = types[0];
+      console.log('Loaded plant type:', type);
       setPlantType(type);
 
       // Load varieties

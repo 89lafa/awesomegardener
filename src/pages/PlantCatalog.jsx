@@ -622,9 +622,10 @@ export default function PlantCatalog() {
                     <ChevronRight className="w-4 h-4" />
                   </div>
                 </CardContent>
-              </Card>
-            </motion.div>
-          ))}
+                </Card>
+                </motion.div>
+                </Link>
+                ))}
         </AnimatePresence>
       </div>
 
