@@ -1,0 +1,554 @@
+import React, { useState, useEffect, useRef } from 'react';
+import { base44 } from '@/api/base44Client';
+import {
+  Plus,
+  Trash2,
+  RotateCw,
+  Copy,
+  ZoomIn,
+  ZoomOut,
+  Grid3X3,
+  Settings,
+  Loader2
+} from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from '@/components/ui/dialog';
+import { Card, CardContent } from '@/components/ui/card';
+import { toast } from 'sonner';
+import { cn } from '@/lib/utils';
+
+const ITEM_TYPES = [
+  { value: 'RAISED_BED', label: 'Raised Bed', color: '#8B7355' },
+  { value: 'IN_GROUND_BED', label: 'In-Ground Bed', color: '#A0826D' },
+  { value: 'GREENHOUSE', label: 'Greenhouse', color: '#C8E6C9' },
+  { value: 'OPEN_PLOT', label: 'Open Plot', color: '#E8F5E9' },
+  { value: 'GROW_BAG', label: 'Grow Bag', color: '#FFE0B2' },
+  { value: 'CONTAINER', label: 'Container', color: '#BBDEFB' },
+];
+
+export default function PlotCanvas({ garden, plot, onPlotUpdate }) {
+  const canvasRef = useRef(null);
+  const [items, setItems] = useState([]);
+  const [selectedItem, setSelectedItem] = useState(null);
+  const [draggingItem, setDraggingItem] = useState(null);
+  const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
+  const [zoom, setZoom] = useState(1);
+  const [snapToGrid, setSnapToGrid] = useState(true);
+  const [showAddItem, setShowAddItem] = useState(false);
+  const [showBulkAdd, setShowBulkAdd] = useState(false);
+  const [loading, setLoading] = useState(true);
+
+  const [newItem, setNewItem] = useState({
+    item_type: 'RAISED_BED',
+    label: 'Raised Bed',
+    dimensions: '4x8',
+    unit: 'ft'
+  });
+
+  const [bulkAdd, setBulkAdd] = useState({
+    count: 4,
+    base_name: 'Raised Bed',
+    dimensions: '4x8',
+    unit: 'ft',
+    item_type: 'RAISED_BED'
+  });
+
+  useEffect(() => {
+    if (plot) {
+      loadItems();
+    }
+  }, [plot]);
+
+  const loadItems = async () => {
+    try {
+      const itemsData = await base44.entities.PlotItem.filter({ 
+        garden_id: garden.id,
+        plot_id: plot.id 
+      }, 'z_index');
+      setItems(itemsData);
+    } catch (error) {
+      console.error('Error loading items:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const parseDimensions = (input) => {
+    const match = input.match(/(\d+\.?\d*)\s*[xX×]\s*(\d+\.?\d*)/);
+    if (match) {
+      return { width: parseFloat(match[1]), height: parseFloat(match[2]) };
+    }
+    return null;
+  };
+
+  const toInches = (value, unit) => {
+    return unit === 'ft' ? value * 12 : value;
+  };
+
+  const handleAddItem = async () => {
+    const parsed = parseDimensions(newItem.dimensions);
+    if (!parsed) {
+      toast.error('Invalid dimensions. Use "4x8" format.');
+      return;
+    }
+
+    const width = toInches(parsed.width, newItem.unit);
+    const height = toInches(parsed.height, newItem.unit);
+
+    try {
+      const item = await base44.entities.PlotItem.create({
+        plot_id: plot.id,
+        garden_id: garden.id,
+        item_type: newItem.item_type,
+        label: newItem.label,
+        width,
+        height,
+        x: 50,
+        y: 50,
+        rotation: 0,
+        z_index: items.length
+      });
+
+      setItems([...items, item]);
+      setShowAddItem(false);
+      setNewItem({ item_type: 'RAISED_BED', label: 'Raised Bed', dimensions: '4x8', unit: 'ft' });
+      toast.success('Item added!');
+    } catch (error) {
+      console.error('Error adding item:', error);
+      toast.error('Failed to add item');
+    }
+  };
+
+  const handleBulkAdd = async () => {
+    const parsed = parseDimensions(bulkAdd.dimensions);
+    if (!parsed) {
+      toast.error('Invalid dimensions. Use "4x8" format.');
+      return;
+    }
+
+    const width = toInches(parsed.width, bulkAdd.unit);
+    const height = toInches(parsed.height, bulkAdd.unit);
+    const count = parseInt(bulkAdd.count);
+    const cols = Math.ceil(Math.sqrt(count));
+    const spacing = 24;
+    const newItems = [];
+
+    try {
+      for (let i = 0; i < count; i++) {
+        const row = Math.floor(i / cols);
+        const col = i % cols;
+        const x = 50 + col * (width + spacing);
+        const y = 50 + row * (height + spacing);
+
+        const item = await base44.entities.PlotItem.create({
+          plot_id: plot.id,
+          garden_id: garden.id,
+          item_type: bulkAdd.item_type,
+          label: i === 0 ? bulkAdd.base_name : `${bulkAdd.base_name} ${i + 1}`,
+          width,
+          height,
+          x,
+          y,
+          rotation: 0,
+          z_index: items.length + i
+        });
+
+        newItems.push(item);
+      }
+
+      setItems([...items, ...newItems]);
+      setShowBulkAdd(false);
+      toast.success(`Added ${count} items!`);
+    } catch (error) {
+      console.error('Error bulk adding:', error);
+      toast.error('Failed to add items');
+    }
+  };
+
+  const handleCanvasMouseDown = (e) => {
+    const rect = canvasRef.current.getBoundingClientRect();
+    const x = (e.clientX - rect.left) / zoom;
+    const y = (e.clientY - rect.top) / zoom;
+
+    const clickedItem = [...items].reverse().find(item => {
+      return x >= item.x && x <= item.x + item.width &&
+             y >= item.y && y <= item.y + item.height;
+    });
+
+    if (clickedItem) {
+      setSelectedItem(clickedItem);
+      setDraggingItem(clickedItem);
+      setDragOffset({ x: x - clickedItem.x, y: y - clickedItem.y });
+    } else {
+      setSelectedItem(null);
+    }
+  };
+
+  const handleCanvasMouseMove = (e) => {
+    if (!draggingItem) return;
+
+    const rect = canvasRef.current.getBoundingClientRect();
+    let x = (e.clientX - rect.left) / zoom - dragOffset.x;
+    let y = (e.clientY - rect.top) / zoom - dragOffset.y;
+
+    if (snapToGrid) {
+      const gridSize = plot.grid_size || 12;
+      x = Math.round(x / gridSize) * gridSize;
+      y = Math.round(y / gridSize) * gridSize;
+    }
+
+    x = Math.max(0, Math.min(x, plot.width - draggingItem.width));
+    y = Math.max(0, Math.min(y, plot.height - draggingItem.height));
+
+    setItems(items.map(i => 
+      i.id === draggingItem.id ? { ...i, x, y } : i
+    ));
+  };
+
+  const handleCanvasMouseUp = async () => {
+    if (draggingItem) {
+      const item = items.find(i => i.id === draggingItem.id);
+      try {
+        await base44.entities.PlotItem.update(item.id, { x: item.x, y: item.y });
+      } catch (error) {
+        console.error('Error updating position:', error);
+      }
+      setDraggingItem(null);
+    }
+  };
+
+  const handleDeleteItem = async (item) => {
+    if (!confirm(`Delete "${item.label}"?`)) return;
+    try {
+      await base44.entities.PlotItem.delete(item.id);
+      setItems(items.filter(i => i.id !== item.id));
+      setSelectedItem(null);
+      toast.success('Item deleted');
+    } catch (error) {
+      console.error('Error deleting:', error);
+    }
+  };
+
+  const handleRotate = async (item) => {
+    const newRotation = (item.rotation + 90) % 360;
+    try {
+      await base44.entities.PlotItem.update(item.id, { rotation: newRotation });
+      setItems(items.map(i => i.id === item.id ? { ...i, rotation: newRotation } : i));
+    } catch (error) {
+      console.error('Error rotating:', error);
+    }
+  };
+
+  const getItemColor = (type) => {
+    return ITEM_TYPES.find(t => t.value === type)?.color || '#8B7355';
+  };
+
+  if (loading) {
+    return (
+      <div className="flex-1 flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-emerald-600" />
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex-1 flex gap-4 mt-4 min-h-0">
+      {/* Left Toolbar */}
+      <Card className="w-64 flex-shrink-0">
+        <CardContent className="p-4 space-y-2">
+          <Button 
+            onClick={() => setShowAddItem(true)}
+            className="w-full bg-emerald-600 hover:bg-emerald-700 gap-2"
+          >
+            <Plus className="w-4 h-4" />
+            Add Item
+          </Button>
+          <Button 
+            onClick={() => setShowBulkAdd(true)}
+            variant="outline"
+            className="w-full gap-2"
+          >
+            <Copy className="w-4 h-4" />
+            Bulk Add Beds
+          </Button>
+          <div className="pt-4 border-t space-y-2">
+            <h4 className="font-semibold text-sm">View</h4>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={() => setZoom(Math.max(0.5, zoom - 0.1))}
+              >
+                <ZoomOut className="w-4 h-4" />
+              </Button>
+              <span className="text-sm flex-1 text-center">{Math.round(zoom * 100)}%</span>
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={() => setZoom(Math.min(2, zoom + 0.1))}
+              >
+                <ZoomIn className="w-4 h-4" />
+              </Button>
+            </div>
+            <Button
+              variant={snapToGrid ? 'secondary' : 'outline'}
+              size="sm"
+              onClick={() => setSnapToGrid(!snapToGrid)}
+              className="w-full gap-2"
+            >
+              <Grid3X3 className="w-4 h-4" />
+              Snap to Grid
+            </Button>
+          </div>
+          {selectedItem && (
+            <div className="pt-4 border-t space-y-2">
+              <h4 className="font-semibold text-sm">Selected</h4>
+              <p className="text-sm text-gray-600">{selectedItem.label}</p>
+              <p className="text-xs text-gray-500">
+                {selectedItem.width}" × {selectedItem.height}"
+              </p>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => handleRotate(selectedItem)}
+                className="w-full gap-2"
+              >
+                <RotateCw className="w-4 h-4" />
+                Rotate
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => handleDeleteItem(selectedItem)}
+                className="w-full gap-2 text-red-600"
+              >
+                <Trash2 className="w-4 h-4" />
+                Delete
+              </Button>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Canvas */}
+      <div className="flex-1 bg-gray-50 rounded-xl overflow-auto p-8">
+        <div
+          ref={canvasRef}
+          className="relative bg-white shadow-lg mx-auto"
+          style={{
+            width: plot.width * zoom,
+            height: plot.height * zoom,
+            backgroundColor: plot.background_color || '#ffffff'
+          }}
+          onMouseDown={handleCanvasMouseDown}
+          onMouseMove={handleCanvasMouseMove}
+          onMouseUp={handleCanvasMouseUp}
+          onMouseLeave={handleCanvasMouseUp}
+        >
+          {/* Grid */}
+          {plot.grid_enabled && (
+            <svg className="absolute inset-0 pointer-events-none" width="100%" height="100%">
+              {Array.from({ length: Math.ceil(plot.width / plot.grid_size) }).map((_, i) => (
+                <line
+                  key={`v-${i}`}
+                  x1={i * plot.grid_size * zoom}
+                  y1={0}
+                  x2={i * plot.grid_size * zoom}
+                  y2={plot.height * zoom}
+                  stroke="#e5e7eb"
+                  strokeWidth="1"
+                />
+              ))}
+              {Array.from({ length: Math.ceil(plot.height / plot.grid_size) }).map((_, i) => (
+                <line
+                  key={`h-${i}`}
+                  x1={0}
+                  y1={i * plot.grid_size * zoom}
+                  x2={plot.width * zoom}
+                  y2={i * plot.grid_size * zoom}
+                  stroke="#e5e7eb"
+                  strokeWidth="1"
+                />
+              ))}
+            </svg>
+          )}
+
+          {/* Items */}
+          {items.map((item) => (
+            <div
+              key={item.id}
+              className={cn(
+                "absolute border-2 rounded-lg flex items-center justify-center text-sm font-medium",
+                selectedItem?.id === item.id ? "border-emerald-600 ring-2 ring-emerald-100" : "border-gray-400"
+              )}
+              style={{
+                left: item.x * zoom,
+                top: item.y * zoom,
+                width: item.width * zoom,
+                height: item.height * zoom,
+                backgroundColor: getItemColor(item.item_type),
+                transform: `rotate(${item.rotation}deg)`,
+                cursor: 'grab'
+              }}
+            >
+              <span className="text-white text-shadow pointer-events-none">{item.label}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Dialogs */}
+      <Dialog open={showAddItem} onOpenChange={setShowAddItem}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Add Item</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label>Item Type</Label>
+              <Select 
+                value={newItem.item_type} 
+                onValueChange={(v) => setNewItem({ ...newItem, item_type: v })}
+              >
+                <SelectTrigger className="mt-2">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {ITEM_TYPES.map((type) => (
+                    <SelectItem key={type.value} value={type.value}>{type.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label htmlFor="label">Label</Label>
+              <Input
+                id="label"
+                value={newItem.label}
+                onChange={(e) => setNewItem({ ...newItem, label: e.target.value })}
+                className="mt-2"
+              />
+            </div>
+            <div>
+              <Label>Dimensions</Label>
+              <div className="flex gap-2 mt-2">
+                <Input
+                  placeholder="4x8"
+                  value={newItem.dimensions}
+                  onChange={(e) => setNewItem({ ...newItem, dimensions: e.target.value })}
+                />
+                <Select 
+                  value={newItem.unit} 
+                  onValueChange={(v) => setNewItem({ ...newItem, unit: v })}
+                >
+                  <SelectTrigger className="w-20">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="ft">Feet</SelectItem>
+                    <SelectItem value="in">Inches</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowAddItem(false)}>Cancel</Button>
+            <Button onClick={handleAddItem} className="bg-emerald-600 hover:bg-emerald-700">
+              Add Item
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={showBulkAdd} onOpenChange={setShowBulkAdd}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Bulk Add Beds</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label>Number of Beds</Label>
+              <Input
+                type="number"
+                value={bulkAdd.count}
+                onChange={(e) => setBulkAdd({ ...bulkAdd, count: e.target.value })}
+                className="mt-2"
+              />
+            </div>
+            <div>
+              <Label>Base Name</Label>
+              <Input
+                value={bulkAdd.base_name}
+                onChange={(e) => setBulkAdd({ ...bulkAdd, base_name: e.target.value })}
+                className="mt-2"
+              />
+              <p className="text-xs text-gray-500 mt-1">
+                Will be named: "{bulkAdd.base_name}", "{bulkAdd.base_name} 2", etc.
+              </p>
+            </div>
+            <div>
+              <Label>Bed Type</Label>
+              <Select 
+                value={bulkAdd.item_type} 
+                onValueChange={(v) => setBulkAdd({ ...bulkAdd, item_type: v })}
+              >
+                <SelectTrigger className="mt-2">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {ITEM_TYPES.map((type) => (
+                    <SelectItem key={type.value} value={type.value}>{type.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label>Dimensions</Label>
+              <div className="flex gap-2 mt-2">
+                <Input
+                  placeholder="4x8"
+                  value={bulkAdd.dimensions}
+                  onChange={(e) => setBulkAdd({ ...bulkAdd, dimensions: e.target.value })}
+                />
+                <Select 
+                  value={bulkAdd.unit} 
+                  onValueChange={(v) => setBulkAdd({ ...bulkAdd, unit: v })}
+                >
+                  <SelectTrigger className="w-20">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="ft">Feet</SelectItem>
+                    <SelectItem value="in">Inches</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowBulkAdd(false)}>Cancel</Button>
+            <Button onClick={handleBulkAdd} className="bg-emerald-600 hover:bg-emerald-700">
+              Create {bulkAdd.count} Beds
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}

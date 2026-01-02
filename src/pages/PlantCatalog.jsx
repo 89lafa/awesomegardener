@@ -78,7 +78,13 @@ export default function PlantCatalog() {
   const loadPlantTypes = async () => {
     try {
       const types = await base44.entities.PlantType.list('common_name');
-      setPlantTypes(types);
+      // Filter out invalid/bad plant types
+      const validTypes = types.filter(type => {
+        const hasValidName = type.common_name && type.common_name.trim().length >= 2;
+        const hasValidId = type.id;
+        return hasValidName && hasValidId;
+      });
+      setPlantTypes(validTypes);
     } catch (error) {
       console.error('Error loading plant types:', error);
     } finally {
@@ -164,7 +170,8 @@ export default function PlantCatalog() {
   };
 
   const filteredTypes = plantTypes.filter(type => {
-    const name = type.common_name || type.name || '';
+    const name = type.common_name || '';
+    if (!name || name.trim().length < 2) return false; // Extra safety check
     const matchesSearch = name.toLowerCase().includes(searchQuery.toLowerCase()) ||
                          type.scientific_name?.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesCategory = selectedCategory === 'all' || type.category === selectedCategory;
@@ -605,8 +612,11 @@ export default function PlantCatalog() {
                   } group-hover:scale-110 transition-transform`}>
                     {type.icon || '🌱'}
                   </div>
-                  <h3 className="font-semibold text-gray-900">{type.name}</h3>
-                  <p className="text-sm text-gray-500 capitalize">{type.category}</p>
+                  <h3 className="font-semibold text-gray-900">{type.common_name || type.name}</h3>
+                  {type.scientific_name && (
+                    <p className="text-xs text-gray-500 italic truncate">{type.scientific_name}</p>
+                  )}
+                  <p className="text-xs text-gray-400 capitalize mt-1">{type.category}</p>
                   <div className="flex items-center justify-center gap-1 mt-2 text-emerald-600 text-sm opacity-0 group-hover:opacity-100 transition-opacity">
                     <span>Browse</span>
                     <ChevronRight className="w-4 h-4" />

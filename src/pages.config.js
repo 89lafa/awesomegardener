@@ -15,6 +15,8 @@ import PlotBuilder from './pages/PlotBuilder';
 import PublicGarden from './pages/PublicGarden';
 import SeedStash from './pages/SeedStash';
 import Settings from './pages/Settings';
+import AdminDataCleanup from './pages/AdminDataCleanup';
+import MyGarden from './pages/MyGarden';
 import __Layout from './Layout.jsx';
 
 
@@ -36,6 +38,8 @@ export const PAGES = {
     "PublicGarden": PublicGarden,
     "SeedStash": SeedStash,
     "Settings": Settings,
+    "AdminDataCleanup": AdminDataCleanup,
+    "MyGarden": MyGarden,
 }
 
 export const pagesConfig = {

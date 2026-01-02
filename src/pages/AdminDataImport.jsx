@@ -7,8 +7,11 @@ import {
   AlertCircle,
   Loader2,
   Download,
-  Info
+  Info,
+  Trash2
 } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { createPageUrl } from '@/utils';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -34,6 +37,7 @@ export default function AdminDataImport() {
   const [files, setFiles] = useState({});
   const [importing, setImporting] = useState(false);
   const [dryRun, setDryRun] = useState(true);
+  const [importMode, setImportMode] = useState('UPSERT_BY_ID');
   const [results, setResults] = useState(null);
 
   React.useEffect(() => {
@@ -115,28 +119,46 @@ export default function AdminDataImport() {
             inserted: data.length,
             updated: 0,
             skipped: 0,
+            rejected: 0,
             preview: data.slice(0, 5)
           };
         } else {
           let inserted = 0;
           let updated = 0;
           let skipped = 0;
+          let rejected = 0;
+          const skipReasons = [];
 
           for (const row of data) {
             try {
-              // Check if record exists (by id or unique field)
-              const existing = row.id ? await base44.entities[item.key].filter({ id: row.id }) : [];
-              
-              if (existing.length > 0) {
-                await base44.entities[item.key].update(existing[0].id, row);
-                updated++;
-              } else {
+              // Validate required fields
+              if (item.key === 'PlantType') {
+                if (!row.common_name || row.common_name.trim().length < 2) {
+                  rejected++;
+                  skipReasons.push({ row, reason: 'Missing or invalid common_name' });
+                  continue;
+                }
+              }
+
+              if (importMode === 'INSERT_ONLY') {
                 await base44.entities[item.key].create(row);
                 inserted++;
+              } else if (importMode === 'UPSERT_BY_ID') {
+                // Try to find existing by id
+                const existing = row.id ? await base44.entities[item.key].filter({ id: row.id }) : [];
+                
+                if (existing.length > 0) {
+                  await base44.entities[item.key].update(existing[0].id, row);
+                  updated++;
+                } else {
+                  await base44.entities[item.key].create(row);
+                  inserted++;
+                }
               }
             } catch (error) {
               console.error(`Error importing ${item.key}:`, error);
               skipped++;
+              skipReasons.push({ row, reason: error.message });
             }
           }
 
@@ -145,7 +167,9 @@ export default function AdminDataImport() {
             message: 'Import completed',
             inserted,
             updated,
-            skipped
+            skipped,
+            rejected,
+            skipReasons: skipReasons.slice(0, 20) // First 20 reasons
           };
         }
       }
@@ -194,6 +218,23 @@ export default function AdminDataImport() {
           PlantGroup → PlantFamily → PlantType → FacetGroup → Facet → Mappings
         </AlertDescription>
       </Alert>
+
+      <Card>
+        <CardContent className="p-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="font-semibold text-gray-900">Data Cleanup</h3>
+              <p className="text-sm text-gray-600">Remove invalid plant type records</p>
+            </div>
+            <Link to={createPageUrl('AdminDataCleanup')}>
+              <Button variant="outline" className="gap-2">
+                <Trash2 className="w-4 h-4" />
+                Cleanup Tool
+              </Button>
+            </Link>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Import Method */}
       <Card>
@@ -248,7 +289,23 @@ export default function AdminDataImport() {
 
       {/* Import Controls */}
       <Card>
-        <CardContent className="p-6">
+        <CardContent className="p-6 space-y-4">
+          <div>
+            <Label>Import Mode</Label>
+            <Select value={importMode} onValueChange={setImportMode}>
+              <SelectTrigger className="mt-2">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="INSERT_ONLY">Insert Only (skip existing)</SelectItem>
+                <SelectItem value="UPSERT_BY_ID">Upsert by ID (update existing)</SelectItem>
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-gray-500 mt-1">
+              Upsert mode will update existing records by ID, or insert if not found
+            </p>
+          </div>
+
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
               <label className="flex items-center gap-2 cursor-pointer">
@@ -309,7 +366,7 @@ export default function AdminDataImport() {
                 </CardHeader>
                 <CardContent>
                   <p className="text-sm text-gray-600 mb-2">{result.message}</p>
-                  <div className="flex gap-4 text-sm">
+                  <div className="flex gap-4 text-sm flex-wrap">
                     <span className="text-green-600">
                       Inserted: <strong>{result.inserted}</strong>
                     </span>
@@ -321,7 +378,24 @@ export default function AdminDataImport() {
                         Skipped: <strong>{result.skipped}</strong>
                       </span>
                     )}
+                    {result.rejected > 0 && (
+                      <span className="text-red-600">
+                        Rejected: <strong>{result.rejected}</strong>
+                      </span>
+                    )}
                   </div>
+                  {result.skipReasons && result.skipReasons.length > 0 && (
+                    <div className="mt-3 p-3 bg-yellow-50 rounded-lg">
+                      <p className="text-xs text-yellow-800 mb-2 font-medium">Skip/Reject Reasons:</p>
+                      <div className="space-y-1 max-h-32 overflow-auto">
+                        {result.skipReasons.map((item, idx) => (
+                          <p key={idx} className="text-xs text-yellow-700">
+                            Row {idx + 1}: {item.reason}
+                          </p>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                   {result.preview && result.preview.length > 0 && (
                     <div className="mt-3 p-3 bg-gray-50 rounded-lg">
                       <p className="text-xs text-gray-600 mb-2">First 5 records:</p>
