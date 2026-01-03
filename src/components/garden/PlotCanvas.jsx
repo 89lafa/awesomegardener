@@ -113,23 +113,15 @@ export default function PlotCanvas({ garden, plot, onPlotUpdate }) {
 
   const loadItems = async () => {
     try {
-      const [itemsData, plantingsData] = await Promise.all([
-        base44.entities.PlotItem.filter({ 
-          garden_id: garden.id,
-          plot_id: plot.id 
-        }, 'z_index'),
-        base44.entities.PlantInstance.filter({ garden_id: garden.id })
-      ]);
-      
-      // Ensure rotation is initialized and attach planting count
-      const normalizedItems = itemsData.map(item => {
-        const plantingCount = plantingsData.filter(p => p.bed_id === item.id).length;
-        return {
-          ...item,
-          rotation: item.rotation || 0,
-          plantingCount
-        };
-      });
+      const itemsData = await base44.entities.PlotItem.filter({ 
+        garden_id: garden.id,
+        plot_id: plot.id 
+      }, 'z_index');
+      // Ensure rotation is initialized
+      const normalizedItems = itemsData.map(item => ({
+        ...item,
+        rotation: item.rotation || 0
+      }));
       setItems(normalizedItems);
     } catch (error) {
       console.error('Error loading items:', error);
@@ -882,7 +874,7 @@ export default function PlotCanvas({ garden, plot, onPlotUpdate }) {
             <div
               key={item.id}
               className={cn(
-                "absolute border-2 rounded-lg flex items-center justify-center text-sm font-medium overflow-hidden relative",
+                "absolute border-2 rounded-lg flex items-center justify-center text-sm font-medium overflow-hidden",
                 selectedItem?.id === item.id ? "border-emerald-600 ring-2 ring-emerald-100" : "border-gray-400"
               )}
               style={{
@@ -891,15 +883,9 @@ export default function PlotCanvas({ garden, plot, onPlotUpdate }) {
                 width: item.width * zoom,
                 height: item.height * zoom,
                 backgroundColor: getItemColor(item.item_type),
-                cursor: 'grab',
-                opacity: item.plantingCount > 0 ? 0.9 : 1
+                cursor: 'grab'
               }}
             >
-              {item.plantingCount > 0 && (
-                <div className="absolute top-1 right-1 bg-emerald-600 text-white text-xs px-2 py-0.5 rounded-full shadow-sm">
-                  {item.plantingCount} 🌱
-                </div>
-              )}
               {/* Row lines for row-based items */}
               {item.metadata?.rowCount && (
                 <svg className="absolute inset-0 pointer-events-none" width="100%" height="100%">
