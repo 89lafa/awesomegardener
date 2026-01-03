@@ -26,9 +26,12 @@ import { toast } from 'sonner';
 
 export default function PlantCatalogBrowse() {
   const [profiles, setProfiles] = useState([]);
+  const [plantTypes, setPlantTypes] = useState([]);
+  const [subCategories, setSubCategories] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [filterCrop, setFilterCrop] = useState('all');
+  const [filterSubCat, setFilterSubCat] = useState('all');
   const [filterSun, setFilterSun] = useState('all');
   const [filterTraits, setFilterTraits] = useState('all');
 
@@ -38,8 +41,14 @@ export default function PlantCatalogBrowse() {
 
   const loadProfiles = async () => {
     try {
-      const data = await base44.entities.PlantProfile.list('variety_name', 500);
-      setProfiles(data);
+      const [profilesData, typesData, subcatsData] = await Promise.all([
+        base44.entities.PlantProfile.list('variety_name', 500),
+        base44.entities.PlantType.list('common_name', 200),
+        base44.entities.PlantSubCategory.filter({ is_active: true }, 'sort_order', 200)
+      ]);
+      setProfiles(profilesData);
+      setPlantTypes(typesData);
+      setSubCategories(subcatsData);
     } catch (error) {
       console.error('Error loading profiles:', error);
       toast.error('Failed to load catalog');
@@ -53,14 +62,17 @@ export default function PlantCatalogBrowse() {
       profile.variety_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       profile.common_name?.toLowerCase().includes(searchQuery.toLowerCase());
 
-    const matchesCrop = filterCrop === 'all' || profile.common_name === filterCrop;
+    const matchesCrop = filterCrop === 'all' || profile.plant_type_id === filterCrop;
+    const matchesSubCat = filterSubCat === 'all' || profile.plant_subcategory_id === filterSubCat;
     const matchesSun = filterSun === 'all' || profile.sun_requirement === filterSun;
     const matchesTraits = filterTraits === 'all' || profile.traits?.includes(filterTraits);
 
-    return matchesSearch && matchesCrop && matchesSun && matchesTraits;
+    return matchesSearch && matchesCrop && matchesSubCat && matchesSun && matchesTraits;
   });
 
-  const cropTypes = [...new Set(profiles.map(p => p.common_name))].filter(Boolean);
+  const availableSubCats = filterCrop === 'all' 
+    ? subCategories 
+    : subCategories.filter(sc => sc.plant_type_id === filterCrop);
   const allTraits = [...new Set(profiles.flatMap(p => p.traits || []))].filter(Boolean);
 
   if (loading) {
@@ -98,15 +110,32 @@ export default function PlantCatalogBrowse() {
               className="pl-10"
             />
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-            <Select value={filterCrop} onValueChange={setFilterCrop}>
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+            <Select value={filterCrop} onValueChange={(v) => { setFilterCrop(v); setFilterSubCat('all'); }}>
               <SelectTrigger>
                 <SelectValue placeholder="All crops" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Crops</SelectItem>
-                {cropTypes.map(crop => (
-                  <SelectItem key={crop} value={crop}>{crop}</SelectItem>
+                {plantTypes.map(type => (
+                  <SelectItem key={type.id} value={type.id}>
+                    {type.icon && <span className="mr-2">{type.icon}</span>}
+                    {type.common_name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select value={filterSubCat} onValueChange={setFilterSubCat} disabled={filterCrop === 'all'}>
+              <SelectTrigger>
+                <SelectValue placeholder="Subcategory" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Types</SelectItem>
+                {availableSubCats.map(subcat => (
+                  <SelectItem key={subcat.id} value={subcat.id}>
+                    {subcat.icon && <span className="mr-2">{subcat.icon}</span>}
+                    {subcat.name}
+                  </SelectItem>
                 ))}
               </SelectContent>
             </Select>
@@ -139,12 +168,23 @@ export default function PlantCatalogBrowse() {
 
       {/* Profiles List */}
       <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {filteredProfiles.map((profile) => (
+        {filteredProfiles.map((profile) => {
+          const plantType = plantTypes.find(t => t.id === profile.plant_type_id);
+          const subcat = subCategories.find(sc => sc.id === profile.plant_subcategory_id);
+          
+          return (
           <Link key={profile.id} to={createPageUrl('PlantProfileDetail') + `?id=${profile.id}`}>
             <Card className="hover:shadow-lg transition-all cursor-pointer h-full">
               <CardContent className="p-4">
+                <div className="flex items-center gap-2 mb-1">
+                  {plantType?.icon && <span className="text-xl">{plantType.icon}</span>}
+                  {subcat?.icon && <span className="text-lg">{subcat.icon}</span>}
+                </div>
                 <h3 className="font-semibold text-gray-900">{profile.variety_name}</h3>
                 <p className="text-sm text-gray-600">{profile.common_name}</p>
+                {subcat && (
+                  <Badge variant="outline" className="mt-1 text-xs">{subcat.name}</Badge>
+                )}
                 
                 <div className="flex flex-wrap gap-2 mt-3">
                   {profile.sun_requirement && (
@@ -171,7 +211,8 @@ export default function PlantCatalogBrowse() {
               </CardContent>
             </Card>
           </Link>
-        ))}
+          );
+        })}
       </div>
 
       {filteredProfiles.length === 0 && (

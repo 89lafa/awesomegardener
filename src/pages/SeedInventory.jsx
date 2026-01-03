@@ -32,11 +32,14 @@ import { cn } from '@/lib/utils';
 export default function SeedInventory() {
   const [seedLots, setSeedLots] = useState([]);
   const [profiles, setProfiles] = useState({});
+  const [plantTypes, setPlantTypes] = useState([]);
+  const [subCategories, setSubCategories] = useState([]);
   const [settings, setSettings] = useState({ aging_threshold_years: 2, old_threshold_years: 3 });
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [viewMode, setViewMode] = useState('list');
   const [filterCrop, setFilterCrop] = useState('all');
+  const [filterSubCat, setFilterSubCat] = useState('all');
   const [filterStatus, setFilterStatus] = useState('all');
   const [sortBy, setSortBy] = useState('az');
 
@@ -46,13 +49,17 @@ export default function SeedInventory() {
 
   const loadData = async () => {
     try {
-      const [lotsData, profilesData, settingsData] = await Promise.all([
+      const [lotsData, profilesData, typesData, subcatsData, settingsData] = await Promise.all([
         base44.entities.SeedLot.filter({ is_wishlist: false }),
         base44.entities.PlantProfile.list('variety_name', 500),
+        base44.entities.PlantType.list('common_name', 200),
+        base44.entities.PlantSubCategory.filter({ is_active: true }, 'sort_order', 200),
         base44.entities.UserSettings.list()
       ]);
 
       setSeedLots(lotsData);
+      setPlantTypes(typesData);
+      setSubCategories(subcatsData);
       
       const profilesMap = {};
       profilesData.forEach(p => {
@@ -94,12 +101,13 @@ export default function SeedInventory() {
         profile.common_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
         lot.lot_notes?.toLowerCase().includes(searchQuery.toLowerCase());
 
-      const matchesCrop = filterCrop === 'all' || profile.common_name === filterCrop;
+      const matchesCrop = filterCrop === 'all' || profile.plant_type_id === filterCrop;
+      const matchesSubCat = filterSubCat === 'all' || profile.plant_subcategory_id === filterSubCat;
       
       const ageStatus = getAgeStatus(lot);
       const matchesStatus = filterStatus === 'all' || ageStatus.status === filterStatus;
 
-      return matchesSearch && matchesCrop && matchesStatus;
+      return matchesSearch && matchesCrop && matchesSubCat && matchesStatus;
     })
     .sort((a, b) => {
       const profileA = profiles[a.plant_profile_id];
@@ -113,7 +121,9 @@ export default function SeedInventory() {
       return 0;
     });
 
-  const cropTypes = [...new Set(Object.values(profiles).map(p => p.common_name))].filter(Boolean);
+  const availableSubCats = filterCrop === 'all' 
+    ? subCategories 
+    : subCategories.filter(sc => sc.plant_type_id === filterCrop);
 
   if (loading) {
     return (
@@ -159,14 +169,31 @@ export default function SeedInventory() {
                 className="pl-10"
               />
             </div>
-            <Select value={filterCrop} onValueChange={setFilterCrop}>
-              <SelectTrigger className="w-full md:w-48">
+            <Select value={filterCrop} onValueChange={(v) => { setFilterCrop(v); setFilterSubCat('all'); }}>
+              <SelectTrigger className="w-full md:w-44">
                 <SelectValue placeholder="All crops" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Crops</SelectItem>
-                {cropTypes.map(crop => (
-                  <SelectItem key={crop} value={crop}>{crop}</SelectItem>
+                {plantTypes.map(type => (
+                  <SelectItem key={type.id} value={type.id}>
+                    {type.icon && <span className="mr-2">{type.icon}</span>}
+                    {type.common_name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select value={filterSubCat} onValueChange={setFilterSubCat} disabled={filterCrop === 'all'}>
+              <SelectTrigger className="w-full md:w-44">
+                <SelectValue placeholder="Subcategory" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Types</SelectItem>
+                {availableSubCats.map(subcat => (
+                  <SelectItem key={subcat.id} value={subcat.id}>
+                    {subcat.icon && <span className="mr-2">{subcat.icon}</span>}
+                    {subcat.name}
+                  </SelectItem>
                 ))}
               </SelectContent>
             </Select>
@@ -228,6 +255,8 @@ export default function SeedInventory() {
         <div className="space-y-2">
           {filteredLots.map((lot, index) => {
             const profile = profiles[lot.plant_profile_id];
+            const plantType = plantTypes.find(t => t.id === profile?.plant_type_id);
+            const subcat = subCategories.find(sc => sc.id === profile?.plant_subcategory_id);
             const ageStatus = getAgeStatus(lot);
             const age = getAge(lot);
             
@@ -246,11 +275,16 @@ export default function SeedInventory() {
                     )}
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
+                        {plantType?.icon && <span className="text-xl">{plantType.icon}</span>}
+                        {subcat?.icon && <span className="text-lg">{subcat.icon}</span>}
                         <h3 className="font-semibold text-gray-900">
                           {lot.custom_label || profile?.variety_name}
                         </h3>
                         {profile?.common_name && (
                           <Badge variant="outline">{profile.common_name}</Badge>
+                        )}
+                        {subcat && (
+                          <Badge variant="secondary" className="text-xs">{subcat.name}</Badge>
                         )}
                         {ageStatus.status !== 'OK' && (
                           <Badge variant="outline" className={cn(
@@ -279,6 +313,8 @@ export default function SeedInventory() {
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
           {filteredLots.map((lot) => {
             const profile = profiles[lot.plant_profile_id];
+            const plantType = plantTypes.find(t => t.id === profile?.plant_type_id);
+            const subcat = subCategories.find(sc => sc.id === profile?.plant_subcategory_id);
             const ageStatus = getAgeStatus(lot);
             
             return (
@@ -299,10 +335,17 @@ export default function SeedInventory() {
                         {ageStatus.status}
                       </Badge>
                     )}
+                    <div className="flex items-center gap-1 mb-2">
+                      {plantType?.icon && <span className="text-2xl">{plantType.icon}</span>}
+                      {subcat?.icon && <span className="text-xl">{subcat.icon}</span>}
+                    </div>
                     <h3 className="font-semibold text-gray-900 truncate">
                       {lot.custom_label || profile?.variety_name}
                     </h3>
                     <p className="text-sm text-gray-600 truncate">{profile?.common_name}</p>
+                    {subcat && (
+                      <Badge variant="secondary" className="mt-1 text-xs">{subcat.name}</Badge>
+                    )}
                   </CardContent>
                 </Card>
               </Link>
