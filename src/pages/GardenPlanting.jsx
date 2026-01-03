@@ -106,11 +106,11 @@ export default function GardenPlanting() {
     setSyncResult(null);
     
     try {
-      console.log('[SYNC] Starting sync for garden:', activeGarden.id);
+      console.log('[SYNC] gardenId=', activeGarden.id);
       
       // Load all plot items for this garden
       const plotItems = await base44.entities.PlotItem.filter({ garden_id: activeGarden.id });
-      console.log('[SYNC] Found plot items:', plotItems.length);
+      console.log('[SYNC] found PlotItems:', plotItems.length);
       
       // Load existing planting spaces
       const existingSpaces = await base44.entities.PlantingSpace.filter({ garden_id: activeGarden.id });
@@ -122,7 +122,7 @@ export default function GardenPlanting() {
       const plantableTypes = ['RAISED_BED', 'IN_GROUND_BED', 'GREENHOUSE', 'OPEN_PLOT', 'GROW_BAG', 'CONTAINER'];
       const plantableItems = plotItems.filter(item => plantableTypes.includes(item.item_type));
       
-      console.log('[SYNC] Plantable items:', plantableItems.length);
+      console.log('[SYNC] plantable items:', plantableItems.length);
       
       let created = 0;
       let updated = 0;
@@ -139,7 +139,7 @@ export default function GardenPlanting() {
           space_type: item.item_type,
           name: item.label,
           capacity,
-          layout_schema,
+          layout_schema: layoutSchema,
           is_active: true
         };
         
@@ -161,10 +161,13 @@ export default function GardenPlanting() {
         }
       }
       
+      console.log('[SYNC] upserted PlantingSpaces:', created + updated, '(created:', created, ', updated:', updated, ')');
+      console.log('[SYNC] done');
+      
       setSyncResult({ created, updated, skipped });
       await loadPlantingSpaces();
       if (!silent) {
-        toast.success(`Sync complete! Created ${created}, updated ${updated}`);
+        toast.success(`Synced ${created + updated} spaces from layout`);
       }
     } catch (error) {
       console.error('[SYNC] Error:', error);

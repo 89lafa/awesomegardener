@@ -133,8 +133,9 @@ export default function PlotCanvas({ garden, plot, onPlotUpdate }) {
   };
 
   const getNextName = (baseLabel) => {
-    // Find all items with this base label pattern
-    const pattern = new RegExp(`^${baseLabel.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}( \\d+)?$`);
+    // Find all items with this base label pattern (e.g., "Raised Bed 1", "Raised Bed 2")
+    const escapedBase = baseLabel.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const pattern = new RegExp(`^${escapedBase} (\\d+)$`);
     const matchingItems = items.filter(i => pattern.test(i.label));
     
     console.log('[Naming] Base:', baseLabel, 'Matching:', matchingItems.map(i => i.label));
@@ -145,13 +146,23 @@ export default function PlotCanvas({ garden, plot, onPlotUpdate }) {
     
     // Extract numbers from existing items
     const numbers = matchingItems.map(i => {
-      const match = i.label.match(/\d+$/);
-      return match ? parseInt(match[0]) : 0;
+      const match = i.label.match(/(\d+)$/);
+      return match ? parseInt(match[1]) : 0;
     });
     
-    // Find next available number
-    const maxNum = Math.max(...numbers, 0);
-    const nextNum = maxNum + 1;
+    // Find next available number sequentially
+    const sortedNums = numbers.sort((a, b) => a - b);
+    let nextNum = 1;
+    
+    // Find first gap in sequence or go to max+1
+    for (const num of sortedNums) {
+      if (num === nextNum) {
+        nextNum++;
+      } else if (num > nextNum) {
+        break;
+      }
+    }
+    
     console.log('[Naming] Next number:', nextNum);
     return `${baseLabel} ${nextNum}`;
   };
@@ -495,8 +506,12 @@ export default function PlotCanvas({ garden, plot, onPlotUpdate }) {
     try {
       await base44.entities.PlotItem.update(item.id, { rotation: newRotation });
       setItems(items.map(i => i.id === item.id ? { ...i, rotation: newRotation } : i));
+      setSelectedItem({ ...item, rotation: newRotation });
+      console.log('[LAYOUT] rotate id=', item.id, 'rotation=', newRotation, 'saved');
+      toast.success('Rotated');
     } catch (error) {
       console.error('Error rotating:', error);
+      toast.error('Failed to rotate');
     }
   };
 
@@ -593,21 +608,25 @@ export default function PlotCanvas({ garden, plot, onPlotUpdate }) {
             space_type: selectedItem.item_type,
             name: editItemData.label,
             capacity,
-            layout_schema,
+            layout_schema: layoutSchema,
             is_active: true
           });
         }
       }
 
-      setItems(items.map(i => i.id === selectedItem.id ? {
-        ...i,
+      const updatedItem = {
+        ...selectedItem,
         label: editItemData.label,
         width,
         height,
         metadata
-      } : i));
-
+      };
+      
+      setItems(items.map(i => i.id === selectedItem.id ? updatedItem : i));
+      setSelectedItem(updatedItem);
       setShowEditItem(false);
+      
+      console.log('[LAYOUT] edit id=', selectedItem.id, 'w/h changed saved');
       toast.success('Item updated');
     } catch (error) {
       console.error('Error updating item:', error);
