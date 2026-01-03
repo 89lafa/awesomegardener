@@ -113,15 +113,23 @@ export default function PlotCanvas({ garden, plot, onPlotUpdate }) {
 
   const loadItems = async () => {
     try {
-      const itemsData = await base44.entities.PlotItem.filter({ 
-        garden_id: garden.id,
-        plot_id: plot.id 
-      }, 'z_index');
-      // Ensure rotation is initialized
-      const normalizedItems = itemsData.map(item => ({
-        ...item,
-        rotation: item.rotation || 0
-      }));
+      const [itemsData, plantingsData] = await Promise.all([
+        base44.entities.PlotItem.filter({ 
+          garden_id: garden.id,
+          plot_id: plot.id 
+        }, 'z_index'),
+        base44.entities.PlantInstance.filter({ garden_id: garden.id })
+      ]);
+      
+      // Ensure rotation is initialized and attach planting count
+      const normalizedItems = itemsData.map(item => {
+        const plantingCount = plantingsData.filter(p => p.bed_id === item.id).length;
+        return {
+          ...item,
+          rotation: item.rotation || 0,
+          plantingCount
+        };
+      });
       setItems(normalizedItems);
     } catch (error) {
       console.error('Error loading items:', error);
@@ -723,8 +731,8 @@ export default function PlotCanvas({ garden, plot, onPlotUpdate }) {
         PlotCanvas.js
       </div>
       {/* Left Toolbar */}
-      <Card className="w-64 flex-shrink-0">
-        <CardContent className="p-4 space-y-2">
+        <Card className="w-64 flex-shrink-0 h-fit">
+          <CardContent className="p-4 space-y-2">
           <Button 
             onClick={() => setShowAddItem(true)}
             className="w-full bg-emerald-600 hover:bg-emerald-700 gap-2"
@@ -772,54 +780,55 @@ export default function PlotCanvas({ garden, plot, onPlotUpdate }) {
             </Button>
           </div>
           {selectedItem && (
-            <div className="pt-4 border-t space-y-2">
-              <h4 className="font-semibold text-sm">Selected</h4>
-              <p className="text-sm text-gray-600">{selectedItem.label}</p>
-              <p className="text-xs text-gray-500">
-                {selectedItem.width}" × {selectedItem.height}"
-              </p>
-              <p className="text-xs text-gray-400">
-                ID: {selectedItem.id?.slice(0, 8)}... Rot: {selectedItem.rotation || 0}°
-              </p>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => openEditItem(selectedItem)}
-                className="w-full gap-2"
-              >
-                <Settings className="w-4 h-4" />
-                Edit
-              </Button>
-              {ITEM_TYPES.find(t => t.value === selectedItem.item_type)?.plantable && (
+            <div className="pt-4 border-t space-y-3">
+              <div>
+                <h4 className="font-semibold text-sm mb-1">Selected</h4>
+                <p className="text-sm text-gray-600 font-medium">{selectedItem.label}</p>
+                <p className="text-xs text-gray-500 mt-0.5">
+                  {selectedItem.width}" × {selectedItem.height}"
+                </p>
+              </div>
+              <div className="space-y-2">
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => setShowPlantingModal(true)}
-                  className="w-full gap-2 text-emerald-600 hover:text-emerald-700"
+                  onClick={() => openEditItem(selectedItem)}
+                  className="w-full gap-2 justify-start"
                 >
-                  <Sprout className="w-4 h-4" />
-                  Plant
+                  <Settings className="w-4 h-4" />
+                  Edit
                 </Button>
-              )}
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleRotate}
-                disabled={!selectedItem}
-                className="w-full gap-2"
-              >
-                <RotateCw className="w-4 h-4" />
-                Rotate
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => handleDeleteItem(selectedItem)}
-                className="w-full gap-2 text-red-600"
-              >
-                <Trash2 className="w-4 h-4" />
-                Delete
-              </Button>
+                {ITEM_TYPES.find(t => t.value === selectedItem.item_type)?.plantable && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setShowPlantingModal(true)}
+                    className="w-full gap-2 justify-start text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50"
+                  >
+                    <Sprout className="w-4 h-4" />
+                    Plant
+                  </Button>
+                )}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleRotate}
+                  disabled={!selectedItem}
+                  className="w-full gap-2 justify-start"
+                >
+                  <RotateCw className="w-4 h-4" />
+                  Rotate
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleDeleteItem(selectedItem)}
+                  className="w-full gap-2 justify-start text-red-600 hover:text-red-700 hover:bg-red-50"
+                >
+                  <Trash2 className="w-4 h-4" />
+                  Delete
+                </Button>
+              </div>
             </div>
           )}
         </CardContent>
@@ -873,7 +882,7 @@ export default function PlotCanvas({ garden, plot, onPlotUpdate }) {
             <div
               key={item.id}
               className={cn(
-                "absolute border-2 rounded-lg flex items-center justify-center text-sm font-medium overflow-hidden",
+                "absolute border-2 rounded-lg flex items-center justify-center text-sm font-medium overflow-hidden relative",
                 selectedItem?.id === item.id ? "border-emerald-600 ring-2 ring-emerald-100" : "border-gray-400"
               )}
               style={{
@@ -882,9 +891,15 @@ export default function PlotCanvas({ garden, plot, onPlotUpdate }) {
                 width: item.width * zoom,
                 height: item.height * zoom,
                 backgroundColor: getItemColor(item.item_type),
-                cursor: 'grab'
+                cursor: 'grab',
+                opacity: item.plantingCount > 0 ? 0.9 : 1
               }}
             >
+              {item.plantingCount > 0 && (
+                <div className="absolute top-1 right-1 bg-emerald-600 text-white text-xs px-2 py-0.5 rounded-full shadow-sm">
+                  {item.plantingCount} 🌱
+                </div>
+              )}
               {/* Row lines for row-based items */}
               {item.metadata?.rowCount && (
                 <svg className="absolute inset-0 pointer-events-none" width="100%" height="100%">

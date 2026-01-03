@@ -26,6 +26,7 @@ export default function PlantingModal({ open, onOpenChange, item, garden, onPlan
   const [plantings, setPlantings] = useState([]);
   const [stashPlants, setStashPlants] = useState([]);
   const [varieties, setVarieties] = useState([]);
+  const [plantTypes, setPlantTypes] = useState([]);
   const [selectedPlant, setSelectedPlant] = useState(null);
   const [selectedPlanting, setSelectedPlanting] = useState(null);
   const [isMoving, setIsMoving] = useState(false);
@@ -53,15 +54,17 @@ export default function PlantingModal({ open, onOpenChange, item, garden, onPlan
   const loadData = async () => {
     try {
       setLoading(true);
-      const [plantingsData, stashData, varietiesData] = await Promise.all([
+      const [plantingsData, stashData, varietiesData, typesData] = await Promise.all([
         base44.entities.PlantInstance.filter({ bed_id: item.id }),
         base44.entities.SeedLot.filter({ is_wishlist: false }),
-        base44.entities.Variety.list('variety_name', 100)
+        base44.entities.Variety.list('variety_name', 100),
+        base44.entities.PlantType.list('common_name', 100)
       ]);
       
       setPlantings(plantingsData);
       setStashPlants(stashData);
       setVarieties(varietiesData);
+      setPlantTypes(typesData);
     } catch (error) {
       console.error('Error loading planting data:', error);
     } finally {
@@ -152,12 +155,17 @@ export default function PlantingModal({ open, onOpenChange, item, garden, onPlan
         const displayName = selectedPlant.variety_name !== selectedPlant.plant_type_name 
           ? `${selectedPlant.plant_type_name} - ${selectedPlant.variety_name}`
           : selectedPlant.variety_name;
+        
+        // Get icon from PlantType
+        const plantType = plantTypes.find(t => t.id === selectedPlant.plant_type_id || t.common_name === selectedPlant.plant_type_name);
+        const icon = plantType?.icon || '🌱';
           
         const planting = await base44.entities.PlantInstance.create({
           garden_id: garden.id,
           bed_id: item.id,
           space_id: item.id,
           plant_type_id: selectedPlant.plant_type_id,
+          plant_type_icon: icon,
           variety_id: selectedPlant.variety_id,
           display_name: displayName,
           placement_mode: 'grid_cell',
@@ -435,7 +443,7 @@ export default function PlantingModal({ open, onOpenChange, item, garden, onPlan
                           setSelectedPlant(null);
                         }}
                       >
-                        <span className="text-xl">🌱</span>
+                        <span className="text-2xl">{p.plant_type_icon || '🌱'}</span>
                         {selectedPlanting?.id === p.id && (
                           <div className="absolute -bottom-12 left-0 right-0 flex gap-1 z-10">
                             <Button
