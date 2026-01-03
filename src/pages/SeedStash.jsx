@@ -79,9 +79,13 @@ export default function SeedStash() {
   const [searchQuery, setSearchQuery] = useState('');
   const [filterType, setFilterType] = useState('all');
   const [filterTag, setFilterTag] = useState('all');
+  const [varieties, setVarieties] = useState([]);
+  const [selectedPlantType, setSelectedPlantType] = useState(null);
 
   const [formData, setFormData] = useState({
+    plant_type_id: '',
     plant_type_name: '',
+    variety_id: '',
     variety_name: '',
     custom_name: '',
     source_company: '',
@@ -103,15 +107,51 @@ export default function SeedStash() {
     try {
       const [seedsData, typesData] = await Promise.all([
         base44.entities.SeedLot.list('-created_date'),
-        base44.entities.PlantType.list('name')
+        base44.entities.PlantType.list('common_name')
       ]);
       setSeeds(seedsData);
-      setPlantTypes(typesData);
+      setPlantTypes(typesData.filter(t => t.common_name && t.common_name.trim()));
     } catch (error) {
       console.error('Error loading seed stash:', error);
     } finally {
       setLoading(false);
     }
+  };
+
+  const handlePlantTypeChange = async (plantTypeId) => {
+    const type = plantTypes.find(t => t.id === plantTypeId);
+    setSelectedPlantType(type);
+    setFormData({ 
+      ...formData, 
+      plant_type_id: plantTypeId,
+      plant_type_name: type?.common_name || '',
+      variety_id: '',
+      variety_name: ''
+    });
+
+    if (plantTypeId) {
+      try {
+        const vars = await base44.entities.Variety.filter({ 
+          plant_type_id: plantTypeId,
+          status: 'active'
+        }, 'variety_name');
+        setVarieties(vars);
+      } catch (error) {
+        console.error('Error loading varieties:', error);
+        setVarieties([]);
+      }
+    } else {
+      setVarieties([]);
+    }
+  };
+
+  const handleVarietyChange = (varietyId) => {
+    const variety = varieties.find(v => v.id === varietyId);
+    setFormData({ 
+      ...formData, 
+      variety_id: varietyId,
+      variety_name: variety?.variety_name || ''
+    });
   };
 
   const handleSubmit = async () => {
@@ -171,10 +211,12 @@ export default function SeedStash() {
     }
   };
 
-  const openEditDialog = (seed) => {
+  const openEditDialog = async (seed) => {
     setEditingSeed(seed);
     setFormData({
+      plant_type_id: seed.plant_type_id || '',
       plant_type_name: seed.plant_type_name || '',
+      variety_id: seed.variety_id || '',
       variety_name: seed.variety_name || '',
       custom_name: seed.custom_name || '',
       source_company: seed.source_company || '',
@@ -187,14 +229,31 @@ export default function SeedStash() {
       tags: seed.tags || [],
       is_wishlist: seed.is_wishlist || false
     });
+
+    if (seed.plant_type_id) {
+      try {
+        const vars = await base44.entities.Variety.filter({ 
+          plant_type_id: seed.plant_type_id,
+          status: 'active'
+        }, 'variety_name');
+        setVarieties(vars);
+      } catch (error) {
+        console.error('Error loading varieties:', error);
+      }
+    }
+
     setShowAddDialog(true);
   };
 
   const closeDialog = () => {
     setShowAddDialog(false);
     setEditingSeed(null);
+    setVarieties([]);
+    setSelectedPlantType(null);
     setFormData({
+      plant_type_id: '',
       plant_type_name: '',
+      variety_id: '',
       variety_name: '',
       custom_name: '',
       source_company: '',
@@ -512,39 +571,72 @@ export default function SeedStash() {
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-2">
-            <div className="grid grid-cols-2 gap-4">
+            <div>
+              <Label>Plant Type (from catalog)</Label>
+              <Select 
+                value={formData.plant_type_id} 
+                onValueChange={handlePlantTypeChange}
+              >
+                <SelectTrigger className="mt-2">
+                  <SelectValue placeholder="Select from catalog" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={null}>None (manual entry)</SelectItem>
+                  {plantTypes.map((type) => (
+                    <SelectItem key={type.id} value={type.id}>
+                      {type.common_name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {formData.plant_type_id && varieties.length > 0 && (
               <div>
-                <Label>Plant Type</Label>
+                <Label>Variety (from catalog)</Label>
                 <Select 
-                  value={formData.plant_type_name} 
-                  onValueChange={(v) => setFormData({ ...formData, plant_type_name: v })}
+                  value={formData.variety_id} 
+                  onValueChange={handleVarietyChange}
                 >
                   <SelectTrigger className="mt-2">
-                    <SelectValue placeholder="Select type" />
+                    <SelectValue placeholder="Select variety" />
                   </SelectTrigger>
                   <SelectContent>
-                    {plantTypes
-                      .filter(type => type.common_name || type.name)
-                      .sort((a, b) => (a.common_name || a.name).localeCompare(b.common_name || b.name))
-                      .map((type) => (
-                        <SelectItem key={type.id} value={type.common_name || type.name}>
-                          {type.common_name || type.name}
-                        </SelectItem>
-                      ))}
+                    <SelectItem value={null}>None (manual entry)</SelectItem>
+                    {varieties.map((variety) => (
+                      <SelectItem key={variety.id} value={variety.id}>
+                        {variety.variety_name}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
-              <div>
-                <Label htmlFor="variety">Variety Name</Label>
-                <Input
-                  id="variety"
-                  placeholder="e.g., Cherokee Purple"
-                  value={formData.variety_name}
-                  onChange={(e) => setFormData({ ...formData, variety_name: e.target.value })}
-                  className="mt-2"
-                />
+            )}
+
+            {!formData.plant_type_id && (
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="manualType">Plant Type (manual)</Label>
+                  <Input
+                    id="manualType"
+                    placeholder="e.g., Tomato"
+                    value={formData.plant_type_name}
+                    onChange={(e) => setFormData({ ...formData, plant_type_name: e.target.value })}
+                    className="mt-2"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="manualVariety">Variety (manual)</Label>
+                  <Input
+                    id="manualVariety"
+                    placeholder="e.g., Cherokee Purple"
+                    value={formData.variety_name}
+                    onChange={(e) => setFormData({ ...formData, variety_name: e.target.value })}
+                    className="mt-2"
+                  />
+                </div>
               </div>
-            </div>
+            )}
 
             <div>
               <Label htmlFor="custom">Or Custom Name</Label>
