@@ -149,13 +149,17 @@ export default function PlantingModal({ open, onOpenChange, item, garden, onPlan
       }
       
       try {
+        const displayName = selectedPlant.variety_name !== selectedPlant.plant_type_name 
+          ? `${selectedPlant.plant_type_name} - ${selectedPlant.variety_name}`
+          : selectedPlant.variety_name;
+          
         const planting = await base44.entities.PlantInstance.create({
           garden_id: garden.id,
           bed_id: item.id,
           space_id: item.id,
           plant_type_id: selectedPlant.plant_type_id,
           variety_id: selectedPlant.variety_id,
-          display_name: `${selectedPlant.plant_type_name} - ${selectedPlant.variety_name}`,
+          display_name: displayName,
           placement_mode: 'grid_cell',
           cell_col: col,
           cell_row: row,
@@ -187,21 +191,21 @@ export default function PlantingModal({ open, onOpenChange, item, garden, onPlan
   };
 
   const handleSelectStashPlant = (stashItem) => {
-    // Try to find variety from catalog first
-    const variety = varieties.find(v => v.id === stashItem.variety_id);
-    
-    // If no variety found in catalog, use stash item data directly
-    if (!variety && (!stashItem.variety_id || !stashItem.plant_type_id)) {
-      toast.error('This seed needs plant type information to be planted');
+    // Check if seed has minimum required info
+    if (!stashItem.plant_type_name && !stashItem.variety_name) {
+      toast.error('This seed needs a plant name to be planted');
       return;
     }
     
+    // Try to find variety from catalog for spacing info
+    const variety = varieties.find(v => v.id === stashItem.variety_id);
     const spacing = variety ? getSpacingForPlant(variety) : { cols: 2, rows: 2 };
+    
     setSelectedPlant({
       variety_id: stashItem.variety_id || null,
-      variety_name: stashItem.variety_name || 'Unknown',
+      variety_name: stashItem.variety_name || stashItem.plant_type_name,
       plant_type_id: stashItem.plant_type_id || null,
-      plant_type_name: stashItem.plant_type_name || 'Unknown',
+      plant_type_name: stashItem.plant_type_name || stashItem.variety_name,
       spacing_cols: spacing.cols,
       spacing_rows: spacing.rows
     });
