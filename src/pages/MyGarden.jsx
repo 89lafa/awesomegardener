@@ -6,7 +6,8 @@ import {
   Plus, 
   Settings,
   Loader2,
-  ChevronDown
+  ChevronDown,
+  Trash2
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -139,6 +140,59 @@ export default function MyGarden() {
     }
   };
 
+  const handleDeleteGarden = async () => {
+    if (!activeGarden) return;
+    
+    if (!confirm(`Delete "${activeGarden.name}"? This will permanently delete this garden, its items, and all plantings. This cannot be undone.`)) {
+      return;
+    }
+    
+    try {
+      // Delete all plot items and their plantings
+      const plotItems = await base44.entities.PlotItem.filter({ garden_id: activeGarden.id });
+      for (const item of plotItems) {
+        const plantings = await base44.entities.PlantInstance.filter({ bed_id: item.id });
+        for (const planting of plantings) {
+          await base44.entities.PlantInstance.delete(planting.id);
+        }
+        await base44.entities.PlotItem.delete(item.id);
+      }
+      
+      // Delete planting spaces
+      const spaces = await base44.entities.PlantingSpace.filter({ garden_id: activeGarden.id });
+      for (const space of spaces) {
+        await base44.entities.PlantingSpace.delete(space.id);
+      }
+      
+      // Delete plots
+      const plots = await base44.entities.GardenPlot.filter({ garden_id: activeGarden.id });
+      for (const p of plots) {
+        await base44.entities.GardenPlot.delete(p.id);
+      }
+      
+      // Delete garden
+      await base44.entities.Garden.delete(activeGarden.id);
+      
+      // Update UI
+      const updatedGardens = gardens.filter(g => g.id !== activeGarden.id);
+      setGardens(updatedGardens);
+      
+      if (updatedGardens.length > 0) {
+        setActiveGarden(updatedGardens[0]);
+        setSearchParams({ gardenId: updatedGardens[0].id });
+      } else {
+        setActiveGarden(null);
+        setPlot(null);
+        setSearchParams({});
+      }
+      
+      toast.success('Garden deleted');
+    } catch (error) {
+      console.error('Error deleting garden:', error);
+      toast.error('Failed to delete garden');
+    }
+  };
+
   const handleCreateGarden = async () => {
     if (!newGardenName.trim() || creating) return;
 
@@ -146,7 +200,8 @@ export default function MyGarden() {
     try {
       const garden = await base44.entities.Garden.create({
         name: newGardenName,
-        privacy: 'private'
+        privacy: 'private',
+        planting_method: 'STANDARD'
       });
 
       // Create default plot
@@ -234,15 +289,27 @@ export default function MyGarden() {
             ) : (
               <h1 className="text-xl lg:text-2xl font-bold text-gray-900">{activeGarden?.name}</h1>
             )}
-          </div>
-          <Button 
-            onClick={() => setShowCreateGarden(true)}
-            variant="outline"
-            className="gap-2"
-          >
-            <Plus className="w-4 h-4" />
-            New Garden
-          </Button>
+            </div>
+            <div className="flex gap-2">
+            {activeGarden && (
+              <Button 
+                onClick={handleDeleteGarden}
+                variant="outline"
+                className="gap-2 text-red-600 hover:text-red-700"
+              >
+                <Trash2 className="w-4 h-4" />
+                Delete
+              </Button>
+            )}
+            <Button 
+              onClick={() => setShowCreateGarden(true)}
+              variant="outline"
+              className="gap-2"
+            >
+              <Plus className="w-4 h-4" />
+              New Garden
+            </Button>
+            </div>
         </div>
 
         {/* Plot Canvas */}

@@ -10,9 +10,11 @@ import {
   Grid3X3,
   Settings,
   Loader2,
-  Palette
+  Palette,
+  Sprout
 } from 'lucide-react';
 import PlotSettingsDialog from './PlotSettingsDialog';
+import PlantingModal from './PlantingModal';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -69,6 +71,7 @@ export default function PlotCanvas({ garden, plot, onPlotUpdate }) {
   const [showBulkAdd, setShowBulkAdd] = useState(false);
   const [showPlotSettings, setShowPlotSettings] = useState(false);
   const [showEditItem, setShowEditItem] = useState(false);
+  const [showPlantingModal, setShowPlantingModal] = useState(false);
   const [loading, setLoading] = useState(true);
   const [editItemData, setEditItemData] = useState({
     label: '',
@@ -787,6 +790,17 @@ export default function PlotCanvas({ garden, plot, onPlotUpdate }) {
                 <Settings className="w-4 h-4" />
                 Edit
               </Button>
+              {ITEM_TYPES.find(t => t.value === selectedItem.item_type)?.plantable && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowPlantingModal(true)}
+                  className="w-full gap-2 text-emerald-600 hover:text-emerald-700"
+                >
+                  <Sprout className="w-4 h-4" />
+                  Plant
+                </Button>
+              )}
               <Button
                 variant="outline"
                 size="sm"
@@ -1094,6 +1108,17 @@ export default function PlotCanvas({ garden, plot, onPlotUpdate }) {
         onOpenChange={setShowPlotSettings}
         onSave={handlePlotSettingsSave}
       />
+
+      {/* Planting Modal */}
+      {selectedItem && ITEM_TYPES.find(t => t.value === selectedItem.item_type)?.plantable && (
+        <PlantingModal
+          open={showPlantingModal}
+          onOpenChange={setShowPlantingModal}
+          item={selectedItem}
+          garden={garden}
+          onPlantingUpdate={loadItems}
+        />
+      )}
 
       {/* Edit Item Dialog */}
       {selectedItem && (
