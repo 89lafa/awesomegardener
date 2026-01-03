@@ -308,10 +308,12 @@ export default function PlotCanvas({ garden, plot, onPlotUpdate }) {
 
   const handleTypeChange = (newType) => {
     const itemType = ITEM_TYPES.find(t => t.value === newType);
+    const nextName = getNextName(itemType.label);
+    console.log('[Type Change] New type:', newType, 'Next name:', nextName);
     setNewItem({
       ...newItem,
       item_type: newType,
-      label: getNextName(itemType.label),
+      label: nextName,
       dimensions: itemType.defaultDims || '4x8',
       unit: itemType.defaultUnit || 'ft',
       useSquareFootGrid: itemType.usesGrid || false,

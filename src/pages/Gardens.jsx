@@ -249,16 +249,16 @@ export default function Gardens() {
                     
                     {/* Quick Actions Overlay */}
                     <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-colors flex items-center justify-center gap-2 opacity-0 group-hover:opacity-100">
-                      <Link to={createPageUrl('GardenBuilder') + `?gardenId=${garden.id}`}>
+                      <Link to={createPageUrl('MyGarden') + `?gardenId=${garden.id}`}>
                         <Button size="sm" className="bg-white text-gray-900 hover:bg-gray-100">
                           <Edit className="w-4 h-4 mr-1" />
-                          Edit
+                          Layout
                         </Button>
                       </Link>
-                      <Link to={createPageUrl('GardenBuilder') + `?gardenId=${garden.id}&mode=view`}>
+                      <Link to={createPageUrl('GardenPlanting') + `?gardenId=${garden.id}`}>
                         <Button size="sm" variant="secondary">
-                          <Eye className="w-4 h-4 mr-1" />
-                          View
+                          <Sprout className="w-4 h-4 mr-1" />
+                          Plant
                         </Button>
                       </Link>
                     </div>
@@ -293,9 +293,15 @@ export default function Gardens() {
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
                           <DropdownMenuItem asChild>
-                            <Link to={createPageUrl('GardenBuilder') + `?gardenId=${garden.id}`}>
+                            <Link to={createPageUrl('MyGarden') + `?gardenId=${garden.id}`}>
                               <Edit className="w-4 h-4 mr-2" />
-                              Edit Garden
+                              Edit Layout
+                            </Link>
+                          </DropdownMenuItem>
+                          <DropdownMenuItem asChild>
+                            <Link to={createPageUrl('GardenPlanting') + `?gardenId=${garden.id}`}>
+                              <Sprout className="w-4 h-4 mr-2" />
+                              My Garden
                             </Link>
                           </DropdownMenuItem>
                           <DropdownMenuItem onClick={() => openShareDialog(garden)}>
