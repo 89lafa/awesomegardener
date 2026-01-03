@@ -301,14 +301,29 @@ export default function PlantingModal({ open, onOpenChange, item, garden, onPlan
     );
   }
 
+  const handleDone = () => {
+    onOpenChange(false);
+    if (onPlantingUpdate) {
+      onPlantingUpdate();
+    }
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-6xl max-h-[90vh] p-0">
-        <DialogHeader className="p-6 pb-4 border-b">
-          <DialogTitle>Plant in {item.label}</DialogTitle>
-          <p className="text-sm text-gray-600 mt-1">
-            {gridCols} × {gridRows} grid • {garden.planting_method === 'SQUARE_FOOT' ? 'Square Foot Method' : 'Standard Spacing'}
-          </p>
+        <DialogHeader className="p-6 pb-4 border-b flex flex-row items-center justify-between">
+          <div className="flex-1">
+            <DialogTitle>Plant in {item.label}</DialogTitle>
+            <p className="text-sm text-gray-600 mt-1">
+              {gridCols} × {gridRows} grid • {garden.planting_method === 'SQUARE_FOOT' ? 'Square Foot Method' : 'Standard Spacing'}
+            </p>
+          </div>
+          <Button 
+            onClick={handleDone}
+            className="bg-emerald-600 hover:bg-emerald-700 text-white h-11 px-8 text-base font-semibold ml-4"
+          >
+            ✓ Done Planting
+          </Button>
         </DialogHeader>
 
         <div className="flex gap-6 p-6 overflow-hidden h-[calc(90vh-120px)]">
@@ -514,6 +529,16 @@ export default function PlantingModal({ open, onOpenChange, item, garden, onPlan
               </div>
             )}
           </div>
+        </div>
+        
+        {/* Bottom sticky done button */}
+        <div className="p-4 border-t bg-gray-50 flex justify-end">
+          <Button 
+            onClick={handleDone}
+            className="bg-emerald-600 hover:bg-emerald-700 text-white h-12 px-10 text-base font-semibold"
+          >
+            ✓ Done Planting
+          </Button>
         </div>
       </DialogContent>
     </Dialog>
