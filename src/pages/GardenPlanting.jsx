@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 import {
   Select,
   SelectContent,
@@ -22,7 +23,116 @@ import {
 } from '@/components/ui/select';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { toast } from 'sonner';
+import { cn } from '@/lib/utils';
 import ErrorBoundary from '@/components/common/ErrorBoundary';
+
+function SpaceCard({ space }) {
+  const [plantings, setPlantings] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    loadPlantings();
+  }, [space.id]);
+
+  const loadPlantings = async () => {
+    try {
+      const plants = await base44.entities.PlantInstance.filter({ space_id: space.id });
+      setPlantings(plants);
+    } catch (error) {
+      console.error('Error loading plantings:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const isGridSpace = space.layout_schema?.type === 'grid';
+  const columns = space.layout_schema?.columns || 1;
+  const rows = space.layout_schema?.rows || 1;
+  const filledCount = plantings.length;
+  const capacity = space.capacity;
+
+  // Create grid cells map
+  const cellsMap = {};
+  plantings.forEach(p => {
+    if (p.cell_x !== undefined && p.cell_y !== undefined) {
+      cellsMap[`${p.cell_x}-${p.cell_y}`] = p;
+    }
+  });
+
+  return (
+    <Card>
+      <CardHeader className="pb-3">
+        <div className="flex items-center justify-between">
+          <CardTitle className="text-lg">{space.name}</CardTitle>
+          <Badge variant={filledCount > 0 ? 'default' : 'outline'}>
+            {filledCount}/{capacity}
+          </Badge>
+        </div>
+        <p className="text-sm text-gray-500 capitalize">
+          {space.space_type.replace(/_/g, ' ')}
+        </p>
+      </CardHeader>
+      <CardContent>
+        {isGridSpace ? (
+          <div className="space-y-3">
+            {/* Grid visualization */}
+            <div 
+              className="grid gap-1 p-2 bg-amber-50 border border-amber-200 rounded-lg"
+              style={{
+                gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))`,
+                aspectRatio: `${columns}/${rows}`
+              }}
+            >
+              {Array.from({ length: rows }).map((_, rowIdx) => 
+                Array.from({ length: columns }).map((_, colIdx) => {
+                  const plant = cellsMap[`${colIdx}-${rowIdx}`];
+                  return (
+                    <button
+                      key={`${colIdx}-${rowIdx}`}
+                      className={cn(
+                        "aspect-square rounded border-2 transition-colors text-xs font-medium flex items-center justify-center",
+                        plant 
+                          ? "bg-emerald-500 border-emerald-600 text-white" 
+                          : "bg-white border-amber-300 hover:bg-amber-100"
+                      )}
+                      title={plant ? plant.plant_display_name : 'Empty'}
+                    >
+                      {plant && '🌱'}
+                    </button>
+                  );
+                })
+              )}
+            </div>
+            <Button className="w-full bg-emerald-600 hover:bg-emerald-700" size="sm">
+              <Plus className="w-4 h-4 mr-2" />
+              Add Plants
+            </Button>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            <div className="flex justify-between text-sm">
+              <span className="text-gray-600">Capacity:</span>
+              <span className="font-medium">
+                {capacity} {space.layout_schema?.type === 'rows' ? 'rows' : 'slots'}
+              </span>
+            </div>
+            {filledCount > 0 && (
+              <div className="p-2 bg-emerald-50 border border-emerald-200 rounded-lg">
+                <p className="text-sm text-emerald-700 font-medium">
+                  {filledCount} plant{filledCount !== 1 ? 's' : ''} growing
+                </p>
+              </div>
+            )}
+            <Button className="w-full bg-emerald-600 hover:bg-emerald-700" size="sm">
+              <Plus className="w-4 h-4 mr-2" />
+              Add Plants
+            </Button>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
 
 export default function GardenPlanting() {
   const [searchParams] = useSearchParams();
@@ -323,35 +433,9 @@ export default function GardenPlanting() {
 
         {/* Planting Spaces List */}
         {plantingSpaces.length > 0 && (
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="space-y-6">
             {plantingSpaces.map((space) => (
-              <Card key={space.id}>
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-base">{space.name}</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-2 text-sm">
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">Type:</span>
-                      <span className="font-medium capitalize">{space.space_type.replace(/_/g, ' ')}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">Capacity:</span>
-                      <span className="font-medium">{space.capacity} {space.layout_schema?.type === 'grid' ? 'cells' : space.layout_schema?.type === 'rows' ? 'rows' : 'slots'}</span>
-                    </div>
-                    {space.layout_schema?.type === 'grid' && (
-                      <div className="flex justify-between">
-                        <span className="text-gray-600">Layout:</span>
-                        <span className="font-medium">{space.layout_schema.columns} × {space.layout_schema.rows} grid</span>
-                      </div>
-                    )}
-                  </div>
-                  <Button className="w-full mt-4 bg-emerald-600 hover:bg-emerald-700" size="sm">
-                    <Plus className="w-4 h-4 mr-2" />
-                    Add Plants
-                  </Button>
-                </CardContent>
-              </Card>
+              <SpaceCard key={space.id} space={space} />
             ))}
           </div>
         )}

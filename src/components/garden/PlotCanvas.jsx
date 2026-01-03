@@ -112,7 +112,12 @@ export default function PlotCanvas({ garden, plot, onPlotUpdate }) {
         garden_id: garden.id,
         plot_id: plot.id 
       }, 'z_index');
-      setItems(itemsData);
+      // Ensure rotation is initialized
+      const normalizedItems = itemsData.map(item => ({
+        ...item,
+        rotation: item.rotation || 0
+      }));
+      setItems(normalizedItems);
     } catch (error) {
       console.error('Error loading items:', error);
     } finally {
@@ -288,14 +293,13 @@ export default function PlotCanvas({ garden, plot, onPlotUpdate }) {
         }
 
         newItems.push(item);
+      }
 
-        // Update items list so getNextName works correctly for next iteration
-        setItems([...items, ...newItems]);
-        }
-
-        setShowAddItem(false);
-        resetNewItem();
-        toast.success(count > 1 ? `Added ${count} items!` : 'Item added!');
+      // Update items list after all created
+      setItems([...items, ...newItems]);
+      setShowAddItem(false);
+      resetNewItem();
+      toast.success(count > 1 ? `Added ${count} items!` : 'Item added!');
     } catch (error) {
       console.error('Error adding item:', error);
       toast.error('Failed to add item');
@@ -502,15 +506,18 @@ export default function PlotCanvas({ garden, plot, onPlotUpdate }) {
   };
 
   const handleRotate = async (item) => {
-    const newRotation = (item.rotation + 90) % 360;
+    const currentRotation = item.rotation || 0;
+    const newRotation = (currentRotation + 90) % 360;
+    console.log('[LAYOUT] rotate id=', item.id, 'current=', currentRotation, 'new=', newRotation);
     try {
       await base44.entities.PlotItem.update(item.id, { rotation: newRotation });
-      setItems(items.map(i => i.id === item.id ? { ...i, rotation: newRotation } : i));
-      setSelectedItem({ ...item, rotation: newRotation });
-      console.log('[LAYOUT] rotate id=', item.id, 'rotation=', newRotation, 'saved');
+      const updatedItem = { ...item, rotation: newRotation };
+      setItems(items.map(i => i.id === item.id ? updatedItem : i));
+      setSelectedItem(updatedItem);
+      console.log('[LAYOUT] rotate saved successfully');
       toast.success('Rotated');
     } catch (error) {
-      console.error('Error rotating:', error);
+      console.error('[LAYOUT] Error rotating:', error);
       toast.error('Failed to rotate');
     }
   };
