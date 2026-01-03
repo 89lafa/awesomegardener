@@ -66,7 +66,18 @@ export default function PlotCanvas({ garden, plot, onPlotUpdate }) {
   const [showAddItem, setShowAddItem] = useState(false);
   const [showBulkAdd, setShowBulkAdd] = useState(false);
   const [showPlotSettings, setShowPlotSettings] = useState(false);
+  const [showEditItem, setShowEditItem] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [editItemData, setEditItemData] = useState({
+    label: '',
+    dimensions: '',
+    unit: 'ft',
+    color: '',
+    gallonSize: 5,
+    rowSpacing: 18,
+    rowCount: null,
+    capacity: 20
+  });
 
   const [newItem, setNewItem] = useState({
     item_type: 'RAISED_BED',
@@ -122,9 +133,23 @@ export default function PlotCanvas({ garden, plot, onPlotUpdate }) {
   };
 
   const getNextName = (baseLabel) => {
-    const existingWithType = items.filter(i => i.label.startsWith(baseLabel));
-    if (existingWithType.length === 0) return baseLabel;
-    return `${baseLabel} ${existingWithType.length + 1}`;
+    // Find all items with this base label
+    const pattern = new RegExp(`^${baseLabel}( \\d+)?$`);
+    const matchingItems = items.filter(i => pattern.test(i.label));
+    
+    if (matchingItems.length === 0) {
+      return `${baseLabel} 1`;
+    }
+    
+    // Extract numbers from existing items
+    const numbers = matchingItems.map(i => {
+      const match = i.label.match(/\d+$/);
+      return match ? parseInt(match[0]) : 1;
+    });
+    
+    // Find next available number
+    const maxNum = Math.max(...numbers);
+    return `${baseLabel} ${maxNum + 1}`;
   };
 
   const calculateLayoutSchema = (itemType, width, height, metadata) => {
@@ -438,6 +463,94 @@ export default function PlotCanvas({ garden, plot, onPlotUpdate }) {
     }
   };
 
+  const openEditItem = (item) => {
+    const itemType = ITEM_TYPES.find(t => t.value === item.item_type);
+    const widthFt = item.width / 12;
+    const heightFt = item.height / 12;
+    
+    setEditItemData({
+      label: item.label,
+      dimensions: `${widthFt}x${heightFt}`,
+      unit: 'ft',
+      color: getItemColor(item.item_type),
+      gallonSize: item.metadata?.gallonSize || 5,
+      rowSpacing: item.metadata?.rowSpacing || 18,
+      rowCount: item.metadata?.rowCount || null,
+      capacity: item.metadata?.capacity || 20
+    });
+    setShowEditItem(true);
+  };
+
+  const handleEditItemSave = async () => {
+    if (!selectedItem) return;
+
+    const itemType = ITEM_TYPES.find(t => t.value === selectedItem.item_type);
+    let width = selectedItem.width;
+    let height = selectedItem.height;
+
+    // Recalculate dimensions if changed
+    if (!itemType.usesGallons && !itemType.usesSize) {
+      const parsed = parseDimensions(editItemData.dimensions);
+      if (parsed) {
+        width = toInches(parsed.width, editItemData.unit);
+        height = toInches(parsed.height, editItemData.unit);
+      }
+    }
+
+    const metadata = { ...selectedItem.metadata };
+    if (itemType.usesGallons) {
+      metadata.gallonSize = editItemData.gallonSize;
+      const gallonInfo = GALLON_SIZES.find(g => g.value === editItemData.gallonSize);
+      width = height = gallonInfo.footprint;
+    }
+    if (itemType.usesRows) {
+      metadata.rowSpacing = editItemData.rowSpacing;
+      metadata.rowCount = editItemData.rowCount;
+    }
+    if (selectedItem.item_type === 'GREENHOUSE') {
+      metadata.capacity = editItemData.capacity;
+    }
+
+    try {
+      await base44.entities.PlotItem.update(selectedItem.id, {
+        label: editItemData.label,
+        width,
+        height,
+        metadata
+      });
+
+      // Update PlantingSpace if it exists
+      if (itemType.plantable) {
+        const spaces = await base44.entities.PlantingSpace.filter({ plot_item_id: selectedItem.id });
+        if (spaces.length > 0) {
+          const space = spaces[0];
+          const layoutSchema = calculateLayoutSchema(itemType, width, height, metadata);
+          const capacity = calculateCapacity(layoutSchema);
+
+          await base44.entities.PlantingSpace.update(space.id, {
+            name: editItemData.label,
+            capacity,
+            layout_schema: layoutSchema
+          });
+        }
+      }
+
+      setItems(items.map(i => i.id === selectedItem.id ? {
+        ...i,
+        label: editItemData.label,
+        width,
+        height,
+        metadata
+      } : i));
+
+      setShowEditItem(false);
+      toast.success('Item updated');
+    } catch (error) {
+      console.error('Error updating item:', error);
+      toast.error('Failed to update item');
+    }
+  };
+
   const getItemColor = (type) => {
     return ITEM_TYPES.find(t => t.value === type)?.color || '#8B7355';
   };
@@ -508,6 +621,15 @@ export default function PlotCanvas({ garden, plot, onPlotUpdate }) {
               <p className="text-xs text-gray-500">
                 {selectedItem.width}" × {selectedItem.height}"
               </p>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => openEditItem(selectedItem)}
+                className="w-full gap-2"
+              >
+                <Settings className="w-4 h-4" />
+                Edit
+              </Button>
               <Button
                 variant="outline"
                 size="sm"
@@ -807,6 +929,119 @@ export default function PlotCanvas({ garden, plot, onPlotUpdate }) {
         onOpenChange={setShowPlotSettings}
         onSave={handlePlotSettingsSave}
       />
+
+      {/* Edit Item Dialog */}
+      {selectedItem && (
+        <Dialog open={showEditItem} onOpenChange={setShowEditItem}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Edit {selectedItem.label}</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div>
+                <Label htmlFor="editLabel">Label</Label>
+                <Input
+                  id="editLabel"
+                  value={editItemData.label}
+                  onChange={(e) => setEditItemData({ ...editItemData, label: e.target.value })}
+                  className="mt-2"
+                />
+              </div>
+
+              {ITEM_TYPES.find(t => t.value === selectedItem.item_type)?.usesGallons ? (
+                <div>
+                  <Label>Size (Gallons)</Label>
+                  <Select 
+                    value={String(editItemData.gallonSize)} 
+                    onValueChange={(v) => setEditItemData({ ...editItemData, gallonSize: parseInt(v) })}
+                  >
+                    <SelectTrigger className="mt-2">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {GALLON_SIZES.map((g) => (
+                        <SelectItem key={g.value} value={String(g.value)}>
+                          {g.value} gallon ({g.footprint}" footprint)
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              ) : !ITEM_TYPES.find(t => t.value === selectedItem.item_type)?.usesSize ? (
+                <>
+                  <div>
+                    <Label>Dimensions</Label>
+                    <div className="flex gap-2 mt-2">
+                      <Input
+                        placeholder="4x8"
+                        value={editItemData.dimensions}
+                        onChange={(e) => setEditItemData({ ...editItemData, dimensions: e.target.value })}
+                      />
+                      <Select 
+                        value={editItemData.unit} 
+                        onValueChange={(v) => setEditItemData({ ...editItemData, unit: v })}
+                      >
+                        <SelectTrigger className="w-20">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="ft">Feet</SelectItem>
+                          <SelectItem value="in">Inches</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+
+                  {(selectedItem.item_type === 'IN_GROUND_BED' || selectedItem.item_type === 'OPEN_PLOT') && (
+                    <div className="space-y-3 p-3 bg-gray-50 rounded-lg">
+                      <h4 className="text-sm font-semibold">Row Configuration</h4>
+                      <div>
+                        <Label htmlFor="editRowSpacing" className="text-xs">Row Spacing (inches)</Label>
+                        <Input
+                          id="editRowSpacing"
+                          type="number"
+                          value={editItemData.rowSpacing}
+                          onChange={(e) => setEditItemData({ ...editItemData, rowSpacing: parseInt(e.target.value) })}
+                          className="mt-1"
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="editRowCount" className="text-xs">Row Count</Label>
+                        <Input
+                          id="editRowCount"
+                          type="number"
+                          value={editItemData.rowCount || ''}
+                          onChange={(e) => setEditItemData({ ...editItemData, rowCount: e.target.value ? parseInt(e.target.value) : null })}
+                          className="mt-1"
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  {selectedItem.item_type === 'GREENHOUSE' && (
+                    <div>
+                      <Label htmlFor="editCapacity">Capacity (plants)</Label>
+                      <Input
+                        id="editCapacity"
+                        type="number"
+                        value={editItemData.capacity}
+                        onChange={(e) => setEditItemData({ ...editItemData, capacity: parseInt(e.target.value) })}
+                        className="mt-2"
+                      />
+                    </div>
+                  )}
+                </>
+              ) : null}
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setShowEditItem(false)}>Cancel</Button>
+              <Button onClick={handleEditItemSave} className="bg-emerald-600 hover:bg-emerald-700">
+                Save Changes
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
     </div>
   );
 }

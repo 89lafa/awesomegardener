@@ -103,15 +103,86 @@ export default function GardenPlanting() {
     }
   };
 
+  const syncPlotItemsToSpaces = async () => {
+    try {
+      // Get all plot items for this garden
+      const plotItems = await base44.entities.PlotItem.filter({ garden_id: activeGarden.id });
+      
+      console.log(`[SYNC] Found ${plotItems.length} plot items for garden ${activeGarden.id}`);
+      
+      const plantableTypes = ['RAISED_BED', 'IN_GROUND_BED', 'GREENHOUSE', 'OPEN_PLOT', 'GROW_BAG', 'CONTAINER'];
+      
+      for (const item of plotItems) {
+        // Skip non-plantable items
+        if (!plantableTypes.includes(item.item_type)) {
+          console.log(`[SYNC] Skipping non-plantable item: ${item.label} (${item.item_type})`);
+          continue;
+        }
+
+        // Check if PlantingSpace exists
+        const existingSpaces = await base44.entities.PlantingSpace.filter({ plot_item_id: item.id });
+        
+        if (existingSpaces.length > 0) {
+          console.log(`[SYNC] Space already exists for: ${item.label}`);
+          continue;
+        }
+
+        // Calculate layout schema
+        let layoutSchema = { type: 'slots', slots: 1 };
+        let capacity = 1;
+
+        if (item.item_type === 'RAISED_BED' && item.metadata?.gridEnabled) {
+          const gridSize = item.metadata.gridSize || 12;
+          const cols = Math.floor(item.width / gridSize);
+          const rows = Math.floor(item.height / gridSize);
+          layoutSchema = { type: 'grid', grid_size: gridSize, columns: cols, rows: rows };
+          capacity = cols * rows;
+        } else if (item.item_type === 'IN_GROUND_BED' || item.item_type === 'OPEN_PLOT') {
+          const rowSpacing = item.metadata?.rowSpacing || 18;
+          const rowCount = item.metadata?.rowCount || Math.floor(item.width / rowSpacing);
+          layoutSchema = { type: 'rows', rows: rowCount, row_spacing: rowSpacing };
+          capacity = rowCount;
+        } else if (item.item_type === 'GREENHOUSE') {
+          const slots = item.metadata?.capacity || 20;
+          layoutSchema = { type: 'slots', slots };
+          capacity = slots;
+        }
+
+        console.log(`[SYNC] Creating space for: ${item.label} (capacity: ${capacity})`);
+
+        await base44.entities.PlantingSpace.create({
+          garden_id: activeGarden.id,
+          plot_item_id: item.id,
+          space_type: item.item_type,
+          name: item.label,
+          capacity,
+          layout_schema,
+          is_active: true
+        });
+      }
+    } catch (error) {
+      console.error('[SYNC] Error syncing plot items to spaces:', error);
+    }
+  };
+
   const loadSpaces = async () => {
     try {
-      const [spacesData, plantingsData] = await Promise.all([
+      // First sync plot items to spaces
+      await syncPlotItemsToSpaces();
+      
+      // Then load spaces
+      const [spacesData, plantingsData, plotItemsData] = await Promise.all([
         base44.entities.PlantingSpace.filter({ 
           garden_id: activeGarden.id,
           is_active: true 
         }),
-        base44.entities.PlantInstance.filter({ garden_id: activeGarden.id })
+        base44.entities.PlantInstance.filter({ garden_id: activeGarden.id }),
+        base44.entities.PlotItem.filter({ garden_id: activeGarden.id })
       ]);
+      
+      console.log(`[DEBUG] Garden: ${activeGarden.name} (${activeGarden.id})`);
+      console.log(`[DEBUG] PlotItems: ${plotItemsData.length}`, plotItemsData.map(i => ({ id: i.id, type: i.item_type, label: i.label })));
+      console.log(`[DEBUG] PlantingSpaces: ${spacesData.length}`, spacesData.map(s => ({ id: s.id, plot_item_id: s.plot_item_id, name: s.name, type: s.space_type })));
       
       setSpaces(spacesData);
       setPlantings(plantingsData);
