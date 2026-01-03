@@ -82,14 +82,50 @@ export default function AdminDataImport() {
     const lines = text.split('\n').filter(line => line.trim());
     if (lines.length === 0) return [];
     
-    const headers = lines[0].split(',').map(h => h.trim());
+    // Parse CSV with proper quote handling
+    const parseLine = (line) => {
+      const values = [];
+      let current = '';
+      let inQuotes = false;
+      
+      for (let i = 0; i < line.length; i++) {
+        const char = line[i];
+        const nextChar = line[i + 1];
+        
+        if (char === '"') {
+          if (inQuotes && nextChar === '"') {
+            current += '"';
+            i++; // Skip next quote
+          } else {
+            inQuotes = !inQuotes;
+          }
+        } else if (char === '\t' && !inQuotes) {
+          values.push(current.trim());
+          current = '';
+        } else if (char === ',' && !inQuotes) {
+          values.push(current.trim());
+          current = '';
+        } else {
+          current += char;
+        }
+      }
+      values.push(current.trim());
+      return values;
+    };
+    
+    const headers = parseLine(lines[0]).map(h => h.trim());
     const data = [];
     
     for (let i = 1; i < lines.length; i++) {
-      const values = lines[i].split(',').map(v => v.trim());
+      const values = parseLine(lines[i]);
       const obj = {};
       headers.forEach((header, index) => {
-        obj[header] = values[index];
+        let value = values[index] || '';
+        // Remove surrounding quotes if present
+        if (value.startsWith('"') && value.endsWith('"')) {
+          value = value.slice(1, -1);
+        }
+        obj[header] = value;
       });
       data.push(obj);
     }
@@ -164,13 +200,35 @@ export default function AdminDataImport() {
 
           for (const row of data) {
             try {
-              // Validate required fields
+              // Process PlantType-specific data
               if (item.key === 'PlantType') {
                 if (!row.common_name || row.common_name.trim().length < 2) {
                   rejected++;
                   skipReasons.push({ row, reason: 'Missing or invalid common_name' });
                   continue;
                 }
+                
+                // Convert string booleans to actual booleans
+                if (row.is_perennial) {
+                  row.is_perennial = row.is_perennial.toLowerCase() === 'true' || row.is_perennial === '1';
+                }
+                if (row.trellis_common) {
+                  row.trellis_common = row.trellis_common.toLowerCase() === 'true' || row.trellis_common === '1';
+                }
+                
+                // Convert synonyms to array
+                if (row.synonyms && row.synonyms.trim()) {
+                  row.synonyms = row.synonyms.split('|').map(s => s.trim()).filter(Boolean);
+                } else {
+                  row.synonyms = [];
+                }
+                
+                // Convert numeric fields
+                if (row.typical_spacing_min) row.typical_spacing_min = parseFloat(row.typical_spacing_min);
+                if (row.typical_spacing_max) row.typical_spacing_max = parseFloat(row.typical_spacing_max);
+                if (row.default_days_to_maturity) row.default_days_to_maturity = parseFloat(row.default_days_to_maturity);
+                if (row.default_start_indoors_weeks) row.default_start_indoors_weeks = parseFloat(row.default_start_indoors_weeks);
+                if (row.default_transplant_weeks) row.default_transplant_weeks = parseFloat(row.default_transplant_weeks);
               }
 
               if (item.key === 'Variety') {
