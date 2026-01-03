@@ -14,6 +14,8 @@ import {
   ListChecks
 } from 'lucide-react';
 import AddVarietyDialog from '@/components/variety/AddVarietyDialog';
+import AddToStashModal from '@/components/catalog/AddToStashModal';
+import AddToGrowListModal from '@/components/catalog/AddToGrowListModal';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -30,6 +32,9 @@ export default function PlantCatalogDetail() {
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
   const [showAddVariety, setShowAddVariety] = useState(false);
+  const [showAddToStash, setShowAddToStash] = useState(false);
+  const [showAddToGrowList, setShowAddToGrowList] = useState(false);
+  const [selectedVariety, setSelectedVariety] = useState(null);
   const [user, setUser] = useState(null);
 
   useEffect(() => {
@@ -274,41 +279,22 @@ export default function PlantCatalogDetail() {
                           <Button 
                             size="sm"
                             variant="ghost"
-                            onClick={async () => {
-                              try {
-                                await base44.entities.SeedLot.create({
-                                  plant_type_id: plantType.id,
-                                  plant_type_name: plantType.common_name,
-                                  variety_id: variety.id,
-                                  variety_name: variety.variety_name,
-                                  is_wishlist: false
-                                });
-                                toast.success('Added to seed stash!');
-                              } catch (error) {
-                                console.error('Error adding to stash:', error);
-                                toast.error('Failed to add to stash');
-                              }
+                            onClick={() => {
+                              setSelectedVariety(variety);
+                              setShowAddToStash(true);
                             }}
+                            title="Add to Seed Stash"
                           >
                             <Package className="w-4 h-4" />
                           </Button>
                           <Button 
                             size="sm"
                             variant="ghost"
-                            onClick={async () => {
-                              try {
-                                await base44.entities.SeedLot.create({
-                                  plant_type_id: plantType.id,
-                                  plant_type_name: plantType.common_name,
-                                  variety_id: variety.id,
-                                  variety_name: variety.variety_name,
-                                  is_wishlist: true
-                                });
-                                toast.success('Added to wishlist!');
-                              } catch (error) {
-                                console.error('Error adding to wishlist:', error);
-                              }
+                            onClick={() => {
+                              setSelectedVariety(variety);
+                              setShowAddToGrowList(true);
                             }}
+                            title="Add to Grow List"
                           >
                             <ListChecks className="w-4 h-4" />
                           </Button>
@@ -390,6 +376,22 @@ export default function PlantCatalogDetail() {
           onOpenChange={setShowAddVariety}
           onSuccess={reloadVarieties}
           userRole={user?.role}
+        />
+
+        {/* Add to Stash Modal */}
+        <AddToStashModal
+          open={showAddToStash}
+          onOpenChange={setShowAddToStash}
+          variety={selectedVariety}
+          plantType={plantType}
+        />
+
+        {/* Add to Grow List Modal */}
+        <AddToGrowListModal
+          open={showAddToGrowList}
+          onOpenChange={setShowAddToGrowList}
+          variety={selectedVariety}
+          plantType={plantType}
         />
       </div>
     </ErrorBoundary>

@@ -14,15 +14,15 @@ import Landing from './pages/Landing';
 import MyGarden from './pages/MyGarden';
 import Onboarding from './pages/Onboarding';
 import PlantCatalog from './pages/PlantCatalog';
+import PlantCatalogBrowse from './pages/PlantCatalogBrowse';
 import PlantCatalogDetail from './pages/PlantCatalogDetail';
 import PlantCatalogV2 from './pages/PlantCatalogV2';
 import PlotBuilder from './pages/PlotBuilder';
 import PublicGarden from './pages/PublicGarden';
+import SeedInventory from './pages/SeedInventory';
 import SeedStash from './pages/SeedStash';
 import Settings from './pages/Settings';
 import VarietyReviewQueue from './pages/VarietyReviewQueue';
-import SeedInventory from './pages/SeedInventory';
-import PlantCatalogBrowse from './pages/PlantCatalogBrowse';
 import __Layout from './Layout.jsx';
 
 
@@ -43,15 +43,15 @@ export const PAGES = {
     "MyGarden": MyGarden,
     "Onboarding": Onboarding,
     "PlantCatalog": PlantCatalog,
+    "PlantCatalogBrowse": PlantCatalogBrowse,
     "PlantCatalogDetail": PlantCatalogDetail,
     "PlantCatalogV2": PlantCatalogV2,
     "PlotBuilder": PlotBuilder,
     "PublicGarden": PublicGarden,
+    "SeedInventory": SeedInventory,
     "SeedStash": SeedStash,
     "Settings": Settings,
     "VarietyReviewQueue": VarietyReviewQueue,
-    "SeedInventory": SeedInventory,
-    "PlantCatalogBrowse": PlantCatalogBrowse,
 }
 
 export const pagesConfig = {

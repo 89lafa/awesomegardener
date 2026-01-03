@@ -41,11 +41,46 @@ export default function SeedInventory() {
   const [filterCrop, setFilterCrop] = useState('all');
   const [filterSubCat, setFilterSubCat] = useState('all');
   const [filterStatus, setFilterStatus] = useState('all');
-  const [sortBy, setSortBy] = useState('az');
+  const [sortBy, setSortBy] = useState('name_asc');
+  const [sortSecondary, setSortSecondary] = useState('none');
 
   useEffect(() => {
     loadData();
+    loadViewPreference();
   }, []);
+
+  const loadViewPreference = async () => {
+    try {
+      const settings = await base44.entities.UserSettings.list();
+      if (settings.length > 0 && settings[0].seed_stash_view_mode) {
+        setViewMode(settings[0].seed_stash_view_mode);
+      }
+    } catch (error) {
+      console.error('Error loading view preference:', error);
+    }
+  };
+
+  const saveViewPreference = async (mode) => {
+    try {
+      const settings = await base44.entities.UserSettings.list();
+      if (settings.length > 0) {
+        await base44.entities.UserSettings.update(settings[0].id, {
+          seed_stash_view_mode: mode
+        });
+      } else {
+        await base44.entities.UserSettings.create({
+          seed_stash_view_mode: mode
+        });
+      }
+    } catch (error) {
+      console.error('Error saving view preference:', error);
+    }
+  };
+
+  const handleViewModeChange = (mode) => {
+    setViewMode(mode);
+    saveViewPreference(mode);
+  };
 
   const loadData = async () => {
     try {
@@ -113,12 +148,40 @@ export default function SeedInventory() {
       const profileA = profiles[a.plant_profile_id];
       const profileB = profiles[b.plant_profile_id];
       
-      if (sortBy === 'az') {
-        return (profileA?.variety_name || '').localeCompare(profileB?.variety_name || '');
-      } else if (sortBy === 'age') {
-        return getAge(b) - getAge(a);
+      // Primary sort
+      let result = 0;
+      if (sortBy === 'name_asc') {
+        result = (profileA?.variety_name || '').localeCompare(profileB?.variety_name || '');
+      } else if (sortBy === 'name_desc') {
+        result = (profileB?.variety_name || '').localeCompare(profileA?.variety_name || '');
+      } else if (sortBy === 'age_oldest') {
+        result = getAge(b) - getAge(a);
+      } else if (sortBy === 'age_newest') {
+        result = getAge(a) - getAge(b);
+      } else if (sortBy === 'year_asc') {
+        const yearA = a.year_acquired || 0;
+        const yearB = b.year_acquired || 0;
+        result = yearA - yearB;
+      } else if (sortBy === 'year_desc') {
+        const yearA = a.year_acquired || 0;
+        const yearB = b.year_acquired || 0;
+        result = yearB - yearA;
+      } else if (sortBy === 'vendor') {
+        result = (a.source_vendor_name || '').localeCompare(b.source_vendor_name || '');
+      } else if (sortBy === 'quantity') {
+        result = (b.quantity || 0) - (a.quantity || 0);
       }
-      return 0;
+      
+      // Secondary sort
+      if (result === 0 && sortSecondary !== 'none') {
+        if (sortSecondary === 'name') {
+          result = (profileA?.variety_name || '').localeCompare(profileB?.variety_name || '');
+        } else if (sortSecondary === 'age') {
+          result = getAge(b) - getAge(a);
+        }
+      }
+      
+      return result;
     });
 
   const availableSubCats = filterCrop === 'all' 
@@ -209,12 +272,28 @@ export default function SeedInventory() {
               </SelectContent>
             </Select>
             <Select value={sortBy} onValueChange={setSortBy}>
-              <SelectTrigger className="w-full md:w-32">
-                <SelectValue />
+              <SelectTrigger className="w-full md:w-48">
+                <SelectValue placeholder="Sort by..." />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="az">A-Z</SelectItem>
-                <SelectItem value="age">By Age</SelectItem>
+                <SelectItem value="name_asc">Name (A → Z)</SelectItem>
+                <SelectItem value="name_desc">Name (Z → A)</SelectItem>
+                <SelectItem value="age_oldest">Oldest First</SelectItem>
+                <SelectItem value="age_newest">Newest First</SelectItem>
+                <SelectItem value="year_asc">Year Acquired (↑)</SelectItem>
+                <SelectItem value="year_desc">Year Acquired (↓)</SelectItem>
+                <SelectItem value="vendor">Vendor (A → Z)</SelectItem>
+                <SelectItem value="quantity">Quantity (High → Low)</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select value={sortSecondary} onValueChange={setSortSecondary}>
+              <SelectTrigger className="w-full md:w-44">
+                <SelectValue placeholder="Then by..." />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">No secondary sort</SelectItem>
+                <SelectItem value="name">Then by Name</SelectItem>
+                <SelectItem value="age">Then by Age</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -224,7 +303,7 @@ export default function SeedInventory() {
               <Button
                 variant={viewMode === 'list' ? 'default' : 'outline'}
                 size="sm"
-                onClick={() => setViewMode('list')}
+                onClick={() => handleViewModeChange('list')}
                 className={viewMode === 'list' ? 'bg-emerald-600 hover:bg-emerald-700' : ''}
               >
                 <List className="w-4 h-4" />
@@ -232,7 +311,7 @@ export default function SeedInventory() {
               <Button
                 variant={viewMode === 'grid' ? 'default' : 'outline'}
                 size="sm"
-                onClick={() => setViewMode('grid')}
+                onClick={() => handleViewModeChange('grid')}
                 className={viewMode === 'grid' ? 'bg-emerald-600 hover:bg-emerald-700' : ''}
               >
                 <Grid3x3 className="w-4 h-4" />
@@ -240,7 +319,7 @@ export default function SeedInventory() {
               <Button
                 variant={viewMode === 'numbered' ? 'default' : 'outline'}
                 size="sm"
-                onClick={() => setViewMode('numbered')}
+                onClick={() => handleViewModeChange('numbered')}
                 className={viewMode === 'numbered' ? 'bg-emerald-600 hover:bg-emerald-700' : ''}
               >
                 <Hash className="w-4 h-4" />
