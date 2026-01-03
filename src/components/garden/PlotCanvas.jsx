@@ -254,6 +254,7 @@ export default function PlotCanvas({ garden, plot, onPlotUpdate }) {
           const layoutSchema = calculateLayoutSchema(itemType, width, height, metadata);
           const capacity = calculateCapacity(layoutSchema);
 
+          console.log('[PlotItem Create] Auto-creating PlantingSpace for:', label, 'capacity:', capacity);
           await base44.entities.PlantingSpace.create({
             garden_id: garden.id,
             plot_item_id: item.id,
@@ -408,6 +409,7 @@ export default function PlotCanvas({ garden, plot, onPlotUpdate }) {
 
   const handleDeleteItem = async (item) => {
     try {
+      console.log('[PlotItem Delete] Deleting:', item.label);
       // Check if there's a PlantingSpace with plantings
       const spaces = await base44.entities.PlantingSpace.filter({ plot_item_id: item.id });
       if (spaces.length > 0) {
@@ -427,6 +429,7 @@ export default function PlotCanvas({ garden, plot, onPlotUpdate }) {
         }
         
         // Delete PlantingSpace
+        console.log('[PlotItem Delete] Deleting PlantingSpace');
         await base44.entities.PlantingSpace.delete(space.id);
       }
       
@@ -521,6 +524,7 @@ export default function PlotCanvas({ garden, plot, onPlotUpdate }) {
 
       // Update PlantingSpace if it exists
       if (itemType.plantable) {
+        console.log('[PlotItem Edit] Updating PlantingSpace for:', editItemData.label);
         const spaces = await base44.entities.PlantingSpace.filter({ plot_item_id: selectedItem.id });
         if (spaces.length > 0) {
           const space = spaces[0];
@@ -531,6 +535,20 @@ export default function PlotCanvas({ garden, plot, onPlotUpdate }) {
             name: editItemData.label,
             capacity,
             layout_schema: layoutSchema
+          });
+        } else {
+          // Create if missing
+          console.log('[PlotItem Edit] PlantingSpace missing, creating new one');
+          const layoutSchema = calculateLayoutSchema(itemType, width, height, metadata);
+          const capacity = calculateCapacity(layoutSchema);
+          await base44.entities.PlantingSpace.create({
+            garden_id: selectedItem.garden_id,
+            plot_item_id: selectedItem.id,
+            space_type: selectedItem.item_type,
+            name: editItemData.label,
+            capacity,
+            layout_schema,
+            is_active: true
           });
         }
       }
@@ -701,7 +719,7 @@ export default function PlotCanvas({ garden, plot, onPlotUpdate }) {
             <div
               key={item.id}
               className={cn(
-                "absolute border-2 rounded-lg flex items-center justify-center text-sm font-medium",
+                "absolute border-2 rounded-lg flex items-center justify-center text-sm font-medium overflow-hidden",
                 selectedItem?.id === item.id ? "border-emerald-600 ring-2 ring-emerald-100" : "border-gray-400"
               )}
               style={{
@@ -710,8 +728,6 @@ export default function PlotCanvas({ garden, plot, onPlotUpdate }) {
                 width: item.width * zoom,
                 height: item.height * zoom,
                 backgroundColor: getItemColor(item.item_type),
-                transform: `rotate(${item.rotation}deg)`,
-                transformOrigin: 'center',
                 cursor: 'grab'
               }}
             >
@@ -732,16 +748,25 @@ export default function PlotCanvas({ garden, plot, onPlotUpdate }) {
                   ))}
                 </svg>
               )}
-              {/* Label stays horizontal */}
-              <span 
-                className="text-white text-shadow pointer-events-none font-semibold"
+              {/* Rotated container */}
+              <div 
+                className="absolute inset-0 flex items-center justify-center"
                 style={{
-                  transform: `rotate(${-item.rotation}deg)`,
-                  display: 'inline-block'
+                  transform: `rotate(${item.rotation}deg)`,
+                  transformOrigin: 'center'
                 }}
               >
-                {item.label}
-              </span>
+                {/* Label counter-rotated to stay horizontal */}
+                <span 
+                  className="text-white text-shadow pointer-events-none font-semibold"
+                  style={{
+                    transform: `rotate(${-item.rotation}deg)`,
+                    display: 'inline-block'
+                  }}
+                >
+                  {item.label}
+                </span>
+              </div>
             </div>
           ))}
         </div>

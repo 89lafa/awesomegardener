@@ -3,15 +3,13 @@ import { useSearchParams, Link } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
 import { base44 } from '@/api/base44Client';
 import { 
-  TreeDeciduous, 
-  Plus, 
-  Loader2,
-  Grid3X3,
-  Rows,
-  Package,
-  Home,
   Sprout,
-  Hammer
+  RefreshCw, 
+  Plus, 
+  Settings,
+  Loader2,
+  CheckCircle2,
+  AlertCircle
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -22,35 +20,19 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Badge } from '@/components/ui/badge';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { toast } from 'sonner';
 import ErrorBoundary from '@/components/common/ErrorBoundary';
 
-const SPACE_TYPE_ICONS = {
-  RAISED_BED: Grid3X3,
-  IN_GROUND_BED: Rows,
-  GREENHOUSE: Home,
-  OPEN_PLOT: Sprout,
-  GROW_BAG: Package,
-  CONTAINER: Package
-};
-
-const SPACE_TYPE_LABELS = {
-  RAISED_BED: 'Raised Bed',
-  IN_GROUND_BED: 'In-Ground Bed',
-  GREENHOUSE: 'Greenhouse',
-  OPEN_PLOT: 'Open Plot',
-  GROW_BAG: 'Grow Bag',
-  CONTAINER: 'Container'
-};
-
 export default function GardenPlanting() {
-  const [searchParams, setSearchParams] = useSearchParams();
+  const [searchParams] = useSearchParams();
+  const [user, setUser] = useState(null);
   const [gardens, setGardens] = useState([]);
   const [activeGarden, setActiveGarden] = useState(null);
-  const [spaces, setSpaces] = useState([]);
-  const [plantings, setPlantings] = useState([]);
+  const [plantingSpaces, setPlantingSpaces] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [syncing, setSyncing] = useState(false);
+  const [syncResult, setSyncResult] = useState(null);
 
   useEffect(() => {
     loadData();
@@ -58,17 +40,19 @@ export default function GardenPlanting() {
 
   useEffect(() => {
     if (activeGarden) {
-      loadSpaces();
+      loadPlantingSpaces();
     }
   }, [activeGarden]);
 
   const loadData = async () => {
     try {
+      console.log('[GardenPlanting] Loading data...');
       const [userData, gardensData] = await Promise.all([
         base44.auth.me(),
         base44.entities.Garden.filter({ archived: false }, '-updated_date')
       ]);
       
+      setUser(userData);
       setGardens(gardensData);
 
       if (gardensData.length === 0) {
@@ -76,7 +60,7 @@ export default function GardenPlanting() {
         return;
       }
 
-      // Garden selection logic
+      // Select garden
       const urlGardenId = searchParams.get('gardenId');
       let selectedGarden = null;
 
@@ -88,13 +72,8 @@ export default function GardenPlanting() {
         selectedGarden = gardensData[0];
       }
 
-      if (selectedGarden) {
-        setActiveGarden(selectedGarden);
-        setSearchParams({ gardenId: selectedGarden.id });
-        if (userData.active_garden_id !== selectedGarden.id) {
-          await base44.auth.updateMe({ active_garden_id: selectedGarden.id });
-        }
-      }
+      console.log('[GardenPlanting] Selected garden:', selectedGarden?.name, selectedGarden?.id);
+      setActiveGarden(selectedGarden);
     } catch (error) {
       console.error('Error loading data:', error);
       toast.error('Failed to load gardens');
@@ -103,54 +82,57 @@ export default function GardenPlanting() {
     }
   };
 
-  const syncPlotItemsToSpaces = async () => {
+  const loadPlantingSpaces = async () => {
+    if (!activeGarden) return;
+    
     try {
-      // Get all plot items for this garden
-      const plotItems = await base44.entities.PlotItem.filter({ garden_id: activeGarden.id });
+      console.log('[GardenPlanting] Loading planting spaces for garden:', activeGarden.id);
+      const spaces = await base44.entities.PlantingSpace.filter({ 
+        garden_id: activeGarden.id,
+        is_active: true 
+      }, 'name');
+      console.log('[GardenPlanting] Found planting spaces:', spaces.length, spaces);
+      setPlantingSpaces(spaces);
+    } catch (error) {
+      console.error('Error loading planting spaces:', error);
+    }
+  };
+
+  const syncFromPlotBuilder = async () => {
+    if (!activeGarden) return;
+    
+    setSyncing(true);
+    setSyncResult(null);
+    
+    try {
+      console.log('[SYNC] Starting sync for garden:', activeGarden.id);
       
-      console.log(`[SYNC] Found ${plotItems.length} plot items for garden ${activeGarden.id}`);
+      // Load all plot items for this garden
+      const plotItems = await base44.entities.PlotItem.filter({ garden_id: activeGarden.id });
+      console.log('[SYNC] Found plot items:', plotItems.length);
+      
+      // Load existing planting spaces
+      const existingSpaces = await base44.entities.PlantingSpace.filter({ garden_id: activeGarden.id });
+      const existingByPlotItem = {};
+      existingSpaces.forEach(s => {
+        if (s.plot_item_id) existingByPlotItem[s.plot_item_id] = s;
+      });
       
       const plantableTypes = ['RAISED_BED', 'IN_GROUND_BED', 'GREENHOUSE', 'OPEN_PLOT', 'GROW_BAG', 'CONTAINER'];
+      const plantableItems = plotItems.filter(item => plantableTypes.includes(item.item_type));
       
-      for (const item of plotItems) {
-        // Skip non-plantable items
-        if (!plantableTypes.includes(item.item_type)) {
-          console.log(`[SYNC] Skipping non-plantable item: ${item.label} (${item.item_type})`);
-          continue;
-        }
-
-        // Check if PlantingSpace exists
-        const existingSpaces = await base44.entities.PlantingSpace.filter({ plot_item_id: item.id });
-        
-        if (existingSpaces.length > 0) {
-          console.log(`[SYNC] Space already exists for: ${item.label}`);
-          continue;
-        }
-
+      console.log('[SYNC] Plantable items:', plantableItems.length);
+      
+      let created = 0;
+      let updated = 0;
+      let skipped = 0;
+      
+      for (const item of plantableItems) {
         // Calculate layout schema
-        let layoutSchema = { type: 'slots', slots: 1 };
-        let capacity = 1;
-
-        if (item.item_type === 'RAISED_BED' && item.metadata?.gridEnabled) {
-          const gridSize = item.metadata.gridSize || 12;
-          const cols = Math.floor(item.width / gridSize);
-          const rows = Math.floor(item.height / gridSize);
-          layoutSchema = { type: 'grid', grid_size: gridSize, columns: cols, rows: rows };
-          capacity = cols * rows;
-        } else if (item.item_type === 'IN_GROUND_BED' || item.item_type === 'OPEN_PLOT') {
-          const rowSpacing = item.metadata?.rowSpacing || 18;
-          const rowCount = item.metadata?.rowCount || Math.floor(item.width / rowSpacing);
-          layoutSchema = { type: 'rows', rows: rowCount, row_spacing: rowSpacing };
-          capacity = rowCount;
-        } else if (item.item_type === 'GREENHOUSE') {
-          const slots = item.metadata?.capacity || 20;
-          layoutSchema = { type: 'slots', slots };
-          capacity = slots;
-        }
-
-        console.log(`[SYNC] Creating space for: ${item.label} (capacity: ${capacity})`);
-
-        await base44.entities.PlantingSpace.create({
+        const layoutSchema = calculateLayoutSchema(item);
+        const capacity = calculateCapacity(layoutSchema);
+        
+        const spaceData = {
           garden_id: activeGarden.id,
           plot_item_id: item.id,
           space_type: item.item_type,
@@ -158,68 +140,78 @@ export default function GardenPlanting() {
           capacity,
           layout_schema,
           is_active: true
-        });
+        };
+        
+        if (existingByPlotItem[item.id]) {
+          // Update existing
+          await base44.entities.PlantingSpace.update(existingByPlotItem[item.id].id, spaceData);
+          updated++;
+        } else {
+          // Create new
+          await base44.entities.PlantingSpace.create(spaceData);
+          created++;
+        }
       }
+      
+      // Mark spaces as inactive if plot item was deleted
+      for (const space of existingSpaces) {
+        if (space.plot_item_id && !plotItems.find(pi => pi.id === space.plot_item_id)) {
+          await base44.entities.PlantingSpace.update(space.id, { is_active: false });
+        }
+      }
+      
+      setSyncResult({ created, updated, skipped });
+      await loadPlantingSpaces();
+      toast.success(`Sync complete! Created ${created}, updated ${updated}`);
     } catch (error) {
-      console.error('[SYNC] Error syncing plot items to spaces:', error);
+      console.error('[SYNC] Error:', error);
+      toast.error('Sync failed: ' + error.message);
+    } finally {
+      setSyncing(false);
     }
   };
 
-  const loadSpaces = async () => {
-    try {
-      // First sync plot items to spaces
-      await syncPlotItemsToSpaces();
-      
-      // Then load spaces
-      const [spacesData, plantingsData, plotItemsData] = await Promise.all([
-        base44.entities.PlantingSpace.filter({ 
-          garden_id: activeGarden.id,
-          is_active: true 
-        }),
-        base44.entities.PlantInstance.filter({ garden_id: activeGarden.id }),
-        base44.entities.PlotItem.filter({ garden_id: activeGarden.id })
-      ]);
-      
-      console.log(`[DEBUG] Garden: ${activeGarden.name} (${activeGarden.id})`);
-      console.log(`[DEBUG] PlotItems: ${plotItemsData.length}`, plotItemsData.map(i => ({ id: i.id, type: i.item_type, label: i.label })));
-      console.log(`[DEBUG] PlantingSpaces: ${spacesData.length}`, spacesData.map(s => ({ id: s.id, plot_item_id: s.plot_item_id, name: s.name, type: s.space_type })));
-      
-      setSpaces(spacesData);
-      setPlantings(plantingsData);
-    } catch (error) {
-      console.error('Error loading spaces:', error);
-    }
-  };
-
-  const handleGardenChange = async (gardenId) => {
-    const garden = gardens.find(g => g.id === gardenId);
-    if (!garden) return;
-
-    setActiveGarden(garden);
-    setSearchParams({ gardenId: garden.id });
+  const calculateLayoutSchema = (item) => {
+    const metadata = item.metadata || {};
     
-    try {
-      await base44.auth.updateMe({ active_garden_id: garden.id });
-    } catch (error) {
-      console.error('Error saving preference:', error);
+    if (metadata.gridEnabled) {
+      const gridSize = metadata.gridSize || 12;
+      return {
+        type: 'grid',
+        grid_size: gridSize,
+        columns: Math.floor(item.width / gridSize),
+        rows: Math.floor(item.height / gridSize)
+      };
     }
+    
+    if (item.item_type === 'IN_GROUND_BED' || item.item_type === 'OPEN_PLOT') {
+      return {
+        type: 'rows',
+        rows: metadata.rowCount || Math.floor(item.width / (metadata.rowSpacing || 18)),
+        row_spacing: metadata.rowSpacing || 18
+      };
+    }
+    
+    if (item.item_type === 'GROW_BAG' || item.item_type === 'CONTAINER') {
+      return { type: 'slots', slots: 1 };
+    }
+    
+    if (item.item_type === 'GREENHOUSE') {
+      return { type: 'slots', slots: metadata.capacity || 20 };
+    }
+    
+    return { type: 'slots', slots: 10 };
   };
 
-  const getSpaceCapacity = (space) => {
-    const spacePlantings = plantings.filter(p => p.space_id === space.id);
-    return {
-      used: spacePlantings.length,
-      total: space.capacity || 0
-    };
-  };
-
-  const groupedSpaces = spaces.reduce((acc, space) => {
-    if (!acc[space.space_type]) {
-      acc[space.space_type] = [];
+  const calculateCapacity = (layoutSchema) => {
+    if (layoutSchema.type === 'grid') {
+      return layoutSchema.columns * layoutSchema.rows;
     }
-    acc[space.space_type].push(space);
-    return acc;
-  }, {});
+    if (layoutSchema.type === 'rows') {
+      return layoutSchema.rows;
+    }
+    return layoutSchema.slots || 1;
+  };
 
   if (loading) {
     return (
@@ -229,16 +221,15 @@ export default function GardenPlanting() {
     );
   }
 
-  // No gardens state
   if (gardens.length === 0) {
     return (
       <div className="h-[calc(100vh-8rem)] flex items-center justify-center">
         <Card className="max-w-md w-full">
           <CardContent className="p-8 text-center">
-            <TreeDeciduous className="w-16 h-16 text-emerald-600 mx-auto mb-4" />
+            <Sprout className="w-16 h-16 text-emerald-600 mx-auto mb-4" />
             <h2 className="text-xl font-semibold text-gray-900 mb-2">No Gardens Yet</h2>
             <p className="text-gray-600 mb-6">
-              Create your first garden and start planning your layout
+              Create a garden first to start planting
             </p>
             <Link to={createPageUrl('Gardens')}>
               <Button className="bg-emerald-600 hover:bg-emerald-700 gap-2">
@@ -252,64 +243,21 @@ export default function GardenPlanting() {
     );
   }
 
-  // No spaces (empty plot)
-  if (spaces.length === 0) {
-    return (
-      <ErrorBoundary fallbackTitle="Garden Error">
-        <div className="space-y-6">
-          {/* Header with Garden Selector */}
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <TreeDeciduous className="w-6 h-6 text-emerald-600" />
-              {gardens.length > 1 ? (
-                <Select value={activeGarden?.id} onValueChange={handleGardenChange}>
-                  <SelectTrigger className="w-64">
-                    <SelectValue placeholder="Select a garden" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {gardens.map((garden) => (
-                      <SelectItem key={garden.id} value={garden.id}>
-                        {garden.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              ) : (
-                <h1 className="text-xl lg:text-2xl font-bold text-gray-900">{activeGarden?.name}</h1>
-              )}
-            </div>
-          </div>
-
-          {/* Empty State */}
-          <Card className="py-16">
-            <CardContent className="text-center">
-              <Hammer className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">No Beds or Spaces Yet</h3>
-              <p className="text-gray-600 mb-6">
-                First, design your garden layout in Plot Builder by adding beds, greenhouses, and containers
-              </p>
-              <Link to={createPageUrl('MyGarden') + `?gardenId=${activeGarden.id}`}>
-                <Button className="bg-emerald-600 hover:bg-emerald-700 gap-2">
-                  <Hammer className="w-4 h-4" />
-                  Open Plot Builder
-                </Button>
-              </Link>
-            </CardContent>
-          </Card>
-        </div>
-      </ErrorBoundary>
-    );
-  }
-
   return (
-    <ErrorBoundary fallbackTitle="Garden Error">
-      <div className="space-y-6">
-        {/* Header with Garden Selector */}
+    <ErrorBoundary fallbackTitle="My Garden Error">
+      <div className="space-y-6 max-w-5xl">
+        {/* Header */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <TreeDeciduous className="w-6 h-6 text-emerald-600" />
+            <Sprout className="w-6 h-6 text-emerald-600" />
             {gardens.length > 1 ? (
-              <Select value={activeGarden?.id} onValueChange={handleGardenChange}>
+              <Select 
+                value={activeGarden?.id} 
+                onValueChange={(gardenId) => {
+                  const garden = gardens.find(g => g.id === gardenId);
+                  setActiveGarden(garden);
+                }}
+              >
                 <SelectTrigger className="w-64">
                   <SelectValue placeholder="Select a garden" />
                 </SelectTrigger>
@@ -322,79 +270,82 @@ export default function GardenPlanting() {
                 </SelectContent>
               </Select>
             ) : (
-              <h1 className="text-xl lg:text-2xl font-bold text-gray-900">{activeGarden?.name}</h1>
+              <h1 className="text-2xl lg:text-3xl font-bold text-gray-900">{activeGarden?.name}</h1>
             )}
           </div>
-          <Link to={createPageUrl('MyGarden') + `?gardenId=${activeGarden.id}`}>
-            <Button variant="outline" className="gap-2">
-              <Hammer className="w-4 h-4" />
-              Edit Layout
+          <div className="flex gap-2">
+            <Link to={createPageUrl('PlotBuilder') + `?gardenId=${activeGarden?.id}`}>
+              <Button variant="outline" className="gap-2">
+                <Settings className="w-4 h-4" />
+                Plot Builder
+              </Button>
+            </Link>
+            <Button 
+              onClick={syncFromPlotBuilder}
+              disabled={syncing}
+              className="bg-emerald-600 hover:bg-emerald-700 gap-2"
+            >
+              {syncing ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
+              Sync from Plot Builder
             </Button>
-          </Link>
+          </div>
         </div>
 
-        {/* Spaces Grouped by Type */}
-        <div className="space-y-6">
-          {Object.entries(groupedSpaces).map(([type, typeSpaces]) => {
-            const Icon = SPACE_TYPE_ICONS[type] || Grid3X3;
-            return (
-              <Card key={type}>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Icon className="w-5 h-5 text-emerald-600" />
-                    {SPACE_TYPE_LABELS[type] || type}
-                    <Badge variant="secondary" className="ml-2">{typeSpaces.length}</Badge>
-                  </CardTitle>
+        {/* Sync Result */}
+        {syncResult && (
+          <Alert className="bg-green-50 border-green-200">
+            <CheckCircle2 className="w-4 h-4 text-green-600" />
+            <AlertDescription>
+              Sync complete! Created {syncResult.created}, updated {syncResult.updated} planting spaces.
+            </AlertDescription>
+          </Alert>
+        )}
+
+        {/* No Spaces State */}
+        {plantingSpaces.length === 0 && (
+          <Alert>
+            <AlertCircle className="w-4 h-4" />
+            <AlertDescription>
+              <strong>No planting spaces yet.</strong> Use Plot Builder to design your garden layout, 
+              then click "Sync from Plot Builder" to create planting spaces.
+            </AlertDescription>
+          </Alert>
+        )}
+
+        {/* Planting Spaces List */}
+        {plantingSpaces.length > 0 && (
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {plantingSpaces.map((space) => (
+              <Card key={space.id}>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-base">{space.name}</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {typeSpaces.map((space) => {
-                      const capacity = getSpaceCapacity(space);
-                      const percentFull = capacity.total > 0 ? (capacity.used / capacity.total) * 100 : 0;
-                      return (
-                        <Card 
-                          key={space.id}
-                          className="cursor-pointer hover:shadow-md transition-shadow"
-                          onClick={() => {
-                            // TODO: Navigate to space detail/planting view
-                            toast.info('Space planting UI coming soon!');
-                          }}
-                        >
-                          <CardContent className="p-4">
-                            <div className="flex items-center justify-between mb-2">
-                              <h4 className="font-semibold text-gray-900">{space.name}</h4>
-                              <Badge variant={capacity.used > 0 ? 'default' : 'outline'}>
-                                {capacity.used}/{capacity.total}
-                              </Badge>
-                            </div>
-                            
-                            {/* Capacity Bar */}
-                            {capacity.total > 0 && (
-                              <div className="mt-2">
-                                <div className="w-full bg-gray-200 rounded-full h-2">
-                                  <div 
-                                    className="bg-emerald-600 h-2 rounded-full transition-all"
-                                    style={{ width: `${Math.min(percentFull, 100)}%` }}
-                                  />
-                                </div>
-                              </div>
-                            )}
-
-                            {space.layout_schema?.type && (
-                              <p className="text-xs text-gray-500 mt-2 capitalize">
-                                {space.layout_schema.type} layout
-                              </p>
-                            )}
-                          </CardContent>
-                        </Card>
-                      );
-                    })}
+                  <div className="space-y-2 text-sm">
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Type:</span>
+                      <span className="font-medium capitalize">{space.space_type.replace(/_/g, ' ')}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Capacity:</span>
+                      <span className="font-medium">{space.capacity} {space.layout_schema?.type === 'grid' ? 'cells' : space.layout_schema?.type === 'rows' ? 'rows' : 'slots'}</span>
+                    </div>
+                    {space.layout_schema?.type === 'grid' && (
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Layout:</span>
+                        <span className="font-medium">{space.layout_schema.columns} × {space.layout_schema.rows} grid</span>
+                      </div>
+                    )}
                   </div>
+                  <Button className="w-full mt-4 bg-emerald-600 hover:bg-emerald-700" size="sm">
+                    <Plus className="w-4 h-4 mr-2" />
+                    Add Plants
+                  </Button>
                 </CardContent>
               </Card>
-            );
-          })}
-        </div>
+            ))}
+          </div>
+        )}
       </div>
     </ErrorBoundary>
   );
