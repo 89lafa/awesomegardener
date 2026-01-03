@@ -187,15 +187,21 @@ export default function PlantingModal({ open, onOpenChange, item, garden, onPlan
   };
 
   const handleSelectStashPlant = (stashItem) => {
+    // Try to find variety from catalog first
     const variety = varieties.find(v => v.id === stashItem.variety_id);
-    if (!variety) return;
     
-    const spacing = getSpacingForPlant(variety);
+    // If no variety found in catalog, use stash item data directly
+    if (!variety && (!stashItem.variety_id || !stashItem.plant_type_id)) {
+      toast.error('This seed needs plant type information to be planted');
+      return;
+    }
+    
+    const spacing = variety ? getSpacingForPlant(variety) : { cols: 2, rows: 2 };
     setSelectedPlant({
-      variety_id: stashItem.variety_id,
-      variety_name: stashItem.variety_name,
-      plant_type_id: stashItem.plant_type_id,
-      plant_type_name: stashItem.plant_type_name,
+      variety_id: stashItem.variety_id || null,
+      variety_name: stashItem.variety_name || 'Unknown',
+      plant_type_id: stashItem.plant_type_id || null,
+      plant_type_name: stashItem.plant_type_name || 'Unknown',
       spacing_cols: spacing.cols,
       spacing_rows: spacing.rows
     });
