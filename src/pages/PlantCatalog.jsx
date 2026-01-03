@@ -59,7 +59,7 @@ export default function PlantCatalog() {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
-  const [sortBy, setSortBy] = useState('name');
+  const [sortBy, setSortBy] = useState('popularity');
   const [viewMode, setViewMode] = useState('grid');
   const [selectedType, setSelectedType] = useState(null);
   const [selectedVariety, setSelectedVariety] = useState(null);
@@ -191,6 +191,10 @@ export default function PlantCatalog() {
     }
   };
 
+  // Define popular plant types for top categories sorting
+  const popularTypes = ['Tomato', 'Pepper', 'Cucumber', 'Lettuce', 'Bean', 'Pea', 'Squash', 'Zucchini', 
+                        'Carrot', 'Radish', 'Onion', 'Garlic', 'Basil', 'Cilantro', 'Parsley'];
+
   const filteredTypes = plantTypes.filter(type => {
     const name = type.common_name || '';
     const matchesSearch = searchQuery === '' || 
@@ -203,6 +207,13 @@ export default function PlantCatalog() {
       return (a.common_name || '').localeCompare(b.common_name || '');
     } else if (sortBy === 'category') {
       return (a.category || '').localeCompare(b.category || '');
+    } else if (sortBy === 'popularity') {
+      const aIndex = popularTypes.indexOf(a.common_name);
+      const bIndex = popularTypes.indexOf(b.common_name);
+      if (aIndex !== -1 && bIndex !== -1) return aIndex - bIndex;
+      if (aIndex !== -1) return -1;
+      if (bIndex !== -1) return 1;
+      return (a.common_name || '').localeCompare(b.common_name || '');
     }
     return 0;
   });
@@ -466,9 +477,15 @@ export default function PlantCatalog() {
         {/* Varieties List */}
         <div>
           <h3 className="font-semibold text-gray-900 mb-4">
-            Varieties ({varieties.length})
+            Varieties ({selectedSubCategory === 'all' ? varieties.length : varieties.filter(v => {
+              const maps = v.subcategory_maps || [];
+              return maps.some(m => m === selectedSubCategory);
+            }).length})
           </h3>
-          {varieties.length === 0 ? (
+          {(selectedSubCategory === 'all' ? varieties : varieties.filter(v => {
+            const maps = v.subcategory_maps || [];
+            return maps.some(m => m === selectedSubCategory);
+          })).length === 0 ? (
             <Card className="py-12">
               <CardContent className="text-center">
                 <Sprout className="w-12 h-12 text-gray-300 mx-auto mb-3" />
@@ -483,7 +500,10 @@ export default function PlantCatalog() {
             </Card>
           ) : (
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {varieties.map((variety) => (
+              {(selectedSubCategory === 'all' ? varieties : varieties.filter(v => {
+                const maps = v.subcategory_maps || [];
+                return maps.some(m => m === selectedSubCategory);
+              })).map((variety) => (
                 <Card 
                   key={variety.id} 
                   className="cursor-pointer hover:shadow-md transition-shadow"
@@ -648,10 +668,11 @@ export default function PlantCatalog() {
           </SelectContent>
         </Select>
         <Select value={sortBy} onValueChange={setSortBy}>
-          <SelectTrigger className="w-full sm:w-40">
+          <SelectTrigger className="w-full sm:w-44">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
+            <SelectItem value="popularity">Top Categories</SelectItem>
             <SelectItem value="name">Sort: A-Z</SelectItem>
             <SelectItem value="category">Sort: Category</SelectItem>
           </SelectContent>
