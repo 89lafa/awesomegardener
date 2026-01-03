@@ -29,6 +29,8 @@ import ErrorBoundary from '@/components/common/ErrorBoundary';
 function SpaceCard({ space }) {
   const [plantings, setPlantings] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [showPlantPicker, setShowPlantPicker] = useState(false);
+  const [selectedCell, setSelectedCell] = useState(null);
 
   useEffect(() => {
     loadPlantings();
@@ -43,6 +45,18 @@ function SpaceCard({ space }) {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleCellClick = (colIdx, rowIdx) => {
+    console.log('[PLANTING] clicked spaceId=', space.id, 'cell=', colIdx, rowIdx);
+    setSelectedCell({ x: colIdx, y: rowIdx });
+    setShowPlantPicker(true);
+  };
+
+  const handleAddPlant = () => {
+    console.log('[PLANTING] Add plant clicked for space:', space.id);
+    setSelectedCell(null);
+    setShowPlantPicker(true);
   };
 
   const isGridSpace = space.layout_schema?.type === 'grid';
@@ -89,13 +103,14 @@ function SpaceCard({ space }) {
                   return (
                     <button
                       key={`${colIdx}-${rowIdx}`}
+                      onClick={() => handleCellClick(colIdx, rowIdx)}
                       className={cn(
-                        "aspect-square rounded border-2 transition-colors text-xs font-medium flex items-center justify-center",
+                        "aspect-square rounded border-2 transition-colors text-xs font-medium flex items-center justify-center cursor-pointer",
                         plant 
-                          ? "bg-emerald-500 border-emerald-600 text-white" 
-                          : "bg-white border-amber-300 hover:bg-amber-100"
+                          ? "bg-emerald-500 border-emerald-600 text-white hover:bg-emerald-600" 
+                          : "bg-white border-amber-300 hover:bg-amber-100 hover:border-amber-400"
                       )}
-                      title={plant ? plant.plant_display_name : 'Empty'}
+                      title={plant ? plant.plant_display_name : 'Click to plant'}
                     >
                       {plant && '🌱'}
                     </button>
@@ -123,13 +138,34 @@ function SpaceCard({ space }) {
                 </p>
               </div>
             )}
-            <Button className="w-full bg-emerald-600 hover:bg-emerald-700" size="sm">
+            <Button 
+              onClick={handleAddPlant}
+              className="w-full bg-emerald-600 hover:bg-emerald-700" 
+              size="sm"
+            >
               <Plus className="w-4 h-4 mr-2" />
               Add Plants
             </Button>
           </div>
         )}
       </CardContent>
+      
+      {/* TODO: Plant Picker Dialog */}
+      {showPlantPicker && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <Card className="max-w-md w-full">
+            <CardHeader>
+              <CardTitle>Add Plant</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-sm text-gray-600 mb-4">
+                Plant picker coming soon! Cell: {selectedCell ? `${selectedCell.x}, ${selectedCell.y}` : 'any'}
+              </p>
+              <Button onClick={() => setShowPlantPicker(false)}>Close</Button>
+            </CardContent>
+          </Card>
+        </div>
+      )}
     </Card>
   );
 }

@@ -59,6 +59,8 @@ export default function PlotCanvas({ garden, plot, onPlotUpdate }) {
   const canvasRef = useRef(null);
   const [items, setItems] = useState([]);
   const [selectedItem, setSelectedItem] = useState(null);
+  
+  console.log('[PlotCanvas.js] Component rendered, selectedItem:', selectedItem?.id);
   const [draggingItem, setDraggingItem] = useState(null);
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
   const [zoom, setZoom] = useState(1);
@@ -234,10 +236,10 @@ export default function PlotCanvas({ garden, plot, onPlotUpdate }) {
     const cols = Math.ceil(Math.sqrt(count));
 
     try {
-      // Get the first unique name - FIXED logic
-      let currentName = getNextName(itemType.label);
-      let baseNum = parseInt(currentName.match(/\d+$/)?.[0] || '1');
-      console.log('[Add Multiple] Starting sequence at:', currentName, 'baseNum:', baseNum);
+      // Get base number from first available name
+      const firstName = getNextName(itemType.label);
+      const baseNum = parseInt(firstName.match(/\d+$/)?.[0] || '1');
+      console.log('[Add Multiple] Starting at number:', baseNum, 'creating', count, 'items');
 
       for (let i = 0; i < count; i++) {
         const row = Math.floor(i / cols);
@@ -246,7 +248,7 @@ export default function PlotCanvas({ garden, plot, onPlotUpdate }) {
         const y = 50 + row * (height + spacing);
 
         const label = `${itemType.label} ${baseNum + i}`;
-        console.log('[Add Multiple] Creating item', i + 1, ':', label);
+        console.log('[Add Multiple] Creating:', label, 'at', x, y);
 
         const metadata = {};
         if (itemType.usesGrid && newItem.useSquareFootGrid) {
@@ -451,7 +453,7 @@ export default function PlotCanvas({ garden, plot, onPlotUpdate }) {
     x = Math.max(0, Math.min(x, plot.width - draggingItem.width));
     y = Math.max(0, Math.min(y, plot.height - draggingItem.height));
 
-    setItems(items.map(i => 
+    setItems(prevItems => prevItems.map(i => 
       i.id === draggingItem.id ? { ...i, x, y } : i
     ));
   };
@@ -460,6 +462,7 @@ export default function PlotCanvas({ garden, plot, onPlotUpdate }) {
     if (draggingItem) {
       const item = items.find(i => i.id === draggingItem.id);
       try {
+        console.log('[LAYOUT] Saving position for', item.label, 'x=', item.x, 'y=', item.y, 'snapToGrid=', snapToGrid);
         await base44.entities.PlotItem.update(item.id, { x: item.x, y: item.y });
       } catch (error) {
         console.error('Error updating position:', error);
@@ -505,19 +508,32 @@ export default function PlotCanvas({ garden, plot, onPlotUpdate }) {
     }
   };
 
-  const handleRotate = async (item) => {
-    const currentRotation = item.rotation || 0;
+  const handleRotate = async () => {
+    if (!selectedItem) {
+      console.error('[LAYOUT] Rotate called but no item selected');
+      return;
+    }
+    
+    const currentRotation = selectedItem.rotation || 0;
     const newRotation = (currentRotation + 90) % 360;
-    console.log('[LAYOUT] rotate id=', item.id, 'current=', currentRotation, 'new=', newRotation);
+    console.log('[LAYOUT] selectedItemId=', selectedItem.id, 'current=', currentRotation, 'new=', newRotation);
+    
     try {
-      await base44.entities.PlotItem.update(item.id, { rotation: newRotation });
-      const updatedItem = { ...item, rotation: newRotation };
-      setItems(items.map(i => i.id === item.id ? updatedItem : i));
+      // Update local state FIRST for immediate UI response
+      const updatedItem = { ...selectedItem, rotation: newRotation };
+      setItems(prevItems => prevItems.map(i => i.id === selectedItem.id ? updatedItem : i));
       setSelectedItem(updatedItem);
-      console.log('[LAYOUT] rotate saved successfully');
+      console.log('[LAYOUT] updating local state for id=', selectedItem.id, 'to rotation=', newRotation);
+      
+      // Then persist to DB
+      await base44.entities.PlotItem.update(selectedItem.id, { rotation: newRotation });
+      console.log('[LAYOUT] rotate saved successfully to DB');
       toast.success('Rotated');
     } catch (error) {
       console.error('[LAYOUT] Error rotating:', error);
+      // Revert on error
+      setItems(prevItems => prevItems.map(i => i.id === selectedItem.id ? selectedItem : i));
+      setSelectedItem(selectedItem);
       toast.error('Failed to rotate');
     }
   };
@@ -655,6 +671,9 @@ export default function PlotCanvas({ garden, plot, onPlotUpdate }) {
 
   return (
     <div className="flex-1 flex gap-4 mt-4 min-h-0">
+      <div className="absolute top-2 left-2 text-xs text-gray-400 bg-white px-2 py-1 rounded shadow-sm z-10">
+        PlotCanvas.js
+      </div>
       {/* Left Toolbar */}
       <Card className="w-64 flex-shrink-0">
         <CardContent className="p-4 space-y-2">
@@ -711,6 +730,9 @@ export default function PlotCanvas({ garden, plot, onPlotUpdate }) {
               <p className="text-xs text-gray-500">
                 {selectedItem.width}" × {selectedItem.height}"
               </p>
+              <p className="text-xs text-gray-400">
+                ID: {selectedItem.id?.slice(0, 8)}... Rot: {selectedItem.rotation || 0}°
+              </p>
               <Button
                 variant="outline"
                 size="sm"
@@ -723,7 +745,8 @@ export default function PlotCanvas({ garden, plot, onPlotUpdate }) {
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => handleRotate(selectedItem)}
+                onClick={handleRotate}
+                disabled={!selectedItem}
                 className="w-full gap-2"
               >
                 <RotateCw className="w-4 h-4" />
