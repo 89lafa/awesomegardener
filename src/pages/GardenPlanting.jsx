@@ -25,6 +25,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import ErrorBoundary from '@/components/common/ErrorBoundary';
+import AddPlantDialog from '@/components/garden/AddPlantDialog';
 
 function SpaceCard({ space }) {
   const [plantings, setPlantings] = useState([]);
@@ -59,6 +60,10 @@ function SpaceCard({ space }) {
     setShowPlantPicker(true);
   };
 
+  const handlePlantAdded = () => {
+    loadPlantings();
+  };
+
   const isGridSpace = space.layout_schema?.type === 'grid';
   const columns = space.layout_schema?.columns || 1;
   const rows = space.layout_schema?.rows || 1;
@@ -91,10 +96,11 @@ function SpaceCard({ space }) {
           <div className="space-y-3">
             {/* Grid visualization */}
             <div 
-              className="grid gap-1 p-2 bg-amber-50 border border-amber-200 rounded-lg"
+              className="grid gap-1.5 p-2 bg-amber-50 border border-amber-200 rounded-lg"
               style={{
-                gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))`,
-                aspectRatio: `${columns}/${rows}`
+                gridTemplateColumns: `repeat(${columns}, 28px)`,
+                gridTemplateRows: `repeat(${rows}, 28px)`,
+                width: 'fit-content'
               }}
             >
               {Array.from({ length: rows }).map((_, rowIdx) => 
@@ -105,7 +111,7 @@ function SpaceCard({ space }) {
                       key={`${colIdx}-${rowIdx}`}
                       onClick={() => handleCellClick(colIdx, rowIdx)}
                       className={cn(
-                        "aspect-square rounded border-2 transition-colors text-xs font-medium flex items-center justify-center cursor-pointer",
+                        "w-7 h-7 rounded border-2 transition-colors text-xs font-medium flex items-center justify-center cursor-pointer",
                         plant 
                           ? "bg-emerald-500 border-emerald-600 text-white hover:bg-emerald-600" 
                           : "bg-white border-amber-300 hover:bg-amber-100 hover:border-amber-400"
@@ -150,22 +156,13 @@ function SpaceCard({ space }) {
         )}
       </CardContent>
       
-      {/* TODO: Plant Picker Dialog */}
-      {showPlantPicker && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <Card className="max-w-md w-full">
-            <CardHeader>
-              <CardTitle>Add Plant</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-sm text-gray-600 mb-4">
-                Plant picker coming soon! Cell: {selectedCell ? `${selectedCell.x}, ${selectedCell.y}` : 'any'}
-              </p>
-              <Button onClick={() => setShowPlantPicker(false)}>Close</Button>
-            </CardContent>
-          </Card>
-        </div>
-      )}
+      <AddPlantDialog
+        open={showPlantPicker}
+        onOpenChange={setShowPlantPicker}
+        space={space}
+        cellCoords={selectedCell}
+        onPlantAdded={handlePlantAdded}
+      />
     </Card>
   );
 }
@@ -469,7 +466,7 @@ export default function GardenPlanting() {
 
         {/* Planting Spaces List */}
         {plantingSpaces.length > 0 && (
-          <div className="space-y-6">
+          <div className="grid gap-6" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))' }}>
             {plantingSpaces.map((space) => (
               <SpaceCard key={space.id} space={space} />
             ))}

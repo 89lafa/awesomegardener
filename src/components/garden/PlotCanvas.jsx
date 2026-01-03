@@ -464,6 +464,10 @@ export default function PlotCanvas({ garden, plot, onPlotUpdate }) {
       try {
         console.log('[LAYOUT] Saving position for', item.label, 'x=', item.x, 'y=', item.y, 'snapToGrid=', snapToGrid);
         await base44.entities.PlotItem.update(item.id, { x: item.x, y: item.y });
+        // Update selectedItem to have latest position
+        if (selectedItem?.id === item.id) {
+          setSelectedItem(item);
+        }
       } catch (error) {
         console.error('Error updating position:', error);
       }
@@ -514,26 +518,67 @@ export default function PlotCanvas({ garden, plot, onPlotUpdate }) {
       return;
     }
     
-    const currentRotation = selectedItem.rotation || 0;
+    // Get latest item state from items array
+    const currentItem = items.find(i => i.id === selectedItem.id) || selectedItem;
+    const currentRotation = currentItem.rotation || 0;
     const newRotation = (currentRotation + 90) % 360;
-    console.log('[LAYOUT] selectedItemId=', selectedItem.id, 'current=', currentRotation, 'new=', newRotation);
+    
+    // Calculate center point
+    const cx = currentItem.x + currentItem.width / 2;
+    const cy = currentItem.y + currentItem.height / 2;
+    
+    // Swap dimensions for 90/270 rotation
+    const isVertical = newRotation === 90 || newRotation === 270;
+    const newWidth = isVertical ? currentItem.height : currentItem.width;
+    const newHeight = isVertical ? currentItem.width : currentItem.height;
+    
+    // Recalculate position to keep centered
+    let newX = cx - newWidth / 2;
+    let newY = cy - newHeight / 2;
+    
+    // Apply snap to grid if enabled
+    if (snapToGrid) {
+      const gridSize = plot.grid_size || 12;
+      newX = Math.round(newX / gridSize) * gridSize;
+      newY = Math.round(newY / gridSize) * gridSize;
+    }
+    
+    // Clamp to canvas bounds
+    newX = Math.max(0, Math.min(newX, plot.width - newWidth));
+    newY = Math.max(0, Math.min(newY, plot.height - newHeight));
+    
+    console.log('[LAYOUT] rotate selectedItemId=', selectedItem.id, 
+      'before={x:', currentItem.x, 'y:', currentItem.y, 'w:', currentItem.width, 'h:', currentItem.height, 'rot:', currentRotation, '}',
+      'after={x:', newX, 'y:', newY, 'w:', newWidth, 'h:', newHeight, 'rot:', newRotation, '}');
     
     try {
       // Update local state FIRST for immediate UI response
-      const updatedItem = { ...selectedItem, rotation: newRotation };
+      const updatedItem = { 
+        ...currentItem, 
+        x: newX, 
+        y: newY, 
+        width: newWidth, 
+        height: newHeight, 
+        rotation: newRotation 
+      };
       setItems(prevItems => prevItems.map(i => i.id === selectedItem.id ? updatedItem : i));
       setSelectedItem(updatedItem);
-      console.log('[LAYOUT] updating local state for id=', selectedItem.id, 'to rotation=', newRotation);
       
       // Then persist to DB
-      await base44.entities.PlotItem.update(selectedItem.id, { rotation: newRotation });
+      await base44.entities.PlotItem.update(selectedItem.id, { 
+        x: newX, 
+        y: newY, 
+        width: newWidth, 
+        height: newHeight, 
+        rotation: newRotation 
+      });
       console.log('[LAYOUT] rotate saved successfully to DB');
       toast.success('Rotated');
     } catch (error) {
       console.error('[LAYOUT] Error rotating:', error);
       // Revert on error
-      setItems(prevItems => prevItems.map(i => i.id === selectedItem.id ? selectedItem : i));
-      setSelectedItem(selectedItem);
+      setItems(prevItems => prevItems.map(i => i.id === selectedItem.id ? currentItem : i));
+      setSelectedItem(currentItem);
       toast.error('Failed to rotate');
     }
   };
