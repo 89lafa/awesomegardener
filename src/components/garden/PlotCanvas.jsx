@@ -282,7 +282,7 @@ export default function PlotCanvas({ garden, plot, onPlotUpdate }) {
             space_type: item.item_type,
             name: label,
             capacity,
-            layout_schema,
+            layout_schema: layoutSchema,
             is_active: true
           });
         }
@@ -395,7 +395,7 @@ export default function PlotCanvas({ garden, plot, onPlotUpdate }) {
             space_type: item.item_type,
             name: label,
             capacity,
-            layout_schema,
+            layout_schema: layoutSchema,
             is_active: true
           });
         }
