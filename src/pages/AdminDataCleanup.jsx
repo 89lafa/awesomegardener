@@ -75,15 +75,31 @@ export default function AdminDataCleanup() {
       let deleted = 0;
       for (const type of invalidTypes) {
         try {
+          // Check if plant type still exists
+          const exists = await base44.entities.PlantType.filter({ id: type.id });
+          if (exists.length === 0) {
+            console.log('PlantType already deleted:', type.id);
+            deleted++;
+            continue;
+          }
+
           // Delete related records first
           const facetMaps = await base44.entities.PlantTypeFacetGroupMap.filter({ plant_type_id: type.id });
           for (const map of facetMaps) {
-            await base44.entities.PlantTypeFacetGroupMap.delete(map.id);
+            try {
+              await base44.entities.PlantTypeFacetGroupMap.delete(map.id);
+            } catch (err) {
+              if (!err.message?.includes('not found')) throw err;
+            }
           }
 
           const traitTemplates = await base44.entities.PlantTypeTraitTemplate.filter({ plant_type_id: type.id });
           for (const template of traitTemplates) {
-            await base44.entities.PlantTypeTraitTemplate.delete(template.id);
+            try {
+              await base44.entities.PlantTypeTraitTemplate.delete(template.id);
+            } catch (err) {
+              if (!err.message?.includes('not found')) throw err;
+            }
           }
 
           // Delete the plant type
