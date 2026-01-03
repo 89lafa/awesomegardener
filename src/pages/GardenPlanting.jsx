@@ -40,8 +40,9 @@ export default function GardenPlanting() {
 
   useEffect(() => {
     if (activeGarden) {
-      console.log('[GardenPlanting] Active garden changed, syncing...');
-      syncFromPlotBuilder(true); // Auto-sync on load
+      console.log('[GardenPlanting] Active garden changed, loading spaces...');
+      loadPlantingSpaces(); // Load existing spaces first
+      syncFromPlotBuilder(true); // Then sync in background
     }
   }, [activeGarden]);
 
