@@ -155,18 +155,27 @@ export default function SeedStash() {
   };
 
   const handleSubmit = async () => {
-    if (!formData.plant_type_name && !formData.custom_name) {
-      toast.error('Please enter a plant name');
+    if (!formData.plant_type_name && !formData.variety_name) {
+      toast.error('Please enter a plant type or variety name');
       return;
+    }
+
+    // Ensure plant_type_name is set if plant_type_id is selected
+    const submitData = { ...formData };
+    if (submitData.plant_type_id && !submitData.plant_type_name) {
+      const type = plantTypes.find(t => t.id === submitData.plant_type_id);
+      if (type) {
+        submitData.plant_type_name = type.common_name;
+      }
     }
 
     try {
       if (editingSeed) {
-        await base44.entities.SeedLot.update(editingSeed.id, formData);
-        setSeeds(seeds.map(s => s.id === editingSeed.id ? { ...s, ...formData } : s));
+        await base44.entities.SeedLot.update(editingSeed.id, submitData);
+        setSeeds(seeds.map(s => s.id === editingSeed.id ? { ...s, ...submitData } : s));
         toast.success('Seed updated!');
       } else {
-        const seed = await base44.entities.SeedLot.create(formData);
+        const seed = await base44.entities.SeedLot.create(submitData);
         setSeeds([seed, ...seeds]);
         toast.success(formData.is_wishlist ? 'Added to wishlist!' : 'Seed added to stash!');
       }
@@ -422,14 +431,14 @@ export default function SeedStash() {
                 <Card className="group hover:shadow-md transition-shadow">
                   <CardContent className="p-4">
                     <div className="flex items-start justify-between mb-3">
-                      <div className="flex-1 min-w-0">
-                        <h3 className="font-semibold text-gray-900 truncate">
-                          {seed.variety_name || seed.custom_name || seed.plant_type_name}
-                        </h3>
-                        {seed.plant_type_name && seed.variety_name && (
-                          <p className="text-sm text-gray-500">{seed.plant_type_name}</p>
-                        )}
-                      </div>
+                     <div className="flex-1 min-w-0">
+                       <h3 className="font-semibold text-gray-900 truncate">
+                         {seed.variety_name || seed.plant_type_name}
+                       </h3>
+                       {seed.plant_type_name && seed.variety_name && (
+                         <p className="text-sm text-gray-500">{seed.plant_type_name}</p>
+                       )}
+                     </div>
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                           <Button variant="ghost" size="icon" className="h-8 w-8">
@@ -518,7 +527,7 @@ export default function SeedStash() {
               {filteredSeeds.map((seed) => (
                 <TableRow key={seed.id}>
                   <TableCell className="font-medium">
-                    {seed.variety_name || seed.custom_name || seed.plant_type_name}
+                    {seed.variety_name || seed.plant_type_name}
                   </TableCell>
                   <TableCell>{seed.plant_type_name}</TableCell>
                   <TableCell>{seed.source_company || '-'}</TableCell>
@@ -591,25 +600,37 @@ export default function SeedStash() {
               </Select>
             </div>
 
-            {formData.plant_type_id && varieties.length > 0 && (
+            {formData.plant_type_id && (
               <div>
-                <Label>Variety (from catalog)</Label>
-                <Select 
-                  value={formData.variety_id} 
-                  onValueChange={handleVarietyChange}
-                >
-                  <SelectTrigger className="mt-2">
-                    <SelectValue placeholder="Select variety" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value={null}>None (manual entry)</SelectItem>
-                    {varieties.map((variety) => (
-                      <SelectItem key={variety.id} value={variety.id}>
-                        {variety.variety_name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <Label>Variety Name</Label>
+                {varieties.length > 0 ? (
+                  <Select 
+                    value={formData.variety_id} 
+                    onValueChange={handleVarietyChange}
+                  >
+                    <SelectTrigger className="mt-2">
+                      <SelectValue placeholder="Select variety or enter custom below" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value={null}>Custom variety (enter below)</SelectItem>
+                      {varieties.map((variety) => (
+                        <SelectItem key={variety.id} value={variety.id}>
+                          {variety.variety_name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                ) : (
+                  <p className="text-sm text-gray-500 mt-2">No catalog varieties available for {selectedPlantType?.common_name}</p>
+                )}
+                {!formData.variety_id && (
+                  <Input
+                    placeholder="e.g., Cherokee Purple, Genovese"
+                    value={formData.variety_name}
+                    onChange={(e) => setFormData({ ...formData, variety_name: e.target.value })}
+                    className="mt-2"
+                  />
+                )}
               </div>
             )}
 
@@ -626,7 +647,7 @@ export default function SeedStash() {
                   />
                 </div>
                 <div>
-                  <Label htmlFor="manualVariety">Variety (manual)</Label>
+                  <Label htmlFor="manualVariety">Variety Name</Label>
                   <Input
                     id="manualVariety"
                     placeholder="e.g., Cherokee Purple"
@@ -637,17 +658,6 @@ export default function SeedStash() {
                 </div>
               </div>
             )}
-
-            <div>
-              <Label htmlFor="custom">Or Custom Name</Label>
-              <Input
-                id="custom"
-                placeholder="For unlisted varieties"
-                value={formData.custom_name}
-                onChange={(e) => setFormData({ ...formData, custom_name: e.target.value })}
-                className="mt-2"
-              />
-            </div>
 
             <div className="grid grid-cols-2 gap-4">
               <div>
