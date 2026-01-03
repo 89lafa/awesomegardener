@@ -21,6 +21,8 @@ import PublicGarden from './pages/PublicGarden';
 import SeedStash from './pages/SeedStash';
 import Settings from './pages/Settings';
 import VarietyReviewQueue from './pages/VarietyReviewQueue';
+import SeedInventory from './pages/SeedInventory';
+import PlantCatalogBrowse from './pages/PlantCatalogBrowse';
 import __Layout from './Layout.jsx';
 
 
@@ -48,6 +50,8 @@ export const PAGES = {
     "SeedStash": SeedStash,
     "Settings": Settings,
     "VarietyReviewQueue": VarietyReviewQueue,
+    "SeedInventory": SeedInventory,
+    "PlantCatalogBrowse": PlantCatalogBrowse,
 }
 
 export const pagesConfig = {
