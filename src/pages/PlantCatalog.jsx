@@ -17,7 +17,10 @@ import {
   ExternalLink,
   Package,
   ListChecks,
-  BookOpen
+  BookOpen,
+  Grid3x3,
+  List,
+  ArrowUpDown
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -51,9 +54,13 @@ const CATEGORIES = ['vegetable', 'fruit', 'herb', 'flower', 'other'];
 export default function PlantCatalog() {
   const [plantTypes, setPlantTypes] = useState([]);
   const [varieties, setVarieties] = useState([]);
+  const [subCategories, setSubCategories] = useState([]);
+  const [selectedSubCategory, setSelectedSubCategory] = useState('all');
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
+  const [sortBy, setSortBy] = useState('name');
+  const [viewMode, setViewMode] = useState('grid');
   const [selectedType, setSelectedType] = useState(null);
   const [selectedVariety, setSelectedVariety] = useState(null);
   const [showAddVariety, setShowAddVariety] = useState(false);
@@ -73,16 +80,19 @@ export default function PlantCatalog() {
   useEffect(() => {
     if (selectedType) {
       loadVarieties(selectedType.id);
+      loadSubCategories(selectedType.id);
     }
   }, [selectedType]);
 
   const loadPlantTypes = async () => {
     try {
-      const types = await base44.entities.PlantType.list('plant_group_id');
-      console.log('Loaded plant types:', types.length, types.slice(0, 3));
-      // Filter out invalid/bad plant types
-      const validTypes = types.filter(type => type.id && type.common_name);
-      console.log('Valid plant types:', validTypes.length);
+      const types = await base44.entities.PlantType.list('common_name');
+      // Filter out inactive and invalid plant types
+      const validTypes = types.filter(type => 
+        type.id && 
+        type.common_name && 
+        type.is_active !== false
+      );
       setPlantTypes(validTypes);
     } catch (error) {
       console.error('Error loading plant types:', error);
@@ -100,6 +110,19 @@ export default function PlantCatalog() {
       setVarieties(vars);
     } catch (error) {
       console.error('Error loading varieties:', error);
+    }
+  };
+
+  const loadSubCategories = async (typeId) => {
+    try {
+      const subcats = await base44.entities.PlantSubCategory.filter({ 
+        plant_type_id: typeId,
+        is_active: true
+      }, 'sort_order');
+      setSubCategories(subcats);
+    } catch (error) {
+      console.error('Error loading subcategories:', error);
+      setSubCategories([]);
     }
   };
 
@@ -175,6 +198,13 @@ export default function PlantCatalog() {
                          type.scientific_name?.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesCategory = selectedCategory === 'all' || type.category === selectedCategory;
     return matchesSearch && matchesCategory;
+  }).sort((a, b) => {
+    if (sortBy === 'name') {
+      return (a.common_name || '').localeCompare(b.common_name || '');
+    } else if (sortBy === 'category') {
+      return (a.category || '').localeCompare(b.category || '');
+    }
+    return 0;
   });
 
   const getSunIcon = (sun) => {
@@ -356,6 +386,37 @@ export default function PlantCatalog() {
         </div>
 
         <AdBanner placement="top_banner" pageType="catalog" plantTypeId={selectedType.id} />
+
+        {/* Subcategories Filter */}
+        {subCategories.length > 0 && (
+          <Card>
+            <CardContent className="p-4">
+              <h3 className="text-sm font-semibold text-gray-700 mb-3">Filter by Type</h3>
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  variant={selectedSubCategory === 'all' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setSelectedSubCategory('all')}
+                  className={selectedSubCategory === 'all' ? 'bg-emerald-600 hover:bg-emerald-700' : ''}
+                >
+                  All
+                </Button>
+                {subCategories.map((subcat) => (
+                  <Button
+                    key={subcat.id}
+                    variant={selectedSubCategory === subcat.id ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => setSelectedSubCategory(subcat.id)}
+                    className={selectedSubCategory === subcat.id ? 'bg-emerald-600 hover:bg-emerald-700' : ''}
+                  >
+                    <span className="mr-1">{subcat.icon}</span>
+                    {subcat.name}
+                  </Button>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Default Info */}
         <Card>
@@ -565,7 +626,7 @@ export default function PlantCatalog() {
       </div>
 
       {/* Search & Filter */}
-      <div className="flex flex-col sm:flex-row gap-4">
+      <div className="flex flex-col sm:flex-row gap-3">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
           <Input
@@ -576,7 +637,7 @@ export default function PlantCatalog() {
           />
         </div>
         <Select value={selectedCategory} onValueChange={setSelectedCategory}>
-          <SelectTrigger className="w-full sm:w-48">
+          <SelectTrigger className="w-full sm:w-40">
             <SelectValue placeholder="Category" />
           </SelectTrigger>
           <SelectContent>
@@ -586,49 +647,116 @@ export default function PlantCatalog() {
             ))}
           </SelectContent>
         </Select>
+        <Select value={sortBy} onValueChange={setSortBy}>
+          <SelectTrigger className="w-full sm:w-40">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="name">Sort: A-Z</SelectItem>
+            <SelectItem value="category">Sort: Category</SelectItem>
+          </SelectContent>
+        </Select>
+        <div className="flex gap-2">
+          <Button
+            variant={viewMode === 'grid' ? 'default' : 'outline'}
+            size="icon"
+            onClick={() => setViewMode('grid')}
+            className={viewMode === 'grid' ? 'bg-emerald-600 hover:bg-emerald-700' : ''}
+          >
+            <Grid3x3 className="w-4 h-4" />
+          </Button>
+          <Button
+            variant={viewMode === 'list' ? 'default' : 'outline'}
+            size="icon"
+            onClick={() => setViewMode('list')}
+            className={viewMode === 'list' ? 'bg-emerald-600 hover:bg-emerald-700' : ''}
+          >
+            <List className="w-4 h-4" />
+          </Button>
+        </div>
       </div>
 
       <AdBanner placement="top_banner" pageType="catalog" />
 
-      {/* Plant Types Grid */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
-        <AnimatePresence>
-          {filteredTypes.map((type, index) => (
-            <Link key={type.id} to={createPageUrl('PlantCatalogDetail') + `?id=${type.id}`}>
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0 }}
-                transition={{ delay: index * 0.03 }}
-              >
-                <Card className="cursor-pointer hover:shadow-lg transition-all duration-200 group">
-                  <CardContent className="p-4 text-center">
-                    <div className={`w-16 h-16 rounded-2xl mx-auto mb-3 flex items-center justify-center text-3xl ${
-                      type.color || 'bg-emerald-100'
-                    } group-hover:scale-110 transition-transform`}>
-                      {type.icon || '🌱'}
-                    </div>
-                    <h3 className="font-semibold text-gray-900">{type.common_name || type.name}</h3>
-                    {type.scientific_name && (
-                      <p className="text-xs text-gray-500 italic truncate">{type.scientific_name}</p>
-                    )}
-                    <div className="flex items-center justify-center gap-1 flex-wrap mt-1">
-                      <p className="text-xs text-gray-400 capitalize">{type.category}</p>
-                      {type.is_perennial && (
-                        <Badge variant="outline" className="text-[10px] px-1 py-0.5">Perennial</Badge>
+      {/* Plant Types Grid or List */}
+      {viewMode === 'grid' ? (
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+          <AnimatePresence>
+            {filteredTypes.map((type, index) => (
+              <Link key={type.id} to={createPageUrl('PlantCatalogDetail') + `?id=${type.id}`}>
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ delay: index * 0.03 }}
+                >
+                  <Card className="cursor-pointer hover:shadow-lg transition-all duration-200 group">
+                    <CardContent className="p-4 text-center">
+                      <div className={`w-16 h-16 rounded-2xl mx-auto mb-3 flex items-center justify-center text-3xl ${
+                        type.color || 'bg-emerald-100'
+                      } group-hover:scale-110 transition-transform`}>
+                        {type.icon || '🌱'}
+                      </div>
+                      <h3 className="font-semibold text-gray-900">{type.common_name || type.name}</h3>
+                      {type.scientific_name && (
+                        <p className="text-xs text-gray-500 italic truncate">{type.scientific_name}</p>
                       )}
-                    </div>
-                    <div className="flex items-center justify-center gap-1 mt-2 text-emerald-600 text-sm opacity-0 group-hover:opacity-100 transition-opacity">
-                      <span>Browse</span>
-                      <ChevronRight className="w-4 h-4" />
-                    </div>
-                  </CardContent>
-                </Card>
-              </motion.div>
-            </Link>
-          ))}
-        </AnimatePresence>
-      </div>
+                      <div className="flex items-center justify-center gap-1 flex-wrap mt-1">
+                        <p className="text-xs text-gray-400 capitalize">{type.category}</p>
+                        {type.is_perennial && (
+                          <Badge variant="outline" className="text-[10px] px-1 py-0.5">Perennial</Badge>
+                        )}
+                      </div>
+                      <div className="flex items-center justify-center gap-1 mt-2 text-emerald-600 text-sm opacity-0 group-hover:opacity-100 transition-opacity">
+                        <span>Browse</span>
+                        <ChevronRight className="w-4 h-4" />
+                      </div>
+                    </CardContent>
+                  </Card>
+                </motion.div>
+              </Link>
+            ))}
+          </AnimatePresence>
+        </div>
+      ) : (
+        <div className="space-y-2">
+          <AnimatePresence>
+            {filteredTypes.map((type, index) => (
+              <Link key={type.id} to={createPageUrl('PlantCatalogDetail') + `?id=${type.id}`}>
+                <motion.div
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ delay: index * 0.02 }}
+                >
+                  <Card className="cursor-pointer hover:shadow-md transition-all duration-200 group">
+                    <CardContent className="p-4 flex items-center gap-4">
+                      <div className={`w-12 h-12 rounded-lg flex items-center justify-center text-2xl flex-shrink-0 ${
+                        type.color || 'bg-emerald-100'
+                      } group-hover:scale-110 transition-transform`}>
+                        {type.icon || '🌱'}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <h3 className="font-semibold text-gray-900">{type.common_name || type.name}</h3>
+                        {type.scientific_name && (
+                          <p className="text-sm text-gray-500 italic truncate">{type.scientific_name}</p>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Badge variant="outline" className="capitalize">{type.category}</Badge>
+                        {type.is_perennial && (
+                          <Badge variant="outline">Perennial</Badge>
+                        )}
+                        <ChevronRight className="w-5 h-5 text-gray-400 group-hover:text-emerald-600 transition-colors" />
+                      </div>
+                    </CardContent>
+                  </Card>
+                </motion.div>
+              </Link>
+            ))}
+          </AnimatePresence>
+        </div>
+      )}
 
       {filteredTypes.length === 0 && (
         <div className="text-center py-12">
