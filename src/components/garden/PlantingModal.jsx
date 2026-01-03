@@ -190,6 +190,16 @@ export default function PlantingModal({ open, onOpenChange, item, garden, onPlan
     }
   };
 
+  const getDefaultSpacing = (plantTypeName) => {
+    const name = plantTypeName?.toLowerCase() || '';
+    // Common spacing defaults in 12" cells
+    if (name.includes('lettuce') || name.includes('radish') || name.includes('carrot')) return { cols: 1, rows: 1 };
+    if (name.includes('tomato') || name.includes('pepper') || name.includes('cucumber')) return { cols: 2, rows: 2 };
+    if (name.includes('squash') || name.includes('melon') || name.includes('pumpkin')) return { cols: 3, rows: 3 };
+    if (name.includes('bean') || name.includes('pea')) return { cols: 1, rows: 1 };
+    return { cols: 2, rows: 2 }; // Default
+  };
+
   const handleSelectStashPlant = (stashItem) => {
     // Check if seed has minimum required info
     if (!stashItem.plant_type_name && !stashItem.variety_name) {
@@ -199,7 +209,9 @@ export default function PlantingModal({ open, onOpenChange, item, garden, onPlan
     
     // Try to find variety from catalog for spacing info
     const variety = varieties.find(v => v.id === stashItem.variety_id);
-    const spacing = variety ? getSpacingForPlant(variety) : { cols: 2, rows: 2 };
+    const spacing = variety 
+      ? getSpacingForPlant(variety) 
+      : getDefaultSpacing(stashItem.plant_type_name || stashItem.variety_name);
     
     setSelectedPlant({
       variety_id: stashItem.variety_id || null,
@@ -291,17 +303,17 @@ export default function PlantingModal({ open, onOpenChange, item, garden, onPlan
           </p>
         </DialogHeader>
 
-        <div className="flex gap-6 p-6 overflow-hidden">
+        <div className="flex gap-6 p-6 overflow-hidden h-[calc(90vh-120px)]">
           {/* Left Panel - Plant Picker */}
-          <div className="w-80 flex-shrink-0">
-            <Tabs defaultValue="stash">
-              <TabsList className="w-full">
+          <div className="w-80 flex-shrink-0 flex flex-col min-h-0">
+            <Tabs defaultValue="stash" className="flex-1 flex flex-col min-h-0">
+              <TabsList className="w-full flex-shrink-0">
                 <TabsTrigger value="stash" className="flex-1">From Stash</TabsTrigger>
                 <TabsTrigger value="new" className="flex-1">Add New</TabsTrigger>
               </TabsList>
               
-              <TabsContent value="stash" className="mt-4">
-                <ScrollArea className="h-96">
+              <TabsContent value="stash" className="mt-4 flex-1 min-h-0">
+                <ScrollArea className="h-full">
                   <div className="space-y-2">
                     {stashPlants.length === 0 ? (
                       <p className="text-sm text-gray-500 text-center py-8">No plants in stash</p>
@@ -326,7 +338,7 @@ export default function PlantingModal({ open, onOpenChange, item, garden, onPlan
                 </ScrollArea>
               </TabsContent>
               
-              <TabsContent value="new" className="mt-4">
+              <TabsContent value="new" className="mt-4 flex-1">
                 <div className="space-y-4">
                   <div>
                     <Label>Variety</Label>
@@ -377,9 +389,9 @@ export default function PlantingModal({ open, onOpenChange, item, garden, onPlan
             </Tabs>
             
             {selectedPlant && (
-              <div className="mt-4 p-3 bg-emerald-50 rounded-lg border border-emerald-200">
+              <div className="mt-4 p-3 bg-emerald-50 rounded-lg border border-emerald-200 flex-shrink-0">
                 <p className="text-sm font-medium text-emerald-900">Selected:</p>
-                <p className="text-sm text-emerald-700">{selectedPlant.variety_name}</p>
+                <p className="text-sm text-emerald-700 truncate">{selectedPlant.variety_name}</p>
                 <p className="text-xs text-emerald-600 mt-1">
                   Takes {selectedPlant.spacing_cols}×{selectedPlant.spacing_rows} cells
                 </p>
