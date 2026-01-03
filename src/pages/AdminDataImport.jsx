@@ -146,12 +146,20 @@ export default function AdminDataImport() {
 
           // For Variety import, preload PlantType lookup
           let plantTypeLookup = {};
+          let plantTypeByName = {};
           if (item.key === 'Variety') {
             const allPlantTypes = await base44.entities.PlantType.list();
+            console.log('[Variety Import] Loaded', allPlantTypes.length, 'plant types');
             allPlantTypes.forEach(pt => {
-              if (pt.plant_type_code) plantTypeLookup[pt.plant_type_code] = pt.id;
-              plantTypeLookup[pt.id] = pt.id; // Also map id to id
+              if (pt.plant_type_code) {
+                plantTypeLookup[pt.plant_type_code] = pt;
+              }
+              if (pt.common_name) {
+                plantTypeByName[pt.common_name.toLowerCase()] = pt;
+              }
+              plantTypeLookup[pt.id] = pt; // Also map id to id
             });
+            console.log('[Variety Import] Lookup keys:', Object.keys(plantTypeLookup).slice(0, 10));
           }
 
           for (const row of data) {
@@ -172,15 +180,40 @@ export default function AdminDataImport() {
                   continue;
                 }
 
-                // Resolve plant_type_id
-                let resolvedTypeId = row.plant_type_id;
-                if (!plantTypeLookup[resolvedTypeId]) {
-                  // Not found, skip
+                // Resolve plant_type_id via multiple strategies
+                let plantType = null;
+                
+                // Strategy 1: Direct ID match
+                if (plantTypeLookup[row.plant_type_id]) {
+                  plantType = plantTypeLookup[row.plant_type_id];
+                }
+                
+                // Strategy 2: plant_type_code match
+                if (!plantType && row.plant_type_code && plantTypeLookup[row.plant_type_code]) {
+                  plantType = plantTypeLookup[row.plant_type_code];
+                }
+                
+                // Strategy 3: common_name match
+                if (!plantType && row.plant_type_common_name) {
+                  plantType = plantTypeByName[row.plant_type_common_name.toLowerCase()];
+                }
+                
+                // Strategy 4: Treat plant_type_id as a code
+                if (!plantType) {
+                  plantType = plantTypeLookup[row.plant_type_id];
+                }
+
+                if (!plantType || typeof plantType !== 'object') {
                   rejected++;
-                  skipReasons.push({ row, reason: `Unknown plant_type_code: ${row.plant_type_id}` });
+                  skipReasons.push({ 
+                    row, 
+                    reason: `Unknown plant_type: ${row.plant_type_id}${row.plant_type_code ? ` / ${row.plant_type_code}` : ''}` 
+                  });
                   continue;
                 }
-                resolvedTypeId = plantTypeLookup[resolvedTypeId];
+
+                const resolvedTypeId = plantType.id;
+                const plantTypeName = plantType.common_name;
 
                 // Check for duplicate
                 const existing = await base44.entities.Variety.filter({ 
@@ -190,14 +223,38 @@ export default function AdminDataImport() {
 
                 const varietyData = {
                   plant_type_id: resolvedTypeId,
+                  plant_type_name: plantTypeName,
+                  variety_code: row.variety_code || null,
                   variety_name: row.variety_name,
                   synonyms: row.synonyms ? row.synonyms.split('|') : [],
                   days_to_maturity: row.days_to_maturity ? parseInt(row.days_to_maturity) : null,
+                  days_to_maturity_min: row.days_to_maturity_min ? parseInt(row.days_to_maturity_min) : null,
+                  days_to_maturity_max: row.days_to_maturity_max ? parseInt(row.days_to_maturity_max) : null,
                   spacing_recommended: row.spacing_recommended ? parseInt(row.spacing_recommended) : null,
+                  spacing_min: row.spacing_min ? parseInt(row.spacing_min) : null,
+                  spacing_max: row.spacing_max ? parseInt(row.spacing_max) : null,
                   plant_height_typical: row.plant_height_typical || null,
+                  height_min: row.height_min ? parseInt(row.height_min) : null,
+                  height_max: row.height_max ? parseInt(row.height_max) : null,
                   sun_requirement: row.sun_requirement || null,
                   water_requirement: row.water_requirement || null,
-                  trellis_required: row.trellis_required === 'true',
+                  trellis_required: row.trellis_required === 'true' || row.trellis_required === '1',
+                  container_friendly: row.container_friendly === 'true' || row.container_friendly === '1',
+                  growth_habit: row.growth_habit || null,
+                  flavor_profile: row.flavor_profile || null,
+                  uses: row.uses || null,
+                  fruit_color: row.fruit_color || null,
+                  fruit_shape: row.fruit_shape || null,
+                  fruit_size: row.fruit_size || null,
+                  pod_color: row.pod_color || null,
+                  pod_shape: row.pod_shape || null,
+                  pod_size: row.pod_size || null,
+                  disease_resistance: row.disease_resistance || null,
+                  breeder_or_origin: row.breeder_or_origin || null,
+                  seed_saving_notes: row.seed_saving_notes || null,
+                  pollination_notes: row.pollination_notes || null,
+                  sources: row.sources ? row.sources.split('|') : [],
+                  popularity_tier: row.popularity_tier || null,
                   grower_notes: row.grower_notes || null,
                   source_attribution: row.source_attribution || 'CSV Import',
                   status: 'active',

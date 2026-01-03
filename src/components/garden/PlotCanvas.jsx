@@ -218,9 +218,10 @@ export default function PlotCanvas({ garden, plot, onPlotUpdate }) {
     const cols = Math.ceil(Math.sqrt(count));
 
     try {
-      // Get the first unique name
-      const firstName = getNextName(itemType.label);
-      const baseNum = parseInt(firstName.match(/\d+$/)?.[0] || '1');
+      // Get the first unique name - FIXED logic
+      let currentName = getNextName(itemType.label);
+      let baseNum = parseInt(currentName.match(/\d+$/)?.[0] || '1');
+      console.log('[Add Multiple] Starting sequence at:', currentName, 'baseNum:', baseNum);
 
       for (let i = 0; i < count; i++) {
         const row = Math.floor(i / cols);
@@ -229,6 +230,7 @@ export default function PlotCanvas({ garden, plot, onPlotUpdate }) {
         const y = 50 + row * (height + spacing);
 
         const label = `${itemType.label} ${baseNum + i}`;
+        console.log('[Add Multiple] Creating item', i + 1, ':', label);
 
         const metadata = {};
         if (itemType.usesGrid && newItem.useSquareFootGrid) {
@@ -275,12 +277,14 @@ export default function PlotCanvas({ garden, plot, onPlotUpdate }) {
         }
 
         newItems.push(item);
-      }
 
-      setItems([...items, ...newItems]);
-      setShowAddItem(false);
-      resetNewItem();
-      toast.success(count > 1 ? `Added ${count} items!` : 'Item added!');
+        // Update items list so getNextName works correctly for next iteration
+        setItems([...items, ...newItems]);
+        }
+
+        setShowAddItem(false);
+        resetNewItem();
+        toast.success(count > 1 ? `Added ${count} items!` : 'Item added!');
     } catch (error) {
       console.error('Error adding item:', error);
       toast.error('Failed to add item');
@@ -330,26 +334,58 @@ export default function PlotCanvas({ garden, plot, onPlotUpdate }) {
     const cols = Math.ceil(Math.sqrt(count));
     const spacing = 24;
     const newItems = [];
+    const itemType = ITEM_TYPES.find(t => t.value === bulkAdd.item_type);
 
     try {
+      // Get the first unique name
+      const firstName = getNextName(bulkAdd.base_name);
+      const baseNum = parseInt(firstName.match(/\d+$/)?.[0] || '1');
+      console.log('[Bulk Add] Starting at:', firstName, 'baseNum:', baseNum);
+
       for (let i = 0; i < count; i++) {
         const row = Math.floor(i / cols);
         const col = i % cols;
         const x = 50 + col * (width + spacing);
         const y = 50 + row * (height + spacing);
+        
+        const label = `${bulkAdd.base_name} ${baseNum + i}`;
+        console.log('[Bulk Add] Creating:', label);
+
+        const metadata = {};
+        if (itemType?.usesGrid) {
+          metadata.gridEnabled = true;
+          metadata.gridSize = 12;
+        }
 
         const item = await base44.entities.PlotItem.create({
           plot_id: plot.id,
           garden_id: garden.id,
           item_type: bulkAdd.item_type,
-          label: i === 0 ? bulkAdd.base_name : `${bulkAdd.base_name} ${i + 1}`,
+          label,
           width,
           height,
           x,
           y,
           rotation: 0,
-          z_index: items.length + i
+          z_index: items.length + i,
+          metadata
         });
+
+        // Auto-create PlantingSpace for plantable items
+        if (itemType?.plantable) {
+          const layoutSchema = calculateLayoutSchema(itemType, width, height, metadata);
+          const capacity = calculateCapacity(layoutSchema);
+          
+          await base44.entities.PlantingSpace.create({
+            garden_id: garden.id,
+            plot_item_id: item.id,
+            space_type: item.item_type,
+            name: label,
+            capacity,
+            layout_schema,
+            is_active: true
+          });
+        }
 
         newItems.push(item);
       }
