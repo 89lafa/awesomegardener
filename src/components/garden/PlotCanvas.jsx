@@ -114,6 +114,35 @@ export default function PlotCanvas({ garden, plot, onPlotUpdate }) {
     }
   }, [plot]);
 
+  // Window event listeners for reliable drag end
+  useEffect(() => {
+    const handleWindowMouseUp = () => {
+      if (draggingItem || isDragging) {
+        setDraggingItem(null);
+        setIsDragging(false);
+        document.body.style.userSelect = '';
+        document.body.style.cursor = '';
+      }
+    };
+    
+    const handleWindowBlur = () => {
+      if (draggingItem || isDragging) {
+        setDraggingItem(null);
+        setIsDragging(false);
+        document.body.style.userSelect = '';
+        document.body.style.cursor = '';
+      }
+    };
+    
+    window.addEventListener('mouseup', handleWindowMouseUp);
+    window.addEventListener('blur', handleWindowBlur);
+    
+    return () => {
+      window.removeEventListener('mouseup', handleWindowMouseUp);
+      window.removeEventListener('blur', handleWindowBlur);
+    };
+  }, [draggingItem, isDragging]);
+
   const loadItems = async () => {
     try {
       const [itemsData, plantings] = await Promise.all([
@@ -770,29 +799,6 @@ export default function PlotCanvas({ garden, plot, onPlotUpdate }) {
       </div>
     );
   }
-
-  // Window event listeners for reliable drag end
-  useEffect(() => {
-    const handleWindowMouseUp = () => {
-      if (draggingItem) {
-        handleCanvasMouseUp();
-      }
-    };
-    
-    const handleWindowBlur = () => {
-      if (draggingItem) {
-        handleCanvasMouseUp();
-      }
-    };
-    
-    window.addEventListener('mouseup', handleWindowMouseUp);
-    window.addEventListener('blur', handleWindowBlur);
-    
-    return () => {
-      window.removeEventListener('mouseup', handleWindowMouseUp);
-      window.removeEventListener('blur', handleWindowBlur);
-    };
-  }, [draggingItem, isDragging]);
 
   const getPlantingStatus = (itemId) => {
     const counts = itemsPlantingCounts[itemId];
