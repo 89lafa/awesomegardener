@@ -170,8 +170,8 @@ export default function PlantCatalog() {
 
   const filteredTypes = plantTypes.filter(type => {
     const name = type.common_name || '';
-    if (!name || name.trim().length < 2) return false; // Extra safety check
-    const matchesSearch = name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    const matchesSearch = searchQuery === '' || 
+                         name.toLowerCase().includes(searchQuery.toLowerCase()) ||
                          type.scientific_name?.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesCategory = selectedCategory === 'all' || type.category === selectedCategory;
     return matchesSearch && matchesCategory;
