@@ -60,10 +60,13 @@ const GALLON_SIZES = [
 export default function PlotCanvas({ garden, plot, onPlotUpdate }) {
   const canvasRef = useRef(null);
   const [items, setItems] = useState([]);
+  const [itemsPlantingCounts, setItemsPlantingCounts] = useState({});
   const [selectedItem, setSelectedItem] = useState(null);
   
   console.log('[PlotCanvas.js] Component rendered, selectedItem:', selectedItem?.id);
   const [draggingItem, setDraggingItem] = useState(null);
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragStartPos, setDragStartPos] = useState({ x: 0, y: 0 });
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
   const [zoom, setZoom] = useState(1);
   const [snapToGrid, setSnapToGrid] = useState(true);
@@ -113,16 +116,44 @@ export default function PlotCanvas({ garden, plot, onPlotUpdate }) {
 
   const loadItems = async () => {
     try {
-      const itemsData = await base44.entities.PlotItem.filter({ 
-        garden_id: garden.id,
-        plot_id: plot.id 
-      }, 'z_index');
+      const [itemsData, plantings] = await Promise.all([
+        base44.entities.PlotItem.filter({ 
+          garden_id: garden.id,
+          plot_id: plot.id 
+        }, 'z_index'),
+        base44.entities.PlantInstance.filter({ garden_id: garden.id })
+      ]);
+      
       // Ensure rotation is initialized
       const normalizedItems = itemsData.map(item => ({
         ...item,
         rotation: item.rotation || 0
       }));
       setItems(normalizedItems);
+      
+      // Calculate planting counts per item
+      const counts = {};
+      for (const item of normalizedItems) {
+        const itemPlantings = plantings.filter(p => p.bed_id === item.id);
+        const itemType = ITEM_TYPES.find(t => t.value === item.item_type);
+        
+        if (itemType?.plantable) {
+          let capacity = 0;
+          const layoutSchema = item.metadata?.gridEnabled 
+            ? calculateLayoutSchema(itemType, item.width, item.height, item.metadata || {})
+            : null;
+          
+          if (layoutSchema?.type === 'grid') {
+            capacity = layoutSchema.columns * layoutSchema.rows;
+          }
+          
+          counts[item.id] = {
+            filled: itemPlantings.length,
+            capacity: capacity
+          };
+        }
+      }
+      setItemsPlantingCounts(counts);
     } catch (error) {
       console.error('Error loading items:', error);
     } finally {
@@ -434,7 +465,11 @@ export default function PlotCanvas({ garden, plot, onPlotUpdate }) {
     if (clickedItem) {
       setSelectedItem(clickedItem);
       setDraggingItem(clickedItem);
+      setDragStartPos({ x: e.clientX, y: e.clientY });
       setDragOffset({ x: x - clickedItem.x, y: y - clickedItem.y });
+      
+      // Prevent text selection
+      document.body.style.userSelect = 'none';
     } else {
       setSelectedItem(null);
     }
@@ -442,6 +477,18 @@ export default function PlotCanvas({ garden, plot, onPlotUpdate }) {
 
   const handleCanvasMouseMove = (e) => {
     if (!draggingItem) return;
+
+    // Check if moved threshold (3px) - differentiate click vs drag
+    const dx = e.clientX - dragStartPos.x;
+    const dy = e.clientY - dragStartPos.y;
+    const distance = Math.sqrt(dx * dx + dy * dy);
+    
+    if (distance < 3) return; // Not dragging yet
+    
+    if (!isDragging) {
+      setIsDragging(true);
+      document.body.style.cursor = 'grabbing';
+    }
 
     const rect = canvasRef.current.getBoundingClientRect();
     let x = (e.clientX - rect.left) / zoom - dragOffset.x;
@@ -464,17 +511,24 @@ export default function PlotCanvas({ garden, plot, onPlotUpdate }) {
   const handleCanvasMouseUp = async () => {
     if (draggingItem) {
       const item = items.find(i => i.id === draggingItem.id);
-      try {
-        console.log('[LAYOUT] Saving position for', item.label, 'x=', item.x, 'y=', item.y, 'snapToGrid=', snapToGrid);
-        await base44.entities.PlotItem.update(item.id, { x: item.x, y: item.y });
-        // Update selectedItem to have latest position
-        if (selectedItem?.id === item.id) {
-          setSelectedItem(item);
+      
+      // Only save if actually dragged
+      if (isDragging) {
+        try {
+          console.log('[LAYOUT] Saving position for', item.label, 'x=', item.x, 'y=', item.y);
+          await base44.entities.PlotItem.update(item.id, { x: item.x, y: item.y });
+          if (selectedItem?.id === item.id) {
+            setSelectedItem(item);
+          }
+        } catch (error) {
+          console.error('Error updating position:', error);
         }
-      } catch (error) {
-        console.error('Error updating position:', error);
       }
+      
       setDraggingItem(null);
+      setIsDragging(false);
+      document.body.style.userSelect = '';
+      document.body.style.cursor = '';
     }
   };
 
@@ -717,6 +771,40 @@ export default function PlotCanvas({ garden, plot, onPlotUpdate }) {
     );
   }
 
+  // Window event listeners for reliable drag end
+  useEffect(() => {
+    const handleWindowMouseUp = () => {
+      if (draggingItem) {
+        handleCanvasMouseUp();
+      }
+    };
+    
+    const handleWindowBlur = () => {
+      if (draggingItem) {
+        handleCanvasMouseUp();
+      }
+    };
+    
+    window.addEventListener('mouseup', handleWindowMouseUp);
+    window.addEventListener('blur', handleWindowBlur);
+    
+    return () => {
+      window.removeEventListener('mouseup', handleWindowMouseUp);
+      window.removeEventListener('blur', handleWindowBlur);
+    };
+  }, [draggingItem, isDragging]);
+
+  const getPlantingStatus = (itemId) => {
+    const counts = itemsPlantingCounts[itemId];
+    if (!counts || counts.capacity === 0) return null;
+    
+    const percentage = (counts.filled / counts.capacity) * 100;
+    
+    if (percentage === 0) return { status: 'empty', label: 'Empty', color: 'gray' };
+    if (percentage >= 100) return { status: 'full', label: 'Full', color: 'emerald' };
+    return { status: 'partial', label: 'Partial', color: 'amber' };
+  };
+
   return (
     <div className="flex-1 flex gap-4 mt-4 min-h-0">
       <div className="absolute top-2 left-2 text-xs text-gray-400 bg-white px-2 py-1 rounded shadow-sm z-10">
@@ -792,13 +880,11 @@ export default function PlotCanvas({ garden, plot, onPlotUpdate }) {
                 </Button>
                 {ITEM_TYPES.find(t => t.value === selectedItem.item_type)?.plantable && (
                   <Button
-                    variant="outline"
-                    size="sm"
                     onClick={() => setShowPlantingModal(true)}
-                    className="w-full gap-2 justify-start text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50"
+                    className="w-full gap-2 justify-start bg-emerald-600 hover:bg-emerald-700 text-white h-12 text-base font-semibold"
                   >
-                    <Sprout className="w-4 h-4" />
-                    Plant
+                    <Sprout className="w-5 h-5" />
+                    Plant Seeds
                   </Button>
                 )}
                 <Button
@@ -828,9 +914,26 @@ export default function PlotCanvas({ garden, plot, onPlotUpdate }) {
 
       {/* Canvas */}
       <div className="flex-1 bg-gray-50 rounded-xl overflow-auto p-8">
+        {/* Status Legend */}
+        <div className="mb-4 flex items-center gap-4 text-xs">
+          <span className="font-medium text-gray-600">Status:</span>
+          <div className="flex items-center gap-1.5">
+            <div className="w-3 h-3 border-2 border-gray-400 rounded"></div>
+            <span className="text-gray-600">Empty</span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <div className="w-3 h-3 border-2 border-amber-500 rounded bg-amber-50"></div>
+            <span className="text-gray-600">Partial</span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <div className="w-3 h-3 border-2 border-emerald-600 rounded bg-emerald-50"></div>
+            <span className="text-gray-600">Full</span>
+          </div>
+        </div>
+        
         <div
           ref={canvasRef}
-          className="relative bg-white shadow-lg mx-auto"
+          className="relative bg-white shadow-lg mx-auto plot-canvas select-none"
           style={{
             width: plot.width * zoom,
             height: plot.height * zoom,
@@ -870,12 +973,21 @@ export default function PlotCanvas({ garden, plot, onPlotUpdate }) {
           )}
 
           {/* Items */}
-          {items.map((item) => (
+          {items.map((item) => {
+            const itemType = ITEM_TYPES.find(t => t.value === item.item_type);
+            const status = itemType?.plantable ? getPlantingStatus(item.id) : null;
+            const counts = itemsPlantingCounts[item.id];
+            
+            return (
             <div
               key={item.id}
               className={cn(
-                "absolute border-2 rounded-lg flex items-center justify-center text-sm font-medium overflow-hidden",
-                selectedItem?.id === item.id ? "border-emerald-600 ring-2 ring-emerald-100" : "border-gray-400"
+                "absolute border-2 rounded-lg flex items-center justify-center text-sm font-medium overflow-hidden plot-item",
+                selectedItem?.id === item.id && "ring-2 ring-emerald-100",
+                !status && "border-gray-400",
+                status?.status === 'empty' && "border-gray-400",
+                status?.status === 'partial' && "border-amber-500",
+                status?.status === 'full' && "border-emerald-600"
               )}
               style={{
                 left: item.x * zoom,
@@ -883,9 +995,28 @@ export default function PlotCanvas({ garden, plot, onPlotUpdate }) {
                 width: item.width * zoom,
                 height: item.height * zoom,
                 backgroundColor: getItemColor(item.item_type),
-                cursor: 'grab'
+                cursor: isDragging && draggingItem?.id === item.id ? 'grabbing' : 'grab'
               }}
             >
+              {/* Status overlay with pointer-events: none */}
+              {status && status.status === 'partial' && (
+                <div 
+                  className="absolute inset-0 pointer-events-none"
+                  style={{
+                    background: 'repeating-linear-gradient(45deg, rgba(245, 158, 11, 0.1), rgba(245, 158, 11, 0.1) 10px, transparent 10px, transparent 20px)'
+                  }}
+                />
+              )}
+              {status && status.status === 'full' && (
+                <div className="absolute inset-0 bg-emerald-600/10 pointer-events-none" />
+              )}
+              
+              {/* Badge with pointer-events: none */}
+              {counts && counts.capacity > 0 && (
+                <div className="absolute top-1 right-1 bg-white/90 backdrop-blur-sm px-2 py-0.5 rounded-full text-[10px] font-bold border shadow-sm pointer-events-none">
+                  {counts.filled}/{counts.capacity}
+                </div>
+              )}
               {/* Row lines for row-based items */}
               {item.metadata?.rowCount && (
                 <svg className="absolute inset-0 pointer-events-none" width="100%" height="100%">
@@ -905,7 +1036,7 @@ export default function PlotCanvas({ garden, plot, onPlotUpdate }) {
               )}
               {/* Rotated container */}
               <div 
-                className="absolute inset-0 flex items-center justify-center"
+                className="absolute inset-0 flex items-center justify-center pointer-events-none"
                 style={{
                   transform: `rotate(${item.rotation}deg)`,
                   transformOrigin: 'center'
@@ -913,7 +1044,7 @@ export default function PlotCanvas({ garden, plot, onPlotUpdate }) {
               >
                 {/* Label counter-rotated to stay horizontal */}
                 <span 
-                  className="text-white text-shadow pointer-events-none font-semibold"
+                  className="text-white text-shadow font-semibold plot-item-label"
                   style={{
                     transform: `rotate(${-item.rotation}deg)`,
                     display: 'inline-block'
@@ -923,7 +1054,8 @@ export default function PlotCanvas({ garden, plot, onPlotUpdate }) {
                 </span>
               </div>
             </div>
-          ))}
+            );
+          })}
         </div>
       </div>
 
