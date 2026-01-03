@@ -78,14 +78,10 @@ export default function PlantCatalog() {
 
   const loadPlantTypes = async () => {
     try {
-      const types = await base44.entities.PlantType.list('common_name');
+      const types = await base44.entities.PlantType.list('plant_group_id');
       console.log('Loaded plant types:', types.length, types.slice(0, 3));
       // Filter out invalid/bad plant types
-      const validTypes = types.filter(type => {
-        const hasValidName = type.common_name && type.common_name.trim().length >= 2;
-        const hasValidId = type.id;
-        return hasValidName && hasValidId;
-      });
+      const validTypes = types.filter(type => type.id && type.common_name);
       console.log('Valid plant types:', validTypes.length);
       setPlantTypes(validTypes);
     } catch (error) {
@@ -616,7 +612,12 @@ export default function PlantCatalog() {
                     {type.scientific_name && (
                       <p className="text-xs text-gray-500 italic truncate">{type.scientific_name}</p>
                     )}
-                    <p className="text-xs text-gray-400 capitalize mt-1">{type.category}</p>
+                    <div className="flex items-center justify-center gap-1 flex-wrap mt-1">
+                      <p className="text-xs text-gray-400 capitalize">{type.category}</p>
+                      {type.is_perennial && (
+                        <Badge variant="outline" className="text-[10px] px-1 py-0.5">Perennial</Badge>
+                      )}
+                    </div>
                     <div className="flex items-center justify-center gap-1 mt-2 text-emerald-600 text-sm opacity-0 group-hover:opacity-100 transition-opacity">
                       <span>Browse</span>
                       <ChevronRight className="w-4 h-4" />
