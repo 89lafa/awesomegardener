@@ -7,6 +7,7 @@ import Dashboard from './pages/Dashboard';
 import EditorReviewQueue from './pages/EditorReviewQueue';
 import FeatureRequests from './pages/FeatureRequests';
 import GardenBuilder from './pages/GardenBuilder';
+import GardenPlanting from './pages/GardenPlanting';
 import Gardens from './pages/Gardens';
 import GrowLists from './pages/GrowLists';
 import Landing from './pages/Landing';
@@ -19,7 +20,6 @@ import PlotBuilder from './pages/PlotBuilder';
 import PublicGarden from './pages/PublicGarden';
 import SeedStash from './pages/SeedStash';
 import Settings from './pages/Settings';
-import GardenPlanting from './pages/GardenPlanting';
 import __Layout from './Layout.jsx';
 
 
@@ -33,6 +33,7 @@ export const PAGES = {
     "EditorReviewQueue": EditorReviewQueue,
     "FeatureRequests": FeatureRequests,
     "GardenBuilder": GardenBuilder,
+    "GardenPlanting": GardenPlanting,
     "Gardens": Gardens,
     "GrowLists": GrowLists,
     "Landing": Landing,
@@ -45,7 +46,6 @@ export const PAGES = {
     "PublicGarden": PublicGarden,
     "SeedStash": SeedStash,
     "Settings": Settings,
-    "GardenPlanting": GardenPlanting,
 }
 
 export const pagesConfig = {

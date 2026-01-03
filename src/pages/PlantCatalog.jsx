@@ -79,12 +79,14 @@ export default function PlantCatalog() {
   const loadPlantTypes = async () => {
     try {
       const types = await base44.entities.PlantType.list('common_name');
+      console.log('Loaded plant types:', types.length, types.slice(0, 3));
       // Filter out invalid/bad plant types
       const validTypes = types.filter(type => {
         const hasValidName = type.common_name && type.common_name.trim().length >= 2;
         const hasValidId = type.id;
         return hasValidName && hasValidId;
       });
+      console.log('Valid plant types:', validTypes.length);
       setPlantTypes(validTypes);
     } catch (error) {
       console.error('Error loading plant types:', error);

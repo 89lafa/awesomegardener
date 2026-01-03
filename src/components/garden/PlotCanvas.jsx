@@ -9,8 +9,10 @@ import {
   ZoomOut,
   Grid3X3,
   Settings,
-  Loader2
+  Loader2,
+  Palette
 } from 'lucide-react';
+import PlotSettingsDialog from './PlotSettingsDialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -33,12 +35,18 @@ import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 
 const ITEM_TYPES = [
-  { value: 'RAISED_BED', label: 'Raised Bed', color: '#8B7355', defaultDims: '4x8', defaultUnit: 'ft', usesGrid: true },
-  { value: 'IN_GROUND_BED', label: 'In-Ground Bed', color: '#A0826D', defaultDims: '4x20', defaultUnit: 'ft', usesRows: true },
-  { value: 'GREENHOUSE', label: 'Greenhouse', color: '#80CBC4', defaultDims: '10x12', defaultUnit: 'ft', usesGrid: false },
-  { value: 'OPEN_PLOT', label: 'Open Plot', color: '#D7CCC8', defaultDims: '50x100', defaultUnit: 'ft', usesRows: true },
-  { value: 'GROW_BAG', label: 'Grow Bag', color: '#424242', usesGallons: true },
-  { value: 'CONTAINER', label: 'Container', color: '#D84315', usesSize: true },
+  { value: 'RAISED_BED', label: 'Raised Bed', color: '#8B7355', defaultDims: '4x8', defaultUnit: 'ft', usesGrid: true, plantable: true },
+  { value: 'IN_GROUND_BED', label: 'In-Ground Bed', color: '#A0826D', defaultDims: '4x20', defaultUnit: 'ft', usesRows: true, plantable: true },
+  { value: 'GREENHOUSE', label: 'Greenhouse', color: '#80CBC4', defaultDims: '10x12', defaultUnit: 'ft', usesGrid: false, plantable: true },
+  { value: 'OPEN_PLOT', label: 'Open Plot', color: '#D7CCC8', defaultDims: '50x100', defaultUnit: 'ft', usesRows: true, plantable: true },
+  { value: 'GROW_BAG', label: 'Grow Bag', color: '#424242', usesGallons: true, plantable: true },
+  { value: 'CONTAINER', label: 'Container', color: '#D84315', usesSize: true, plantable: true },
+  { value: 'FENCE', label: 'Fence', color: '#5D4037', defaultDims: '10x0.5', defaultUnit: 'ft', plantable: false },
+  { value: 'BUILDING', label: 'Building/Shed', color: '#795548', defaultDims: '8x10', defaultUnit: 'ft', plantable: false },
+  { value: 'TREE', label: 'Tree', color: '#4CAF50', defaultDims: '3x3', defaultUnit: 'ft', plantable: false },
+  { value: 'PATH', label: 'Path/Walkway', color: '#9E9E9E', defaultDims: '3x20', defaultUnit: 'ft', plantable: false },
+  { value: 'COMPOST', label: 'Compost Bin', color: '#6D4C41', defaultDims: '3x3', defaultUnit: 'ft', plantable: false },
+  { value: 'WATER_SOURCE', label: 'Water Source', color: '#2196F3', defaultDims: '2x2', defaultUnit: 'ft', plantable: false },
 ];
 
 const GALLON_SIZES = [
@@ -57,6 +65,7 @@ export default function PlotCanvas({ garden, plot, onPlotUpdate }) {
   const [snapToGrid, setSnapToGrid] = useState(true);
   const [showAddItem, setShowAddItem] = useState(false);
   const [showBulkAdd, setShowBulkAdd] = useState(false);
+  const [showPlotSettings, setShowPlotSettings] = useState(false);
   const [loading, setLoading] = useState(true);
 
   const [newItem, setNewItem] = useState({
@@ -215,19 +224,21 @@ export default function PlotCanvas({ garden, plot, onPlotUpdate }) {
           metadata
         });
 
-        // Auto-create PlantingSpace
-        const layoutSchema = calculateLayoutSchema(itemType, width, height, metadata);
-        const capacity = calculateCapacity(layoutSchema);
+        // Auto-create PlantingSpace only if plantable
+        if (itemType.plantable) {
+          const layoutSchema = calculateLayoutSchema(itemType, width, height, metadata);
+          const capacity = calculateCapacity(layoutSchema);
 
-        await base44.entities.PlantingSpace.create({
-          garden_id: garden.id,
-          plot_item_id: item.id,
-          space_type: item.item_type,
-          name: label,
-          capacity,
-          layout_schema,
-          is_active: true
-        });
+          await base44.entities.PlantingSpace.create({
+            garden_id: garden.id,
+            plot_item_id: item.id,
+            space_type: item.item_type,
+            name: label,
+            capacity,
+            layout_schema,
+            is_active: true
+          });
+        }
 
         newItems.push(item);
       }
@@ -415,6 +426,18 @@ export default function PlotCanvas({ garden, plot, onPlotUpdate }) {
     }
   };
 
+  const handlePlotSettingsSave = async (newSettings) => {
+    try {
+      await base44.entities.GardenPlot.update(plot.id, newSettings);
+      setShowPlotSettings(false);
+      onPlotUpdate();
+      toast.success('Plot settings updated');
+    } catch (error) {
+      console.error('Error updating plot:', error);
+      toast.error('Failed to update plot');
+    }
+  };
+
   const getItemColor = (type) => {
     return ITEM_TYPES.find(t => t.value === type)?.color || '#8B7355';
   };
@@ -438,6 +461,15 @@ export default function PlotCanvas({ garden, plot, onPlotUpdate }) {
           >
             <Plus className="w-4 h-4" />
             Add Item
+          </Button>
+
+          <Button 
+            onClick={() => setShowPlotSettings(true)}
+            variant="outline"
+            className="w-full gap-2"
+          >
+            <Settings className="w-4 h-4" />
+            Plot Settings
           </Button>
 
           <div className="pt-4 border-t space-y-2">
@@ -768,7 +800,13 @@ export default function PlotCanvas({ garden, plot, onPlotUpdate }) {
         </DialogContent>
       </Dialog>
 
-
+      {/* Plot Settings Dialog */}
+      <PlotSettingsDialog 
+        plot={plot}
+        open={showPlotSettings}
+        onOpenChange={setShowPlotSettings}
+        onSave={handlePlotSettingsSave}
+      />
     </div>
   );
 }
