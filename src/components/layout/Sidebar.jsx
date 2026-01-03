@@ -36,6 +36,7 @@ const getNavItems = (userRole, isEditor) => {
 
   if (isEditor || userRole === 'admin') {
     items.push({ name: 'Review Queue', icon: Shield, page: 'EditorReviewQueue' });
+    items.push({ name: 'Variety Reviews', icon: Sprout, page: 'VarietyReviewQueue' });
   }
 
   if (userRole === 'admin') {

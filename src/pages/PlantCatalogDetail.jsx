@@ -9,8 +9,11 @@ import {
   Droplets,
   Sun,
   TrendingUp,
-  Loader2
+  Loader2,
+  Package,
+  ListChecks
 } from 'lucide-react';
+import AddVarietyDialog from '@/components/variety/AddVarietyDialog';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -26,8 +29,11 @@ export default function PlantCatalogDetail() {
   const [varieties, setVarieties] = useState([]);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
+  const [showAddVariety, setShowAddVariety] = useState(false);
+  const [user, setUser] = useState(null);
 
   useEffect(() => {
+    loadUser();
     if (plantTypeId) {
       loadPlantType();
     } else {
@@ -35,6 +41,30 @@ export default function PlantCatalogDetail() {
       setLoading(false);
     }
   }, [plantTypeId]);
+
+  const loadUser = async () => {
+    try {
+      const userData = await base44.auth.me();
+      setUser(userData);
+    } catch (error) {
+      console.error('Error loading user:', error);
+    }
+  };
+
+  const reloadVarieties = async () => {
+    if (!plantTypeId) return;
+    
+    try {
+      let vars = await base44.entities.Variety.filter({ 
+        plant_type_id: plantTypeId
+      }, 'variety_name');
+      
+      console.log('[VARIETY RELOAD] Found varieties:', vars.length);
+      setVarieties(vars);
+    } catch (error) {
+      console.error('Error reloading varieties:', error);
+    }
+  };
 
   const loadPlantType = async () => {
     try {
@@ -139,13 +169,22 @@ export default function PlantCatalogDetail() {
               }`}>
                 {plantType.icon || '🌱'}
               </div>
-              <div>
+              <div className="flex-1">
                 <h1 className="text-2xl lg:text-3xl font-bold text-gray-900">
                   {plantType.common_name || plantType.name}
                 </h1>
                 {plantType.scientific_name && (
                   <p className="text-gray-500 italic">{plantType.scientific_name}</p>
                 )}
+              </div>
+              <div className="flex gap-2">
+                <Button 
+                  onClick={() => setShowAddVariety(true)}
+                  className="bg-emerald-600 hover:bg-emerald-700 gap-2"
+                >
+                  <Plus className="w-4 h-4" />
+                  {user?.role === 'admin' || user?.role === 'editor' ? 'Add Variety' : 'Suggest Variety'}
+                </Button>
               </div>
             </div>
           </div>
@@ -211,14 +250,70 @@ export default function PlantCatalogDetail() {
               <div className="text-center py-8">
                 <Leaf className="w-12 h-12 text-gray-300 mx-auto mb-3" />
                 <p className="text-gray-600 mb-2">No varieties cataloged yet</p>
-                <p className="text-sm text-gray-500">Check back later for specific varieties</p>
+                <p className="text-sm text-gray-500 mb-4">
+                  {user?.role === 'admin' 
+                    ? 'Import varieties or add them manually' 
+                    : 'Be the first to suggest a variety!'}
+                </p>
+                <Button 
+                  onClick={() => setShowAddVariety(true)}
+                  className="bg-emerald-600 hover:bg-emerald-700 gap-2"
+                >
+                  <Plus className="w-4 h-4" />
+                  {user?.role === 'admin' || user?.role === 'editor' ? 'Add First Variety' : 'Suggest Variety'}
+                </Button>
               </div>
             ) : (
               <div className="grid md:grid-cols-2 gap-4">
                 {varieties.map((variety) => (
                   <Card key={variety.id} className="hover:shadow-md transition-shadow">
                     <CardContent className="p-4">
-                      <h4 className="font-semibold text-gray-900 mb-2">{variety.variety_name}</h4>
+                      <div className="flex items-start justify-between mb-2">
+                        <h4 className="font-semibold text-gray-900">{variety.variety_name}</h4>
+                        <div className="flex gap-1">
+                          <Button 
+                            size="sm"
+                            variant="ghost"
+                            onClick={async () => {
+                              try {
+                                await base44.entities.SeedLot.create({
+                                  plant_type_id: plantType.id,
+                                  plant_type_name: plantType.common_name,
+                                  variety_id: variety.id,
+                                  variety_name: variety.variety_name,
+                                  is_wishlist: false
+                                });
+                                toast.success('Added to seed stash!');
+                              } catch (error) {
+                                console.error('Error adding to stash:', error);
+                                toast.error('Failed to add to stash');
+                              }
+                            }}
+                          >
+                            <Package className="w-4 h-4" />
+                          </Button>
+                          <Button 
+                            size="sm"
+                            variant="ghost"
+                            onClick={async () => {
+                              try {
+                                await base44.entities.SeedLot.create({
+                                  plant_type_id: plantType.id,
+                                  plant_type_name: plantType.common_name,
+                                  variety_id: variety.id,
+                                  variety_name: variety.variety_name,
+                                  is_wishlist: true
+                                });
+                                toast.success('Added to wishlist!');
+                              } catch (error) {
+                                console.error('Error adding to wishlist:', error);
+                              }
+                            }}
+                          >
+                            <ListChecks className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      </div>
                       <div className="flex flex-wrap gap-2">
                         {variety.days_to_maturity && (
                           <Badge variant="outline" className="text-xs">
@@ -287,6 +382,15 @@ export default function PlantCatalogDetail() {
             </div>
           </CardContent>
         </Card>
+
+        {/* Add Variety Dialog */}
+        <AddVarietyDialog 
+          plantType={plantType}
+          open={showAddVariety}
+          onOpenChange={setShowAddVariety}
+          onSuccess={reloadVarieties}
+          userRole={user?.role}
+        />
       </div>
     </ErrorBoundary>
   );
