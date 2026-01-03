@@ -20,11 +20,20 @@ import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { toast } from 'sonner';
 import { motion, AnimatePresence } from 'framer-motion';
+import ErrorBoundary from '@/components/common/ErrorBoundary';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 
 const IMPORT_ORDER = [
   { key: 'PlantGroup', label: 'Plant Groups', file: 'AG_PlantGroup.csv' },
   { key: 'PlantFamily', label: 'Plant Families', file: 'AG_PlantFamily.csv' },
   { key: 'PlantType', label: 'Plant Types', file: 'AG_PlantType.csv' },
+  { key: 'Variety', label: 'Plant Varieties', file: 'AG_Variety_Starter_350.csv or AG_Variety_Extended_583.csv' },
   { key: 'FacetGroup', label: 'Facet Groups', file: 'AG_FacetGroup.csv' },
   { key: 'Facet', label: 'Facets', file: 'AG_Facet.csv' },
   { key: 'PlantTypeFacetGroupMap', label: 'Plant Type Facet Maps', file: 'AG_PlantTypeFacetGroupMap.csv' },
@@ -46,12 +55,18 @@ export default function AdminDataImport() {
 
   const checkAdmin = async () => {
     try {
+      console.log('[AdminDataImport] Checking admin access...');
       const userData = await base44.auth.me();
-      if (userData.role !== 'admin') {
+      console.log('[AdminDataImport] User loaded:', userData?.email, 'Role:', userData?.role);
+      
+      if (!userData || userData.role !== 'admin') {
+        console.log('[AdminDataImport] Not admin, redirecting');
         window.location.href = '/Dashboard';
+        return;
       }
       setUser(userData);
     } catch (error) {
+      console.error('[AdminDataImport] Auth check failed:', error);
       window.location.href = '/Dashboard';
     }
   };
@@ -120,7 +135,7 @@ export default function AdminDataImport() {
             updated: 0,
             skipped: 0,
             rejected: 0,
-            preview: data.slice(0, 5)
+            preview: data.slice(0, 25)
           };
         } else {
           let inserted = 0;
@@ -128,6 +143,16 @@ export default function AdminDataImport() {
           let skipped = 0;
           let rejected = 0;
           const skipReasons = [];
+
+          // For Variety import, preload PlantType lookup
+          let plantTypeLookup = {};
+          if (item.key === 'Variety') {
+            const allPlantTypes = await base44.entities.PlantType.list();
+            allPlantTypes.forEach(pt => {
+              if (pt.plant_type_code) plantTypeLookup[pt.plant_type_code] = pt.id;
+              plantTypeLookup[pt.id] = pt.id; // Also map id to id
+            });
+          }
 
           for (const row of data) {
             try {
@@ -138,6 +163,55 @@ export default function AdminDataImport() {
                   skipReasons.push({ row, reason: 'Missing or invalid common_name' });
                   continue;
                 }
+              }
+
+              if (item.key === 'Variety') {
+                if (!row.variety_name || !row.plant_type_id) {
+                  rejected++;
+                  skipReasons.push({ row, reason: 'Missing variety_name or plant_type_id' });
+                  continue;
+                }
+
+                // Resolve plant_type_id
+                let resolvedTypeId = row.plant_type_id;
+                if (!plantTypeLookup[resolvedTypeId]) {
+                  // Not found, skip
+                  rejected++;
+                  skipReasons.push({ row, reason: `Unknown plant_type_code: ${row.plant_type_id}` });
+                  continue;
+                }
+                resolvedTypeId = plantTypeLookup[resolvedTypeId];
+
+                // Check for duplicate
+                const existing = await base44.entities.Variety.filter({ 
+                  plant_type_id: resolvedTypeId,
+                  variety_name: row.variety_name 
+                });
+
+                const varietyData = {
+                  plant_type_id: resolvedTypeId,
+                  variety_name: row.variety_name,
+                  synonyms: row.synonyms ? row.synonyms.split('|') : [],
+                  days_to_maturity: row.days_to_maturity ? parseInt(row.days_to_maturity) : null,
+                  spacing_recommended: row.spacing_recommended ? parseInt(row.spacing_recommended) : null,
+                  plant_height_typical: row.plant_height_typical || null,
+                  sun_requirement: row.sun_requirement || null,
+                  water_requirement: row.water_requirement || null,
+                  trellis_required: row.trellis_required === 'true',
+                  grower_notes: row.grower_notes || null,
+                  source_attribution: row.source_attribution || 'CSV Import',
+                  status: 'active',
+                  is_custom: false
+                };
+
+                if (existing.length > 0) {
+                  await base44.entities.Variety.update(existing[0].id, varietyData);
+                  updated++;
+                } else {
+                  await base44.entities.Variety.create(varietyData);
+                  inserted++;
+                }
+                continue;
               }
 
               if (importMode === 'INSERT_ONLY') {
@@ -205,6 +279,7 @@ export default function AdminDataImport() {
   }
 
   return (
+    <ErrorBoundary fallbackTitle="Data Import Error" fallbackMessage="An error occurred loading the import page. Please refresh and try again.">
     <div className="space-y-6 max-w-6xl">
       <div>
         <h1 className="text-2xl lg:text-3xl font-bold text-gray-900">Data Imports</h1>
@@ -411,5 +486,6 @@ export default function AdminDataImport() {
         </AnimatePresence>
       )}
     </div>
+    </ErrorBoundary>
   );
 }
