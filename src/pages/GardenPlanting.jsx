@@ -40,7 +40,8 @@ export default function GardenPlanting() {
 
   useEffect(() => {
     if (activeGarden) {
-      loadPlantingSpaces();
+      console.log('[GardenPlanting] Active garden changed, syncing...');
+      syncFromPlotBuilder(true); // Auto-sync on load
     }
   }, [activeGarden]);
 
@@ -98,10 +99,10 @@ export default function GardenPlanting() {
     }
   };
 
-  const syncFromPlotBuilder = async () => {
+  const syncFromPlotBuilder = async (silent = false) => {
     if (!activeGarden) return;
     
-    setSyncing(true);
+    if (!silent) setSyncing(true);
     setSyncResult(null);
     
     try {
@@ -162,12 +163,16 @@ export default function GardenPlanting() {
       
       setSyncResult({ created, updated, skipped });
       await loadPlantingSpaces();
-      toast.success(`Sync complete! Created ${created}, updated ${updated}`);
+      if (!silent) {
+        toast.success(`Sync complete! Created ${created}, updated ${updated}`);
+      }
     } catch (error) {
       console.error('[SYNC] Error:', error);
-      toast.error('Sync failed: ' + error.message);
+      if (!silent) {
+        toast.error('Sync failed: ' + error.message);
+      }
     } finally {
-      setSyncing(false);
+      if (!silent) setSyncing(false);
     }
   };
 
@@ -274,19 +279,19 @@ export default function GardenPlanting() {
             )}
           </div>
           <div className="flex gap-2">
-            <Link to={createPageUrl('PlotBuilder') + `?gardenId=${activeGarden?.id}`}>
+            <Link to={createPageUrl('MyGarden') + `?gardenId=${activeGarden?.id}`}>
               <Button variant="outline" className="gap-2">
                 <Settings className="w-4 h-4" />
-                Plot Builder
+                Edit Layout
               </Button>
             </Link>
             <Button 
-              onClick={syncFromPlotBuilder}
+              onClick={() => syncFromPlotBuilder(false)}
               disabled={syncing}
               className="bg-emerald-600 hover:bg-emerald-700 gap-2"
             >
               {syncing ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
-              Sync from Plot Builder
+              Refresh from Layout
             </Button>
           </div>
         </div>
@@ -306,8 +311,8 @@ export default function GardenPlanting() {
           <Alert>
             <AlertCircle className="w-4 h-4" />
             <AlertDescription>
-              <strong>No planting spaces yet.</strong> Use Plot Builder to design your garden layout, 
-              then click "Sync from Plot Builder" to create planting spaces.
+              <strong>No planting spaces yet.</strong> Go to Plot Layout to design your garden with beds, 
+              greenhouses, and containers. Spaces will appear here automatically.
             </AlertDescription>
           </Alert>
         )}

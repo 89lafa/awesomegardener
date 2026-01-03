@@ -133,9 +133,11 @@ export default function PlotCanvas({ garden, plot, onPlotUpdate }) {
   };
 
   const getNextName = (baseLabel) => {
-    // Find all items with this base label
-    const pattern = new RegExp(`^${baseLabel}( \\d+)?$`);
+    // Find all items with this base label pattern
+    const pattern = new RegExp(`^${baseLabel.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}( \\d+)?$`);
     const matchingItems = items.filter(i => pattern.test(i.label));
+    
+    console.log('[Naming] Base:', baseLabel, 'Matching:', matchingItems.map(i => i.label));
     
     if (matchingItems.length === 0) {
       return `${baseLabel} 1`;
@@ -144,12 +146,14 @@ export default function PlotCanvas({ garden, plot, onPlotUpdate }) {
     // Extract numbers from existing items
     const numbers = matchingItems.map(i => {
       const match = i.label.match(/\d+$/);
-      return match ? parseInt(match[0]) : 1;
+      return match ? parseInt(match[0]) : 0;
     });
     
     // Find next available number
-    const maxNum = Math.max(...numbers);
-    return `${baseLabel} ${maxNum + 1}`;
+    const maxNum = Math.max(...numbers, 0);
+    const nextNum = maxNum + 1;
+    console.log('[Naming] Next number:', nextNum);
+    return `${baseLabel} ${nextNum}`;
   };
 
   const calculateLayoutSchema = (itemType, width, height, metadata) => {
@@ -214,13 +218,17 @@ export default function PlotCanvas({ garden, plot, onPlotUpdate }) {
     const cols = Math.ceil(Math.sqrt(count));
 
     try {
+      // Get the first unique name
+      const firstName = getNextName(itemType.label);
+      const baseNum = parseInt(firstName.match(/\d+$/)?.[0] || '1');
+
       for (let i = 0; i < count; i++) {
         const row = Math.floor(i / cols);
         const col = i % cols;
         const x = 50 + col * (width + spacing);
         const y = 50 + row * (height + spacing);
-        
-        const label = i === 0 ? newItem.label : getNextName(itemType.label);
+
+        const label = `${itemType.label} ${baseNum + i}`;
 
         const metadata = {};
         if (itemType.usesGrid && newItem.useSquareFootGrid) {
