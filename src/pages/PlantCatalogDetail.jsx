@@ -60,11 +60,33 @@ export default function PlantCatalogDetail() {
       console.log('Loaded plant type:', type);
       setPlantType(type);
 
-      // Load varieties
-      const vars = await base44.entities.Variety.filter({ 
+      // Load varieties - try multiple approaches
+      console.log('[VARIETY DEBUG] Attempting to load varieties for plant_type_id:', plantTypeId);
+      
+      let vars = await base44.entities.Variety.filter({ 
         plant_type_id: plantTypeId,
         status: 'active'
       }, 'variety_name');
+      
+      console.log('[VARIETY DEBUG] Found varieties with status=active:', vars.length);
+      
+      // If no varieties with status filter, try without it
+      if (vars.length === 0) {
+        vars = await base44.entities.Variety.filter({ 
+          plant_type_id: plantTypeId
+        }, 'variety_name');
+        console.log('[VARIETY DEBUG] Found varieties without status filter:', vars.length);
+      }
+      
+      // Try matching by plant_type_name as fallback
+      if (vars.length === 0 && type.common_name) {
+        vars = await base44.entities.Variety.filter({ 
+          plant_type_name: type.common_name
+        }, 'variety_name');
+        console.log('[VARIETY DEBUG] Found varieties by plant_type_name match:', vars.length);
+      }
+      
+      console.log('[VARIETY DEBUG] Final varieties:', vars.slice(0, 3));
       setVarieties(vars);
     } catch (error) {
       console.error('Error loading plant type:', error);
