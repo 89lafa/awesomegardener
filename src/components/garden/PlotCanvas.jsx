@@ -300,6 +300,20 @@ export default function PlotCanvas({ garden, plot, onPlotUpdate }) {
       height = toInches(parsed.height, newItem.unit);
     }
 
+    // For GREENHOUSE, prompt for capacity before creating
+    let greenhouseCapacity = null;
+    if (newItem.item_type === 'GREENHOUSE') {
+      const capacityInput = prompt('How many plantable slots does this greenhouse have?', '20');
+      if (!capacityInput) return; // User cancelled
+      
+      const capacity = parseInt(capacityInput);
+      if (isNaN(capacity) || capacity < 1) {
+        toast.error('Please enter a valid number of slots');
+        return;
+      }
+      greenhouseCapacity = capacity;
+    }
+
     const count = newItem.createMultiple ? parseInt(newItem.count) : 1;
     const newItems = [];
     const spacing = 24;
@@ -331,6 +345,10 @@ export default function PlotCanvas({ garden, plot, onPlotUpdate }) {
         }
         if (itemType.usesGallons) {
           metadata.gallonSize = newItem.gallonSize;
+        }
+        if (newItem.item_type === 'GREENHOUSE' && greenhouseCapacity) {
+          metadata.capacity = greenhouseCapacity;
+          metadata.gridEnabled = false;
         }
 
         const item = await base44.entities.PlotItem.create({
