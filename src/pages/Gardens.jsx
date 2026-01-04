@@ -92,8 +92,13 @@ export default function Gardens() {
         width: 480, // 40 feet
         height: 720, // 60 feet
         units: 'ft',
-        shape_type: 'RECTANGLE'
+        shape_type: 'RECTANGLE',
+        grid_enabled: true,
+        grid_size: 12
       });
+
+      // Set as active garden for the user
+      await base44.auth.updateMe({ active_garden_id: garden.id });
 
       setGardens([garden, ...gardens]);
       setShowNewDialog(false);
