@@ -250,10 +250,11 @@ export default function GardenPlanting() {
   const loadData = async () => {
     try {
       console.log('[GardenPlanting] Loading data...');
-      const [userData, gardensData] = await Promise.all([
-        base44.auth.me(),
-        base44.entities.Garden.filter({ archived: false }, '-updated_date')
-      ]);
+      const userData = await base44.auth.me();
+      const gardensData = await base44.entities.Garden.filter({ 
+        archived: false, 
+        created_by: userData.email 
+      }, '-updated_date');
       
       setUser(userData);
       setGardens(gardensData);
