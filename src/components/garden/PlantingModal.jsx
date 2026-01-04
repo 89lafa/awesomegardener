@@ -54,15 +54,26 @@ export default function PlantingModal({ open, onOpenChange, item, garden, onPlan
   const loadData = async () => {
     try {
       setLoading(true);
-      const [plantingsData, stashData, profilesData, typesData] = await Promise.all([
+      const [plantingsData, lotsData, profilesData, typesData] = await Promise.all([
         base44.entities.PlantInstance.filter({ bed_id: item.id }),
         base44.entities.SeedLot.filter({ is_wishlist: false }),
-        base44.entities.PlantProfile.list('variety_name', 200),
-        base44.entities.PlantType.list('common_name', 100)
+        base44.entities.PlantProfile.list('variety_name', 500),
+        base44.entities.PlantType.list('common_name', 200)
       ]);
       
+      // Build stash items with profile data embedded
+      const stashWithProfiles = lotsData.map(lot => {
+        const profile = profilesData.find(p => p.id === lot.plant_profile_id);
+        return {
+          ...lot,
+          profile: profile,
+          display_name: lot.custom_label || profile?.variety_name || 'Unknown',
+          crop_name: profile?.common_name || ''
+        };
+      });
+      
       setPlantings(plantingsData);
-      setStashPlants(stashData);
+      setStashPlants(stashWithProfiles);
       setVarieties(profilesData);
       setPlantTypes(typesData);
     } catch (error) {
@@ -209,17 +220,19 @@ export default function PlantingModal({ open, onOpenChange, item, garden, onPlan
   };
 
   const handleSelectStashPlant = (stashItem) => {
-    // Try to find profile from catalog for spacing info
-    const profile = varieties.find(v => v.id === stashItem.plant_profile_id);
-    const spacing = profile 
-      ? getSpacingForPlant(profile) 
-      : getDefaultSpacing(profile?.common_name || stashItem.custom_label);
+    const profile = stashItem.profile;
+    if (!profile) {
+      toast.error('Plant profile not found');
+      return;
+    }
+    
+    const spacing = getSpacingForPlant(profile);
     
     setSelectedPlant({
-      variety_id: stashItem.plant_profile_id,
-      variety_name: profile?.variety_name || stashItem.custom_label,
-      plant_type_id: profile?.plant_type_id || null,
-      plant_type_name: profile?.common_name || stashItem.custom_label,
+      variety_id: profile.id,
+      variety_name: profile.variety_name,
+      plant_type_id: profile.plant_type_id,
+      plant_type_name: profile.common_name,
       spacing_cols: spacing.cols,
       spacing_rows: spacing.rows
     });
@@ -343,17 +356,13 @@ export default function PlantingModal({ open, onOpenChange, item, garden, onPlan
                           onClick={() => handleSelectStashPlant(plant)}
                           className={cn(
                             "w-full p-3 rounded-lg border-2 text-left transition-colors",
-                            selectedPlant?.variety_id === plant.variety_id
+                            selectedPlant?.variety_id === plant.plant_profile_id
                               ? "border-emerald-600 bg-emerald-50"
                               : "border-gray-200 hover:border-gray-300"
                           )}
                         >
-                          <p className="font-medium text-sm">
-                            {plant.custom_label || varieties.find(v => v.id === plant.plant_profile_id)?.variety_name || 'Unknown'}
-                          </p>
-                          <p className="text-xs text-gray-500">
-                            {varieties.find(v => v.id === plant.plant_profile_id)?.common_name || ''}
-                          </p>
+                          <p className="font-medium text-sm">{plant.display_name}</p>
+                          <p className="text-xs text-gray-500">{plant.crop_name}</p>
                         </button>
                       ))
                     )}
