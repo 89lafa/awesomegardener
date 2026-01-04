@@ -176,8 +176,15 @@ export default function PlotCanvas({ garden, plot, onPlotUpdate }) {
             capacity = layoutSchema.columns * layoutSchema.rows;
           }
           
+          // Count cells occupied (not just number of plants)
+          const filled = itemPlantings.reduce((sum, p) => {
+            const cols = p.cell_span_cols || 1;
+            const rows = p.cell_span_rows || 1;
+            return sum + (cols * rows);
+          }, 0);
+          
           counts[item.id] = {
-            filled: itemPlantings.length,
+            filled: filled,
             capacity: capacity
           };
         }
@@ -988,7 +995,7 @@ export default function PlotCanvas({ garden, plot, onPlotUpdate }) {
             <div
               key={item.id}
               className={cn(
-                "absolute border-2 rounded-lg flex items-center justify-center text-sm font-medium overflow-hidden plot-item",
+                "absolute border-4 rounded-lg flex items-center justify-center text-sm font-medium overflow-hidden plot-item",
                 selectedItem?.id === item.id && "ring-2 ring-emerald-100",
                 !status && "border-gray-400",
                 status?.status === 'empty' && "border-gray-400",
