@@ -39,46 +39,52 @@ export default function AddToStashModal({ open, onOpenChange, variety, plantType
     setSaving(true);
 
     try {
-      // Find or create PlantProfile from Variety
-      let profileId = variety.id;
+      console.log('[AddToStashModal] Starting submission for variety:', variety.variety_name);
       
-      // Check if this is a Variety record (has plant_type_name field)
-      if (variety.plant_type_name) {
-        // Try to find existing PlantProfile
-        const existingProfiles = await base44.entities.PlantProfile.filter({
-          variety_name: variety.variety_name,
-          plant_type_id: variety.plant_type_id
+      // Always work with Variety entity - find or create PlantProfile
+      const existingProfiles = await base44.entities.PlantProfile.filter({
+        variety_name: variety.variety_name,
+        plant_type_id: variety.plant_type_id
+      });
+      
+      let profileId;
+      
+      if (existingProfiles.length > 0) {
+        profileId = existingProfiles[0].id;
+        console.log('[AddToStashModal] Using existing PlantProfile:', profileId);
+      } else {
+        // Get PlantType for common_name
+        const plantTypeResults = await base44.entities.PlantType.filter({ id: variety.plant_type_id });
+        const plantTypeData = plantTypeResults.length > 0 ? plantTypeResults[0] : null;
+        
+        console.log('[AddToStashModal] Creating new PlantProfile with:', {
+          plant_type_id: variety.plant_type_id,
+          common_name: plantTypeData?.common_name || plantType?.common_name,
+          variety_name: variety.variety_name
         });
         
-        if (existingProfiles.length > 0) {
-          profileId = existingProfiles[0].id;
-        } else {
-          // Get PlantType for icon and additional data
-          const plantTypeResults = await base44.entities.PlantType.filter({ id: variety.plant_type_id });
-          const plantTypeData = plantTypeResults.length > 0 ? plantTypeResults[0] : null;
-          
-          // Create new PlantProfile from Variety data
-          const newProfile = await base44.entities.PlantProfile.create({
-            plant_type_id: variety.plant_type_id,
-            plant_subcategory_id: variety.plant_subcategory_id,
-            common_name: plantTypeData?.common_name || variety.plant_type_name || plantType?.common_name,
-            variety_name: variety.variety_name,
-            days_to_maturity_seed: variety.days_to_maturity,
-            spacing_in_min: variety.spacing_recommended,
-            spacing_in_max: variety.spacing_recommended,
-            height_in_min: variety.height_min,
-            height_in_max: variety.height_max,
-            sun_requirement: variety.sun_requirement,
-            trellis_required: variety.trellis_required || false,
-            container_friendly: variety.container_friendly || false,
-            notes_public: variety.grower_notes,
-            source_type: 'user_private'
-          });
-          profileId = newProfile.id;
-        }
+        // Create new PlantProfile from Variety data
+        const newProfile = await base44.entities.PlantProfile.create({
+          plant_type_id: variety.plant_type_id,
+          plant_subcategory_id: variety.plant_subcategory_id,
+          common_name: plantTypeData?.common_name || plantType?.common_name,
+          variety_name: variety.variety_name,
+          days_to_maturity_seed: variety.days_to_maturity,
+          spacing_in_min: variety.spacing_recommended,
+          spacing_in_max: variety.spacing_recommended,
+          height_in_min: variety.height_min,
+          height_in_max: variety.height_max,
+          sun_requirement: variety.sun_requirement,
+          trellis_required: variety.trellis_required || false,
+          container_friendly: variety.container_friendly || false,
+          notes_public: variety.grower_notes,
+          source_type: 'user_private'
+        });
+        profileId = newProfile.id;
+        console.log('[AddToStashModal] Created new PlantProfile:', profileId, newProfile);
       }
 
-      await base44.entities.SeedLot.create({
+      const seedLotData = {
         plant_profile_id: profileId,
         quantity: formData.quantity ? parseInt(formData.quantity) : null,
         unit: formData.unit,
@@ -89,7 +95,11 @@ export default function AddToStashModal({ open, onOpenChange, variety, plantType
         lot_notes: formData.lot_notes,
         storage_location: formData.storage_location,
         is_wishlist: false
-      });
+      };
+      
+      console.log('[AddToStashModal] Creating SeedLot with:', seedLotData);
+      const seedLot = await base44.entities.SeedLot.create(seedLotData);
+      console.log('[AddToStashModal] Created SeedLot:', seedLot.id);
 
       toast.success('Added to seed stash!');
       onOpenChange(false);
@@ -107,8 +117,8 @@ export default function AddToStashModal({ open, onOpenChange, variety, plantType
         storage_location: ''
       });
     } catch (error) {
-      console.error('Error adding to stash:', error);
-      toast.error('Failed to add to stash');
+      console.error('[AddToStashModal] Error adding to stash:', error);
+      toast.error('Failed to add to stash: ' + (error.message || 'Unknown error'));
     } finally {
       setSaving(false);
     }

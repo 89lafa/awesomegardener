@@ -84,6 +84,7 @@ export default function SeedInventory() {
 
   const loadData = async () => {
     try {
+      console.log('[SeedInventory] Loading data...');
       const [lotsData, profilesData, typesData, subcatsData, settingsData] = await Promise.all([
         base44.entities.SeedLot.filter({ is_wishlist: false }),
         base44.entities.PlantProfile.list('variety_name', 500),
@@ -92,6 +93,7 @@ export default function SeedInventory() {
         base44.entities.UserSettings.list()
       ]);
 
+      console.log('[SeedInventory] Loaded:', lotsData.length, 'lots,', profilesData.length, 'profiles');
       setSeedLots(lotsData);
       setPlantTypes(typesData);
       setSubCategories(subcatsData);
@@ -101,6 +103,13 @@ export default function SeedInventory() {
         profilesMap[p.id] = p;
       });
       setProfiles(profilesMap);
+      
+      // Log any lots without profiles
+      lotsData.forEach(lot => {
+        if (!profilesMap[lot.plant_profile_id]) {
+          console.warn('[SeedInventory] SeedLot missing profile:', lot.id, 'profile_id:', lot.plant_profile_id);
+        }
+      });
 
       if (settingsData.length > 0) {
         setSettings(settingsData[0]);
@@ -129,7 +138,10 @@ export default function SeedInventory() {
   const filteredLots = seedLots
     .filter(lot => {
       const profile = profiles[lot.plant_profile_id];
-      if (!profile) return false;
+      if (!profile) {
+        console.warn('[SeedInventory] Filtering out lot without profile:', lot.id, lot.plant_profile_id);
+        return false;
+      }
 
       const matchesSearch = searchQuery === '' || 
         profile.variety_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
