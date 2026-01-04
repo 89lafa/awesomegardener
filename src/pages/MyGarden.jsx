@@ -109,8 +109,8 @@ export default function MyGarden() {
         // Auto-create default plot
         const newPlot = await base44.entities.GardenPlot.create({
           garden_id: activeGarden.id,
-          width: 240, // 20 feet
-          height: 360, // 30 feet
+          width: 480, // 40 feet
+          height: 720, // 60 feet
           units: 'ft',
           shape_type: 'RECTANGLE',
           grid_enabled: true,
