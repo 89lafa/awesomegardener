@@ -43,8 +43,10 @@ export default function PlantingModal({ open, onOpenChange, item, garden, onPlan
   });
 
   // Calculate grid dimensions
-  const gridCols = Math.floor(item.width / 12); // 12" = 1 sqft
-  const gridRows = Math.floor(item.height / 12);
+  const metadata = item.metadata || {};
+  const isSlotBased = !metadata.gridEnabled && metadata.capacity;
+  const gridCols = isSlotBased ? Math.ceil(Math.sqrt(metadata.capacity)) : Math.floor(item.width / 12); // 12" = 1 sqft
+  const gridRows = isSlotBased ? Math.ceil(metadata.capacity / gridCols) : Math.floor(item.height / 12);
 
   useEffect(() => {
     if (open && item) {

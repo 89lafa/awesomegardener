@@ -88,9 +88,12 @@ function SpaceCard({ space, garden }) {
   const pseudoItem = {
     id: space.plot_item_id,
     label: space.name,
-    width: columns * 12,
-    height: rows * 12,
-    metadata: {
+    width: isGridSpace ? columns * 12 : 120,
+    height: isGridSpace ? rows * 12 : 120,
+    metadata: isSlotsSpace ? {
+      gridEnabled: false,
+      capacity: slots
+    } : {
       gridEnabled: isGridSpace,
       gridSize: 12
     }
@@ -391,6 +394,18 @@ export default function GardenPlanting() {
       };
     }
     
+    if (item.item_type === 'GREENHOUSE') {
+      // Use metadata.capacity if set, otherwise calculate from grid
+      if (metadata.capacity) {
+        return { type: 'slots', slots: metadata.capacity };
+      }
+      // Fallback to grid calculation if no capacity set
+      const gridSize = metadata.gridSize || 12;
+      const cols = Math.floor(item.width / gridSize);
+      const rows = Math.floor(item.height / gridSize);
+      return { type: 'slots', slots: cols * rows };
+    }
+    
     if (item.item_type === 'IN_GROUND_BED' || item.item_type === 'OPEN_PLOT') {
       return {
         type: 'rows',
@@ -401,10 +416,6 @@ export default function GardenPlanting() {
     
     if (item.item_type === 'GROW_BAG' || item.item_type === 'CONTAINER') {
       return { type: 'slots', slots: 1 };
-    }
-    
-    if (item.item_type === 'GREENHOUSE') {
-      return { type: 'slots', slots: metadata.capacity || 20 };
     }
     
     return { type: 'slots', slots: 10 };
