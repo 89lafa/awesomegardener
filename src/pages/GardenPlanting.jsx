@@ -40,11 +40,7 @@ function SpaceCard({ space }) {
 
   const loadPlantings = async () => {
     try {
-      // Load plants for this planting space by bed_id
-      const plants = await base44.entities.PlantInstance.filter({ 
-        bed_id: space.plot_item_id 
-      });
-      console.log('[SpaceCard] Loaded plantings for', space.name, ':', plants.length);
+      const plants = await base44.entities.PlantInstance.filter({ space_id: space.id });
       setPlantings(plants);
     } catch (error) {
       console.error('Error loading plantings:', error);
@@ -75,11 +71,11 @@ function SpaceCard({ space }) {
   const filledCount = plantings.length;
   const capacity = space.capacity;
 
-  // Create grid cells map using cell_col and cell_row
+  // Create grid cells map
   const cellsMap = {};
   plantings.forEach(p => {
-    if (p.cell_col !== undefined && p.cell_row !== undefined) {
-      cellsMap[`${p.cell_col}-${p.cell_row}`] = p;
+    if (p.cell_x !== undefined && p.cell_y !== undefined) {
+      cellsMap[`${p.cell_x}-${p.cell_y}`] = p;
     }
   });
 

@@ -22,16 +22,13 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { toast } from 'sonner';
 import ErrorBoundary from '@/components/common/ErrorBoundary';
-import { cn } from '@/lib/utils';
 
 export default function PlantCatalogDetail() {
   const [searchParams] = useSearchParams();
   const plantTypeId = searchParams.get('id');
   
   const [plantType, setPlantType] = useState(null);
-  const [subCategories, setSubCategories] = useState([]);
   const [varieties, setVarieties] = useState([]);
-  const [selectedSubCat, setSelectedSubCat] = useState('all');
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
   const [showAddVariety, setShowAddVariety] = useState(false);
@@ -63,12 +60,12 @@ export default function PlantCatalogDetail() {
     if (!plantTypeId) return;
     
     try {
-      const profiles = await base44.entities.PlantProfile.filter({ 
+      let vars = await base44.entities.Variety.filter({ 
         plant_type_id: plantTypeId
       }, 'variety_name');
       
-      console.log('[PROFILE RELOAD] Found profiles:', profiles.length);
-      setVarieties(profiles);
+      console.log('[VARIETY RELOAD] Found varieties:', vars.length);
+      setVarieties(vars);
     } catch (error) {
       console.error('Error reloading varieties:', error);
     }
@@ -98,23 +95,34 @@ export default function PlantCatalogDetail() {
       console.log('Loaded plant type:', type);
       setPlantType(type);
 
-      // Load subcategories for this plant type
-      const subcats = await base44.entities.PlantSubCategory.filter({ 
-        plant_type_id: plantTypeId,
-        is_active: true
-      }, 'sort_order');
-      console.log('[SUBCAT DEBUG] Found subcategories:', subcats.length);
-      setSubCategories(subcats);
-
-      // Load PlantProfiles for this plant type
-      console.log('[PROFILE DEBUG] Loading profiles for plant_type_id:', plantTypeId);
+      // Load varieties - try multiple approaches
+      console.log('[VARIETY DEBUG] Attempting to load varieties for plant_type_id:', plantTypeId);
       
-      const profiles = await base44.entities.PlantProfile.filter({ 
-        plant_type_id: plantTypeId
+      let vars = await base44.entities.Variety.filter({ 
+        plant_type_id: plantTypeId,
+        status: 'active'
       }, 'variety_name');
       
-      console.log('[PROFILE DEBUG] Found profiles:', profiles.length);
-      setVarieties(profiles);
+      console.log('[VARIETY DEBUG] Found varieties with status=active:', vars.length);
+      
+      // If no varieties with status filter, try without it
+      if (vars.length === 0) {
+        vars = await base44.entities.Variety.filter({ 
+          plant_type_id: plantTypeId
+        }, 'variety_name');
+        console.log('[VARIETY DEBUG] Found varieties without status filter:', vars.length);
+      }
+      
+      // Try matching by plant_type_name as fallback
+      if (vars.length === 0 && type.common_name) {
+        vars = await base44.entities.Variety.filter({ 
+          plant_type_name: type.common_name
+        }, 'variety_name');
+        console.log('[VARIETY DEBUG] Found varieties by plant_type_name match:', vars.length);
+      }
+      
+      console.log('[VARIETY DEBUG] Final varieties:', vars.slice(0, 3));
+      setVarieties(vars);
     } catch (error) {
       console.error('Error loading plant type:', error);
       toast.error('Failed to load plant details');
@@ -237,65 +245,13 @@ export default function PlantCatalogDetail() {
           </CardContent>
         </Card>
 
-        {/* Subcategories */}
-        {subCategories.length > 0 && (
-          <Card>
-            <CardHeader>
-              <CardTitle>Browse by Type</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-                {subCategories.map((subcat) => {
-                  const subcatVarieties = varieties.filter(v => 
-                    v.subcategory_maps?.includes(subcat.id)
-                  );
-                  return (
-                    <button
-                      key={subcat.id}
-                      onClick={() => setSelectedSubCat(selectedSubCat === subcat.id ? 'all' : subcat.id)}
-                      className={cn(
-                        "p-4 rounded-lg border-2 transition-all text-left hover:shadow-md",
-                        selectedSubCat === subcat.id 
-                          ? "border-emerald-600 bg-emerald-50" 
-                          : "border-gray-200 bg-white hover:border-gray-300"
-                      )}
-                    >
-                      <div className="text-2xl mb-2">{subcat.icon || '🌱'}</div>
-                      <p className="font-semibold text-sm text-gray-900">{subcat.name}</p>
-                      <p className="text-xs text-gray-500 mt-1">
-                        {subcatVarieties.length} varieties
-                      </p>
-                    </button>
-                  );
-                })}
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
         {/* Varieties */}
         <Card>
           <CardHeader>
-            <CardTitle>
-              {selectedSubCat !== 'all' 
-                ? `${subCategories.find(s => s.id === selectedSubCat)?.name} Varieties` 
-                : `All Varieties (${varieties.length})`}
-            </CardTitle>
-            {selectedSubCat !== 'all' && (
-              <Button 
-                variant="ghost" 
-                size="sm" 
-                onClick={() => setSelectedSubCat('all')}
-                className="text-emerald-600 hover:text-emerald-700"
-              >
-                Show all varieties
-              </Button>
-            )}
+            <CardTitle>Varieties ({varieties.length})</CardTitle>
           </CardHeader>
           <CardContent>
-            {varieties.filter(v => 
-              selectedSubCat === 'all' || v.subcategory_maps?.includes(selectedSubCat)
-            ).length === 0 ? (
+            {varieties.length === 0 ? (
               <div className="text-center py-8">
                 <Leaf className="w-12 h-12 text-gray-300 mx-auto mb-3" />
                 <p className="text-gray-600 mb-2">No varieties cataloged yet</p>
@@ -314,9 +270,7 @@ export default function PlantCatalogDetail() {
               </div>
             ) : (
               <div className="grid md:grid-cols-2 gap-4">
-                {varieties.filter(v => 
-                  selectedSubCat === 'all' || v.subcategory_maps?.includes(selectedSubCat)
-                ).map((variety) => (
+                {varieties.map((variety) => (
                   <Card key={variety.id} className="hover:shadow-md transition-shadow">
                     <CardContent className="p-4">
                       <div className="flex items-start justify-between mb-2">
@@ -347,27 +301,22 @@ export default function PlantCatalogDetail() {
                         </div>
                       </div>
                       <div className="flex flex-wrap gap-2">
-                       {variety.days_to_maturity_seed && (
-                         <Badge variant="outline" className="text-xs">
-                           {variety.days_to_maturity_seed} days
-                         </Badge>
-                       )}
-                       {variety.spacing_in_min && (
-                         <Badge variant="outline" className="text-xs">
-                           {variety.spacing_in_min}" spacing
-                         </Badge>
-                       )}
-                       {variety.trellis_required && (
-                         <Badge className="bg-green-100 text-green-800 text-xs">Needs Trellis</Badge>
-                       )}
-                       {subCategories.find(sc => sc.id === variety.plant_subcategory_id) && (
-                         <Badge variant="secondary" className="text-xs">
-                           {subCategories.find(sc => sc.id === variety.plant_subcategory_id)?.name}
-                         </Badge>
-                       )}
+                        {variety.days_to_maturity && (
+                          <Badge variant="outline" className="text-xs">
+                            {variety.days_to_maturity} days
+                          </Badge>
+                        )}
+                        {variety.spacing_recommended && (
+                          <Badge variant="outline" className="text-xs">
+                            {variety.spacing_recommended}" spacing
+                          </Badge>
+                        )}
+                        {variety.trellis_required && (
+                          <Badge className="bg-green-100 text-green-800 text-xs">Needs Trellis</Badge>
+                        )}
                       </div>
-                      {variety.notes_public && (
-                       <p className="text-sm text-gray-600 mt-3 line-clamp-2">{variety.notes_public}</p>
+                      {variety.grower_notes && (
+                        <p className="text-sm text-gray-600 mt-3 line-clamp-2">{variety.grower_notes}</p>
                       )}
                     </CardContent>
                   </Card>
@@ -433,18 +382,16 @@ export default function PlantCatalogDetail() {
         <AddToStashModal
           open={showAddToStash}
           onOpenChange={setShowAddToStash}
-          profile={selectedVariety}
+          variety={selectedVariety}
           plantType={plantType}
-          onSuccess={reloadVarieties}
         />
 
         {/* Add to Grow List Modal */}
         <AddToGrowListModal
           open={showAddToGrowList}
           onOpenChange={setShowAddToGrowList}
-          profile={selectedVariety}
+          variety={selectedVariety}
           plantType={plantType}
-          onSuccess={reloadVarieties}
         />
       </div>
     </ErrorBoundary>

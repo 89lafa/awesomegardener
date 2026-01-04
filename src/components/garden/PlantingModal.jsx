@@ -54,73 +54,35 @@ export default function PlantingModal({ open, onOpenChange, item, garden, onPlan
   const loadData = async () => {
     try {
       setLoading(true);
-      const [plantingsData, lotsData, profilesData, typesData] = await Promise.all([
+      const [plantingsData, stashData, varietiesData, typesData] = await Promise.all([
         base44.entities.PlantInstance.filter({ bed_id: item.id }),
         base44.entities.SeedLot.filter({ is_wishlist: false }),
-        base44.entities.PlantProfile.list('variety_name', 500),
-        base44.entities.PlantType.list('common_name', 200)
+        base44.entities.Variety.list('variety_name', 100),
+        base44.entities.PlantType.list('common_name', 100)
       ]);
-
-      console.log('[PlantingModal] Loaded:', {
-        plantings: plantingsData.length,
-        lots: lotsData.length,
-        profiles: profilesData.length,
-        types: typesData.length
-      });
-
-      // Build stash items with profile data embedded
-      const stashWithProfiles = lotsData.map(lot => {
-        const profile = profilesData.find(p => p.id === lot.plant_profile_id);
-
-        if (!profile) {
-          console.warn('[PlantingModal] No profile found for lot:', lot.id, 'plant_profile_id:', lot.plant_profile_id);
-        }
-
-        const displayName = lot.custom_label || profile?.variety_name || 'Unknown Variety';
-        const cropName = profile?.common_name || 'Unknown Crop';
-
-        console.log('[PlantingModal] Stash item:', {
-          lotId: lot.id,
-          profileId: lot.plant_profile_id,
-          profileFound: !!profile,
-          displayName,
-          cropName
-        });
-
-        return {
-          ...lot,
-          profile: profile,
-          display_name: displayName,
-          crop_name: cropName,
-          plant_type_id: profile?.plant_type_id
-        };
-      });
-
-      console.log('[PlantingModal] Built stash with profiles:', stashWithProfiles.slice(0, 3));
-
+      
       setPlantings(plantingsData);
-      setStashPlants(stashWithProfiles);
-      setVarieties(profilesData);
+      setStashPlants(stashData);
+      setVarieties(varietiesData);
       setPlantTypes(typesData);
     } catch (error) {
       console.error('Error loading planting data:', error);
-      toast.error('Failed to load planting data');
     } finally {
       setLoading(false);
     }
   };
 
-  const getSpacingForPlant = (profile) => {
+  const getSpacingForPlant = (variety) => {
     const method = garden.planting_method || 'STANDARD';
     
     if (method === 'SQUARE_FOOT') {
       // Most plants 1x1 in SFT, larger crops 2x2
-      const spacing = profile.spacing_in_min || 12;
+      const spacing = variety.spacing_recommended || 12;
       if (spacing >= 18) return { cols: 2, rows: 2 };
       return { cols: 1, rows: 1 };
     } else {
-      // Standard spacing - use profile spacing
-      const spacing = profile.spacing_in_min || 24;
+      // Standard spacing - use variety spacing
+      const spacing = variety.spacing_recommended || 24;
       const cells = Math.ceil(spacing / 12);
       return { cols: cells, rows: cells };
     }
@@ -247,27 +209,23 @@ export default function PlantingModal({ open, onOpenChange, item, garden, onPlan
   };
 
   const handleSelectStashPlant = (stashItem) => {
-    const profile = stashItem.profile;
-    if (!profile) {
-      console.error('[PlantingModal] No profile in stash item:', stashItem);
-      toast.error('Plant profile not found');
+    // Check if seed has minimum required info
+    if (!stashItem.plant_type_name && !stashItem.variety_name) {
+      toast.error('This seed needs a plant name to be planted');
       return;
     }
-
-    const spacing = getSpacingForPlant(profile);
-
-    console.log('[PlantingModal] Selected stash plant:', {
-      profileId: profile.id,
-      varietyName: profile.variety_name,
-      commonName: profile.common_name,
-      spacing
-    });
-
+    
+    // Try to find variety from catalog for spacing info
+    const variety = varieties.find(v => v.id === stashItem.variety_id);
+    const spacing = variety 
+      ? getSpacingForPlant(variety) 
+      : getDefaultSpacing(stashItem.plant_type_name || stashItem.variety_name);
+    
     setSelectedPlant({
-      variety_id: profile.id,
-      variety_name: profile.variety_name,
-      plant_type_id: profile.plant_type_id,
-      plant_type_name: profile.common_name,
+      variety_id: stashItem.variety_id || null,
+      variety_name: stashItem.variety_name || stashItem.plant_type_name,
+      plant_type_id: stashItem.plant_type_id || null,
+      plant_type_name: stashItem.plant_type_name || stashItem.variety_name,
       spacing_cols: spacing.cols,
       spacing_rows: spacing.rows
     });
@@ -275,54 +233,37 @@ export default function PlantingModal({ open, onOpenChange, item, garden, onPlan
 
   const handleCreateNewPlant = async () => {
     if (!newPlant.variety_id || creating) return;
-
+    
     setCreating(true);
     try {
-      const profile = varieties.find(v => v.id === newPlant.variety_id);
-      if (!profile) {
-        toast.error('Profile not found');
-        setCreating(false);
-        return;
-      }
-
-      console.log('[PlantingModal] Creating new plant from profile:', profile);
-
-      const spacing = getSpacingForPlant(profile);
-
+      const variety = varieties.find(v => v.id === newPlant.variety_id);
+      const spacing = getSpacingForPlant(variety);
+      
       // Add to stash
-      const newLot = await base44.entities.SeedLot.create({
-        plant_profile_id: profile.id,
+      await base44.entities.SeedLot.create({
+        plant_type_id: variety.plant_type_id,
+        plant_type_name: variety.plant_type_name,
+        variety_id: variety.id,
+        variety_name: variety.variety_name,
         is_wishlist: false
       });
-
-      console.log('[PlantingModal] Created new seed lot:', newLot.id);
-
+      
       // Select for placing
       setSelectedPlant({
-        variety_id: profile.id,
-        variety_name: profile.variety_name,
-        plant_type_id: profile.plant_type_id,
-        plant_type_name: profile.common_name,
+        variety_id: variety.id,
+        variety_name: variety.variety_name,
+        plant_type_id: variety.plant_type_id,
+        plant_type_name: variety.plant_type_name,
         spacing_cols: spacing.cols,
         spacing_rows: spacing.rows
       });
-
-      // Reload stash with profiles
-      const lotsData = await base44.entities.SeedLot.filter({ is_wishlist: false });
-      const stashWithProfiles = lotsData.map(lot => {
-        const p = varieties.find(v => v.id === lot.plant_profile_id);
-        return {
-          ...lot,
-          profile: p,
-          display_name: lot.custom_label || p?.variety_name || 'Unknown',
-          crop_name: p?.common_name || '',
-          plant_type_id: p?.plant_type_id
-        };
-      });
-
-      setStashPlants(stashWithProfiles);
+      
       setNewPlant({ variety_id: '', variety_name: '', plant_type_name: '', spacing_cols: 1, spacing_rows: 1 });
       toast.success('Added to stash - now click a cell to place');
+      
+      // Reload stash
+      const stashData = await base44.entities.SeedLot.filter({ is_wishlist: false });
+      setStashPlants(stashData);
     } catch (error) {
       console.error('Error creating plant:', error);
       toast.error('Failed to add plant');
@@ -406,13 +347,13 @@ export default function PlantingModal({ open, onOpenChange, item, garden, onPlan
                           onClick={() => handleSelectStashPlant(plant)}
                           className={cn(
                             "w-full p-3 rounded-lg border-2 text-left transition-colors",
-                            selectedPlant?.variety_id === plant.plant_profile_id
+                            selectedPlant?.variety_id === plant.variety_id
                               ? "border-emerald-600 bg-emerald-50"
                               : "border-gray-200 hover:border-gray-300"
                           )}
                         >
-                          <p className="font-medium text-sm">{plant.display_name}</p>
-                          <p className="text-xs text-gray-500">{plant.crop_name}</p>
+                          <p className="font-medium text-sm">{plant.variety_name}</p>
+                          <p className="text-xs text-gray-500">{plant.plant_type_name}</p>
                         </button>
                       ))
                     )}
@@ -423,28 +364,26 @@ export default function PlantingModal({ open, onOpenChange, item, garden, onPlan
               <TabsContent value="new" className="mt-4 flex-1">
                 <div className="space-y-4">
                   <div>
-                    <Label>Search & Select Variety</Label>
+                    <Label>Variety</Label>
                     <Select 
                       value={newPlant.variety_id} 
                       onValueChange={(v) => {
-                        const profile = varieties.find(vr => vr.id === v);
-                        if (profile) {
-                          setNewPlant({
-                            ...newPlant,
-                            variety_id: v,
-                            variety_name: profile.variety_name,
-                            plant_type_name: profile.common_name
-                          });
-                        }
+                        const variety = varieties.find(vr => vr.id === v);
+                        setNewPlant({
+                          ...newPlant,
+                          variety_id: v,
+                          variety_name: variety.variety_name,
+                          plant_type_name: variety.plant_type_name
+                        });
                       }}
                     >
                       <SelectTrigger className="mt-2">
-                        <SelectValue placeholder="Select variety to add" />
+                        <SelectValue placeholder="Select variety" />
                       </SelectTrigger>
-                      <SelectContent className="max-h-[300px]">
-                        {varieties.map((profile) => (
-                          <SelectItem key={profile.id} value={profile.id}>
-                            {profile.variety_name} - {profile.common_name}
+                      <SelectContent>
+                        {varieties.slice(0, 50).map((v) => (
+                          <SelectItem key={v.id} value={v.id}>
+                            {v.variety_name} ({v.plant_type_name})
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -590,6 +529,16 @@ export default function PlantingModal({ open, onOpenChange, item, garden, onPlan
               </div>
             )}
           </div>
+        </div>
+        
+        {/* Bottom sticky done button */}
+        <div className="p-4 border-t bg-gray-50 flex justify-end">
+          <Button 
+            onClick={handleDone}
+            className="bg-emerald-600 hover:bg-emerald-700 text-white h-12 px-10 text-base font-semibold"
+          >
+            ✓ Done Planting
+          </Button>
         </div>
       </DialogContent>
     </Dialog>

@@ -7,7 +7,6 @@ import {
   DialogTitle,
   DialogFooter,
 } from '@/components/ui/dialog';
-import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -22,9 +21,7 @@ import {
 import { toast } from 'sonner';
 import { Loader2 } from 'lucide-react';
 
-export default function AddToStashModal({ open, onOpenChange, variety, plantType, profile, onSuccess }) {
-  // Support both Variety and PlantProfile
-  const plantData = profile || variety;
+export default function AddToStashModal({ open, onOpenChange, variety, plantType, onSuccess }) {
   const [saving, setSaving] = useState(false);
   const [formData, setFormData] = useState({
     quantity: '',
@@ -43,7 +40,7 @@ export default function AddToStashModal({ open, onOpenChange, variety, plantType
 
     try {
       await base44.entities.SeedLot.create({
-        plant_profile_id: plantData.id,
+        plant_profile_id: variety.id,
         quantity: formData.quantity ? parseInt(formData.quantity) : null,
         unit: formData.unit,
         year_acquired: parseInt(formData.year_acquired),
@@ -84,7 +81,7 @@ export default function AddToStashModal({ open, onOpenChange, variety, plantType
         <DialogHeader>
           <DialogTitle>Add to Seed Stash</DialogTitle>
           <p className="text-sm text-gray-600 mt-1">
-            {plantData?.variety_name} • {plantType?.common_name || plantData?.common_name}
+            {variety?.variety_name} • {plantType?.common_name}
           </p>
         </DialogHeader>
 
