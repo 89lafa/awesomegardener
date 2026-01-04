@@ -25,6 +25,7 @@ import { cn } from '@/lib/utils';
 export default function PlantingModal({ open, onOpenChange, item, garden, onPlantingUpdate }) {
   const [plantings, setPlantings] = useState([]);
   const [stashPlants, setStashPlants] = useState([]);
+  const [profiles, setProfiles] = useState({});
   const [varieties, setVarieties] = useState([]);
   const [plantTypes, setPlantTypes] = useState([]);
   const [selectedPlant, setSelectedPlant] = useState(null);
@@ -54,16 +55,24 @@ export default function PlantingModal({ open, onOpenChange, item, garden, onPlan
   const loadData = async () => {
     try {
       setLoading(true);
-      const [plantingsData, stashData, varietiesData, typesData] = await Promise.all([
+      const [plantingsData, stashData, profilesData, varietiesData, typesData] = await Promise.all([
         base44.entities.PlantInstance.filter({ bed_id: item.id }),
         base44.entities.SeedLot.filter({ is_wishlist: false }),
+        base44.entities.PlantProfile.list('variety_name', 500),
         base44.entities.Variety.list('variety_name', 500),
         base44.entities.PlantType.list('common_name', 100)
       ]);
       
-      console.log('[PlantingModal] Loaded:', plantingsData.length, 'plantings,', stashData.length, 'stash,', varietiesData.length, 'varieties');
+      console.log('[PlantingModal] Loaded:', plantingsData.length, 'plantings,', stashData.length, 'stash,', profilesData.length, 'profiles');
       setPlantings(plantingsData);
       setStashPlants(stashData);
+      
+      const profilesMap = {};
+      profilesData.forEach(p => {
+        profilesMap[p.id] = p;
+      });
+      setProfiles(profilesMap);
+      
       setVarieties(varietiesData);
       setPlantTypes(typesData);
     } catch (error) {
@@ -214,23 +223,28 @@ export default function PlantingModal({ open, onOpenChange, item, garden, onPlan
   };
 
   const handleSelectStashPlant = (stashItem) => {
-    // Check if seed has minimum required info
-    if (!stashItem.plant_type_name && !stashItem.variety_name) {
-      toast.error('This seed needs a plant name to be planted');
+    const profile = profiles[stashItem.plant_profile_id];
+    
+    if (!profile) {
+      toast.error('This seed has no profile data');
       return;
     }
     
     // Try to find variety from catalog for spacing info
-    const variety = varieties.find(v => v.id === stashItem.variety_id);
+    const variety = varieties.find(v => 
+      v.variety_name === profile.variety_name && 
+      v.plant_type_id === profile.plant_type_id
+    );
+    
     const spacing = variety 
       ? getSpacingForPlant(variety) 
-      : getDefaultSpacing(stashItem.plant_type_name || stashItem.variety_name);
+      : getDefaultSpacing(profile.common_name);
     
     setSelectedPlant({
-      variety_id: stashItem.variety_id || null,
-      variety_name: stashItem.variety_name || stashItem.plant_type_name,
-      plant_type_id: stashItem.plant_type_id || null,
-      plant_type_name: stashItem.plant_type_name || stashItem.variety_name,
+      variety_id: variety?.id || null,
+      variety_name: profile.variety_name,
+      plant_type_id: profile.plant_type_id,
+      plant_type_name: profile.common_name,
       spacing_cols: spacing.cols,
       spacing_rows: spacing.rows
     });
@@ -387,21 +401,25 @@ export default function PlantingModal({ open, onOpenChange, item, garden, onPlan
                     {stashPlants.length === 0 ? (
                       <p className="text-sm text-gray-500 text-center py-8">No plants in stash</p>
                     ) : (
-                      stashPlants.map((plant) => (
-                        <button
-                          key={plant.id}
-                          onClick={() => handleSelectStashPlant(plant)}
-                          className={cn(
-                            "w-full p-3 rounded-lg border-2 text-left transition-colors",
-                            selectedPlant?.variety_id === plant.variety_id
-                              ? "border-emerald-600 bg-emerald-50"
-                              : "border-gray-200 hover:border-gray-300"
-                          )}
-                        >
-                          <p className="font-medium text-sm">{plant.variety_name}</p>
-                          <p className="text-xs text-gray-500">{plant.plant_type_name}</p>
-                        </button>
-                      ))
+                      stashPlants.map((plant) => {
+                        const profile = profiles[plant.plant_profile_id];
+                        if (!profile) return null;
+                        return (
+                          <button
+                            key={plant.id}
+                            onClick={() => handleSelectStashPlant(plant)}
+                            className={cn(
+                              "w-full p-3 rounded-lg border-2 text-left transition-colors",
+                              selectedPlant?.variety_name === profile.variety_name
+                                ? "border-emerald-600 bg-emerald-50"
+                                : "border-gray-200 hover:border-gray-300"
+                            )}
+                          >
+                            <p className="font-medium text-sm">{profile.variety_name}</p>
+                            <p className="text-xs text-gray-500">{profile.common_name}</p>
+                          </button>
+                        );
+                      })
                     )}
                   </div>
                 </ScrollArea>
