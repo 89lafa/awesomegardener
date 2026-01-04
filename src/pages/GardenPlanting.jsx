@@ -503,13 +503,7 @@ export default function GardenPlanting() {
 
   return (
     <ErrorBoundary fallbackTitle="My Garden Error">
-      <div className="space-y-6 max-w-7xl" style={{ 
-        display: 'grid', 
-        gridTemplateColumns: 'repeat(3, 1fr)',
-        gridAutoRows: 'min-content',
-        gap: '1.5rem'
-      }}>
-        <div style={{ gridColumn: '1 / -1' }}>
+      <div className="space-y-6 max-w-7xl">
         {/* Header */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -564,10 +558,8 @@ export default function GardenPlanting() {
             </Button>
           </div>
         </div>
-        </div>
 
         {/* Sync Result */}
-        <div style={{ gridColumn: '1 / -1' }}>
         {syncResult && (
           <Alert className="bg-green-50 border-green-200">
             <CheckCircle2 className="w-4 h-4 text-green-600" />
@@ -575,11 +567,9 @@ export default function GardenPlanting() {
               Sync complete! Created {syncResult.created}, updated {syncResult.updated} planting spaces.
             </AlertDescription>
           </Alert>
-        </div>
         )}
 
         {/* No Spaces State */}
-        <div style={{ gridColumn: '1 / -1' }}>
         {plantingSpaces.length === 0 && (
           <Alert>
             <AlertCircle className="w-4 h-4" />
@@ -588,33 +578,36 @@ export default function GardenPlanting() {
               greenhouses, and containers. Spaces will appear here automatically.
             </AlertDescription>
           </Alert>
-        </div>
         )}
 
         {/* Planting Spaces List */}
-        {plantingSpaces.length > 0 && plantingSpaces.map((space) => {
-          const cols = space.layout_schema?.columns || 1;
-          const rows = space.layout_schema?.rows || 1;
-          
-          // Determine grid span based on space dimensions
-          let gridSpan = 1;
-          if (cols > 8 || rows > 8) {
-            gridSpan = 3; // Full width for very large spaces
-          } else if (cols > 5 || rows > 6) {
-            gridSpan = 2; // Half width for medium-large spaces
-          }
-          
-          return (
-            <div 
-              key={space.id} 
-              style={{ 
-                gridColumn: gridSpan === 3 ? '1 / -1' : gridSpan === 2 ? 'span 2' : 'span 1'
-              }}
-            >
-              <SpaceCard space={space} />
-            </div>
-          );
-        })}
+        {plantingSpaces.length > 0 && (
+          <div className="grid gap-6 auto-rows-min" style={{ gridTemplateColumns: 'repeat(3, 1fr)' }}>
+            {plantingSpaces.map((space) => {
+              const cols = space.layout_schema?.columns || 1;
+              const rows = space.layout_schema?.rows || 1;
+              
+              // Determine grid span based on space dimensions
+              let gridSpan = 1;
+              if (cols > 8 || rows > 8) {
+                gridSpan = 3; // Full width for very large spaces
+              } else if (cols > 5 || rows > 6) {
+                gridSpan = 2; // Half width for medium-large spaces
+              }
+              
+              return (
+                <div 
+                  key={space.id} 
+                  style={{ 
+                    gridColumn: gridSpan === 3 ? '1 / -1' : gridSpan === 2 ? 'span 2' : 'span 1'
+                  }}
+                >
+                  <SpaceCard space={space} />
+                </div>
+              );
+            })}
+          </div>
+        )}
       </div>
     </ErrorBoundary>
   );
