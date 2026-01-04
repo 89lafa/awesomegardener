@@ -36,12 +36,12 @@ export default function Dashboard() {
 
   const loadDashboardData = async () => {
     try {
-      const [userData, gardensData, tasksData, seedsData, growListsData] = await Promise.all([
-        base44.auth.me(),
-        base44.entities.Garden.filter({ archived: false }, '-updated_date', 5),
-        base44.entities.Task.filter({ status: 'open' }, 'due_date', 10),
-        base44.entities.SeedLot.filter({ is_wishlist: false }),
-        base44.entities.GrowList.filter({ status: 'active' })
+      const userData = await base44.auth.me();
+      const [gardensData, tasksData, seedsData, growListsData] = await Promise.all([
+        base44.entities.Garden.filter({ archived: false, created_by: userData.email }, '-updated_date', 5),
+        base44.entities.Task.filter({ status: 'open', created_by: userData.email }, 'due_date', 10),
+        base44.entities.SeedLot.filter({ is_wishlist: false, created_by: userData.email }),
+        base44.entities.GrowList.filter({ status: 'active', created_by: userData.email })
       ]);
 
       setUser(userData);

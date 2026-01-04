@@ -52,6 +52,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 
 export default function Gardens() {
   const [searchParams] = useSearchParams();
+  const [user, setUser] = useState(null);
   const [gardens, setGardens] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showNewDialog, setShowNewDialog] = useState(searchParams.get('action') === 'new');
@@ -66,7 +67,12 @@ export default function Gardens() {
 
   const loadGardens = async () => {
     try {
-      const data = await base44.entities.Garden.filter({ archived: false }, '-updated_date');
+      const userData = await base44.auth.me();
+      setUser(userData);
+      const data = await base44.entities.Garden.filter({ 
+        archived: false, 
+        created_by: userData.email 
+      }, '-updated_date');
       setGardens(data);
     } catch (error) {
       console.error('Error loading gardens:', error);
