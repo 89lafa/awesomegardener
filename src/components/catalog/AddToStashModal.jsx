@@ -21,7 +21,9 @@ import {
 import { toast } from 'sonner';
 import { Loader2 } from 'lucide-react';
 
-export default function AddToStashModal({ open, onOpenChange, variety, plantType, onSuccess }) {
+export default function AddToStashModal({ open, onOpenChange, variety, plantType, profile, onSuccess }) {
+  // Support both Variety and PlantProfile
+  const plantData = profile || variety;
   const [saving, setSaving] = useState(false);
   const [formData, setFormData] = useState({
     quantity: '',
@@ -40,7 +42,7 @@ export default function AddToStashModal({ open, onOpenChange, variety, plantType
 
     try {
       await base44.entities.SeedLot.create({
-        plant_profile_id: variety.id,
+        plant_profile_id: plantData.id,
         quantity: formData.quantity ? parseInt(formData.quantity) : null,
         unit: formData.unit,
         year_acquired: parseInt(formData.year_acquired),
@@ -81,7 +83,7 @@ export default function AddToStashModal({ open, onOpenChange, variety, plantType
         <DialogHeader>
           <DialogTitle>Add to Seed Stash</DialogTitle>
           <p className="text-sm text-gray-600 mt-1">
-            {variety?.variety_name} • {plantType?.common_name}
+            {plantData?.variety_name} • {plantType?.common_name || plantData?.common_name}
           </p>
         </DialogHeader>
 

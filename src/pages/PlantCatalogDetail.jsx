@@ -62,12 +62,12 @@ export default function PlantCatalogDetail() {
     if (!plantTypeId) return;
     
     try {
-      let vars = await base44.entities.Variety.filter({ 
+      const profiles = await base44.entities.PlantProfile.filter({ 
         plant_type_id: plantTypeId
       }, 'variety_name');
       
-      console.log('[VARIETY RELOAD] Found varieties:', vars.length);
-      setVarieties(vars);
+      console.log('[PROFILE RELOAD] Found profiles:', profiles.length);
+      setVarieties(profiles);
     } catch (error) {
       console.error('Error reloading varieties:', error);
     }
@@ -105,34 +105,15 @@ export default function PlantCatalogDetail() {
       console.log('[SUBCAT DEBUG] Found subcategories:', subcats.length);
       setSubCategories(subcats);
 
-      // Load varieties - try multiple approaches
-      console.log('[VARIETY DEBUG] Attempting to load varieties for plant_type_id:', plantTypeId);
+      // Load PlantProfiles for this plant type
+      console.log('[PROFILE DEBUG] Loading profiles for plant_type_id:', plantTypeId);
       
-      let vars = await base44.entities.Variety.filter({ 
-        plant_type_id: plantTypeId,
-        status: 'active'
+      const profiles = await base44.entities.PlantProfile.filter({ 
+        plant_type_id: plantTypeId
       }, 'variety_name');
       
-      console.log('[VARIETY DEBUG] Found varieties with status=active:', vars.length);
-      
-      // If no varieties with status filter, try without it
-      if (vars.length === 0) {
-        vars = await base44.entities.Variety.filter({ 
-          plant_type_id: plantTypeId
-        }, 'variety_name');
-        console.log('[VARIETY DEBUG] Found varieties without status filter:', vars.length);
-      }
-      
-      // Try matching by plant_type_name as fallback
-      if (vars.length === 0 && type.common_name) {
-        vars = await base44.entities.Variety.filter({ 
-          plant_type_name: type.common_name
-        }, 'variety_name');
-        console.log('[VARIETY DEBUG] Found varieties by plant_type_name match:', vars.length);
-      }
-      
-      console.log('[VARIETY DEBUG] Final varieties:', vars.slice(0, 3));
-      setVarieties(vars);
+      console.log('[PROFILE DEBUG] Found profiles:', profiles.length);
+      setVarieties(profiles);
     } catch (error) {
       console.error('Error loading plant type:', error);
       toast.error('Failed to load plant details');
@@ -365,22 +346,27 @@ export default function PlantCatalogDetail() {
                         </div>
                       </div>
                       <div className="flex flex-wrap gap-2">
-                        {variety.days_to_maturity && (
-                          <Badge variant="outline" className="text-xs">
-                            {variety.days_to_maturity} days
-                          </Badge>
-                        )}
-                        {variety.spacing_recommended && (
-                          <Badge variant="outline" className="text-xs">
-                            {variety.spacing_recommended}" spacing
-                          </Badge>
-                        )}
-                        {variety.trellis_required && (
-                          <Badge className="bg-green-100 text-green-800 text-xs">Needs Trellis</Badge>
-                        )}
+                       {variety.days_to_maturity_seed && (
+                         <Badge variant="outline" className="text-xs">
+                           {variety.days_to_maturity_seed} days
+                         </Badge>
+                       )}
+                       {variety.spacing_in_min && (
+                         <Badge variant="outline" className="text-xs">
+                           {variety.spacing_in_min}" spacing
+                         </Badge>
+                       )}
+                       {variety.trellis_required && (
+                         <Badge className="bg-green-100 text-green-800 text-xs">Needs Trellis</Badge>
+                       )}
+                       {subCategories.find(sc => sc.id === variety.plant_subcategory_id) && (
+                         <Badge variant="secondary" className="text-xs">
+                           {subCategories.find(sc => sc.id === variety.plant_subcategory_id)?.name}
+                         </Badge>
+                       )}
                       </div>
-                      {variety.grower_notes && (
-                        <p className="text-sm text-gray-600 mt-3 line-clamp-2">{variety.grower_notes}</p>
+                      {variety.notes_public && (
+                       <p className="text-sm text-gray-600 mt-3 line-clamp-2">{variety.notes_public}</p>
                       )}
                     </CardContent>
                   </Card>
@@ -446,16 +432,18 @@ export default function PlantCatalogDetail() {
         <AddToStashModal
           open={showAddToStash}
           onOpenChange={setShowAddToStash}
-          variety={selectedVariety}
+          profile={selectedVariety}
           plantType={plantType}
+          onSuccess={reloadVarieties}
         />
 
         {/* Add to Grow List Modal */}
         <AddToGrowListModal
           open={showAddToGrowList}
           onOpenChange={setShowAddToGrowList}
-          variety={selectedVariety}
+          profile={selectedVariety}
           plantType={plantType}
+          onSuccess={reloadVarieties}
         />
       </div>
     </ErrorBoundary>

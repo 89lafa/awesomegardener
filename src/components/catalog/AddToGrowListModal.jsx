@@ -20,7 +20,9 @@ import {
 import { toast } from 'sonner';
 import { Loader2, Plus } from 'lucide-react';
 
-export default function AddToGrowListModal({ open, onOpenChange, variety, plantType, onSuccess }) {
+export default function AddToGrowListModal({ open, onOpenChange, variety, plantType, profile, onSuccess }) {
+  // Support both Variety and PlantProfile
+  const plantData = profile || variety;
   const [growLists, setGrowLists] = useState([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -76,10 +78,10 @@ export default function AddToGrowListModal({ open, onOpenChange, variety, plantT
         items: [
           ...(growLists.find(l => l.id === selectedListId)?.items || []),
           {
-            variety_id: variety.id,
-            variety_name: variety.variety_name,
-            plant_type_id: plantType?.id,
-            plant_type_name: plantType?.common_name,
+            variety_id: plantData.id,
+            variety_name: plantData.variety_name,
+            plant_type_id: plantType?.id || plantData.plant_type_id,
+            plant_type_name: plantType?.common_name || plantData.common_name,
             quantity: parseInt(quantity) || 1,
             added_date: new Date().toISOString()
           }
@@ -103,7 +105,7 @@ export default function AddToGrowListModal({ open, onOpenChange, variety, plantT
         <DialogHeader>
           <DialogTitle>Add to Grow List</DialogTitle>
           <p className="text-sm text-gray-600 mt-1">
-            {variety?.variety_name} • {plantType?.common_name}
+            {plantData?.variety_name} • {plantType?.common_name || plantData?.common_name}
           </p>
         </DialogHeader>
 
