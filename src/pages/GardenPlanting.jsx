@@ -82,6 +82,18 @@ function SpaceCard({ space }) {
   }, 0);
   
   const capacity = space.capacity;
+  
+  // Calculate responsive cell size for grid spaces
+  const getCellSize = () => {
+    if (!isGridSpace) return 28;
+    
+    // For wide grids, scale down cell size to fit
+    if (columns > 8) return 20;
+    if (columns > 6) return 24;
+    return 28;
+  };
+  
+  const cellSize = getCellSize();
 
   // Create grid cells map - mark ALL cells occupied by each plant
   const cellsMap = {};
@@ -117,11 +129,12 @@ function SpaceCard({ space }) {
           <div className="space-y-3">
             {/* Grid visualization */}
             <div 
-              className="grid gap-1.5 p-2 bg-amber-50 border border-amber-200 rounded-lg"
+              className="grid gap-1.5 p-2 bg-amber-50 border border-amber-200 rounded-lg overflow-x-auto"
               style={{
-                gridTemplateColumns: `repeat(${columns}, 28px)`,
-                gridTemplateRows: `repeat(${rows}, 28px)`,
-                width: 'fit-content'
+                gridTemplateColumns: `repeat(${columns}, ${cellSize}px)`,
+                gridTemplateRows: `repeat(${rows}, ${cellSize}px)`,
+                width: 'fit-content',
+                maxWidth: '100%'
               }}
             >
               {Array.from({ length: rows }).map((_, rowIdx) => 
@@ -158,7 +171,8 @@ function SpaceCard({ space }) {
                       <button
                         key={`${colIdx}-${rowIdx}`}
                         onClick={() => handleCellClick(colIdx, rowIdx)}
-                        className="w-7 h-7 rounded border-2 bg-white border-amber-300 hover:bg-amber-100 hover:border-amber-400 transition-colors cursor-pointer"
+                        className="rounded border-2 bg-white border-amber-300 hover:bg-amber-100 hover:border-amber-400 transition-colors cursor-pointer"
+                        style={{ width: cellSize, height: cellSize }}
                         title="Click to plant"
                       />
                     );
@@ -489,7 +503,13 @@ export default function GardenPlanting() {
 
   return (
     <ErrorBoundary fallbackTitle="My Garden Error">
-      <div className="space-y-6 max-w-5xl">
+      <div className="space-y-6 max-w-7xl" style={{ 
+        display: 'grid', 
+        gridTemplateColumns: 'repeat(3, 1fr)',
+        gridAutoRows: 'min-content',
+        gap: '1.5rem'
+      }}>
+        <div style={{ gridColumn: '1 / -1' }}>
         {/* Header */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -544,8 +564,10 @@ export default function GardenPlanting() {
             </Button>
           </div>
         </div>
+        </div>
 
         {/* Sync Result */}
+        <div style={{ gridColumn: '1 / -1' }}>
         {syncResult && (
           <Alert className="bg-green-50 border-green-200">
             <CheckCircle2 className="w-4 h-4 text-green-600" />
@@ -553,9 +575,11 @@ export default function GardenPlanting() {
               Sync complete! Created {syncResult.created}, updated {syncResult.updated} planting spaces.
             </AlertDescription>
           </Alert>
+        </div>
         )}
 
         {/* No Spaces State */}
+        <div style={{ gridColumn: '1 / -1' }}>
         {plantingSpaces.length === 0 && (
           <Alert>
             <AlertCircle className="w-4 h-4" />
@@ -564,16 +588,33 @@ export default function GardenPlanting() {
               greenhouses, and containers. Spaces will appear here automatically.
             </AlertDescription>
           </Alert>
+        </div>
         )}
 
         {/* Planting Spaces List */}
-        {plantingSpaces.length > 0 && (
-          <div className="grid gap-6" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))' }}>
-            {plantingSpaces.map((space) => (
-              <SpaceCard key={space.id} space={space} />
-            ))}
-          </div>
-        )}
+        {plantingSpaces.length > 0 && plantingSpaces.map((space) => {
+          const cols = space.layout_schema?.columns || 1;
+          const rows = space.layout_schema?.rows || 1;
+          
+          // Determine grid span based on space dimensions
+          let gridSpan = 1;
+          if (cols > 8 || rows > 8) {
+            gridSpan = 3; // Full width for very large spaces
+          } else if (cols > 5 || rows > 6) {
+            gridSpan = 2; // Half width for medium-large spaces
+          }
+          
+          return (
+            <div 
+              key={space.id} 
+              style={{ 
+                gridColumn: gridSpan === 3 ? '1 / -1' : gridSpan === 2 ? 'span 2' : 'span 1'
+              }}
+            >
+              <SpaceCard space={space} />
+            </div>
+          );
+        })}
       </div>
     </ErrorBoundary>
   );

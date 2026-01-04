@@ -4,6 +4,7 @@ import CalendarPlanner from './pages/CalendarPlanner';
 import CalendarTasks from './pages/CalendarTasks';
 import Community from './pages/Community';
 import Dashboard from './pages/Dashboard';
+import EditVariety from './pages/EditVariety';
 import EditorReviewQueue from './pages/EditorReviewQueue';
 import FeatureRequests from './pages/FeatureRequests';
 import GardenBuilder from './pages/GardenBuilder';
@@ -23,7 +24,6 @@ import SeedInventory from './pages/SeedInventory';
 import SeedStash from './pages/SeedStash';
 import Settings from './pages/Settings';
 import VarietyReviewQueue from './pages/VarietyReviewQueue';
-import EditVariety from './pages/EditVariety';
 import __Layout from './Layout.jsx';
 
 
@@ -34,6 +34,7 @@ export const PAGES = {
     "CalendarTasks": CalendarTasks,
     "Community": Community,
     "Dashboard": Dashboard,
+    "EditVariety": EditVariety,
     "EditorReviewQueue": EditorReviewQueue,
     "FeatureRequests": FeatureRequests,
     "GardenBuilder": GardenBuilder,
@@ -53,7 +54,6 @@ export const PAGES = {
     "SeedStash": SeedStash,
     "Settings": Settings,
     "VarietyReviewQueue": VarietyReviewQueue,
-    "EditVariety": EditVariety,
 }
 
 export const pagesConfig = {
