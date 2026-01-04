@@ -54,16 +54,17 @@ export default function PlantingModal({ open, onOpenChange, item, garden, onPlan
   const loadData = async () => {
     try {
       setLoading(true);
-      const [plantingsData, stashData, varietiesData, typesData] = await Promise.all([
+      const [plantingsData, stashData, profilesData, typesData] = await Promise.all([
         base44.entities.PlantInstance.filter({ bed_id: item.id }),
         base44.entities.SeedLot.filter({ is_wishlist: false }),
-        base44.entities.Variety.list('variety_name', 100),
+        base44.entities.PlantProfile.list('variety_name', 500),
         base44.entities.PlantType.list('common_name', 100)
       ]);
       
+      console.log('[PlantingModal] Loaded:', plantingsData.length, 'plantings,', stashData.length, 'stash,', profilesData.length, 'profiles');
       setPlantings(plantingsData);
       setStashPlants(stashData);
-      setVarieties(varietiesData);
+      setVarieties(profilesData);
       setPlantTypes(typesData);
     } catch (error) {
       console.error('Error loading planting data:', error);
@@ -385,18 +386,18 @@ export default function PlantingModal({ open, onOpenChange, item, garden, onPlan
                         setNewPlant({
                           ...newPlant,
                           variety_id: v,
-                          variety_name: variety.variety_name,
-                          plant_type_name: variety.plant_type_name
+                          variety_name: variety?.variety_name || '',
+                          plant_type_name: variety?.common_name || variety?.plant_type_name || ''
                         });
                       }}
                     >
                       <SelectTrigger className="mt-2">
                         <SelectValue placeholder="Select variety" />
                       </SelectTrigger>
-                      <SelectContent>
+                      <SelectContent className="max-h-64">
                         {varieties.slice(0, 50).map((v) => (
                           <SelectItem key={v.id} value={v.id}>
-                            {v.variety_name} ({v.plant_type_name})
+                            {v.variety_name} ({v.common_name || v.plant_type_name || 'Unknown'})
                           </SelectItem>
                         ))}
                       </SelectContent>
