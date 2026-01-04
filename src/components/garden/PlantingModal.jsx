@@ -57,9 +57,10 @@ export default function PlantingModal({ open, onOpenChange, item, garden, onPlan
   const loadData = async () => {
     try {
       setLoading(true);
+      const user = await base44.auth.me();
       const [plantingsData, stashData, profilesData, varietiesData, typesData] = await Promise.all([
-        base44.entities.PlantInstance.filter({ bed_id: item.id }),
-        base44.entities.SeedLot.filter({ is_wishlist: false }),
+        base44.entities.PlantInstance.filter({ bed_id: item.id, created_by: user.email }),
+        base44.entities.SeedLot.filter({ is_wishlist: false, created_by: user.email }),
         base44.entities.PlantProfile.list('variety_name', 500),
         base44.entities.Variety.list('variety_name', 500),
         base44.entities.PlantType.list('common_name', 100)

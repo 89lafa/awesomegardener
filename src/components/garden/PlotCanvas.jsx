@@ -145,12 +145,14 @@ export default function PlotCanvas({ garden, plot, onPlotUpdate, onDeleteGarden 
 
   const loadItems = async () => {
     try {
+      const user = await base44.auth.me();
       const [itemsData, plantings] = await Promise.all([
         base44.entities.PlotItem.filter({ 
           garden_id: garden.id,
-          plot_id: plot.id 
+          plot_id: plot.id,
+          created_by: user.email
         }, 'z_index'),
-        base44.entities.PlantInstance.filter({ garden_id: garden.id })
+        base44.entities.PlantInstance.filter({ garden_id: garden.id, created_by: user.email })
       ]);
       
       // Ensure rotation is initialized
