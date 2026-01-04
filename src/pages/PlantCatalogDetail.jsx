@@ -331,6 +331,15 @@ export default function PlantCatalogDetail() {
                       <div className="flex items-start justify-between mb-2">
                         <h4 className="font-semibold text-gray-900">{variety.variety_name}</h4>
                         <div className="flex gap-1">
+                          <Link to={createPageUrl('EditVariety') + `?id=${variety.id}`}>
+                            <Button 
+                              size="sm"
+                              variant="ghost"
+                              title="View/Edit Details"
+                            >
+                              <span className="text-xs">Edit</span>
+                            </Button>
+                          </Link>
                           <Button 
                             size="sm"
                             variant="ghost"

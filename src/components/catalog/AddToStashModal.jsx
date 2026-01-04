@@ -39,8 +39,39 @@ export default function AddToStashModal({ open, onOpenChange, variety, plantType
     setSaving(true);
 
     try {
+      // Find or create PlantProfile from Variety
+      let profileId = variety.id;
+      
+      // Check if this is a Variety record (has plant_type_name field)
+      if (variety.plant_type_name) {
+        // Try to find existing PlantProfile
+        const existingProfiles = await base44.entities.PlantProfile.filter({
+          variety_name: variety.variety_name,
+          plant_type_id: variety.plant_type_id
+        });
+        
+        if (existingProfiles.length > 0) {
+          profileId = existingProfiles[0].id;
+        } else {
+          // Create new PlantProfile from Variety data
+          const newProfile = await base44.entities.PlantProfile.create({
+            plant_type_id: variety.plant_type_id,
+            common_name: variety.plant_type_name,
+            variety_name: variety.variety_name,
+            days_to_maturity_seed: variety.days_to_maturity,
+            spacing_in_min: variety.spacing_recommended,
+            spacing_in_max: variety.spacing_recommended,
+            sun_requirement: variety.sun_requirement,
+            trellis_required: variety.trellis_required || false,
+            container_friendly: variety.container_friendly || false,
+            source_type: 'user_private'
+          });
+          profileId = newProfile.id;
+        }
+      }
+
       await base44.entities.SeedLot.create({
-        plant_profile_id: variety.id,
+        plant_profile_id: profileId,
         quantity: formData.quantity ? parseInt(formData.quantity) : null,
         unit: formData.unit,
         year_acquired: parseInt(formData.year_acquired),

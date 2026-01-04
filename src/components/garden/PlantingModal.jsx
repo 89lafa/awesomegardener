@@ -54,17 +54,17 @@ export default function PlantingModal({ open, onOpenChange, item, garden, onPlan
   const loadData = async () => {
     try {
       setLoading(true);
-      const [plantingsData, stashData, profilesData, typesData] = await Promise.all([
+      const [plantingsData, stashData, varietiesData, typesData] = await Promise.all([
         base44.entities.PlantInstance.filter({ bed_id: item.id }),
         base44.entities.SeedLot.filter({ is_wishlist: false }),
-        base44.entities.PlantProfile.list('variety_name', 500),
+        base44.entities.Variety.list('variety_name', 500),
         base44.entities.PlantType.list('common_name', 100)
       ]);
       
-      console.log('[PlantingModal] Loaded:', plantingsData.length, 'plantings,', stashData.length, 'stash,', profilesData.length, 'profiles');
+      console.log('[PlantingModal] Loaded:', plantingsData.length, 'plantings,', stashData.length, 'stash,', varietiesData.length, 'varieties');
       setPlantings(plantingsData);
       setStashPlants(stashData);
-      setVarieties(profilesData);
+      setVarieties(varietiesData);
       setPlantTypes(typesData);
     } catch (error) {
       console.error('Error loading planting data:', error);
@@ -252,9 +252,37 @@ export default function PlantingModal({ open, onOpenChange, item, garden, onPlan
       const spacing = getSpacingForPlant(variety);
       console.log('[PlantingModal] Creating SeedLot with variety:', variety.id, variety.variety_name);
       
+      // Find or create PlantProfile from Variety
+      let profileId = variety.id;
+      
+      // Check if this is a Variety record (has plant_type_name field)
+      if (variety.plant_type_name) {
+        const existingProfiles = await base44.entities.PlantProfile.filter({
+          variety_name: variety.variety_name,
+          plant_type_id: variety.plant_type_id
+        });
+        
+        if (existingProfiles.length > 0) {
+          profileId = existingProfiles[0].id;
+        } else {
+          const newProfile = await base44.entities.PlantProfile.create({
+            plant_type_id: variety.plant_type_id,
+            common_name: variety.plant_type_name,
+            variety_name: variety.variety_name,
+            days_to_maturity_seed: variety.days_to_maturity,
+            spacing_in_min: variety.spacing_recommended,
+            spacing_in_max: variety.spacing_recommended,
+            sun_requirement: variety.sun_requirement,
+            trellis_required: variety.trellis_required || false,
+            source_type: 'user_private'
+          });
+          profileId = newProfile.id;
+        }
+      }
+      
       // Add to stash
       const newSeedLot = await base44.entities.SeedLot.create({
-        plant_profile_id: variety.id,
+        plant_profile_id: profileId,
         is_wishlist: false
       });
       console.log('[PlantingModal] Created SeedLot:', newSeedLot.id);
@@ -264,7 +292,7 @@ export default function PlantingModal({ open, onOpenChange, item, garden, onPlan
         variety_id: variety.id,
         variety_name: variety.variety_name,
         plant_type_id: variety.plant_type_id || null,
-        plant_type_name: variety.common_name || variety.variety_name,
+        plant_type_name: variety.plant_type_name || variety.variety_name,
         spacing_cols: spacing.cols,
         spacing_rows: spacing.rows
       };
