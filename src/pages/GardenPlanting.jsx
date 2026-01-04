@@ -40,7 +40,12 @@ function SpaceCard({ space }) {
 
   const loadPlantings = async () => {
     try {
-      const plants = await base44.entities.PlantInstance.filter({ space_id: space.id });
+      // Load plantings by plot_item_id since PlantingModal writes to bed_id=plot_item_id
+      const plants = await base44.entities.PlantInstance.filter({ 
+        bed_id: space.plot_item_id,
+        garden_id: space.garden_id
+      });
+      console.log('[GardenPlanting] Loaded plantings for plot_item_id:', space.plot_item_id, 'count:', plants.length);
       setPlantings(plants);
     } catch (error) {
       console.error('Error loading plantings:', error);

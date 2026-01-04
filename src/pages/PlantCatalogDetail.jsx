@@ -35,6 +35,8 @@ export default function PlantCatalogDetail() {
   const [showAddToStash, setShowAddToStash] = useState(false);
   const [showAddToGrowList, setShowAddToGrowList] = useState(false);
   const [selectedVariety, setSelectedVariety] = useState(null);
+  const [selectedSubCategory, setSelectedSubCategory] = useState('all');
+  const [subCategories, setSubCategories] = useState([]);
   const [user, setUser] = useState(null);
 
   useEffect(() => {
@@ -95,30 +97,29 @@ export default function PlantCatalogDetail() {
       console.log('Loaded plant type:', type);
       setPlantType(type);
 
-      // Load varieties - try multiple approaches
+      // Load subcategories for this plant type
+      const subcats = await base44.entities.PlantSubCategory.filter({ 
+        plant_type_id: plantTypeId,
+        is_active: true 
+      }, 'sort_order');
+      console.log('[SUBCATEGORY] Found subcategories:', subcats.length);
+      setSubCategories(subcats);
+
+      // Load varieties using PlantProfile
       console.log('[VARIETY DEBUG] Attempting to load varieties for plant_type_id:', plantTypeId);
       
-      let vars = await base44.entities.Variety.filter({ 
-        plant_type_id: plantTypeId,
-        status: 'active'
+      let vars = await base44.entities.PlantProfile.filter({ 
+        plant_type_id: plantTypeId
       }, 'variety_name');
       
-      console.log('[VARIETY DEBUG] Found varieties with status=active:', vars.length);
+      console.log('[VARIETY DEBUG] Found PlantProfile varieties:', vars.length);
       
-      // If no varieties with status filter, try without it
+      // If no PlantProfiles found, try old Variety table as fallback
       if (vars.length === 0) {
         vars = await base44.entities.Variety.filter({ 
           plant_type_id: plantTypeId
         }, 'variety_name');
-        console.log('[VARIETY DEBUG] Found varieties without status filter:', vars.length);
-      }
-      
-      // Try matching by plant_type_name as fallback
-      if (vars.length === 0 && type.common_name) {
-        vars = await base44.entities.Variety.filter({ 
-          plant_type_name: type.common_name
-        }, 'variety_name');
-        console.log('[VARIETY DEBUG] Found varieties by plant_type_name match:', vars.length);
+        console.log('[VARIETY DEBUG] Found old Variety records:', vars.length);
       }
       
       console.log('[VARIETY DEBUG] Final varieties:', vars.slice(0, 3));
@@ -245,16 +246,47 @@ export default function PlantCatalogDetail() {
           </CardContent>
         </Card>
 
+        {/* Subcategories Filter */}
+        {subCategories.length > 0 && (
+          <Card>
+            <CardContent className="p-4">
+              <h3 className="text-sm font-semibold text-gray-700 mb-3">Filter by Type</h3>
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  variant={selectedSubCategory === 'all' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setSelectedSubCategory('all')}
+                  className={selectedSubCategory === 'all' ? 'bg-emerald-600 hover:bg-emerald-700' : ''}
+                >
+                  All
+                </Button>
+                {subCategories.map((subcat) => (
+                  <Button
+                    key={subcat.id}
+                    variant={selectedSubCategory === subcat.id ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => setSelectedSubCategory(subcat.id)}
+                    className={selectedSubCategory === subcat.id ? 'bg-emerald-600 hover:bg-emerald-700' : ''}
+                  >
+                    {subcat.icon && <span className="mr-1">{subcat.icon}</span>}
+                    {subcat.name}
+                  </Button>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
         {/* Varieties */}
         <Card>
           <CardHeader>
-            <CardTitle>Varieties ({varieties.length})</CardTitle>
+            <CardTitle>Varieties ({selectedSubCategory === 'all' ? varieties.length : varieties.filter(v => v.plant_subcategory_id === selectedSubCategory).length})</CardTitle>
           </CardHeader>
           <CardContent>
-            {varieties.length === 0 ? (
+            {(selectedSubCategory === 'all' ? varieties : varieties.filter(v => v.plant_subcategory_id === selectedSubCategory)).length === 0 ? (
               <div className="text-center py-8">
                 <Leaf className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-                <p className="text-gray-600 mb-2">No varieties cataloged yet</p>
+                <p className="text-gray-600 mb-2">No varieties {selectedSubCategory !== 'all' ? 'in this category' : 'cataloged yet'}</p>
                 <p className="text-sm text-gray-500 mb-4">
                   {user?.role === 'admin' 
                     ? 'Import varieties or add them manually' 
@@ -270,7 +302,7 @@ export default function PlantCatalogDetail() {
               </div>
             ) : (
               <div className="grid md:grid-cols-2 gap-4">
-                {varieties.map((variety) => (
+                {(selectedSubCategory === 'all' ? varieties : varieties.filter(v => v.plant_subcategory_id === selectedSubCategory)).map((variety) => (
                   <Card key={variety.id} className="hover:shadow-md transition-shadow">
                     <CardContent className="p-4">
                       <div className="flex items-start justify-between mb-2">
@@ -301,22 +333,22 @@ export default function PlantCatalogDetail() {
                         </div>
                       </div>
                       <div className="flex flex-wrap gap-2">
-                        {variety.days_to_maturity && (
+                        {variety.days_to_maturity_seed && (
                           <Badge variant="outline" className="text-xs">
-                            {variety.days_to_maturity} days
+                            {variety.days_to_maturity_seed} days
                           </Badge>
                         )}
-                        {variety.spacing_recommended && (
+                        {variety.spacing_in_min && (
                           <Badge variant="outline" className="text-xs">
-                            {variety.spacing_recommended}" spacing
+                            {variety.spacing_in_min}" spacing
                           </Badge>
                         )}
                         {variety.trellis_required && (
                           <Badge className="bg-green-100 text-green-800 text-xs">Needs Trellis</Badge>
                         )}
                       </div>
-                      {variety.grower_notes && (
-                        <p className="text-sm text-gray-600 mt-3 line-clamp-2">{variety.grower_notes}</p>
+                      {variety.notes_public && (
+                        <p className="text-sm text-gray-600 mt-3 line-clamp-2">{variety.notes_public}</p>
                       )}
                     </CardContent>
                   </Card>
