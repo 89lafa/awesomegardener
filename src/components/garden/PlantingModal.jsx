@@ -54,16 +54,16 @@ export default function PlantingModal({ open, onOpenChange, item, garden, onPlan
   const loadData = async () => {
     try {
       setLoading(true);
-      const [plantingsData, stashData, varietiesData, typesData] = await Promise.all([
+      const [plantingsData, stashData, profilesData, typesData] = await Promise.all([
         base44.entities.PlantInstance.filter({ bed_id: item.id }),
         base44.entities.SeedLot.filter({ is_wishlist: false }),
-        base44.entities.Variety.list('variety_name', 100),
+        base44.entities.PlantProfile.list('variety_name', 200),
         base44.entities.PlantType.list('common_name', 100)
       ]);
       
       setPlantings(plantingsData);
       setStashPlants(stashData);
-      setVarieties(varietiesData);
+      setVarieties(profilesData);
       setPlantTypes(typesData);
     } catch (error) {
       console.error('Error loading planting data:', error);
@@ -72,17 +72,17 @@ export default function PlantingModal({ open, onOpenChange, item, garden, onPlan
     }
   };
 
-  const getSpacingForPlant = (variety) => {
+  const getSpacingForPlant = (profile) => {
     const method = garden.planting_method || 'STANDARD';
     
     if (method === 'SQUARE_FOOT') {
       // Most plants 1x1 in SFT, larger crops 2x2
-      const spacing = variety.spacing_recommended || 12;
+      const spacing = profile.spacing_in_min || 12;
       if (spacing >= 18) return { cols: 2, rows: 2 };
       return { cols: 1, rows: 1 };
     } else {
-      // Standard spacing - use variety spacing
-      const spacing = variety.spacing_recommended || 24;
+      // Standard spacing - use profile spacing
+      const spacing = profile.spacing_in_min || 24;
       const cells = Math.ceil(spacing / 12);
       return { cols: cells, rows: cells };
     }
@@ -209,23 +209,17 @@ export default function PlantingModal({ open, onOpenChange, item, garden, onPlan
   };
 
   const handleSelectStashPlant = (stashItem) => {
-    // Check if seed has minimum required info
-    if (!stashItem.plant_type_name && !stashItem.variety_name) {
-      toast.error('This seed needs a plant name to be planted');
-      return;
-    }
-    
-    // Try to find variety from catalog for spacing info
-    const variety = varieties.find(v => v.id === stashItem.variety_id);
-    const spacing = variety 
-      ? getSpacingForPlant(variety) 
-      : getDefaultSpacing(stashItem.plant_type_name || stashItem.variety_name);
+    // Try to find profile from catalog for spacing info
+    const profile = varieties.find(v => v.id === stashItem.plant_profile_id);
+    const spacing = profile 
+      ? getSpacingForPlant(profile) 
+      : getDefaultSpacing(profile?.common_name || stashItem.custom_label);
     
     setSelectedPlant({
-      variety_id: stashItem.variety_id || null,
-      variety_name: stashItem.variety_name || stashItem.plant_type_name,
-      plant_type_id: stashItem.plant_type_id || null,
-      plant_type_name: stashItem.plant_type_name || stashItem.variety_name,
+      variety_id: stashItem.plant_profile_id,
+      variety_name: profile?.variety_name || stashItem.custom_label,
+      plant_type_id: profile?.plant_type_id || null,
+      plant_type_name: profile?.common_name || stashItem.custom_label,
       spacing_cols: spacing.cols,
       spacing_rows: spacing.rows
     });
@@ -236,24 +230,26 @@ export default function PlantingModal({ open, onOpenChange, item, garden, onPlan
     
     setCreating(true);
     try {
-      const variety = varieties.find(v => v.id === newPlant.variety_id);
-      const spacing = getSpacingForPlant(variety);
+      const profile = varieties.find(v => v.id === newPlant.variety_id);
+      if (!profile) {
+        toast.error('Profile not found');
+        return;
+      }
+      
+      const spacing = getSpacingForPlant(profile);
       
       // Add to stash
       await base44.entities.SeedLot.create({
-        plant_type_id: variety.plant_type_id,
-        plant_type_name: variety.plant_type_name,
-        variety_id: variety.id,
-        variety_name: variety.variety_name,
+        plant_profile_id: profile.id,
         is_wishlist: false
       });
       
       // Select for placing
       setSelectedPlant({
-        variety_id: variety.id,
-        variety_name: variety.variety_name,
-        plant_type_id: variety.plant_type_id,
-        plant_type_name: variety.plant_type_name,
+        variety_id: profile.id,
+        variety_name: profile.variety_name,
+        plant_type_id: profile.plant_type_id,
+        plant_type_name: profile.common_name,
         spacing_cols: spacing.cols,
         spacing_rows: spacing.rows
       });
@@ -352,8 +348,12 @@ export default function PlantingModal({ open, onOpenChange, item, garden, onPlan
                               : "border-gray-200 hover:border-gray-300"
                           )}
                         >
-                          <p className="font-medium text-sm">{plant.variety_name}</p>
-                          <p className="text-xs text-gray-500">{plant.plant_type_name}</p>
+                          <p className="font-medium text-sm">
+                            {plant.custom_label || varieties.find(v => v.id === plant.plant_profile_id)?.variety_name || 'Unknown'}
+                          </p>
+                          <p className="text-xs text-gray-500">
+                            {varieties.find(v => v.id === plant.plant_profile_id)?.common_name || ''}
+                          </p>
                         </button>
                       ))
                     )}
@@ -383,7 +383,7 @@ export default function PlantingModal({ open, onOpenChange, item, garden, onPlan
                       <SelectContent>
                         {varieties.slice(0, 50).map((v) => (
                           <SelectItem key={v.id} value={v.id}>
-                            {v.variety_name} ({v.plant_type_name})
+                            {v.variety_name} ({v.common_name})
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -529,16 +529,6 @@ export default function PlantingModal({ open, onOpenChange, item, garden, onPlan
               </div>
             )}
           </div>
-        </div>
-        
-        {/* Bottom sticky done button */}
-        <div className="p-4 border-t bg-gray-50 flex justify-end">
-          <Button 
-            onClick={handleDone}
-            className="bg-emerald-600 hover:bg-emerald-700 text-white h-12 px-10 text-base font-semibold"
-          >
-            ✓ Done Planting
-          </Button>
         </div>
       </DialogContent>
     </Dialog>
