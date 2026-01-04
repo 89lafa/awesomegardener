@@ -254,6 +254,7 @@ export default function PlantingModal({ open, onOpenChange, item, garden, onPlan
       
       // Find or create PlantProfile from Variety
       let profileId = variety.id;
+      const plantType = plantTypes.find(t => t.id === variety.plant_type_id);
       
       // Check if this is a Variety record (has plant_type_name field)
       if (variety.plant_type_name) {
@@ -267,13 +268,16 @@ export default function PlantingModal({ open, onOpenChange, item, garden, onPlan
         } else {
           const newProfile = await base44.entities.PlantProfile.create({
             plant_type_id: variety.plant_type_id,
-            common_name: variety.plant_type_name,
+            plant_subcategory_id: variety.plant_subcategory_id,
+            common_name: plantType?.common_name || variety.plant_type_name,
             variety_name: variety.variety_name,
             days_to_maturity_seed: variety.days_to_maturity,
             spacing_in_min: variety.spacing_recommended,
             spacing_in_max: variety.spacing_recommended,
             sun_requirement: variety.sun_requirement,
             trellis_required: variety.trellis_required || false,
+            container_friendly: variety.container_friendly || false,
+            notes_private: variety.grower_notes,
             source_type: 'user_private'
           });
           profileId = newProfile.id;

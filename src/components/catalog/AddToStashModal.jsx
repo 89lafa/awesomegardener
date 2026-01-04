@@ -53,17 +53,24 @@ export default function AddToStashModal({ open, onOpenChange, variety, plantType
         if (existingProfiles.length > 0) {
           profileId = existingProfiles[0].id;
         } else {
+          // Get PlantType for icon and additional data
+          const [plantTypeData] = await base44.entities.PlantType.filter({ id: variety.plant_type_id });
+          
           // Create new PlantProfile from Variety data
           const newProfile = await base44.entities.PlantProfile.create({
             plant_type_id: variety.plant_type_id,
-            common_name: variety.plant_type_name,
+            plant_subcategory_id: variety.plant_subcategory_id,
+            common_name: plantType?.common_name || variety.plant_type_name,
             variety_name: variety.variety_name,
             days_to_maturity_seed: variety.days_to_maturity,
             spacing_in_min: variety.spacing_recommended,
             spacing_in_max: variety.spacing_recommended,
+            height_in_min: variety.height_min,
+            height_in_max: variety.height_max,
             sun_requirement: variety.sun_requirement,
             trellis_required: variety.trellis_required || false,
             container_friendly: variety.container_friendly || false,
+            notes_public: variety.grower_notes,
             source_type: 'user_private'
           });
           profileId = newProfile.id;

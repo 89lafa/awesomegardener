@@ -23,6 +23,7 @@ import SeedInventory from './pages/SeedInventory';
 import SeedStash from './pages/SeedStash';
 import Settings from './pages/Settings';
 import VarietyReviewQueue from './pages/VarietyReviewQueue';
+import EditVariety from './pages/EditVariety';
 import __Layout from './Layout.jsx';
 
 
@@ -52,6 +53,7 @@ export const PAGES = {
     "SeedStash": SeedStash,
     "Settings": Settings,
     "VarietyReviewQueue": VarietyReviewQueue,
+    "EditVariety": EditVariety,
 }
 
 export const pagesConfig = {
