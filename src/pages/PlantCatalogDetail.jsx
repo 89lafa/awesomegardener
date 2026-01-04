@@ -22,6 +22,7 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { toast } from 'sonner';
 import ErrorBoundary from '@/components/common/ErrorBoundary';
+import { cn } from '@/lib/utils';
 
 export default function PlantCatalogDetail() {
   const [searchParams] = useSearchParams();
