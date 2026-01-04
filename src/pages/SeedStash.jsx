@@ -82,6 +82,17 @@ export default function SeedStash() {
   const [filterTag, setFilterTag] = useState('all');
   const [varieties, setVarieties] = useState([]);
   const [selectedPlantType, setSelectedPlantType] = useState(null);
+  const [sortBy, setSortBy] = useState('created_date');
+  const [sortOrder, setSortOrder] = useState('desc');
+  const [visibleColumns, setVisibleColumns] = useState({
+    name: true,
+    type: true,
+    source: true,
+    year: true,
+    quantity: true,
+    tags: true
+  });
+  const [showColumnChooser, setShowColumnChooser] = useState(false);
 
   const [formData, setFormData] = useState({
     plant_profile_id: '',
@@ -99,7 +110,43 @@ export default function SeedStash() {
 
   useEffect(() => {
     loadData();
+    loadViewPreference();
   }, []);
+
+  const loadViewPreference = async () => {
+    try {
+      const user = await base44.auth.me();
+      const settings = await base44.entities.UserSettings.filter({ created_by: user.email });
+      if (settings.length > 0 && settings[0].seed_stash_view_mode) {
+        setViewMode(settings[0].seed_stash_view_mode);
+      }
+    } catch (error) {
+      console.error('Error loading view preference:', error);
+    }
+  };
+
+  const saveViewPreference = async (mode) => {
+    try {
+      const user = await base44.auth.me();
+      const settings = await base44.entities.UserSettings.filter({ created_by: user.email });
+      if (settings.length > 0) {
+        await base44.entities.UserSettings.update(settings[0].id, {
+          seed_stash_view_mode: mode
+        });
+      } else {
+        await base44.entities.UserSettings.create({
+          seed_stash_view_mode: mode
+        });
+      }
+    } catch (error) {
+      console.error('Error saving view preference:', error);
+    }
+  };
+
+  const handleViewModeChange = (mode) => {
+    setViewMode(mode);
+    saveViewPreference(mode);
+  };
 
   const loadData = async () => {
     try {
@@ -306,29 +353,58 @@ export default function SeedStash() {
     });
   };
 
-  const filteredSeeds = seeds.filter(seed => {
-    // Tab filter
-    if (filterTab === 'stash' && seed.is_wishlist) return false;
-    if (filterTab === 'wishlist' && !seed.is_wishlist) return false;
+  const filteredSeeds = seeds
+    .filter(seed => {
+      // Tab filter
+      if (filterTab === 'stash' && seed.is_wishlist) return false;
+      if (filterTab === 'wishlist' && !seed.is_wishlist) return false;
 
-    const profile = profiles[seed.plant_profile_id];
-    if (!profile && seed.plant_profile_id) {
-      console.warn('[SeedStash] Filtering out seed without profile:', seed.id);
-      return false;
-    }
+      const profile = profiles[seed.plant_profile_id];
+      if (!profile && seed.plant_profile_id) {
+        console.warn('[SeedStash] Filtering out seed without profile:', seed.id);
+        return false;
+      }
 
-    // Search filter
-    const name = (profile?.variety_name || profile?.common_name || seed.custom_label || '').toLowerCase();
-    if (searchQuery && !name.includes(searchQuery.toLowerCase())) return false;
+      // Search filter
+      const name = (profile?.variety_name || profile?.common_name || seed.custom_label || '').toLowerCase();
+      if (searchQuery && !name.includes(searchQuery.toLowerCase())) return false;
 
-    // Type filter
-    if (filterType !== 'all' && profile?.common_name !== filterType) return false;
+      // Type filter
+      if (filterType !== 'all' && profile?.common_name !== filterType) return false;
 
-    // Tag filter
-    if (filterTag !== 'all' && !seed.tags?.includes(filterTag)) return false;
+      // Tag filter
+      if (filterTag !== 'all' && !seed.tags?.includes(filterTag)) return false;
 
-    return true;
-  });
+      return true;
+    })
+    .sort((a, b) => {
+      const profileA = profiles[a.plant_profile_id];
+      const profileB = profiles[b.plant_profile_id];
+      
+      let result = 0;
+      
+      if (sortBy === 'name') {
+        const nameA = (profileA?.variety_name || a.custom_label || '').toLowerCase();
+        const nameB = (profileB?.variety_name || b.custom_label || '').toLowerCase();
+        result = nameA.localeCompare(nameB);
+      } else if (sortBy === 'type') {
+        const typeA = profileA?.common_name || '';
+        const typeB = profileB?.common_name || '';
+        result = typeA.localeCompare(typeB);
+      } else if (sortBy === 'source') {
+        const sourceA = a.source_vendor_name || '';
+        const sourceB = b.source_vendor_name || '';
+        result = sourceA.localeCompare(sourceB);
+      } else if (sortBy === 'year') {
+        result = (a.year_acquired || 0) - (b.year_acquired || 0);
+      } else if (sortBy === 'quantity') {
+        result = (b.quantity || 0) - (a.quantity || 0);
+      } else if (sortBy === 'created_date') {
+        result = new Date(a.created_date || 0) - new Date(b.created_date || 0);
+      }
+      
+      return sortOrder === 'asc' ? result : -result;
+    });
 
   const stashCount = seeds.filter(s => !s.is_wishlist).length;
   const wishlistCount = seeds.filter(s => s.is_wishlist).length;
@@ -378,17 +454,28 @@ export default function SeedStash() {
           <Button
             variant={viewMode === 'grid' ? 'secondary' : 'ghost'}
             size="icon"
-            onClick={() => setViewMode('grid')}
+            onClick={() => handleViewModeChange('grid')}
           >
             <Grid3X3 className="w-4 h-4" />
           </Button>
           <Button
             variant={viewMode === 'table' ? 'secondary' : 'ghost'}
             size="icon"
-            onClick={() => setViewMode('table')}
+            onClick={() => handleViewModeChange('table')}
           >
             <List className="w-4 h-4" />
           </Button>
+          {viewMode === 'table' && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowColumnChooser(true)}
+              className="gap-2"
+            >
+              <Filter className="w-4 h-4" />
+              Columns
+            </Button>
+          )}
         </div>
       </div>
 
@@ -559,12 +646,107 @@ export default function SeedStash() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Name</TableHead>
-                <TableHead>Type</TableHead>
-                <TableHead>Source</TableHead>
-                <TableHead>Year</TableHead>
-                <TableHead>Quantity</TableHead>
-                <TableHead>Tags</TableHead>
+                {visibleColumns.name && (
+                  <TableHead 
+                    className="cursor-pointer hover:bg-gray-50"
+                    onClick={() => {
+                      if (sortBy === 'name') {
+                        setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+                      } else {
+                        setSortBy('name');
+                        setSortOrder('asc');
+                      }
+                    }}
+                  >
+                    <div className="flex items-center gap-1">
+                      Name
+                      {sortBy === 'name' && (
+                        <span className="text-xs">{sortOrder === 'asc' ? '▲' : '▼'}</span>
+                      )}
+                    </div>
+                  </TableHead>
+                )}
+                {visibleColumns.type && (
+                  <TableHead 
+                    className="cursor-pointer hover:bg-gray-50"
+                    onClick={() => {
+                      if (sortBy === 'type') {
+                        setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+                      } else {
+                        setSortBy('type');
+                        setSortOrder('asc');
+                      }
+                    }}
+                  >
+                    <div className="flex items-center gap-1">
+                      Type
+                      {sortBy === 'type' && (
+                        <span className="text-xs">{sortOrder === 'asc' ? '▲' : '▼'}</span>
+                      )}
+                    </div>
+                  </TableHead>
+                )}
+                {visibleColumns.source && (
+                  <TableHead 
+                    className="cursor-pointer hover:bg-gray-50"
+                    onClick={() => {
+                      if (sortBy === 'source') {
+                        setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+                      } else {
+                        setSortBy('source');
+                        setSortOrder('asc');
+                      }
+                    }}
+                  >
+                    <div className="flex items-center gap-1">
+                      Source
+                      {sortBy === 'source' && (
+                        <span className="text-xs">{sortOrder === 'asc' ? '▲' : '▼'}</span>
+                      )}
+                    </div>
+                  </TableHead>
+                )}
+                {visibleColumns.year && (
+                  <TableHead 
+                    className="cursor-pointer hover:bg-gray-50"
+                    onClick={() => {
+                      if (sortBy === 'year') {
+                        setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+                      } else {
+                        setSortBy('year');
+                        setSortOrder('asc');
+                      }
+                    }}
+                  >
+                    <div className="flex items-center gap-1">
+                      Year
+                      {sortBy === 'year' && (
+                        <span className="text-xs">{sortOrder === 'asc' ? '▲' : '▼'}</span>
+                      )}
+                    </div>
+                  </TableHead>
+                )}
+                {visibleColumns.quantity && (
+                  <TableHead 
+                    className="cursor-pointer hover:bg-gray-50"
+                    onClick={() => {
+                      if (sortBy === 'quantity') {
+                        setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+                      } else {
+                        setSortBy('quantity');
+                        setSortOrder('desc');
+                      }
+                    }}
+                  >
+                    <div className="flex items-center gap-1">
+                      Quantity
+                      {sortBy === 'quantity' && (
+                        <span className="text-xs">{sortOrder === 'asc' ? '▲' : '▼'}</span>
+                      )}
+                    </div>
+                  </TableHead>
+                )}
+                {visibleColumns.tags && <TableHead>Tags</TableHead>}
                 <TableHead className="w-12"></TableHead>
               </TableRow>
             </TableHeader>
@@ -573,25 +755,37 @@ export default function SeedStash() {
                 const profile = profiles[seed.plant_profile_id];
                 return (
                 <TableRow key={seed.id}>
-                  <TableCell className="font-medium">
-                    {profile?.variety_name || seed.custom_label || 'Unknown'}
-                  </TableCell>
-                  <TableCell>{profile?.common_name || '-'}</TableCell>
-                  <TableCell>{seed.source_vendor_name || '-'}</TableCell>
-                  <TableCell>{seed.year_acquired || '-'}</TableCell>
-                  <TableCell>
-                    {seed.quantity ? `${seed.quantity} ${seed.unit}` : '-'}
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex gap-1">
-                      {seed.tags?.map((tag) => {
-                        const tagInfo = TAGS.find(t => t.value === tag);
-                        return tagInfo ? (
-                          <tagInfo.icon key={tag} className={`w-4 h-4 ${tagInfo.color}`} />
-                        ) : null;
-                      })}
-                    </div>
-                  </TableCell>
+                  {visibleColumns.name && (
+                    <TableCell className="font-medium">
+                      {profile?.variety_name || seed.custom_label || 'Unknown'}
+                    </TableCell>
+                  )}
+                  {visibleColumns.type && (
+                    <TableCell>{profile?.common_name || '-'}</TableCell>
+                  )}
+                  {visibleColumns.source && (
+                    <TableCell>{seed.source_vendor_name || '-'}</TableCell>
+                  )}
+                  {visibleColumns.year && (
+                    <TableCell>{seed.year_acquired || '-'}</TableCell>
+                  )}
+                  {visibleColumns.quantity && (
+                    <TableCell>
+                      {seed.quantity ? `${seed.quantity} ${seed.unit}` : '-'}
+                    </TableCell>
+                  )}
+                  {visibleColumns.tags && (
+                    <TableCell>
+                      <div className="flex gap-1">
+                        {seed.tags?.map((tag) => {
+                          const tagInfo = TAGS.find(t => t.value === tag);
+                          return tagInfo ? (
+                            <tagInfo.icon key={tag} className={`w-4 h-4 ${tagInfo.color}`} />
+                          ) : null;
+                        })}
+                      </div>
+                    </TableCell>
+                  )}
                   <TableCell>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
@@ -792,6 +986,62 @@ export default function SeedStash() {
             >
               {editingSeed ? 'Save Changes' : 'Add Seed'}
             </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Column Chooser Dialog */}
+      <Dialog open={showColumnChooser} onOpenChange={setShowColumnChooser}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Choose Visible Columns</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <label className="flex items-center gap-2">
+              <Checkbox
+                checked={visibleColumns.name}
+                onCheckedChange={(checked) => setVisibleColumns({ ...visibleColumns, name: checked })}
+              />
+              <span>Name</span>
+            </label>
+            <label className="flex items-center gap-2">
+              <Checkbox
+                checked={visibleColumns.type}
+                onCheckedChange={(checked) => setVisibleColumns({ ...visibleColumns, type: checked })}
+              />
+              <span>Type</span>
+            </label>
+            <label className="flex items-center gap-2">
+              <Checkbox
+                checked={visibleColumns.source}
+                onCheckedChange={(checked) => setVisibleColumns({ ...visibleColumns, source: checked })}
+              />
+              <span>Source</span>
+            </label>
+            <label className="flex items-center gap-2">
+              <Checkbox
+                checked={visibleColumns.year}
+                onCheckedChange={(checked) => setVisibleColumns({ ...visibleColumns, year: checked })}
+              />
+              <span>Year</span>
+            </label>
+            <label className="flex items-center gap-2">
+              <Checkbox
+                checked={visibleColumns.quantity}
+                onCheckedChange={(checked) => setVisibleColumns({ ...visibleColumns, quantity: checked })}
+              />
+              <span>Quantity</span>
+            </label>
+            <label className="flex items-center gap-2">
+              <Checkbox
+                checked={visibleColumns.tags}
+                onCheckedChange={(checked) => setVisibleColumns({ ...visibleColumns, tags: checked })}
+              />
+              <span>Tags</span>
+            </label>
+          </div>
+          <DialogFooter>
+            <Button onClick={() => setShowColumnChooser(false)}>Done</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
