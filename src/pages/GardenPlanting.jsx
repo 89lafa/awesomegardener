@@ -137,9 +137,9 @@ function SpaceCard({ space }) {
                           ? "bg-emerald-500 border-emerald-600 text-white hover:bg-emerald-600" 
                           : "bg-white border-amber-300 hover:bg-amber-100 hover:border-amber-400"
                       )}
-                      title={plant ? plant.plant_display_name : 'Click to plant'}
+                      title={plant ? plant.display_name || plant.plant_display_name : 'Click to plant'}
                     >
-                      {plant && '🌱'}
+                      {plant && <span className="text-lg">{plant.plant_type_icon || '🌱'}</span>}
                     </button>
                   );
                 })

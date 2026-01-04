@@ -258,20 +258,33 @@ export default function PlantCatalogDetail() {
                   onClick={() => setSelectedSubCategory('all')}
                   className={selectedSubCategory === 'all' ? 'bg-emerald-600 hover:bg-emerald-700' : ''}
                 >
-                  All
+                  All ({varieties.length})
                 </Button>
-                {subCategories.map((subcat) => (
+                {subCategories.map((subcat) => {
+                  const count = varieties.filter(v => v.plant_subcategory_id === subcat.id).length;
+                  return (
+                    <Button
+                      key={subcat.id}
+                      variant={selectedSubCategory === subcat.id ? 'default' : 'outline'}
+                      size="sm"
+                      onClick={() => setSelectedSubCategory(subcat.id)}
+                      className={selectedSubCategory === subcat.id ? 'bg-emerald-600 hover:bg-emerald-700' : ''}
+                    >
+                      {subcat.icon && <span className="mr-1">{subcat.icon}</span>}
+                      {subcat.name} ({count})
+                    </Button>
+                  );
+                })}
+                {varieties.some(v => !v.plant_subcategory_id) && (
                   <Button
-                    key={subcat.id}
-                    variant={selectedSubCategory === subcat.id ? 'default' : 'outline'}
+                    variant={selectedSubCategory === 'uncategorized' ? 'default' : 'outline'}
                     size="sm"
-                    onClick={() => setSelectedSubCategory(subcat.id)}
-                    className={selectedSubCategory === subcat.id ? 'bg-emerald-600 hover:bg-emerald-700' : ''}
+                    onClick={() => setSelectedSubCategory('uncategorized')}
+                    className={selectedSubCategory === 'uncategorized' ? 'bg-emerald-600 hover:bg-emerald-700' : ''}
                   >
-                    {subcat.icon && <span className="mr-1">{subcat.icon}</span>}
-                    {subcat.name}
+                    Uncategorized ({varieties.filter(v => !v.plant_subcategory_id).length})
                   </Button>
-                ))}
+                )}
               </div>
             </CardContent>
           </Card>
@@ -280,10 +293,17 @@ export default function PlantCatalogDetail() {
         {/* Varieties */}
         <Card>
           <CardHeader>
-            <CardTitle>Varieties ({selectedSubCategory === 'all' ? varieties.length : varieties.filter(v => v.plant_subcategory_id === selectedSubCategory).length})</CardTitle>
+            <CardTitle>
+              Varieties ({selectedSubCategory === 'all' 
+                ? varieties.length 
+                : varieties.filter(v => v.plant_subcategory_id === selectedSubCategory || (!v.plant_subcategory_id && selectedSubCategory === 'uncategorized')).length})
+            </CardTitle>
           </CardHeader>
           <CardContent>
-            {(selectedSubCategory === 'all' ? varieties : varieties.filter(v => v.plant_subcategory_id === selectedSubCategory)).length === 0 ? (
+            {(selectedSubCategory === 'all' 
+              ? varieties 
+              : varieties.filter(v => v.plant_subcategory_id === selectedSubCategory || (!v.plant_subcategory_id && selectedSubCategory === 'uncategorized'))
+            ).length === 0 ? (
               <div className="text-center py-8">
                 <Leaf className="w-12 h-12 text-gray-300 mx-auto mb-3" />
                 <p className="text-gray-600 mb-2">No varieties {selectedSubCategory !== 'all' ? 'in this category' : 'cataloged yet'}</p>
@@ -302,7 +322,10 @@ export default function PlantCatalogDetail() {
               </div>
             ) : (
               <div className="grid md:grid-cols-2 gap-4">
-                {(selectedSubCategory === 'all' ? varieties : varieties.filter(v => v.plant_subcategory_id === selectedSubCategory)).map((variety) => (
+                {(selectedSubCategory === 'all' 
+                  ? varieties 
+                  : varieties.filter(v => v.plant_subcategory_id === selectedSubCategory || (!v.plant_subcategory_id && selectedSubCategory === 'uncategorized'))
+                ).map((variety) => (
                   <Card key={variety.id} className="hover:shadow-md transition-shadow">
                     <CardContent className="p-4">
                       <div className="flex items-start justify-between mb-2">
