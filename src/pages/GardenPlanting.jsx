@@ -45,7 +45,7 @@ function SpaceCard({ space }) {
         bed_id: space.plot_item_id,
         garden_id: space.garden_id
       });
-      console.log('[GardenPlanting] Loaded plantings for plot_item_id:', space.plot_item_id, 'count:', plants.length);
+      console.log('[GardenPlanting] Loaded plantings for plot_item_id:', space.plot_item_id, 'count:', plants.length, plants);
       setPlantings(plants);
     } catch (error) {
       console.error('Error loading plantings:', error);
@@ -73,14 +73,29 @@ function SpaceCard({ space }) {
   const isGridSpace = space.layout_schema?.type === 'grid';
   const columns = space.layout_schema?.columns || 1;
   const rows = space.layout_schema?.rows || 1;
-  const filledCount = plantings.length;
+  
+  // Count OCCUPIED CELLS (not number of plants)
+  const filledCount = plantings.reduce((sum, p) => {
+    const spanCols = p.cell_span_cols || 1;
+    const spanRows = p.cell_span_rows || 1;
+    return sum + (spanCols * spanRows);
+  }, 0);
+  
   const capacity = space.capacity;
 
-  // Create grid cells map
+  // Create grid cells map - mark ALL cells occupied by each plant
   const cellsMap = {};
   plantings.forEach(p => {
-    if (p.cell_x !== undefined && p.cell_y !== undefined) {
-      cellsMap[`${p.cell_x}-${p.cell_y}`] = p;
+    const col = p.cell_col ?? p.cell_x ?? 0;
+    const row = p.cell_row ?? p.cell_y ?? 0;
+    const spanCols = p.cell_span_cols || 1;
+    const spanRows = p.cell_span_rows || 1;
+    
+    // Mark all cells this plant occupies
+    for (let r = 0; r < spanRows; r++) {
+      for (let c = 0; c < spanCols; c++) {
+        cellsMap[`${col + c}-${row + r}`] = p;
+      }
     }
   });
 

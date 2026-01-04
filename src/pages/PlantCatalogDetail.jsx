@@ -105,21 +105,21 @@ export default function PlantCatalogDetail() {
       console.log('[SUBCATEGORY] Found subcategories:', subcats.length);
       setSubCategories(subcats);
 
-      // Load varieties using PlantProfile
+      // Load varieties - try Variety table first (primary source), then PlantProfile
       console.log('[VARIETY DEBUG] Attempting to load varieties for plant_type_id:', plantTypeId);
       
-      let vars = await base44.entities.PlantProfile.filter({ 
+      let vars = await base44.entities.Variety.filter({ 
         plant_type_id: plantTypeId
       }, 'variety_name');
       
-      console.log('[VARIETY DEBUG] Found PlantProfile varieties:', vars.length);
+      console.log('[VARIETY DEBUG] Found Variety records:', vars.length);
       
-      // If no PlantProfiles found, try old Variety table as fallback
+      // If no Variety records found, try PlantProfile table
       if (vars.length === 0) {
-        vars = await base44.entities.Variety.filter({ 
+        vars = await base44.entities.PlantProfile.filter({ 
           plant_type_id: plantTypeId
         }, 'variety_name');
-        console.log('[VARIETY DEBUG] Found old Variety records:', vars.length);
+        console.log('[VARIETY DEBUG] Found PlantProfile records:', vars.length);
       }
       
       console.log('[VARIETY DEBUG] Final varieties:', vars.slice(0, 3));
@@ -333,22 +333,22 @@ export default function PlantCatalogDetail() {
                         </div>
                       </div>
                       <div className="flex flex-wrap gap-2">
-                        {variety.days_to_maturity_seed && (
+                        {(variety.days_to_maturity || variety.days_to_maturity_seed) && (
                           <Badge variant="outline" className="text-xs">
-                            {variety.days_to_maturity_seed} days
+                            {variety.days_to_maturity || variety.days_to_maturity_seed} days
                           </Badge>
                         )}
-                        {variety.spacing_in_min && (
+                        {(variety.spacing_recommended || variety.spacing_in_min) && (
                           <Badge variant="outline" className="text-xs">
-                            {variety.spacing_in_min}" spacing
+                            {variety.spacing_recommended || variety.spacing_in_min}" spacing
                           </Badge>
                         )}
                         {variety.trellis_required && (
                           <Badge className="bg-green-100 text-green-800 text-xs">Needs Trellis</Badge>
                         )}
                       </div>
-                      {variety.notes_public && (
-                        <p className="text-sm text-gray-600 mt-3 line-clamp-2">{variety.notes_public}</p>
+                      {(variety.grower_notes || variety.notes_public) && (
+                        <p className="text-sm text-gray-600 mt-3 line-clamp-2">{variety.grower_notes || variety.notes_public}</p>
                       )}
                     </CardContent>
                   </Card>
