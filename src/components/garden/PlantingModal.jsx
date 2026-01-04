@@ -155,15 +155,18 @@ export default function PlantingModal({ open, onOpenChange, item, garden, onPlan
         const displayName = selectedPlant.variety_name !== selectedPlant.plant_type_name 
           ? `${selectedPlant.plant_type_name} - ${selectedPlant.variety_name}`
           : selectedPlant.variety_name;
-        
+
         // Get icon from PlantType
         const plantType = plantTypes.find(t => t.id === selectedPlant.plant_type_id || t.common_name === selectedPlant.plant_type_name);
         const icon = plantType?.icon || '🌱';
-          
+
+        console.log('[PlantingModal] Creating PlantInstance at', col, row, 'for bed', item.id);
         const planting = await base44.entities.PlantInstance.create({
           garden_id: garden.id,
           bed_id: item.id,
           space_id: item.id,
+          cell_x: col,
+          cell_y: row,
           plant_type_id: selectedPlant.plant_type_id,
           plant_type_icon: icon,
           variety_id: selectedPlant.variety_id,
@@ -175,12 +178,13 @@ export default function PlantingModal({ open, onOpenChange, item, garden, onPlan
           cell_span_rows: selectedPlant.spacing_rows,
           status: 'planned'
         });
-        
+
+        console.log('[PlantingModal] Created PlantInstance:', planting.id);
         setPlantings([...plantings, planting]);
         toast.success('Plant added');
       } catch (error) {
-        console.error('Error adding plant:', error);
-        toast.error('Failed to add plant');
+        console.error('[PlantingModal] Error adding plant:', error);
+        toast.error('Failed to add plant: ' + (error.message || 'Unknown error'));
       }
     }
   };
@@ -234,29 +238,37 @@ export default function PlantingModal({ open, onOpenChange, item, garden, onPlan
   const handleCreateNewPlant = async () => {
     if (!newPlant.variety_id || creating) return;
     
+    console.log('[PlantingModal] Creating new plant from variety:', newPlant.variety_id);
     setCreating(true);
     try {
       const variety = varieties.find(v => v.id === newPlant.variety_id);
+      if (!variety) {
+        toast.error('Variety not found');
+        setCreating(false);
+        return;
+      }
+      
       const spacing = getSpacingForPlant(variety);
+      console.log('[PlantingModal] Creating SeedLot with variety:', variety.id, variety.variety_name);
       
       // Add to stash
-      await base44.entities.SeedLot.create({
-        plant_type_id: variety.plant_type_id,
-        plant_type_name: variety.plant_type_name,
-        variety_id: variety.id,
-        variety_name: variety.variety_name,
+      const newSeedLot = await base44.entities.SeedLot.create({
+        plant_profile_id: variety.id,
         is_wishlist: false
       });
+      console.log('[PlantingModal] Created SeedLot:', newSeedLot.id);
       
       // Select for placing
-      setSelectedPlant({
+      const selectedPlantData = {
         variety_id: variety.id,
         variety_name: variety.variety_name,
-        plant_type_id: variety.plant_type_id,
-        plant_type_name: variety.plant_type_name,
+        plant_type_id: variety.plant_type_id || null,
+        plant_type_name: variety.common_name || variety.variety_name,
         spacing_cols: spacing.cols,
         spacing_rows: spacing.rows
-      });
+      };
+      console.log('[PlantingModal] Setting selected plant:', selectedPlantData);
+      setSelectedPlant(selectedPlantData);
       
       setNewPlant({ variety_id: '', variety_name: '', plant_type_name: '', spacing_cols: 1, spacing_rows: 1 });
       toast.success('Added to stash - now click a cell to place');
@@ -264,9 +276,10 @@ export default function PlantingModal({ open, onOpenChange, item, garden, onPlan
       // Reload stash
       const stashData = await base44.entities.SeedLot.filter({ is_wishlist: false });
       setStashPlants(stashData);
+      console.log('[PlantingModal] Reloaded stash, count:', stashData.length);
     } catch (error) {
-      console.error('Error creating plant:', error);
-      toast.error('Failed to add plant');
+      console.error('[PlantingModal] Error creating plant:', error);
+      toast.error('Failed to add plant: ' + (error.message || 'Unknown error'));
     } finally {
       setCreating(false);
     }
@@ -391,6 +404,7 @@ export default function PlantingModal({ open, onOpenChange, item, garden, onPlan
                   </div>
                   
                   <Button 
+                    type="button"
                     onClick={handleCreateNewPlant}
                     disabled={!newPlant.variety_id || creating}
                     className="w-full bg-emerald-600 hover:bg-emerald-700"
@@ -531,15 +545,7 @@ export default function PlantingModal({ open, onOpenChange, item, garden, onPlan
           </div>
         </div>
         
-        {/* Bottom sticky done button */}
-        <div className="p-4 border-t bg-gray-50 flex justify-end">
-          <Button 
-            onClick={handleDone}
-            className="bg-emerald-600 hover:bg-emerald-700 text-white h-12 px-10 text-base font-semibold"
-          >
-            ✓ Done Planting
-          </Button>
-        </div>
+
       </DialogContent>
     </Dialog>
   );
