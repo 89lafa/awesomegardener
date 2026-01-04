@@ -70,6 +70,7 @@ const TAGS = [
 export default function SeedStash() {
   const [searchParams] = useSearchParams();
   const [seeds, setSeeds] = useState([]);
+  const [profiles, setProfiles] = useState({});
   const [plantTypes, setPlantTypes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showAddDialog, setShowAddDialog] = useState(searchParams.get('action') === 'new');
@@ -83,18 +84,15 @@ export default function SeedStash() {
   const [selectedPlantType, setSelectedPlantType] = useState(null);
 
   const [formData, setFormData] = useState({
-    plant_type_id: '',
-    plant_type_name: '',
-    variety_id: '',
-    variety_name: '',
-    custom_name: '',
-    source_company: '',
-    source_url: '',
-    year: new Date().getFullYear(),
+    plant_profile_id: '',
     quantity: '',
-    quantity_unit: 'seeds',
+    unit: 'seeds',
+    year_acquired: new Date().getFullYear(),
+    packed_for_year: '',
+    source_vendor_name: '',
+    source_vendor_url: '',
     storage_location: '',
-    notes: '',
+    lot_notes: '',
     tags: [],
     is_wishlist: false
   });
@@ -105,12 +103,29 @@ export default function SeedStash() {
 
   const loadData = async () => {
     try {
-      const [seedsData, typesData] = await Promise.all([
+      console.log('[SeedStash] Loading data...');
+      const [seedsData, profilesData, typesData] = await Promise.all([
         base44.entities.SeedLot.list('-created_date'),
+        base44.entities.PlantProfile.list('variety_name', 500),
         base44.entities.PlantType.list('common_name')
       ]);
+      
+      console.log('[SeedStash] Loaded:', seedsData.length, 'lots,', profilesData.length, 'profiles');
       setSeeds(seedsData);
       setPlantTypes(typesData.filter(t => t.common_name && t.common_name.trim()));
+      
+      const profilesMap = {};
+      profilesData.forEach(p => {
+        profilesMap[p.id] = p;
+      });
+      setProfiles(profilesMap);
+      
+      // Log any lots without profiles
+      seedsData.forEach(lot => {
+        if (lot.plant_profile_id && !profilesMap[lot.plant_profile_id]) {
+          console.warn('[SeedStash] SeedLot missing profile:', lot.id, 'profile_id:', lot.plant_profile_id);
+        }
+      });
     } catch (error) {
       console.error('Error loading seed stash:', error);
     } finally {
@@ -124,9 +139,7 @@ export default function SeedStash() {
     setFormData({ 
       ...formData, 
       plant_type_id: plantTypeId,
-      plant_type_name: type?.common_name || '',
-      variety_id: '',
-      variety_name: ''
+      plant_profile_id: ''
     });
 
     if (plantTypeId) {
@@ -145,38 +158,53 @@ export default function SeedStash() {
     }
   };
 
-  const handleVarietyChange = (varietyId) => {
+  const handleVarietyChange = async (varietyId) => {
     const variety = varieties.find(v => v.id === varietyId);
+    
+    // Find or create PlantProfile for this variety
+    const existingProfiles = await base44.entities.PlantProfile.filter({
+      variety_name: variety.variety_name,
+      plant_type_id: variety.plant_type_id
+    });
+    
+    let profileId;
+    if (existingProfiles.length > 0) {
+      profileId = existingProfiles[0].id;
+    } else {
+      const plantType = plantTypes.find(t => t.id === variety.plant_type_id);
+      const newProfile = await base44.entities.PlantProfile.create({
+        plant_type_id: variety.plant_type_id,
+        common_name: plantType?.common_name,
+        variety_name: variety.variety_name,
+        days_to_maturity_seed: variety.days_to_maturity,
+        spacing_in_min: variety.spacing_recommended,
+        spacing_in_max: variety.spacing_recommended,
+        source_type: 'user_private'
+      });
+      profileId = newProfile.id;
+      setProfiles({ ...profiles, [profileId]: newProfile });
+    }
+    
     setFormData({ 
       ...formData, 
-      variety_id: varietyId,
-      variety_name: variety?.variety_name || ''
+      plant_profile_id: profileId
     });
   };
 
   const handleSubmit = async () => {
-    if (!formData.plant_type_name && !formData.variety_name) {
-      toast.error('Please enter a plant type or variety name');
+    if (!formData.plant_profile_id) {
+      toast.error('Please select a variety');
       return;
-    }
-
-    // Ensure plant_type_name is set if plant_type_id is selected
-    const submitData = { ...formData };
-    if (submitData.plant_type_id && !submitData.plant_type_name) {
-      const type = plantTypes.find(t => t.id === submitData.plant_type_id);
-      if (type) {
-        submitData.plant_type_name = type.common_name;
-      }
     }
 
     try {
       if (editingSeed) {
-        await base44.entities.SeedLot.update(editingSeed.id, submitData);
-        setSeeds(seeds.map(s => s.id === editingSeed.id ? { ...s, ...submitData } : s));
+        await base44.entities.SeedLot.update(editingSeed.id, formData);
+        await loadData(); // Reload to get updated profiles
         toast.success('Seed updated!');
       } else {
-        const seed = await base44.entities.SeedLot.create(submitData);
-        setSeeds([seed, ...seeds]);
+        const seed = await base44.entities.SeedLot.create(formData);
+        await loadData(); // Reload to get updated profiles
         toast.success(formData.is_wishlist ? 'Added to wishlist!' : 'Seed added to stash!');
       }
       closeDialog();
@@ -222,27 +250,29 @@ export default function SeedStash() {
 
   const openEditDialog = async (seed) => {
     setEditingSeed(seed);
+    const profile = profiles[seed.plant_profile_id];
+    
     setFormData({
-      plant_type_id: seed.plant_type_id || '',
-      plant_type_name: seed.plant_type_name || '',
-      variety_id: seed.variety_id || '',
-      variety_name: seed.variety_name || '',
-      custom_name: seed.custom_name || '',
-      source_company: seed.source_company || '',
-      source_url: seed.source_url || '',
-      year: seed.year || new Date().getFullYear(),
+      plant_profile_id: seed.plant_profile_id || '',
+      plant_type_id: profile?.plant_type_id || '',
       quantity: seed.quantity || '',
-      quantity_unit: seed.quantity_unit || 'seeds',
+      unit: seed.unit || 'seeds',
+      year_acquired: seed.year_acquired || new Date().getFullYear(),
+      packed_for_year: seed.packed_for_year || '',
+      source_vendor_name: seed.source_vendor_name || '',
+      source_vendor_url: seed.source_vendor_url || '',
       storage_location: seed.storage_location || '',
-      notes: seed.notes || '',
+      lot_notes: seed.lot_notes || '',
       tags: seed.tags || [],
       is_wishlist: seed.is_wishlist || false
     });
 
-    if (seed.plant_type_id) {
+    if (profile?.plant_type_id) {
       try {
+        const type = plantTypes.find(t => t.id === profile.plant_type_id);
+        setSelectedPlantType(type);
         const vars = await base44.entities.Variety.filter({ 
-          plant_type_id: seed.plant_type_id,
+          plant_type_id: profile.plant_type_id,
           status: 'active'
         }, 'variety_name');
         setVarieties(vars);
@@ -260,18 +290,16 @@ export default function SeedStash() {
     setVarieties([]);
     setSelectedPlantType(null);
     setFormData({
+      plant_profile_id: '',
       plant_type_id: '',
-      plant_type_name: '',
-      variety_id: '',
-      variety_name: '',
-      custom_name: '',
-      source_company: '',
-      source_url: '',
-      year: new Date().getFullYear(),
       quantity: '',
-      quantity_unit: 'seeds',
+      unit: 'seeds',
+      year_acquired: new Date().getFullYear(),
+      packed_for_year: '',
+      source_vendor_name: '',
+      source_vendor_url: '',
       storage_location: '',
-      notes: '',
+      lot_notes: '',
       tags: [],
       is_wishlist: false
     });
@@ -282,12 +310,18 @@ export default function SeedStash() {
     if (filterTab === 'stash' && seed.is_wishlist) return false;
     if (filterTab === 'wishlist' && !seed.is_wishlist) return false;
 
+    const profile = profiles[seed.plant_profile_id];
+    if (!profile && seed.plant_profile_id) {
+      console.warn('[SeedStash] Filtering out seed without profile:', seed.id);
+      return false;
+    }
+
     // Search filter
-    const name = (seed.variety_name || seed.plant_type_name || seed.custom_name || '').toLowerCase();
+    const name = (profile?.variety_name || profile?.common_name || seed.custom_label || '').toLowerCase();
     if (searchQuery && !name.includes(searchQuery.toLowerCase())) return false;
 
     // Type filter
-    if (filterType !== 'all' && seed.plant_type_name !== filterType) return false;
+    if (filterType !== 'all' && profile?.common_name !== filterType) return false;
 
     // Tag filter
     if (filterTag !== 'all' && !seed.tags?.includes(filterTag)) return false;
@@ -374,7 +408,10 @@ export default function SeedStash() {
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All Types</SelectItem>
-            {[...new Set(seeds.map(s => s.plant_type_name).filter(Boolean))].map((type) => (
+            {[...new Set(seeds.map(s => {
+              const profile = profiles[s.plant_profile_id];
+              return profile?.common_name;
+            }).filter(Boolean))].map((type) => (
               <SelectItem key={type} value={type}>{type}</SelectItem>
             ))}
           </SelectContent>
@@ -432,12 +469,19 @@ export default function SeedStash() {
                   <CardContent className="p-4">
                     <div className="flex items-start justify-between mb-3">
                      <div className="flex-1 min-w-0">
-                       <h3 className="font-semibold text-gray-900 truncate">
-                         {seed.variety_name || seed.plant_type_name}
-                       </h3>
-                       {seed.plant_type_name && seed.variety_name && (
-                         <p className="text-sm text-gray-500">{seed.plant_type_name}</p>
-                       )}
+                       {(() => {
+                         const profile = profiles[seed.plant_profile_id];
+                         return (
+                           <>
+                             <h3 className="font-semibold text-gray-900 truncate">
+                               {profile?.variety_name || seed.custom_label || 'Unknown'}
+                             </h3>
+                             {profile?.common_name && (
+                               <p className="text-sm text-gray-500">{profile.common_name}</p>
+                             )}
+                           </>
+                         );
+                       })()}
                      </div>
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
@@ -472,16 +516,16 @@ export default function SeedStash() {
                     </div>
 
                     <div className="space-y-2 text-sm">
-                      {seed.source_company && (
-                        <p className="text-gray-600">{seed.source_company}</p>
+                      {seed.source_vendor_name && (
+                        <p className="text-gray-600">{seed.source_vendor_name}</p>
                       )}
                       <div className="flex items-center gap-2 text-gray-500">
-                        {seed.year && (
-                          <Badge variant="outline">{seed.year}</Badge>
+                        {seed.year_acquired && (
+                          <Badge variant="outline">{seed.year_acquired}</Badge>
                         )}
                         {seed.quantity && (
                           <Badge variant="outline">
-                            {seed.quantity} {seed.quantity_unit}
+                            {seed.quantity} {seed.unit}
                           </Badge>
                         )}
                       </div>
@@ -524,16 +568,18 @@ export default function SeedStash() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredSeeds.map((seed) => (
+              {filteredSeeds.map((seed) => {
+                const profile = profiles[seed.plant_profile_id];
+                return (
                 <TableRow key={seed.id}>
                   <TableCell className="font-medium">
-                    {seed.variety_name || seed.plant_type_name}
+                    {profile?.variety_name || seed.custom_label || 'Unknown'}
                   </TableCell>
-                  <TableCell>{seed.plant_type_name}</TableCell>
-                  <TableCell>{seed.source_company || '-'}</TableCell>
-                  <TableCell>{seed.year || '-'}</TableCell>
+                  <TableCell>{profile?.common_name || '-'}</TableCell>
+                  <TableCell>{seed.source_vendor_name || '-'}</TableCell>
+                  <TableCell>{seed.year_acquired || '-'}</TableCell>
                   <TableCell>
-                    {seed.quantity ? `${seed.quantity} ${seed.quantity_unit}` : '-'}
+                    {seed.quantity ? `${seed.quantity} ${seed.unit}` : '-'}
                   </TableCell>
                   <TableCell>
                     <div className="flex gap-1">
@@ -565,7 +611,8 @@ export default function SeedStash() {
                     </DropdownMenu>
                   </TableCell>
                 </TableRow>
-              ))}
+              );
+              })}
             </TableBody>
           </Table>
         </Card>
@@ -602,17 +649,16 @@ export default function SeedStash() {
 
             {formData.plant_type_id && (
               <div>
-                <Label>Variety Name</Label>
+                <Label>Variety Name *</Label>
                 {varieties.length > 0 ? (
                   <Select 
-                    value={formData.variety_id} 
+                    value={formData.plant_profile_id} 
                     onValueChange={handleVarietyChange}
                   >
                     <SelectTrigger className="mt-2">
-                      <SelectValue placeholder="Select variety or enter custom below" />
+                      <SelectValue placeholder="Select variety" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value={null}>Custom variety (enter below)</SelectItem>
                       {varieties.map((variety) => (
                         <SelectItem key={variety.id} value={variety.id}>
                           {variety.variety_name}
@@ -621,66 +667,10 @@ export default function SeedStash() {
                     </SelectContent>
                   </Select>
                 ) : (
-                  <p className="text-sm text-gray-500 mt-2">No catalog varieties available for {selectedPlantType?.common_name}</p>
-                )}
-                {!formData.variety_id && (
-                  <Input
-                    placeholder="e.g., Cherokee Purple, Genovese"
-                    value={formData.variety_name}
-                    onChange={(e) => setFormData({ ...formData, variety_name: e.target.value })}
-                    className="mt-2"
-                  />
+                  <p className="text-sm text-gray-500 mt-2">No varieties available for {selectedPlantType?.common_name}</p>
                 )}
               </div>
             )}
-
-            {!formData.plant_type_id && (
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="manualType">Plant Type (manual)</Label>
-                  <Input
-                    id="manualType"
-                    placeholder="e.g., Tomato"
-                    value={formData.plant_type_name}
-                    onChange={(e) => setFormData({ ...formData, plant_type_name: e.target.value })}
-                    className="mt-2"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="manualVariety">Variety Name</Label>
-                  <Input
-                    id="manualVariety"
-                    placeholder="e.g., Cherokee Purple"
-                    value={formData.variety_name}
-                    onChange={(e) => setFormData({ ...formData, variety_name: e.target.value })}
-                    className="mt-2"
-                  />
-                </div>
-              </div>
-            )}
-
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="source">Source / Company</Label>
-                <Input
-                  id="source"
-                  placeholder="e.g., Baker Creek"
-                  value={formData.source_company}
-                  onChange={(e) => setFormData({ ...formData, source_company: e.target.value })}
-                  className="mt-2"
-                />
-              </div>
-              <div>
-                <Label htmlFor="year">Year</Label>
-                <Input
-                  id="year"
-                  type="number"
-                  value={formData.year}
-                  onChange={(e) => setFormData({ ...formData, year: parseInt(e.target.value) || '' })}
-                  className="mt-2"
-                />
-              </div>
-            </div>
 
             <div className="grid grid-cols-2 gap-4">
               <div>
@@ -697,20 +687,67 @@ export default function SeedStash() {
               <div>
                 <Label>Unit</Label>
                 <Select 
-                  value={formData.quantity_unit} 
-                  onValueChange={(v) => setFormData({ ...formData, quantity_unit: v })}
+                  value={formData.unit} 
+                  onValueChange={(v) => setFormData({ ...formData, unit: v })}
                 >
                   <SelectTrigger className="mt-2">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="seeds">Seeds</SelectItem>
-                    <SelectItem value="packs">Packs</SelectItem>
+                    <SelectItem value="packets">Packets</SelectItem>
                     <SelectItem value="grams">Grams</SelectItem>
                     <SelectItem value="ounces">Ounces</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="year_acquired">Year Acquired</Label>
+                <Input
+                  id="year_acquired"
+                  type="number"
+                  value={formData.year_acquired}
+                  onChange={(e) => setFormData({ ...formData, year_acquired: parseInt(e.target.value) || '' })}
+                  className="mt-2"
+                />
+              </div>
+              <div>
+                <Label htmlFor="packed_for">Packed For Year</Label>
+                <Input
+                  id="packed_for"
+                  type="number"
+                  placeholder="2025"
+                  value={formData.packed_for_year}
+                  onChange={(e) => setFormData({ ...formData, packed_for_year: parseInt(e.target.value) || '' })}
+                  className="mt-2"
+                />
+              </div>
+            </div>
+
+            <div>
+              <Label htmlFor="source">Vendor/Source</Label>
+              <Input
+                id="source"
+                placeholder="e.g., Baker Creek"
+                value={formData.source_vendor_name}
+                onChange={(e) => setFormData({ ...formData, source_vendor_name: e.target.value })}
+                className="mt-2"
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="source_url">Vendor URL</Label>
+              <Input
+                id="source_url"
+                type="url"
+                placeholder="https://..."
+                value={formData.source_vendor_url}
+                onChange={(e) => setFormData({ ...formData, source_vendor_url: e.target.value })}
+                className="mt-2"
+              />
             </div>
 
             <div>
@@ -729,8 +766,8 @@ export default function SeedStash() {
               <Textarea
                 id="notes"
                 placeholder="Any notes about these seeds..."
-                value={formData.notes}
-                onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                value={formData.lot_notes}
+                onChange={(e) => setFormData({ ...formData, lot_notes: e.target.value })}
                 className="mt-2"
               />
             </div>
