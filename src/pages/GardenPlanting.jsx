@@ -126,22 +126,43 @@ function SpaceCard({ space }) {
             >
               {Array.from({ length: rows }).map((_, rowIdx) => 
                 Array.from({ length: columns }).map((_, colIdx) => {
-                  const plant = cellsMap[`${colIdx}-${rowIdx}`];
-                  return (
-                    <button
-                      key={`${colIdx}-${rowIdx}`}
-                      onClick={() => handleCellClick(colIdx, rowIdx)}
-                      className={cn(
-                        "w-7 h-7 rounded border-2 transition-colors text-xs font-medium flex items-center justify-center cursor-pointer",
-                        plant 
-                          ? "bg-emerald-500 border-emerald-600 text-white hover:bg-emerald-600" 
-                          : "bg-white border-amber-300 hover:bg-amber-100 hover:border-amber-400"
-                      )}
-                      title={plant ? plant.display_name || plant.plant_display_name : 'Click to plant'}
-                    >
-                      {plant && <span className="text-lg">{plant.plant_type_icon || '🌱'}</span>}
-                    </button>
+                  // Find plant that occupies this cell
+                  const plant = plantings.find(p => 
+                    colIdx >= (p.cell_col ?? p.cell_x ?? 0) && 
+                    colIdx < (p.cell_col ?? p.cell_x ?? 0) + (p.cell_span_cols || 1) &&
+                    rowIdx >= (p.cell_row ?? p.cell_y ?? 0) && 
+                    rowIdx < (p.cell_row ?? p.cell_y ?? 0) + (p.cell_span_rows || 1)
                   );
+                  
+                  // Only render at origin cell for multi-cell plants
+                  if (plant && (colIdx === (plant.cell_col ?? plant.cell_x ?? 0) && rowIdx === (plant.cell_row ?? plant.cell_y ?? 0))) {
+                    return (
+                      <div
+                        key={`${colIdx}-${rowIdx}`}
+                        className="bg-emerald-500 border-2 border-emerald-600 rounded flex items-center justify-center cursor-pointer hover:bg-emerald-600"
+                        style={{
+                          gridColumn: `span ${plant.cell_span_cols || 1}`,
+                          gridRow: `span ${plant.cell_span_rows || 1}`
+                        }}
+                        onClick={() => handleCellClick(colIdx, rowIdx)}
+                        title={plant.display_name || plant.plant_display_name}
+                      >
+                        <span className="text-lg">{plant.plant_type_icon || '🌱'}</span>
+                      </div>
+                    );
+                  } else if (plant) {
+                    // Part of multi-cell plant, skip rendering
+                    return null;
+                  } else {
+                    return (
+                      <button
+                        key={`${colIdx}-${rowIdx}`}
+                        onClick={() => handleCellClick(colIdx, rowIdx)}
+                        className="w-7 h-7 rounded border-2 bg-white border-amber-300 hover:bg-amber-100 hover:border-amber-400 transition-colors cursor-pointer"
+                        title="Click to plant"
+                      />
+                    );
+                  }
                 })
               )}
             </div>
