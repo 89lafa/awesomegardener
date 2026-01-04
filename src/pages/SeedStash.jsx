@@ -104,8 +104,9 @@ export default function SeedStash() {
   const loadData = async () => {
     try {
       console.log('[SeedStash] Loading data...');
+      const user = await base44.auth.me();
       const [seedsData, profilesData, typesData] = await Promise.all([
-        base44.entities.SeedLot.list('-created_date'),
+        base44.entities.SeedLot.filter({ created_by: user.email }, '-created_date'),
         base44.entities.PlantProfile.list('variety_name', 500),
         base44.entities.PlantType.list('common_name')
       ]);

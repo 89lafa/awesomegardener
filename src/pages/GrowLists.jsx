@@ -95,10 +95,11 @@ export default function GrowLists() {
 
   const loadData = async () => {
     try {
+      const user = await base44.auth.me();
       const [listsData, gardensData, seedsData, typesData] = await Promise.all([
-        base44.entities.GrowList.list('-created_date'),
-        base44.entities.Garden.filter({ archived: false }),
-        base44.entities.SeedLot.filter({ is_wishlist: false }),
+        base44.entities.GrowList.filter({ created_by: user.email }, '-created_date'),
+        base44.entities.Garden.filter({ archived: false, created_by: user.email }),
+        base44.entities.SeedLot.filter({ is_wishlist: false, created_by: user.email }),
         base44.entities.PlantType.list('name')
       ]);
       setGrowLists(listsData);

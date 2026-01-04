@@ -94,10 +94,11 @@ export default function CalendarTasks() {
 
   const loadData = async () => {
     try {
+      const user = await base44.auth.me();
       const [tasksData, gardensData, plantsData] = await Promise.all([
-        base44.entities.Task.list('due_date'),
-        base44.entities.Garden.filter({ archived: false }),
-        base44.entities.PlantInstance.list()
+        base44.entities.Task.filter({ created_by: user.email }, 'due_date'),
+        base44.entities.Garden.filter({ archived: false, created_by: user.email }),
+        base44.entities.PlantInstance.filter({ created_by: user.email })
       ]);
       setTasks(tasksData);
       setGardens(gardensData);

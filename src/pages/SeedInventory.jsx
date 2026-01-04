@@ -51,7 +51,8 @@ export default function SeedInventory() {
 
   const loadViewPreference = async () => {
     try {
-      const settings = await base44.entities.UserSettings.list();
+      const user = await base44.auth.me();
+      const settings = await base44.entities.UserSettings.filter({ created_by: user.email });
       if (settings.length > 0 && settings[0].seed_stash_view_mode) {
         setViewMode(settings[0].seed_stash_view_mode);
       }
@@ -62,7 +63,8 @@ export default function SeedInventory() {
 
   const saveViewPreference = async (mode) => {
     try {
-      const settings = await base44.entities.UserSettings.list();
+      const user = await base44.auth.me();
+      const settings = await base44.entities.UserSettings.filter({ created_by: user.email });
       if (settings.length > 0) {
         await base44.entities.UserSettings.update(settings[0].id, {
           seed_stash_view_mode: mode
@@ -85,12 +87,13 @@ export default function SeedInventory() {
   const loadData = async () => {
     try {
       console.log('[SeedInventory] Loading data...');
+      const user = await base44.auth.me();
       const [lotsData, profilesData, typesData, subcatsData, settingsData] = await Promise.all([
-        base44.entities.SeedLot.filter({ is_wishlist: false }),
+        base44.entities.SeedLot.filter({ is_wishlist: false, created_by: user.email }),
         base44.entities.PlantProfile.list('variety_name', 500),
         base44.entities.PlantType.list('common_name', 200),
         base44.entities.PlantSubCategory.filter({ is_active: true }, 'sort_order', 200),
-        base44.entities.UserSettings.list()
+        base44.entities.UserSettings.filter({ created_by: user.email })
       ]);
 
       console.log('[SeedInventory] Loaded:', lotsData.length, 'lots,', profilesData.length, 'profiles');
