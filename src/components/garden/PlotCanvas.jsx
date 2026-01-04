@@ -57,7 +57,7 @@ const GALLON_SIZES = [
   { value: 20, footprint: 24 }, { value: 30, footprint: 30 }
 ];
 
-export default function PlotCanvas({ garden, plot, onPlotUpdate }) {
+export default function PlotCanvas({ garden, plot, onPlotUpdate, onDeleteGarden }) {
   const canvasRef = useRef(null);
   const [items, setItems] = useState([]);
   const [itemsPlantingCounts, setItemsPlantingCounts] = useState({});
@@ -860,6 +860,17 @@ export default function PlotCanvas({ garden, plot, onPlotUpdate }) {
             <Settings className="w-4 h-4" />
             Plot Settings
           </Button>
+
+          {onDeleteGarden && (
+            <Button 
+              onClick={onDeleteGarden}
+              variant="outline"
+              className="w-full gap-2 text-red-600 hover:text-red-700 hover:bg-red-50 text-xs mt-4 border-red-200"
+            >
+              <Trash2 className="w-3 h-3" />
+              Delete Garden
+            </Button>
+          )}
 
           <div className="pt-4 border-t space-y-2">
             <h4 className="font-semibold text-sm">View</h4>

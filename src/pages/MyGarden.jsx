@@ -143,7 +143,27 @@ export default function MyGarden() {
   const handleDeleteGarden = async () => {
     if (!activeGarden) return;
     
-    if (!confirm(`Delete "${activeGarden.name}"? This will permanently delete this garden, its items, and all plantings. This cannot be undone.`)) {
+    // Show warning dialog with red styling
+    const confirmed = confirm(
+      `⚠️ DELETE ENTIRE GARDEN?\n\n` +
+      `You are about to permanently delete "${activeGarden.name}".\n\n` +
+      `This will delete:\n` +
+      `• The entire garden\n` +
+      `• All raised beds, greenhouses, and other items\n` +
+      `• All plantings and plant data\n\n` +
+      `THIS CANNOT BE UNDONE.\n\n` +
+      `Type the garden name to confirm deletion.`
+    );
+    
+    if (!confirmed) return;
+    
+    // Second confirmation - require typing garden name
+    const typedName = prompt(`To confirm deletion, type the garden name exactly:\n"${activeGarden.name}"`);
+    
+    if (typedName !== activeGarden.name) {
+      if (typedName !== null) { // Only show error if they didn't cancel
+        toast.error('Garden name did not match. Deletion cancelled.');
+      }
       return;
     }
     
@@ -290,17 +310,6 @@ export default function MyGarden() {
               <h1 className="text-xl lg:text-2xl font-bold text-gray-900">{activeGarden?.name}</h1>
             )}
             </div>
-            <div className="flex gap-2">
-            {activeGarden && (
-              <Button 
-                onClick={handleDeleteGarden}
-                variant="outline"
-                className="gap-2 text-red-600 hover:text-red-700"
-              >
-                <Trash2 className="w-4 h-4" />
-                Delete
-              </Button>
-            )}
             <Button 
               onClick={() => setShowCreateGarden(true)}
               variant="outline"
@@ -309,7 +318,6 @@ export default function MyGarden() {
               <Plus className="w-4 h-4" />
               New Garden
             </Button>
-            </div>
         </div>
 
         {/* Plot Canvas */}
@@ -318,6 +326,7 @@ export default function MyGarden() {
             garden={activeGarden}
             plot={plot}
             onPlotUpdate={loadPlot}
+            onDeleteGarden={handleDeleteGarden}
           />
         )}
       </div>
