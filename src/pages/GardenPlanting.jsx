@@ -26,13 +26,12 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import ErrorBoundary from '@/components/common/ErrorBoundary';
-import AddPlantDialog from '@/components/garden/AddPlantDialog';
+import PlantingModal from '@/components/garden/PlantingModal';
 
-function SpaceCard({ space }) {
+function SpaceCard({ space, garden }) {
   const [plantings, setPlantings] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [showPlantPicker, setShowPlantPicker] = useState(false);
-  const [selectedCell, setSelectedCell] = useState(null);
+  const [showPlantingModal, setShowPlantingModal] = useState(false);
 
   useEffect(() => {
     loadPlantings();
@@ -54,25 +53,15 @@ function SpaceCard({ space }) {
     }
   };
 
-  const handleCellClick = (colIdx, rowIdx) => {
-    console.log('[PLANTING] clicked spaceId=', space.id, 'cell=', colIdx, rowIdx);
-    setSelectedCell({ x: colIdx, y: rowIdx });
-    setShowPlantPicker(true);
-  };
-
-  const handleAddPlant = () => {
-    console.log('[PLANTING] Add plant clicked for space:', space.id);
-    setSelectedCell(null);
-    setShowPlantPicker(true);
-  };
-
-  const handlePlantAdded = () => {
+  const handlePlantingUpdate = () => {
     loadPlantings();
   };
 
   const isGridSpace = space.layout_schema?.type === 'grid';
+  const isSlotsSpace = space.layout_schema?.type === 'slots';
   const columns = space.layout_schema?.columns || 1;
   const rows = space.layout_schema?.rows || 1;
+  const slots = space.layout_schema?.slots || 1;
   
   // Count OCCUPIED CELLS (not number of plants)
   const filledCount = plantings.reduce((sum, p) => {
@@ -95,21 +84,17 @@ function SpaceCard({ space }) {
   
   const cellSize = getCellSize();
 
-  // Create grid cells map - mark ALL cells occupied by each plant
-  const cellsMap = {};
-  plantings.forEach(p => {
-    const col = p.cell_col ?? p.cell_x ?? 0;
-    const row = p.cell_row ?? p.cell_y ?? 0;
-    const spanCols = p.cell_span_cols || 1;
-    const spanRows = p.cell_span_rows || 1;
-    
-    // Mark all cells this plant occupies
-    for (let r = 0; r < spanRows; r++) {
-      for (let c = 0; c < spanCols; c++) {
-        cellsMap[`${col + c}-${row + r}`] = p;
-      }
+  // Create a pseudo-item for PlantingModal that looks like a PlotItem
+  const pseudoItem = {
+    id: space.plot_item_id,
+    label: space.name,
+    width: columns * 12,
+    height: rows * 12,
+    metadata: {
+      gridEnabled: isGridSpace,
+      gridSize: 12
     }
-  });
+  };
 
   return (
     <Card>
@@ -125,9 +110,9 @@ function SpaceCard({ space }) {
         </p>
       </CardHeader>
       <CardContent>
-        {isGridSpace ? (
-          <div className="space-y-3">
-            {/* Grid visualization */}
+        <div className="space-y-3">
+          {/* Visual grid for all space types */}
+          {isGridSpace ? (
             <div 
               className="grid gap-1.5 p-2 bg-amber-50 border border-amber-200 rounded-lg overflow-x-auto"
               style={{
@@ -139,7 +124,6 @@ function SpaceCard({ space }) {
             >
               {Array.from({ length: rows }).map((_, rowIdx) => 
                 Array.from({ length: columns }).map((_, colIdx) => {
-                  // Find plant that occupies this cell
                   const plant = plantings.find(p => 
                     colIdx >= (p.cell_col ?? p.cell_x ?? 0) && 
                     colIdx < (p.cell_col ?? p.cell_x ?? 0) + (p.cell_span_cols || 1) &&
@@ -147,77 +131,92 @@ function SpaceCard({ space }) {
                     rowIdx < (p.cell_row ?? p.cell_y ?? 0) + (p.cell_span_rows || 1)
                   );
                   
-                  // Only render at origin cell for multi-cell plants
                   if (plant && (colIdx === (plant.cell_col ?? plant.cell_x ?? 0) && rowIdx === (plant.cell_row ?? plant.cell_y ?? 0))) {
                     return (
                       <div
                         key={`${colIdx}-${rowIdx}`}
-                        className="bg-emerald-500 border-2 border-emerald-600 rounded flex items-center justify-center cursor-pointer hover:bg-emerald-600"
+                        className="bg-emerald-500 border-2 border-emerald-600 rounded flex items-center justify-center"
                         style={{
                           gridColumn: `span ${plant.cell_span_cols || 1}`,
-                          gridRow: `span ${plant.cell_span_rows || 1}`
+                          gridRow: `span ${plant.cell_span_rows || 1}`,
+                          width: cellSize * (plant.cell_span_cols || 1),
+                          height: cellSize * (plant.cell_span_rows || 1)
                         }}
-                        onClick={() => handleCellClick(colIdx, rowIdx)}
                         title={plant.display_name || plant.plant_display_name}
                       >
                         <span className="text-lg">{plant.plant_type_icon || '🌱'}</span>
                       </div>
                     );
                   } else if (plant) {
-                    // Part of multi-cell plant, skip rendering
                     return null;
                   } else {
                     return (
-                      <button
+                      <div
                         key={`${colIdx}-${rowIdx}`}
-                        onClick={() => handleCellClick(colIdx, rowIdx)}
-                        className="rounded border-2 bg-white border-amber-300 hover:bg-amber-100 hover:border-amber-400 transition-colors cursor-pointer"
+                        className="rounded border-2 bg-white border-amber-300"
                         style={{ width: cellSize, height: cellSize }}
-                        title="Click to plant"
                       />
                     );
                   }
                 })
               )}
             </div>
-            <Button className="w-full bg-emerald-600 hover:bg-emerald-700" size="sm">
-              <Plus className="w-4 h-4 mr-2" />
-              Add Plants
-            </Button>
-          </div>
-        ) : (
-          <div className="space-y-3">
-            <div className="flex justify-between text-sm">
-              <span className="text-gray-600">Capacity:</span>
-              <span className="font-medium">
-                {capacity} {space.layout_schema?.type === 'rows' ? 'rows' : 'slots'}
-              </span>
+          ) : isSlotsSpace ? (
+            <div className="grid gap-2 p-2 bg-amber-50 border border-amber-200 rounded-lg"
+              style={{ 
+                gridTemplateColumns: 'repeat(auto-fill, minmax(36px, 1fr))',
+                maxWidth: '100%'
+              }}
+            >
+              {Array.from({ length: slots }).map((_, idx) => {
+                const plant = plantings[idx];
+                return (
+                  <div
+                    key={idx}
+                    className={cn(
+                      "w-9 h-9 rounded border-2 flex items-center justify-center",
+                      plant 
+                        ? "bg-emerald-500 border-emerald-600" 
+                        : "bg-white border-amber-300"
+                    )}
+                    title={plant ? (plant.display_name || plant.plant_display_name) : 'Empty slot'}
+                  >
+                    {plant && <span className="text-lg">{plant.plant_type_icon || '🌱'}</span>}
+                  </div>
+                );
+              })}
             </div>
-            {filledCount > 0 && (
-              <div className="p-2 bg-emerald-50 border border-emerald-200 rounded-lg">
+          ) : (
+            <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg">
+              <div className="flex justify-between text-sm mb-2">
+                <span className="text-gray-600">Capacity:</span>
+                <span className="font-medium">{capacity} rows</span>
+              </div>
+              {filledCount > 0 && (
                 <p className="text-sm text-emerald-700 font-medium">
                   {filledCount} plant{filledCount !== 1 ? 's' : ''} growing
                 </p>
-              </div>
-            )}
-            <Button 
-              onClick={handleAddPlant}
-              className="w-full bg-emerald-600 hover:bg-emerald-700" 
-              size="sm"
-            >
-              <Plus className="w-4 h-4 mr-2" />
-              Add Plants
-            </Button>
-          </div>
-        )}
+              )}
+            </div>
+          )}
+          
+          <Button 
+            onClick={() => setShowPlantingModal(true)}
+            className="w-full bg-emerald-600 hover:bg-emerald-700" 
+            size="sm"
+          >
+            <Plus className="w-4 h-4 mr-2" />
+            Add Plants
+          </Button>
+        </div>
       </CardContent>
       
-      <AddPlantDialog
-        open={showPlantPicker}
-        onOpenChange={setShowPlantPicker}
-        space={space}
-        cellCoords={selectedCell}
-        onPlantAdded={handlePlantAdded}
+      <PlantingModal
+        open={showPlantingModal}
+        onOpenChange={setShowPlantingModal}
+        item={pseudoItem}
+        garden={garden}
+        onPlantingUpdate={handlePlantingUpdate}
       />
     </Card>
   );
@@ -582,30 +581,10 @@ export default function GardenPlanting() {
 
         {/* Planting Spaces List */}
         {plantingSpaces.length > 0 && (
-          <div className="grid gap-6 auto-rows-min" style={{ gridTemplateColumns: 'repeat(3, 1fr)' }}>
-            {plantingSpaces.map((space) => {
-              const cols = space.layout_schema?.columns || 1;
-              const rows = space.layout_schema?.rows || 1;
-              
-              // Determine grid span based on space dimensions
-              let gridSpan = 1;
-              if (cols > 8 || rows > 8) {
-                gridSpan = 3; // Full width for very large spaces
-              } else if (cols > 5 || rows > 6) {
-                gridSpan = 2; // Half width for medium-large spaces
-              }
-              
-              return (
-                <div 
-                  key={space.id} 
-                  style={{ 
-                    gridColumn: gridSpan === 3 ? '1 / -1' : gridSpan === 2 ? 'span 2' : 'span 1'
-                  }}
-                >
-                  <SpaceCard space={space} />
-                </div>
-              );
-            })}
+          <div className="grid gap-6" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))' }}>
+            {plantingSpaces.map((space) => (
+              <SpaceCard key={space.id} space={space} garden={activeGarden} />
+            ))}
           </div>
         )}
       </div>
