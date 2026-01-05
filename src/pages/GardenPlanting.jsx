@@ -145,7 +145,7 @@ function SpaceCard({ space, garden }) {
                           width: cellSize * (plant.cell_span_cols || 1),
                           height: cellSize * (plant.cell_span_rows || 1)
                         }}
-                        title={plant.display_name || plant.plant_display_name}
+                        title={plant?.display_name || 'Plant'}
                       >
                         <span className="text-lg">{plant.plant_type_icon || '🌱'}</span>
                       </div>
