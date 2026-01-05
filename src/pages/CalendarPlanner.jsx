@@ -29,9 +29,9 @@ export default function CalendarPlanner() {
 
   const loadData = async () => {
     try {
-      const [userData, seedsData, profilesData] = await Promise.all([
-        base44.auth.me(),
-        base44.entities.SeedLot.filter({ is_wishlist: false }),
+      const userData = await base44.auth.me();
+      const [seedsData, profilesData] = await Promise.all([
+        base44.entities.SeedLot.filter({ is_wishlist: false, created_by: userData.email }),
         base44.entities.PlantProfile.list('variety_name', 500)
       ]);
       

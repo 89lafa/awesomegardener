@@ -65,7 +65,7 @@ export default function PlantingModal({ open, onOpenChange, item, garden, onPlan
       const user = await base44.auth.me();
       const [plantingsData, stashData, profilesData, varietiesData, typesData] = await Promise.all([
         base44.entities.PlantInstance.filter({ bed_id: item.id }),
-        base44.entities.SeedLot.filter({ is_wishlist: false }),
+        base44.entities.SeedLot.filter({ is_wishlist: false, created_by: user.email }),
         base44.entities.PlantProfile.list('variety_name', 500),
         base44.entities.Variety.list('variety_name', 500),
         base44.entities.PlantType.list('common_name', 100)
@@ -374,7 +374,8 @@ export default function PlantingModal({ open, onOpenChange, item, garden, onPlan
       toast.success('Added to stash - now click a cell to place');
       
       // Reload stash
-      const stashData = await base44.entities.SeedLot.filter({ is_wishlist: false });
+      const currentUser = await base44.auth.me();
+      const stashData = await base44.entities.SeedLot.filter({ is_wishlist: false, created_by: currentUser.email });
       setStashPlants(stashData);
       console.log('[PlantingModal] Reloaded stash, count:', stashData.length);
     } catch (error) {
