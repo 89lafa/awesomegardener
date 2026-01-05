@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -26,6 +26,7 @@ import { toast } from 'sonner';
 export default function AddVarietyDialog({ plantType, open, onOpenChange, onSuccess, userRole }) {
   const [formData, setFormData] = useState({
     variety_name: '',
+    plant_subcategory_id: '',
     synonyms: '',
     days_to_maturity: '',
     spacing_recommended: '',
@@ -35,13 +36,34 @@ export default function AddVarietyDialog({ plantType, open, onOpenChange, onSucc
     trellis_required: false,
     grower_notes: '',
     source_url: '',
-    submitter_notes: ''
+    submitter_notes: '',
+    heat_scoville_min: '',
+    heat_scoville_max: ''
   });
   const [duplicateWarning, setDuplicateWarning] = useState(null);
   const [checking, setChecking] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [subCategories, setSubCategories] = useState([]);
 
   const isAdminOrEditor = userRole === 'admin' || userRole === 'editor';
+
+  useEffect(() => {
+    if (open && plantType) {
+      loadSubCategories();
+    }
+  }, [open, plantType]);
+
+  const loadSubCategories = async () => {
+    try {
+      const subcats = await base44.entities.PlantSubCategory.filter({ 
+        plant_type_id: plantType.id,
+        is_active: true 
+      }, 'sort_order');
+      setSubCategories(subcats);
+    } catch (error) {
+      console.error('Error loading subcategories:', error);
+    }
+  };
 
   const checkForDuplicates = async (name) => {
     if (!name || name.length < 3) {
@@ -101,7 +123,7 @@ export default function AddVarietyDialog({ plantType, open, onOpenChange, onSucc
     try {
       if (isAdminOrEditor) {
         // Direct creation
-        await base44.entities.Variety.create({
+        const newVariety = await base44.entities.Variety.create({
           plant_type_id: plantType.id,
           plant_type_name: plantType.common_name,
           variety_name: formData.variety_name,
@@ -114,9 +136,20 @@ export default function AddVarietyDialog({ plantType, open, onOpenChange, onSucc
           trellis_required: formData.trellis_required,
           grower_notes: formData.grower_notes || null,
           source_attribution: formData.source_url || 'User Submitted',
+          heat_scoville_min: formData.heat_scoville_min ? parseInt(formData.heat_scoville_min) : null,
+          heat_scoville_max: formData.heat_scoville_max ? parseInt(formData.heat_scoville_max) : null,
           status: 'active',
           is_custom: true
         });
+        
+        // Create subcategory mapping if selected
+        if (formData.plant_subcategory_id) {
+          await base44.entities.VarietySubCategoryMap.create({
+            variety_id: newVariety.id,
+            plant_subcategory_id: formData.plant_subcategory_id
+          });
+        }
+        
         toast.success('Variety added!');
       } else {
         // Create suggestion for review
@@ -192,6 +225,29 @@ export default function AddVarietyDialog({ plantType, open, onOpenChange, onSucc
               className="mt-2"
             />
           </div>
+
+          {subCategories.length > 0 && (
+            <div>
+              <Label htmlFor="subcategory">Type/Subcategory</Label>
+              <Select 
+                value={formData.plant_subcategory_id || ''} 
+                onValueChange={(v) => setFormData({ ...formData, plant_subcategory_id: v })}
+              >
+                <SelectTrigger className="mt-2">
+                  <SelectValue placeholder="Select type..." />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={null}>None</SelectItem>
+                  {subCategories.map((subcat) => (
+                    <SelectItem key={subcat.id} value={subcat.id}>
+                      {subcat.icon && <span className="mr-2">{subcat.icon}</span>}
+                      {subcat.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
 
           <div className="grid grid-cols-2 gap-4">
             <div>
@@ -272,6 +328,31 @@ export default function AddVarietyDialog({ plantType, open, onOpenChange, onSucc
               onCheckedChange={(checked) => setFormData({ ...formData, trellis_required: checked })}
             />
             <Label htmlFor="trellis" className="font-normal">Requires Trellis</Label>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <Label htmlFor="scoville_min">Scoville Min (peppers)</Label>
+              <Input
+                id="scoville_min"
+                type="number"
+                placeholder="e.g., 1000"
+                value={formData.heat_scoville_min}
+                onChange={(e) => setFormData({ ...formData, heat_scoville_min: e.target.value })}
+                className="mt-2"
+              />
+            </div>
+            <div>
+              <Label htmlFor="scoville_max">Scoville Max</Label>
+              <Input
+                id="scoville_max"
+                type="number"
+                placeholder="e.g., 5000"
+                value={formData.heat_scoville_max}
+                onChange={(e) => setFormData({ ...formData, heat_scoville_max: e.target.value })}
+                className="mt-2"
+              />
+            </div>
           </div>
 
           <div>
