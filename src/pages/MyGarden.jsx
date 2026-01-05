@@ -44,6 +44,11 @@ export default function MyGarden() {
   const [showCreateGarden, setShowCreateGarden] = useState(false);
   const [newGardenName, setNewGardenName] = useState('');
   const [creating, setCreating] = useState(false);
+  const [showAddSeason, setShowAddSeason] = useState(false);
+  const [newSeasonData, setNewSeasonData] = useState({
+    year: new Date().getFullYear() + 1,
+    season: 'Spring'
+  });
 
   useEffect(() => {
     loadData();
