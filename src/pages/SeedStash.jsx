@@ -18,7 +18,8 @@ import {
   Loader2,
   Grid3X3,
   List,
-  Calendar
+  Calendar,
+  ExternalLink
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -89,10 +90,14 @@ export default function SeedStash() {
     type: true,
     source: true,
     year: true,
+    age: true,
+    maturity: true,
+    spacing: true,
     quantity: true,
     tags: true
   });
   const [showColumnChooser, setShowColumnChooser] = useState(false);
+  const [settings, setSettings] = useState({ aging_threshold_years: 2, old_threshold_years: 3 });
 
   const [formData, setFormData] = useState({
     plant_profile_id: '',
@@ -116,9 +121,14 @@ export default function SeedStash() {
   const loadViewPreference = async () => {
     try {
       const user = await base44.auth.me();
-      const settings = await base44.entities.UserSettings.filter({ created_by: user.email });
-      if (settings.length > 0 && settings[0].seed_stash_view_mode) {
-        setViewMode(settings[0].seed_stash_view_mode);
+      const userSettings = await base44.entities.UserSettings.filter({ created_by: user.email });
+      if (userSettings.length > 0) {
+        const s = userSettings[0];
+        if (s.seed_stash_view_mode) setViewMode(s.seed_stash_view_mode);
+        if (s.aging_threshold_years) setSettings({ 
+          aging_threshold_years: s.aging_threshold_years,
+          old_threshold_years: s.old_threshold_years || 3
+        });
       }
     } catch (error) {
       console.error('Error loading view preference:', error);
@@ -128,9 +138,9 @@ export default function SeedStash() {
   const saveViewPreference = async (mode) => {
     try {
       const user = await base44.auth.me();
-      const settings = await base44.entities.UserSettings.filter({ created_by: user.email });
-      if (settings.length > 0) {
-        await base44.entities.UserSettings.update(settings[0].id, {
+      const userSettings = await base44.entities.UserSettings.filter({ created_by: user.email });
+      if (userSettings.length > 0) {
+        await base44.entities.UserSettings.update(userSettings[0].id, {
           seed_stash_view_mode: mode
         });
       } else {
@@ -146,6 +156,19 @@ export default function SeedStash() {
   const handleViewModeChange = (mode) => {
     setViewMode(mode);
     saveViewPreference(mode);
+  };
+
+  const getAge = (seed) => {
+    const currentYear = new Date().getFullYear();
+    const year = seed.packed_for_year || seed.year_acquired;
+    return year ? currentYear - year : 0;
+  };
+
+  const getAgeStatus = (seed) => {
+    const age = getAge(seed);
+    if (age >= settings.old_threshold_years) return { status: 'OLD', color: 'red', icon: Star };
+    if (age >= settings.aging_threshold_years) return { status: 'AGING', color: 'amber', icon: AlertTriangle };
+    return { status: 'OK', color: 'green', icon: null };
   };
 
   const loadData = async () => {
@@ -397,6 +420,16 @@ export default function SeedStash() {
         result = sourceA.localeCompare(sourceB);
       } else if (sortBy === 'year') {
         result = (a.year_acquired || 0) - (b.year_acquired || 0);
+      } else if (sortBy === 'age') {
+        result = getAge(b) - getAge(a); // Oldest first by default
+      } else if (sortBy === 'maturity') {
+        const matA = profileA?.days_to_maturity_seed || 999;
+        const matB = profileB?.days_to_maturity_seed || 999;
+        result = matA - matB;
+      } else if (sortBy === 'spacing') {
+        const spaceA = profileA?.spacing_in_min || 999;
+        const spaceB = profileB?.spacing_in_min || 999;
+        result = spaceA - spaceB;
       } else if (sortBy === 'quantity') {
         result = (b.quantity || 0) - (a.quantity || 0);
       } else if (sortBy === 'created_date') {
@@ -479,7 +512,7 @@ export default function SeedStash() {
         </div>
       </div>
 
-      {/* Filters */}
+      {/* Filters & Sorting */}
       <div className="flex flex-col sm:flex-row gap-4">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
@@ -515,6 +548,30 @@ export default function SeedStash() {
             ))}
           </SelectContent>
         </Select>
+        <Select value={sortBy} onValueChange={setSortBy}>
+          <SelectTrigger className="w-full sm:w-48">
+            <SelectValue placeholder="Sort by..." />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="name">Name</SelectItem>
+            <SelectItem value="type">Crop Type</SelectItem>
+            <SelectItem value="age">Seed Age</SelectItem>
+            <SelectItem value="year">Year Acquired</SelectItem>
+            <SelectItem value="maturity">Days to Maturity</SelectItem>
+            <SelectItem value="spacing">Spacing</SelectItem>
+            <SelectItem value="source">Vendor</SelectItem>
+            <SelectItem value="quantity">Quantity</SelectItem>
+            <SelectItem value="created_date">Date Added</SelectItem>
+          </SelectContent>
+        </Select>
+        <Button
+          variant="outline"
+          size="icon"
+          onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
+          title={sortOrder === 'asc' ? 'Ascending' : 'Descending'}
+        >
+          {sortOrder === 'asc' ? '↑' : '↓'}
+        </Button>
       </div>
 
       {/* Seeds Display */}
@@ -545,7 +602,10 @@ export default function SeedStash() {
       ) : viewMode === 'grid' ? (
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
           <AnimatePresence>
-            {filteredSeeds.map((seed, index) => (
+            {filteredSeeds.map((seed, index) => {
+              const ageStatus = getAgeStatus(seed);
+              const age = getAge(seed);
+              return (
               <motion.div
                 key={seed.id}
                 initial={{ opacity: 0, y: 20 }}
@@ -553,36 +613,53 @@ export default function SeedStash() {
                 exit={{ opacity: 0 }}
                 transition={{ delay: index * 0.03 }}
               >
-                <Card className="group hover:shadow-md transition-shadow">
-                  <CardContent className="p-4">
-                    <div className="flex items-start justify-between mb-3">
-                     <div className="flex-1 min-w-0">
-                       {(() => {
-                         const profile = profiles[seed.plant_profile_id];
-                         return (
-                           <>
-                             <h3 className="font-semibold text-gray-900 truncate">
-                               {profile?.variety_name || seed.custom_label || 'Unknown'}
-                             </h3>
-                             {profile?.common_name && (
-                               <p className="text-sm text-gray-500">{profile.common_name}</p>
-                             )}
-                           </>
-                         );
-                       })()}
-                     </div>
+                <Link to={createPageUrl('SeedStashDetail') + `?id=${seed.id}`}>
+                  <Card className={cn(
+                    "group hover:shadow-md transition-shadow cursor-pointer",
+                    ageStatus.status === 'AGING' && "border-amber-300 bg-amber-50/30",
+                    ageStatus.status === 'OLD' && "border-red-300 bg-red-50/30"
+                  )}>
+                    <CardContent className="p-4">
+                      <div className="flex items-start justify-between mb-3">
+                       <div className="flex-1 min-w-0">
+                         {(() => {
+                           const profile = profiles[seed.plant_profile_id];
+                           return (
+                             <>
+                               <div className="flex items-center gap-2">
+                                 <h3 className="font-semibold text-gray-900 truncate">
+                                   {profile?.variety_name || seed.custom_label || 'Unknown'}
+                                 </h3>
+                                 {ageStatus.status !== 'OK' && (
+                                   <Badge variant="outline" className={cn(
+                                     "text-xs",
+                                     ageStatus.status === 'AGING' && "border-amber-500 text-amber-700",
+                                     ageStatus.status === 'OLD' && "border-red-500 text-red-700"
+                                   )}>
+                                     {ageStatus.icon && <ageStatus.icon className="w-3 h-3 mr-1" />}
+                                     {age}yr
+                                   </Badge>
+                                 )}
+                               </div>
+                               {profile?.common_name && (
+                                 <p className="text-sm text-gray-500">{profile.common_name}</p>
+                               )}
+                             </>
+                           );
+                         })()}
+                       </div>
                       <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
+                        <DropdownMenuTrigger asChild onClick={(e) => e.preventDefault()}>
                           <Button variant="ghost" size="icon" className="h-8 w-8">
                             <MoreVertical className="w-4 h-4" />
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
-                          <DropdownMenuItem onClick={() => openEditDialog(seed)}>
+                          <DropdownMenuItem onClick={(e) => { e.preventDefault(); openEditDialog(seed); }}>
                             <Edit className="w-4 h-4 mr-2" />
                             Edit
                           </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => handleToggleWishlist(seed)}>
+                          <DropdownMenuItem onClick={(e) => { e.preventDefault(); handleToggleWishlist(seed); }}>
                             <Heart className="w-4 h-4 mr-2" />
                             {seed.is_wishlist ? 'Move to Stash' : 'Move to Wishlist'}
                           </DropdownMenuItem>
@@ -593,7 +670,7 @@ export default function SeedStash() {
                             </Link>
                           </DropdownMenuItem>
                           <DropdownMenuItem 
-                            onClick={() => handleDelete(seed)}
+                            onClick={(e) => { e.preventDefault(); handleDelete(seed); }}
                             className="text-red-600"
                           >
                             <Trash2 className="w-4 h-4 mr-2" />
@@ -635,11 +712,13 @@ export default function SeedStash() {
                         </button>
                       ))}
                     </div>
-                  </CardContent>
-                </Card>
-              </motion.div>
-            ))}
-          </AnimatePresence>
+                    </CardContent>
+                    </Card>
+                    </Link>
+                    </motion.div>
+                    );
+                    })}
+                    </AnimatePresence>
         </div>
       ) : (
         <Card>
@@ -726,6 +805,66 @@ export default function SeedStash() {
                     </div>
                   </TableHead>
                 )}
+                {visibleColumns.age && (
+                  <TableHead 
+                    className="cursor-pointer hover:bg-gray-50"
+                    onClick={() => {
+                      if (sortBy === 'age') {
+                        setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+                      } else {
+                        setSortBy('age');
+                        setSortOrder('desc');
+                      }
+                    }}
+                  >
+                    <div className="flex items-center gap-1">
+                      Age
+                      {sortBy === 'age' && (
+                        <span className="text-xs">{sortOrder === 'asc' ? '▲' : '▼'}</span>
+                      )}
+                    </div>
+                  </TableHead>
+                )}
+                {visibleColumns.maturity && (
+                  <TableHead 
+                    className="cursor-pointer hover:bg-gray-50"
+                    onClick={() => {
+                      if (sortBy === 'maturity') {
+                        setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+                      } else {
+                        setSortBy('maturity');
+                        setSortOrder('asc');
+                      }
+                    }}
+                  >
+                    <div className="flex items-center gap-1">
+                      DTM
+                      {sortBy === 'maturity' && (
+                        <span className="text-xs">{sortOrder === 'asc' ? '▲' : '▼'}</span>
+                      )}
+                    </div>
+                  </TableHead>
+                )}
+                {visibleColumns.spacing && (
+                  <TableHead 
+                    className="cursor-pointer hover:bg-gray-50"
+                    onClick={() => {
+                      if (sortBy === 'spacing') {
+                        setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+                      } else {
+                        setSortBy('spacing');
+                        setSortOrder('asc');
+                      }
+                    }}
+                  >
+                    <div className="flex items-center gap-1">
+                      Spacing
+                      {sortBy === 'spacing' && (
+                        <span className="text-xs">{sortOrder === 'asc' ? '▲' : '▼'}</span>
+                      )}
+                    </div>
+                  </TableHead>
+                )}
                 {visibleColumns.quantity && (
                   <TableHead 
                     className="cursor-pointer hover:bg-gray-50"
@@ -753,8 +892,18 @@ export default function SeedStash() {
             <TableBody>
               {filteredSeeds.map((seed) => {
                 const profile = profiles[seed.plant_profile_id];
+                const ageStatus = getAgeStatus(seed);
+                const age = getAge(seed);
                 return (
-                <TableRow key={seed.id}>
+                <TableRow 
+                  key={seed.id} 
+                  className={cn(
+                    "cursor-pointer hover:bg-gray-50",
+                    ageStatus.status === 'AGING' && "bg-amber-50/30",
+                    ageStatus.status === 'OLD' && "bg-red-50/30"
+                  )}
+                  onClick={() => window.location.href = createPageUrl('SeedStashDetail') + `?id=${seed.id}`}
+                >
                   {visibleColumns.name && (
                     <TableCell className="font-medium">
                       {profile?.variety_name || seed.custom_label || 'Unknown'}
@@ -768,6 +917,30 @@ export default function SeedStash() {
                   )}
                   {visibleColumns.year && (
                     <TableCell>{seed.year_acquired || '-'}</TableCell>
+                  )}
+                  {visibleColumns.age && (
+                    <TableCell>
+                      {age > 0 ? (
+                        <Badge variant="outline" className={cn(
+                          ageStatus.status === 'AGING' && "border-amber-500 text-amber-700",
+                          ageStatus.status === 'OLD' && "border-red-500 text-red-700"
+                        )}>
+                          {ageStatus.icon && <ageStatus.icon className="w-3 h-3 mr-1" />}
+                          {age}yr
+                        </Badge>
+                      ) : '-'}
+                    </TableCell>
+                  )}
+                  {visibleColumns.maturity && (
+                    <TableCell>{profile?.days_to_maturity_seed ? `${profile.days_to_maturity_seed}d` : '-'}</TableCell>
+                  )}
+                  {visibleColumns.spacing && (
+                    <TableCell>
+                      {profile?.spacing_in_min && profile?.spacing_in_max
+                        ? `${profile.spacing_in_min}-${profile.spacing_in_max}"`
+                        : profile?.spacing_in_min || '-'
+                      }
+                    </TableCell>
                   )}
                   {visibleColumns.quantity && (
                     <TableCell>
@@ -1024,6 +1197,27 @@ export default function SeedStash() {
                 onCheckedChange={(checked) => setVisibleColumns({ ...visibleColumns, year: checked })}
               />
               <span>Year</span>
+            </label>
+            <label className="flex items-center gap-2">
+              <Checkbox
+                checked={visibleColumns.age}
+                onCheckedChange={(checked) => setVisibleColumns({ ...visibleColumns, age: checked })}
+              />
+              <span>Age</span>
+            </label>
+            <label className="flex items-center gap-2">
+              <Checkbox
+                checked={visibleColumns.maturity}
+                onCheckedChange={(checked) => setVisibleColumns({ ...visibleColumns, maturity: checked })}
+              />
+              <span>Days to Maturity</span>
+            </label>
+            <label className="flex items-center gap-2">
+              <Checkbox
+                checked={visibleColumns.spacing}
+                onCheckedChange={(checked) => setVisibleColumns({ ...visibleColumns, spacing: checked })}
+              />
+              <span>Spacing</span>
             </label>
             <label className="flex items-center gap-2">
               <Checkbox

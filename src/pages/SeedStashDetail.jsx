@@ -10,12 +10,35 @@ import {
   Calendar,
   MapPin,
   ExternalLink,
-  Loader2
+  Loader2,
+  AlertTriangle,
+  Star,
+  Sun,
+  Droplets,
+  Ruler
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from '@/components/ui/dialog';
 import { toast } from 'sonner';
+import { cn } from '@/lib/utils';
 
 export default function SeedStashDetail() {
   const [searchParams] = useSearchParams();
@@ -24,6 +47,11 @@ export default function SeedStashDetail() {
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
+  const [settings, setSettings] = useState({ aging_threshold_years: 2, old_threshold_years: 3 });
+  const [showEditProfile, setShowEditProfile] = useState(false);
+  const [showEditLot, setShowEditLot] = useState(false);
+  const [profileForm, setProfileForm] = useState({});
+  const [lotForm, setLotForm] = useState({});
 
   useEffect(() => {
     if (seedId) {
@@ -37,10 +65,13 @@ export default function SeedStashDetail() {
   const loadSeed = async () => {
     try {
       const user = await base44.auth.me();
-      const seedData = await base44.entities.SeedLot.filter({ 
-        id: seedId,
-        created_by: user.email 
-      });
+      const [seedData, userSettings] = await Promise.all([
+        base44.entities.SeedLot.filter({ 
+          id: seedId,
+          created_by: user.email 
+        }),
+        base44.entities.UserSettings.filter({ created_by: user.email })
+      ]);
 
       if (seedData.length === 0) {
         setNotFound(true);
@@ -48,8 +79,16 @@ export default function SeedStashDetail() {
         return;
       }
 
+      if (userSettings.length > 0 && userSettings[0].aging_threshold_years) {
+        setSettings({
+          aging_threshold_years: userSettings[0].aging_threshold_years,
+          old_threshold_years: userSettings[0].old_threshold_years || 3
+        });
+      }
+
       const seedLot = seedData[0];
       setSeed(seedLot);
+      setLotForm(seedLot);
 
       if (seedLot.plant_profile_id) {
         const profileData = await base44.entities.PlantProfile.filter({
@@ -57,6 +96,7 @@ export default function SeedStashDetail() {
         });
         if (profileData.length > 0) {
           setProfile(profileData[0]);
+          setProfileForm(profileData[0]);
         }
       }
     } catch (error) {
@@ -64,6 +104,44 @@ export default function SeedStashDetail() {
       setNotFound(true);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const getAge = () => {
+    if (!seed) return 0;
+    const currentYear = new Date().getFullYear();
+    const year = seed.packed_for_year || seed.year_acquired;
+    return year ? currentYear - year : 0;
+  };
+
+  const getAgeStatus = () => {
+    const age = getAge();
+    if (age >= settings.old_threshold_years) return { status: 'OLD', color: 'red', icon: Star };
+    if (age >= settings.aging_threshold_years) return { status: 'AGING', color: 'amber', icon: AlertTriangle };
+    return { status: 'OK', color: 'green', icon: null };
+  };
+
+  const handleSaveProfile = async () => {
+    try {
+      await base44.entities.PlantProfile.update(profile.id, profileForm);
+      setProfile(profileForm);
+      setShowEditProfile(false);
+      toast.success('Variety attributes updated');
+    } catch (error) {
+      console.error('Error updating profile:', error);
+      toast.error('Failed to update attributes');
+    }
+  };
+
+  const handleSaveLot = async () => {
+    try {
+      await base44.entities.SeedLot.update(seed.id, lotForm);
+      setSeed(lotForm);
+      setShowEditLot(false);
+      toast.success('Lot info updated');
+    } catch (error) {
+      console.error('Error updating lot:', error);
+      toast.error('Failed to update lot');
     }
   };
 
@@ -107,49 +185,138 @@ export default function SeedStashDetail() {
     );
   }
 
+  const ageStatus = getAgeStatus();
+  const age = getAge();
+
   return (
-    <div className="space-y-6 max-w-4xl mx-auto">
+    <div className="space-y-6 max-w-5xl mx-auto">
       <div className="flex items-center gap-3">
         <Link to={createPageUrl('SeedStash')}>
           <Button variant="ghost">
             <ArrowLeft className="w-4 h-4 mr-2" />
-            Back
+            Back to Seed Stash
           </Button>
         </Link>
       </div>
 
       <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl lg:text-3xl font-bold text-gray-900">
-            {profile?.variety_name || seed.custom_label || 'Unknown Seed'}
-          </h1>
+          <div className="flex items-center gap-3">
+            <h1 className="text-2xl lg:text-3xl font-bold text-gray-900">
+              {profile?.variety_name || seed.custom_label || 'Unknown Seed'}
+            </h1>
+            {ageStatus.status !== 'OK' && (
+              <Badge variant="outline" className={cn(
+                ageStatus.status === 'AGING' && "border-amber-500 text-amber-700 bg-amber-50",
+                ageStatus.status === 'OLD' && "border-red-500 text-red-700 bg-red-50"
+              )}>
+                {ageStatus.icon && <ageStatus.icon className="w-4 h-4 mr-1" />}
+                {ageStatus.status} ({age} years)
+              </Badge>
+            )}
+          </div>
           {profile?.common_name && (
-            <p className="text-gray-600 mt-1">{profile.common_name}</p>
+            <p className="text-gray-600 mt-1 text-lg">{profile.common_name}</p>
           )}
         </div>
-        <div className="flex gap-2">
-          <Link to={createPageUrl('SeedStash') + '?edit=' + seed.id}>
-            <Button variant="outline" className="gap-2">
-              <Edit className="w-4 h-4" />
-              Edit
-            </Button>
-          </Link>
-          <Button 
-            variant="outline" 
-            onClick={handleDelete}
-            className="gap-2 text-red-600 hover:text-red-700"
-          >
-            <Trash2 className="w-4 h-4" />
-            Delete
-          </Button>
-        </div>
+        <Button 
+          variant="outline" 
+          onClick={handleDelete}
+          className="gap-2 text-red-600 hover:text-red-700"
+        >
+          <Trash2 className="w-4 h-4" />
+          Delete
+        </Button>
       </div>
 
-      <div className="grid md:grid-cols-2 gap-6">
-        {/* Details Card */}
+      <div className="grid lg:grid-cols-3 gap-6">
+        {/* Variety Attributes */}
+        {profile && (
+          <Card className="lg:col-span-2">
+            <CardHeader className="flex flex-row items-center justify-between">
+              <CardTitle>Variety Profile</CardTitle>
+              <Button variant="outline" size="sm" onClick={() => setShowEditProfile(true)}>
+                <Edit className="w-4 h-4 mr-2" />
+                Edit Attributes
+              </Button>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid sm:grid-cols-2 gap-4">
+                {profile.days_to_maturity_seed && (
+                  <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
+                    <Calendar className="w-5 h-5 text-gray-500" />
+                    <div>
+                      <p className="text-xs text-gray-500">Days to Maturity</p>
+                      <p className="font-semibold">{profile.days_to_maturity_seed} days</p>
+                    </div>
+                  </div>
+                )}
+                {profile.sun_requirement && (
+                  <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
+                    <Sun className="w-5 h-5 text-yellow-500" />
+                    <div>
+                      <p className="text-xs text-gray-500">Sun</p>
+                      <p className="font-semibold capitalize">{profile.sun_requirement.replace(/_/g, ' ')}</p>
+                    </div>
+                  </div>
+                )}
+                {(profile.spacing_in_min || profile.spacing_in_max) && (
+                  <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
+                    <Ruler className="w-5 h-5 text-gray-500" />
+                    <div>
+                      <p className="text-xs text-gray-500">Spacing</p>
+                      <p className="font-semibold">
+                        {profile.spacing_in_min && profile.spacing_in_max
+                          ? `${profile.spacing_in_min}-${profile.spacing_in_max}"`
+                          : profile.spacing_in_min || profile.spacing_in_max}
+                      </p>
+                    </div>
+                  </div>
+                )}
+                {(profile.height_in_min || profile.height_in_max) && (
+                  <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
+                    <div className="w-5 h-5 text-gray-500 flex items-center">↕</div>
+                    <div>
+                      <p className="text-xs text-gray-500">Height</p>
+                      <p className="font-semibold">
+                        {profile.height_in_min && profile.height_in_max
+                          ? `${profile.height_in_min}-${profile.height_in_max}"`
+                          : profile.height_in_min || profile.height_in_max}
+                      </p>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <div className="grid sm:grid-cols-3 gap-3">
+                {profile.container_friendly && (
+                  <Badge variant="secondary">Container Friendly</Badge>
+                )}
+                {profile.trellis_required && (
+                  <Badge variant="secondary">Trellis Required</Badge>
+                )}
+                {profile.perennial && (
+                  <Badge variant="secondary">Perennial</Badge>
+                )}
+              </div>
+
+              {profile.notes_public && (
+                <div className="pt-3 border-t">
+                  <p className="text-sm text-gray-600 whitespace-pre-wrap">{profile.notes_public}</p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Lot Details Card */}
         <Card>
-          <CardHeader>
-            <CardTitle>Seed Details</CardTitle>
+          <CardHeader className="flex flex-row items-center justify-between">
+            <CardTitle>My Stash Info</CardTitle>
+            <Button variant="outline" size="sm" onClick={() => setShowEditLot(true)}>
+              <Edit className="w-4 h-4 mr-2" />
+              Edit
+            </Button>
           </CardHeader>
           <CardContent className="space-y-4">
             {seed.quantity && (
@@ -205,68 +372,260 @@ export default function SeedStashDetail() {
           </CardContent>
         </Card>
 
-        {/* Growing Info Card */}
-        {profile && (
-          <Card>
-            <CardHeader>
-              <CardTitle>Growing Information</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {profile.days_to_maturity_seed && (
-                <div className="flex items-center justify-between py-2 border-b">
-                  <span className="text-gray-600">Days to Maturity</span>
-                  <Badge variant="outline">{profile.days_to_maturity_seed} days</Badge>
-                </div>
-              )}
-              {profile.sun_requirement && (
-                <div className="flex items-center justify-between py-2 border-b">
-                  <span className="text-gray-600">Sun</span>
-                  <span className="font-medium capitalize">
-                    {profile.sun_requirement.replace(/_/g, ' ')}
-                  </span>
-                </div>
-              )}
-              {(profile.spacing_in_min || profile.spacing_in_max) && (
-                <div className="flex items-center justify-between py-2 border-b">
-                  <span className="text-gray-600">Spacing</span>
-                  <span className="font-medium">
-                    {profile.spacing_in_min && profile.spacing_in_max
-                      ? `${profile.spacing_in_min}-${profile.spacing_in_max}"`
-                      : profile.spacing_in_min || profile.spacing_in_max
-                    }
-                  </span>
-                </div>
-              )}
-              {profile.container_friendly !== undefined && (
-                <div className="flex items-center justify-between py-2 border-b">
-                  <span className="text-gray-600">Container Friendly</span>
-                  <Badge variant={profile.container_friendly ? 'default' : 'outline'}>
-                    {profile.container_friendly ? 'Yes' : 'No'}
-                  </Badge>
-                </div>
-              )}
-              {profile.trellis_required && (
-                <div className="flex items-center justify-between py-2">
-                  <span className="text-gray-600">Trellis</span>
-                  <Badge>Required</Badge>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        )}
       </div>
 
       {/* Notes */}
       {seed.lot_notes && (
         <Card>
           <CardHeader>
-            <CardTitle>Notes</CardTitle>
+            <CardTitle>My Notes</CardTitle>
           </CardHeader>
           <CardContent>
             <p className="text-gray-700 whitespace-pre-wrap">{seed.lot_notes}</p>
           </CardContent>
         </Card>
       )}
+
+      {/* Edit Profile Dialog */}
+      <Dialog open={showEditProfile} onOpenChange={setShowEditProfile}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Edit Variety Attributes</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label>Days to Maturity (seed)</Label>
+                <Input
+                  type="number"
+                  value={profileForm.days_to_maturity_seed || ''}
+                  onChange={(e) => setProfileForm({ ...profileForm, days_to_maturity_seed: parseInt(e.target.value) || null })}
+                  className="mt-2"
+                />
+              </div>
+              <div>
+                <Label>Days to Maturity (transplant)</Label>
+                <Input
+                  type="number"
+                  value={profileForm.days_to_maturity_transplant || ''}
+                  onChange={(e) => setProfileForm({ ...profileForm, days_to_maturity_transplant: parseInt(e.target.value) || null })}
+                  className="mt-2"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label>Spacing Min (inches)</Label>
+                <Input
+                  type="number"
+                  value={profileForm.spacing_in_min || ''}
+                  onChange={(e) => setProfileForm({ ...profileForm, spacing_in_min: parseInt(e.target.value) || null })}
+                  className="mt-2"
+                />
+              </div>
+              <div>
+                <Label>Spacing Max (inches)</Label>
+                <Input
+                  type="number"
+                  value={profileForm.spacing_in_max || ''}
+                  onChange={(e) => setProfileForm({ ...profileForm, spacing_in_max: parseInt(e.target.value) || null })}
+                  className="mt-2"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label>Height Min (inches)</Label>
+                <Input
+                  type="number"
+                  value={profileForm.height_in_min || ''}
+                  onChange={(e) => setProfileForm({ ...profileForm, height_in_min: parseInt(e.target.value) || null })}
+                  className="mt-2"
+                />
+              </div>
+              <div>
+                <Label>Height Max (inches)</Label>
+                <Input
+                  type="number"
+                  value={profileForm.height_in_max || ''}
+                  onChange={(e) => setProfileForm({ ...profileForm, height_in_max: parseInt(e.target.value) || null })}
+                  className="mt-2"
+                />
+              </div>
+            </div>
+
+            <div>
+              <Label>Sun Requirement</Label>
+              <Select 
+                value={profileForm.sun_requirement || ''} 
+                onValueChange={(v) => setProfileForm({ ...profileForm, sun_requirement: v })}
+              >
+                <SelectTrigger className="mt-2">
+                  <SelectValue placeholder="Select sun exposure" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="full_sun">Full Sun</SelectItem>
+                  <SelectItem value="partial_sun">Partial Sun</SelectItem>
+                  <SelectItem value="partial_shade">Partial Shade</SelectItem>
+                  <SelectItem value="full_shade">Full Shade</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="flex gap-4">
+              <label className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  checked={profileForm.container_friendly || false}
+                  onChange={(e) => setProfileForm({ ...profileForm, container_friendly: e.target.checked })}
+                  className="rounded"
+                />
+                <span>Container Friendly</span>
+              </label>
+              <label className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  checked={profileForm.trellis_required || false}
+                  onChange={(e) => setProfileForm({ ...profileForm, trellis_required: e.target.checked })}
+                  className="rounded"
+                />
+                <span>Trellis Required</span>
+              </label>
+              <label className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  checked={profileForm.perennial || false}
+                  onChange={(e) => setProfileForm({ ...profileForm, perennial: e.target.checked })}
+                  className="rounded"
+                />
+                <span>Perennial</span>
+              </label>
+            </div>
+
+            <div>
+              <Label>Growing Notes</Label>
+              <Textarea
+                value={profileForm.notes_public || ''}
+                onChange={(e) => setProfileForm({ ...profileForm, notes_public: e.target.value })}
+                className="mt-2"
+                rows={3}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowEditProfile(false)}>Cancel</Button>
+            <Button onClick={handleSaveProfile} className="bg-emerald-600 hover:bg-emerald-700">
+              Save Changes
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Lot Dialog */}
+      <Dialog open={showEditLot} onOpenChange={setShowEditLot}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit Stash Info</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label>Quantity</Label>
+                <Input
+                  type="number"
+                  value={lotForm.quantity || ''}
+                  onChange={(e) => setLotForm({ ...lotForm, quantity: parseInt(e.target.value) || null })}
+                  className="mt-2"
+                />
+              </div>
+              <div>
+                <Label>Unit</Label>
+                <Select 
+                  value={lotForm.unit || 'seeds'} 
+                  onValueChange={(v) => setLotForm({ ...lotForm, unit: v })}
+                >
+                  <SelectTrigger className="mt-2">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="seeds">Seeds</SelectItem>
+                    <SelectItem value="grams">Grams</SelectItem>
+                    <SelectItem value="packets">Packets</SelectItem>
+                    <SelectItem value="ounces">Ounces</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label>Year Acquired</Label>
+                <Input
+                  type="number"
+                  value={lotForm.year_acquired || ''}
+                  onChange={(e) => setLotForm({ ...lotForm, year_acquired: parseInt(e.target.value) || null })}
+                  className="mt-2"
+                />
+              </div>
+              <div>
+                <Label>Packed For Year</Label>
+                <Input
+                  type="number"
+                  value={lotForm.packed_for_year || ''}
+                  onChange={(e) => setLotForm({ ...lotForm, packed_for_year: parseInt(e.target.value) || null })}
+                  className="mt-2"
+                />
+              </div>
+            </div>
+
+            <div>
+              <Label>Vendor/Source</Label>
+              <Input
+                value={lotForm.source_vendor_name || ''}
+                onChange={(e) => setLotForm({ ...lotForm, source_vendor_name: e.target.value })}
+                className="mt-2"
+              />
+            </div>
+
+            <div>
+              <Label>Vendor URL</Label>
+              <Input
+                type="url"
+                value={lotForm.source_vendor_url || ''}
+                onChange={(e) => setLotForm({ ...lotForm, source_vendor_url: e.target.value })}
+                className="mt-2"
+              />
+            </div>
+
+            <div>
+              <Label>Storage Location</Label>
+              <Input
+                value={lotForm.storage_location || ''}
+                onChange={(e) => setLotForm({ ...lotForm, storage_location: e.target.value })}
+                className="mt-2"
+              />
+            </div>
+
+            <div>
+              <Label>Notes</Label>
+              <Textarea
+                value={lotForm.lot_notes || ''}
+                onChange={(e) => setLotForm({ ...lotForm, lot_notes: e.target.value })}
+                className="mt-2"
+                rows={3}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowEditLot(false)}>Cancel</Button>
+            <Button onClick={handleSaveLot} className="bg-emerald-600 hover:bg-emerald-700">
+              Save Changes
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
