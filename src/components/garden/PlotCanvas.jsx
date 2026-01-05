@@ -112,7 +112,7 @@ export default function PlotCanvas({ garden, plot, activeSeason, onPlotUpdate, o
     if (plot) {
       loadItems();
     }
-  }, [plot]);
+  }, [plot, activeSeason]);
 
   // Window event listeners for reliable drag end
   useEffect(() => {
@@ -146,13 +146,20 @@ export default function PlotCanvas({ garden, plot, activeSeason, onPlotUpdate, o
   const loadItems = async () => {
     try {
       const user = await base44.auth.me();
+      
+      // Filter plantings by active season if available
+      const plantingFilter = { garden_id: garden.id, created_by: user.email };
+      if (activeSeason) {
+        plantingFilter.season_year = activeSeason;
+      }
+      
       const [itemsData, plantings] = await Promise.all([
         base44.entities.PlotItem.filter({ 
           garden_id: garden.id,
           plot_id: plot.id,
           created_by: user.email
         }, 'z_index'),
-        base44.entities.PlantInstance.filter({ garden_id: garden.id, created_by: user.email })
+        base44.entities.PlantInstance.filter(plantingFilter)
       ]);
       
       // Ensure rotation is initialized
@@ -1272,6 +1279,7 @@ export default function PlotCanvas({ garden, plot, activeSeason, onPlotUpdate, o
           onOpenChange={setShowPlantingModal}
           item={selectedItem}
           garden={garden}
+          activeSeason={activeSeason}
           onPlantingUpdate={loadItems}
         />
       )}
