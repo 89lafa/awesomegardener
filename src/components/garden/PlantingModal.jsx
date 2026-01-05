@@ -129,7 +129,8 @@ export default function PlantingModal({ open, onOpenChange, item, garden, onPlan
     if (!selectedPlant) return;
     
     // Check if slot is occupied
-    if (plantings[slotIdx]) {
+    const existingPlanting = plantings.find(p => p.cell_col === slotIdx);
+    if (existingPlanting) {
       toast.error('This slot is already occupied');
       return;
     }
@@ -160,9 +161,7 @@ export default function PlantingModal({ open, onOpenChange, item, garden, onPlan
       });
 
       console.log('[PlantingModal] Created PlantInstance:', planting.id);
-      const newPlantings = [...plantings];
-      newPlantings[slotIdx] = planting;
-      setPlantings(newPlantings);
+      setPlantings([...plantings, planting]);
       toast.success('Plant added');
     } catch (error) {
       console.error('[PlantingModal] Error adding plant:', error);
@@ -253,11 +252,12 @@ export default function PlantingModal({ open, onOpenChange, item, garden, onPlan
   };
 
   const handleDeletePlanting = async (planting) => {
-    if (!confirm(`Remove ${planting.display_name}?`)) return;
+    if (!planting || !confirm(`Remove ${planting.display_name}?`)) return;
     
     try {
       await base44.entities.PlantInstance.delete(planting.id);
       setPlantings(plantings.filter(p => p.id !== planting.id));
+      setSelectedPlanting(null);
       toast.success('Plant removed');
     } catch (error) {
       console.error('Error deleting planting:', error);
@@ -415,6 +415,9 @@ export default function PlantingModal({ open, onOpenChange, item, garden, onPlan
   }
 
   const handleDone = () => {
+    setSelectedPlanting(null);
+    setSelectedPlant(null);
+    setIsMoving(false);
     onOpenChange(false);
     if (onPlantingUpdate) {
       onPlantingUpdate();
@@ -554,14 +557,18 @@ export default function PlantingModal({ open, onOpenChange, item, garden, onPlan
               // Slot-based layout for greenhouses/containers
               <div className="grid gap-2 p-4 bg-amber-50 border-2 border-amber-200 rounded-lg" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(48px, 1fr))', maxWidth: '600px' }}>
                 {Array.from({ length: totalSlots }).map((_, slotIdx) => {
-                  const planting = plantings[slotIdx];
+                  const planting = plantings.find(p => p.cell_col === slotIdx);
                   return (
                     <button
                       key={slotIdx}
                       onClick={() => {
                         if (planting) {
-                          setSelectedPlanting(planting);
-                          setSelectedPlant(null);
+                          if (selectedPlanting?.id === planting.id) {
+                            setSelectedPlanting(null);
+                          } else {
+                            setSelectedPlanting(planting);
+                            setSelectedPlant(null);
+                          }
                         } else if (selectedPlant) {
                           handleSlotClick(slotIdx);
                         }
@@ -577,7 +584,7 @@ export default function PlantingModal({ open, onOpenChange, item, garden, onPlan
                       title={planting ? planting.display_name : `Slot ${slotIdx + 1}`}
                     >
                       {planting && <span>{planting.plant_type_icon || '🌱'}</span>}
-                      {selectedPlanting?.id === planting?.id && (
+                      {selectedPlanting?.id === planting?.id && planting && (
                         <div className="absolute -bottom-16 left-1/2 -translate-x-1/2 flex gap-1 z-10 bg-white rounded-lg shadow-lg p-1">
                           <Button
                             size="sm"
@@ -585,6 +592,7 @@ export default function PlantingModal({ open, onOpenChange, item, garden, onPlan
                             onClick={(e) => {
                               e.stopPropagation();
                               handleDeletePlanting(planting);
+                              setSelectedPlanting(null);
                             }}
                           >
                             <Trash2 className="w-3 h-3" />

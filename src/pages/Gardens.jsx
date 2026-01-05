@@ -162,8 +162,12 @@ export default function Gardens() {
   const handleShare = async (privacy) => {
     if (!selectedGarden) return;
     try {
-      await base44.entities.Garden.update(selectedGarden.id, { privacy });
-      setGardens(gardens.map(g => g.id === selectedGarden.id ? { ...g, privacy } : g));
+      const updateData = { 
+        privacy,
+        is_public: privacy === 'public'
+      };
+      await base44.entities.Garden.update(selectedGarden.id, updateData);
+      setGardens(gardens.map(g => g.id === selectedGarden.id ? { ...g, ...updateData } : g));
       toast.success('Sharing updated');
     } catch (error) {
       console.error('Error updating sharing:', error);
