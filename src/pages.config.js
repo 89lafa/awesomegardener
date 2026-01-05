@@ -25,6 +25,8 @@ import SeedStash from './pages/SeedStash';
 import SeedStashDetail from './pages/SeedStashDetail';
 import Settings from './pages/Settings';
 import VarietyReviewQueue from './pages/VarietyReviewQueue';
+import BrowseGardens from './pages/BrowseGardens';
+import CommunityBoard from './pages/CommunityBoard';
 import __Layout from './Layout.jsx';
 
 
@@ -56,6 +58,8 @@ export const PAGES = {
     "SeedStashDetail": SeedStashDetail,
     "Settings": Settings,
     "VarietyReviewQueue": VarietyReviewQueue,
+    "BrowseGardens": BrowseGardens,
+    "CommunityBoard": CommunityBoard,
 }
 
 export const pagesConfig = {
