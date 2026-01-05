@@ -31,6 +31,8 @@ import ForumCategory from './pages/ForumCategory';
 import ForumTopic from './pages/ForumTopic';
 import ForumAdmin from './pages/ForumAdmin';
 import GrowingProfile from './pages/GrowingProfile';
+import GardenDiary from './pages/GardenDiary';
+import IssuesLog from './pages/IssuesLog';
 import __Layout from './Layout.jsx';
 
 
@@ -68,6 +70,8 @@ export const PAGES = {
     "ForumTopic": ForumTopic,
     "ForumAdmin": ForumAdmin,
     "GrowingProfile": GrowingProfile,
+    "GardenDiary": GardenDiary,
+    "IssuesLog": IssuesLog,
 }
 
 export const pagesConfig = {

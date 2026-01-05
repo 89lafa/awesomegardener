@@ -17,7 +17,9 @@ import {
   ChevronRight,
   Sprout,
   Shield,
-  Database
+  Database,
+  BookText,
+  Bug
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -31,7 +33,9 @@ const getNavItems = (userRole, isEditor) => {
       { name: 'Seed Stash', icon: Package, page: 'SeedStash' },
       { name: 'Grow Lists', icon: ListChecks, page: 'GrowLists' },
       { name: 'Tasks', icon: Calendar, page: 'CalendarTasks' },
-      { name: 'Planting Calendar', icon: Calendar, page: 'CalendarPlanner' },
+      { name: 'Planting Calendar', icon: Sprout, page: 'CalendarPlanner' },
+      { name: 'Diary', icon: BookText, page: 'GardenDiary' },
+      { name: 'Issues Log', icon: Bug, page: 'IssuesLog' },
       { name: 'Browse Gardens', icon: Globe, page: 'BrowseGardens' },
       { name: 'Community Board', icon: MessageSquare, page: 'CommunityBoard' },
       { name: 'Feature Requests', icon: Lightbulb, page: 'FeatureRequests' },
