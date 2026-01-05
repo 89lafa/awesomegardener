@@ -39,7 +39,7 @@ import { cn } from '@/lib/utils';
 const ITEM_TYPES = [
   { value: 'RAISED_BED', label: 'Raised Bed', color: '#8B7355', defaultDims: '4x8', defaultUnit: 'ft', usesGrid: true, plantable: true },
   { value: 'IN_GROUND_BED', label: 'In-Ground Bed', color: '#A0826D', defaultDims: '4x20', defaultUnit: 'ft', usesRows: true, plantable: true },
-  { value: 'GREENHOUSE', label: 'Greenhouse', color: '#80CBC4', defaultDims: '10x12', defaultUnit: 'ft', usesGrid: false, plantable: true },
+  { value: 'GREENHOUSE', label: 'Greenhouse', color: '#80CBC4', defaultDims: '10x12', defaultUnit: 'ft', usesGrid: true, plantable: true },
   { value: 'OPEN_PLOT', label: 'Open Plot', color: '#D7CCC8', defaultDims: '50x100', defaultUnit: 'ft', usesRows: true, plantable: true },
   { value: 'GROW_BAG', label: 'Grow Bag', color: '#424242', usesGallons: true, plantable: true },
   { value: 'CONTAINER', label: 'Container', color: '#D84315', usesSize: true, plantable: true },
@@ -302,20 +302,6 @@ export default function PlotCanvas({ garden, plot, onPlotUpdate, onDeleteGarden 
       height = toInches(parsed.height, newItem.unit);
     }
 
-    // For GREENHOUSE, prompt for capacity before creating
-    let greenhouseCapacity = null;
-    if (newItem.item_type === 'GREENHOUSE') {
-      const capacityInput = prompt('How many plantable slots does this greenhouse have?', '20');
-      if (!capacityInput) return; // User cancelled
-      
-      const capacity = parseInt(capacityInput);
-      if (isNaN(capacity) || capacity < 1) {
-        toast.error('Please enter a valid number of slots');
-        return;
-      }
-      greenhouseCapacity = capacity;
-    }
-
     const count = newItem.createMultiple ? parseInt(newItem.count) : 1;
     const newItems = [];
     const spacing = 24;
@@ -337,7 +323,7 @@ export default function PlotCanvas({ garden, plot, onPlotUpdate, onDeleteGarden 
         console.log('[Add Multiple] Creating:', label, 'at', x, y);
 
         const metadata = {};
-        if (itemType.usesGrid && newItem.useSquareFootGrid) {
+        if (itemType.usesGrid) {
           metadata.gridEnabled = true;
           metadata.gridSize = 12;
         }
@@ -347,10 +333,6 @@ export default function PlotCanvas({ garden, plot, onPlotUpdate, onDeleteGarden 
         }
         if (itemType.usesGallons) {
           metadata.gallonSize = newItem.gallonSize;
-        }
-        if (newItem.item_type === 'GREENHOUSE' && greenhouseCapacity) {
-          metadata.capacity = greenhouseCapacity;
-          metadata.gridEnabled = false;
         }
 
         const item = await base44.entities.PlotItem.create({
@@ -751,9 +733,6 @@ export default function PlotCanvas({ garden, plot, onPlotUpdate, onDeleteGarden 
     if (itemType.usesRows) {
       metadata.rowSpacing = editItemData.rowSpacing;
       metadata.rowCount = editItemData.rowCount;
-    }
-    if (selectedItem.item_type === 'GREENHOUSE') {
-      metadata.capacity = editItemData.capacity;
     }
 
     try {
@@ -1195,8 +1174,8 @@ export default function PlotCanvas({ garden, plot, onPlotUpdate, onDeleteGarden 
                   </div>
                 </div>
 
-                {/* Square-foot grid option for raised beds */}
-                {newItem.item_type === 'RAISED_BED' && (
+                {/* Square-foot grid option for raised beds and greenhouses */}
+                {(newItem.item_type === 'RAISED_BED' || newItem.item_type === 'GREENHOUSE') && (
                   <label className="flex items-center gap-2">
                     <input
                       type="checkbox"
@@ -1385,18 +1364,7 @@ export default function PlotCanvas({ garden, plot, onPlotUpdate, onDeleteGarden 
                     </div>
                   )}
 
-                  {selectedItem.item_type === 'GREENHOUSE' && (
-                    <div>
-                      <Label htmlFor="editCapacity">Capacity (plants)</Label>
-                      <Input
-                        id="editCapacity"
-                        type="number"
-                        value={editItemData.capacity}
-                        onChange={(e) => setEditItemData({ ...editItemData, capacity: parseInt(e.target.value) })}
-                        className="mt-2"
-                      />
-                    </div>
-                  )}
+
                 </>
               ) : null}
             </div>
