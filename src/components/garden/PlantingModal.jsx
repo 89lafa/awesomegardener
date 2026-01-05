@@ -45,6 +45,11 @@ export default function PlantingModal({ open, onOpenChange, item, garden, onPlan
   // Calculate grid dimensions
   const metadata = item.metadata || {};
   const isSlotBased = !metadata.gridEnabled && metadata.capacity;
+  
+  // For slot-based (greenhouse/grow bag), use the actual capacity as slot count
+  const totalSlots = isSlotBased ? metadata.capacity : null;
+  
+  // For grid-based, calculate grid dimensions
   const gridCols = isSlotBased ? Math.ceil(Math.sqrt(metadata.capacity)) : Math.floor(item.width / 12); // 12" = 1 sqft
   const gridRows = isSlotBased ? Math.ceil(metadata.capacity / gridCols) : Math.floor(item.height / 12);
 
@@ -118,6 +123,51 @@ export default function PlantingModal({ open, onOpenChange, item, garden, onPlan
       }
     }
     return false;
+  };
+
+  const handleSlotClick = async (slotIdx) => {
+    if (!selectedPlant) return;
+    
+    // Check if slot is occupied
+    if (plantings[slotIdx]) {
+      toast.error('This slot is already occupied');
+      return;
+    }
+    
+    try {
+      const displayName = selectedPlant.variety_name !== selectedPlant.plant_type_name 
+        ? `${selectedPlant.plant_type_name} - ${selectedPlant.variety_name}`
+        : selectedPlant.variety_name;
+
+      const plantType = plantTypes.find(t => t.id === selectedPlant.plant_type_id || t.common_name === selectedPlant.plant_type_name);
+      const icon = plantType?.icon || '🌱';
+
+      console.log('[PlantingModal] Creating PlantInstance in slot', slotIdx, 'for bed', item.id);
+      const planting = await base44.entities.PlantInstance.create({
+        garden_id: garden.id,
+        bed_id: item.id,
+        space_id: item.id,
+        plant_type_id: selectedPlant.plant_type_id,
+        plant_type_icon: icon,
+        variety_id: selectedPlant.variety_id,
+        display_name: displayName,
+        placement_mode: 'slot',
+        cell_col: slotIdx,
+        cell_row: 0,
+        cell_span_cols: 1,
+        cell_span_rows: 1,
+        status: 'planned'
+      });
+
+      console.log('[PlantingModal] Created PlantInstance:', planting.id);
+      const newPlantings = [...plantings];
+      newPlantings[slotIdx] = planting;
+      setPlantings(newPlantings);
+      toast.success('Plant added');
+    } catch (error) {
+      console.error('[PlantingModal] Error adding plant:', error);
+      toast.error('Failed to add plant: ' + (error.message || 'Unknown error'));
+    }
   };
 
   const handleCellClick = async (col, row) => {
@@ -498,17 +548,64 @@ export default function PlantingModal({ open, onOpenChange, item, garden, onPlan
             )}
           </div>
 
-          {/* Right Panel - Grid */}
+          {/* Right Panel - Grid or Slots */}
           <div className="flex-1 overflow-auto">
-            <div 
-              className="grid gap-1 p-4 bg-amber-50 border-2 border-amber-200 rounded-lg inline-block"
-              style={{
-                gridTemplateColumns: `repeat(${gridCols}, 40px)`,
-                gridTemplateRows: `repeat(${gridRows}, 40px)`
-              }}
-            >
-              {Array.from({ length: gridRows }).map((_, rowIdx) =>
-                Array.from({ length: gridCols }).map((_, colIdx) => {
+            {isSlotBased ? (
+              // Slot-based layout for greenhouses/containers
+              <div className="grid gap-2 p-4 bg-amber-50 border-2 border-amber-200 rounded-lg" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(48px, 1fr))', maxWidth: '600px' }}>
+                {Array.from({ length: totalSlots }).map((_, slotIdx) => {
+                  const planting = plantings[slotIdx];
+                  return (
+                    <button
+                      key={slotIdx}
+                      onClick={() => {
+                        if (planting) {
+                          setSelectedPlanting(planting);
+                          setSelectedPlant(null);
+                        } else if (selectedPlant) {
+                          handleSlotClick(slotIdx);
+                        }
+                      }}
+                      className={cn(
+                        "w-12 h-12 border-2 rounded transition-colors flex items-center justify-center text-2xl relative",
+                        planting 
+                          ? "bg-emerald-500 border-emerald-600 cursor-pointer hover:bg-emerald-600" 
+                          : selectedPlant
+                          ? "bg-white border-amber-300 hover:bg-emerald-100 hover:border-emerald-400 cursor-pointer"
+                          : "bg-white border-gray-300 cursor-default"
+                      )}
+                      title={planting ? planting.display_name : `Slot ${slotIdx + 1}`}
+                    >
+                      {planting && <span>{planting.plant_type_icon || '🌱'}</span>}
+                      {selectedPlanting?.id === planting?.id && (
+                        <div className="absolute -bottom-16 left-1/2 -translate-x-1/2 flex gap-1 z-10 bg-white rounded-lg shadow-lg p-1">
+                          <Button
+                            size="sm"
+                            variant="destructive"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDeletePlanting(planting);
+                            }}
+                          >
+                            <Trash2 className="w-3 h-3" />
+                          </Button>
+                        </div>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            ) : (
+              // Grid-based layout for raised beds
+              <div 
+                className="grid gap-1 p-4 bg-amber-50 border-2 border-amber-200 rounded-lg inline-block"
+                style={{
+                  gridTemplateColumns: `repeat(${gridCols}, 40px)`,
+                  gridTemplateRows: `repeat(${gridRows}, 40px)`
+                }}
+              >
+                {Array.from({ length: gridRows }).map((_, rowIdx) =>
+                  Array.from({ length: gridCols }).map((_, colIdx) => {
                   const cellContent = getCellContent(colIdx, rowIdx);
                   
                   if (cellContent?.isOrigin) {
@@ -573,9 +670,10 @@ export default function PlantingModal({ open, onOpenChange, item, garden, onPlan
                       />
                     );
                   }
-                })
-              )}
-            </div>
+                  })
+                )}
+              </div>
+            )}
             
             {isMoving && (
               <div className="mt-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
