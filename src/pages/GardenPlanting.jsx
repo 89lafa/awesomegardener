@@ -312,9 +312,9 @@ export default function GardenPlanting() {
     try {
       console.log('[SYNC] gardenId=', activeGarden.id);
       
-      // Load all plot items for this garden
+      // Load all plot items for this garden with their full metadata
       const plotItems = await base44.entities.PlotItem.filter({ garden_id: activeGarden.id });
-      console.log('[SYNC] found PlotItems:', plotItems.length);
+      console.log('[SYNC] found PlotItems:', plotItems.length, plotItems);
       
       // Load existing planting spaces
       const existingSpaces = await base44.entities.PlantingSpace.filter({ garden_id: activeGarden.id });
@@ -389,6 +389,7 @@ export default function GardenPlanting() {
     // GREENHOUSE: Always use metadata.capacity (user-specified plant count)
     if (item.item_type === 'GREENHOUSE') {
       const capacity = metadata.capacity || 40; // Default to 40 if not set
+      console.log('[GREENHOUSE SYNC] item:', item.label, 'capacity from metadata:', capacity);
       return { type: 'slots', slots: capacity };
     }
     
