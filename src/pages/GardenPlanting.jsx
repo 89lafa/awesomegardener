@@ -22,29 +22,32 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import ErrorBoundary from '@/components/common/ErrorBoundary';
 import PlantingModal from '@/components/garden/PlantingModal';
 
-function SpaceCard({ space, garden }) {
+function SpaceCard({ space, garden, activeSeason }) {
   const [plantings, setPlantings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showPlantingModal, setShowPlantingModal] = useState(false);
 
   useEffect(() => {
     loadPlantings();
-  }, [space.id]);
+  }, [space.id, activeSeason]);
 
   const loadPlantings = async () => {
+    if (!activeSeason) return;
+    
     try {
-      // Load plantings by plot_item_id since PlantingModal writes to bed_id=plot_item_id
       const plants = await base44.entities.PlantInstance.filter({ 
         bed_id: space.plot_item_id,
-        garden_id: space.garden_id
+        garden_id: space.garden_id,
+        season_year: activeSeason
       });
-      console.log('[GardenPlanting] Loaded plantings for plot_item_id:', space.plot_item_id, 'count:', plants.length, plants);
+      console.log('[GardenPlanting] Loaded plantings for plot_item_id:', space.plot_item_id, 'season:', activeSeason, 'count:', plants.length);
       setPlantings(plants);
     } catch (error) {
       console.error('Error loading plantings:', error);
@@ -221,6 +224,7 @@ function SpaceCard({ space, garden }) {
         onOpenChange={setShowPlantingModal}
         item={pseudoItem}
         garden={garden}
+        activeSeason={activeSeason}
         onPlantingUpdate={handlePlantingUpdate}
       />
     </Card>
@@ -233,6 +237,8 @@ export default function GardenPlanting() {
   const [gardens, setGardens] = useState([]);
   const [activeGarden, setActiveGarden] = useState(null);
   const [plantingSpaces, setPlantingSpaces] = useState([]);
+  const [activeSeason, setActiveSeason] = useState(null);
+  const [availableSeasons, setAvailableSeasons] = useState([]);
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
   const [syncResult, setSyncResult] = useState(null);
@@ -245,10 +251,17 @@ export default function GardenPlanting() {
   useEffect(() => {
     if (activeGarden) {
       console.log('[GardenPlanting] Active garden changed, loading spaces...');
-      loadPlantingSpaces(); // Load existing spaces first
-      syncFromPlotBuilder(true); // Then sync in background
+      loadSeasons();
+      loadPlantingSpaces();
+      syncFromPlotBuilder(true);
     }
   }, [activeGarden]);
+  
+  useEffect(() => {
+    if (activeSeason) {
+      loadPlantingSpaces();
+    }
+  }, [activeSeason]);
 
   const loadData = async () => {
     try {
@@ -286,6 +299,38 @@ export default function GardenPlanting() {
       toast.error('Failed to load gardens');
     } finally {
       setLoading(false);
+    }
+  };
+  
+  const loadSeasons = async () => {
+    if (!activeGarden) return;
+    
+    try {
+      const seasons = await base44.entities.GardenSeason.filter({ 
+        garden_id: activeGarden.id 
+      }, '-year');
+      
+      if (seasons.length === 0) {
+        // Create default season for current year
+        const currentYear = new Date().getFullYear();
+        const newSeason = await base44.entities.GardenSeason.create({
+          garden_id: activeGarden.id,
+          year: currentYear,
+          season: 'Spring',
+          season_key: `${currentYear}-Spring`,
+          status: 'active'
+        });
+        setAvailableSeasons([newSeason]);
+        setActiveSeason(newSeason.season_key);
+      } else {
+        setAvailableSeasons(seasons);
+        // Set active season to most recent or user's current year
+        const currentYear = new Date().getFullYear();
+        const currentSeason = seasons.find(s => s.year === currentYear);
+        setActiveSeason(currentSeason?.season_key || seasons[0].season_key);
+      }
+    } catch (error) {
+      console.error('Error loading seasons:', error);
     }
   };
 
@@ -552,7 +597,8 @@ export default function GardenPlanting() {
               {syncing ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
               Refresh from Layout
             </Button>
-          </div>
+            </div>
+            </div>
         </div>
 
         {/* Sync Result */}
@@ -611,7 +657,7 @@ export default function GardenPlanting() {
             {plantingSpaces
               .filter(space => spaceTypeFilter === 'all' || space.space_type === spaceTypeFilter)
               .map((space) => (
-                <SpaceCard key={space.id} space={space} garden={activeGarden} />
+                <SpaceCard key={space.id} space={space} garden={activeGarden} activeSeason={activeSeason} />
               ))}
           </div>
         )}

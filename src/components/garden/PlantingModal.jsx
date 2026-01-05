@@ -22,7 +22,7 @@ import { Plus, X, Trash2, Move, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 
-export default function PlantingModal({ open, onOpenChange, item, garden, onPlantingUpdate }) {
+export default function PlantingModal({ open, onOpenChange, item, garden, onPlantingUpdate, activeSeason }) {
   const [plantings, setPlantings] = useState([]);
   const [stashPlants, setStashPlants] = useState([]);
   const [profiles, setProfiles] = useState({});
@@ -59,14 +59,30 @@ export default function PlantingModal({ open, onOpenChange, item, garden, onPlan
     if (open && item) {
       loadData();
     }
-  }, [open, item]);
+  }, [open, item, activeSeason]);
+  
+  // ESC key and click-outside handler
+  useEffect(() => {
+    const handleEsc = (e) => {
+      if (e.key === 'Escape' && (selectedPlanting || isMoving)) {
+        setSelectedPlanting(null);
+        setIsMoving(false);
+      }
+    };
+    
+    if (open) {
+      document.addEventListener('keydown', handleEsc);
+      return () => document.removeEventListener('keydown', handleEsc);
+    }
+  }, [open, selectedPlanting, isMoving]);
 
   const loadData = async () => {
     try {
       setLoading(true);
       const user = await base44.auth.me();
+      const seasonKey = activeSeason || `${new Date().getFullYear()}-Spring`;
       const [plantingsData, stashData, profilesData, varietiesData, typesData] = await Promise.all([
-        base44.entities.PlantInstance.filter({ bed_id: item.id }),
+        base44.entities.PlantInstance.filter({ bed_id: item.id, season_year: seasonKey }),
         base44.entities.SeedLot.filter({ is_wishlist: false, created_by: user.email }),
         base44.entities.PlantProfile.list('variety_name', 500),
         base44.entities.Variety.list('variety_name', 500),
@@ -245,7 +261,7 @@ export default function PlantingModal({ open, onOpenChange, item, garden, onPlan
           cell_row: row,
           cell_span_cols: selectedPlant.spacing_cols,
           cell_span_rows: selectedPlant.spacing_rows,
-          season_year: new Date().getFullYear().toString() + '-Spring',
+          season_year: activeSeason || `${new Date().getFullYear()}-Spring`,
           status: 'planned'
         });
 
@@ -654,10 +670,19 @@ export default function PlantingModal({ open, onOpenChange, item, garden, onPlan
           </div>
 
           {/* Right Panel - Grid or Slots */}
-          <div className="flex-1 overflow-auto">
-            {isSlotBased ? (
+          <div 
+           className="flex-1 overflow-auto"
+           onClick={(e) => {
+             // Dismiss overlay when clicking grid background
+             if (e.target === e.currentTarget || e.target.closest('.grid-container')) {
+               setSelectedPlanting(null);
+               setIsMoving(false);
+             }
+           }}
+          >
+           {isSlotBased ? (
               // Slot-based layout for greenhouses/containers
-              <div className="grid gap-2 p-4 bg-amber-50 border-2 border-amber-200 rounded-lg" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(48px, 1fr))', maxWidth: '600px' }}>
+              <div className="grid gap-2 p-4 bg-amber-50 border-2 border-amber-200 rounded-lg grid-container" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(48px, 1fr))', maxWidth: '600px' }}>
                 {Array.from({ length: totalSlots }).map((_, slotIdx) => {
                   const planting = plantings.find(p => p.cell_col === slotIdx);
                   return (
@@ -708,7 +733,7 @@ export default function PlantingModal({ open, onOpenChange, item, garden, onPlan
             ) : (
               // Grid-based layout for raised beds
               <div 
-                className="grid gap-1 p-4 bg-amber-50 border-2 border-amber-200 rounded-lg inline-block"
+                className="grid gap-1 p-4 bg-amber-50 border-2 border-amber-200 rounded-lg inline-block grid-container"
                 style={{
                   gridTemplateColumns: `repeat(${gridCols}, 40px)`,
                   gridTemplateRows: `repeat(${gridRows}, 40px)`
@@ -728,9 +753,15 @@ export default function PlantingModal({ open, onOpenChange, item, garden, onPlan
                           gridColumn: `span ${p.cell_span_cols || 1}`,
                           gridRow: `span ${p.cell_span_rows || 1}`
                         }}
-                        onClick={() => {
-                          setSelectedPlanting(p);
-                          setSelectedPlant(null);
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          // Toggle selection
+                          if (selectedPlanting?.id === p.id) {
+                            setSelectedPlanting(null);
+                          } else {
+                            setSelectedPlanting(p);
+                            setSelectedPlant(null);
+                          }
                         }}
                       >
                         <span className="text-2xl">{p.plant_type_icon || '🌱'}</span>
@@ -769,7 +800,10 @@ export default function PlantingModal({ open, onOpenChange, item, garden, onPlan
                     return (
                       <button
                         key={`${colIdx}-${rowIdx}`}
-                        onClick={() => handleCellClick(colIdx, rowIdx)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleCellClick(colIdx, rowIdx);
+                        }}
                         className={cn(
                           "w-10 h-10 border-2 rounded transition-colors",
                           (selectedPlant || isMoving)
