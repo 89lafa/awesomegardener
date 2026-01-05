@@ -566,6 +566,7 @@ export default function PlantingModal({ open, onOpenChange, item, garden, onPlan
             <Tabs defaultValue="stash" className="flex-1 flex flex-col min-h-0">
               <TabsList className="w-full flex-shrink-0">
                 <TabsTrigger value="stash" className="flex-1">From Stash</TabsTrigger>
+                <TabsTrigger value="plan" className="flex-1">From Plan</TabsTrigger>
                 <TabsTrigger value="new" className="flex-1">Add New</TabsTrigger>
               </TabsList>
               
