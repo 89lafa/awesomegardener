@@ -720,7 +720,7 @@ export default function GardenPlanting() {
               ))}
           </div>
         )}
-      </div>
-    </ErrorBoundary>
+      </ErrorBoundary>
+    </div>
   );
 }
