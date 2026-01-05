@@ -33,6 +33,8 @@ export default function PlantingModal({ open, onOpenChange, item, garden, onPlan
   const [isMoving, setIsMoving] = useState(false);
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
+  const [companionWarning, setCompanionWarning] = useState(null);
+  const [rotationWarning, setRotationWarning] = useState(null);
   
   const [newPlant, setNewPlant] = useState({
     variety_id: '',
@@ -293,16 +295,63 @@ export default function PlantingModal({ open, onOpenChange, item, garden, onPlan
       ? getSpacingForPlant(variety) 
       : getDefaultSpacing(profile.common_name);
     
-    setSelectedPlant({
+    const plantData = {
       variety_id: variety?.id || null,
       variety_name: profile.variety_name,
       plant_type_id: profile.plant_type_id,
       plant_type_name: profile.common_name,
+      plant_family: profile.plant_family,
       spacing_cols: spacing.cols,
       spacing_rows: spacing.rows
-    });
+    };
+    
+    setSelectedPlant(plantData);
+    checkCompanionAndRotation(plantData);
   };
 
+  const checkCompanionAndRotation = (plantData) => {
+    if (!plantData) return;
+    
+    // Check companions - look for adjacent plantings
+    const adjacentPlantings = plantings.filter(p => {
+      // For grid-based, check if within 1 cell radius
+      // For slot-based, check if in same bed
+      return p.id !== selectedPlanting?.id;
+    });
+    
+    // Check for companion warnings (simple check)
+    let hasCompanionIssue = false;
+    for (const adj of adjacentPlantings) {
+      // Check if families are incompatible (basic example - tomatoes/peppers ok, but brassicas not)
+      if (plantData.plant_family && adj.plant_family) {
+        // Example: Brassicas don't like Solanaceae
+        if ((plantData.plant_family === 'Brassicaceae' && adj.plant_family === 'Solanaceae') ||
+            (plantData.plant_family === 'Solanaceae' && adj.plant_family === 'Brassicaceae')) {
+          hasCompanionIssue = true;
+          setCompanionWarning(`⚠️ ${plantData.plant_type_name} and ${adj.display_name} are not ideal companions`);
+          break;
+        }
+      }
+    }
+    
+    if (!hasCompanionIssue) {
+      setCompanionWarning(null);
+    }
+    
+    // Check rotation - look for same family in this bed last season
+    const lastSeasonPlantings = plantings.filter(p => 
+      p.bed_id === item.id && 
+      p.plant_family === plantData.plant_family &&
+      p.season_year && p.season_year !== new Date().getFullYear().toString()
+    );
+    
+    if (lastSeasonPlantings.length > 0) {
+      setRotationWarning(`⚠️ Same family (${plantData.plant_family}) was grown in this bed last season`);
+    } else {
+      setRotationWarning(null);
+    }
+  };
+  
   const handleCreateNewPlant = async () => {
     if (!newPlant.variety_id || creating) return;
     
@@ -336,6 +385,7 @@ export default function PlantingModal({ open, onOpenChange, item, garden, onPlan
           const newProfile = await base44.entities.PlantProfile.create({
             plant_type_id: variety.plant_type_id,
             plant_subcategory_id: variety.plant_subcategory_id,
+            plant_family: plantType?.plant_family_id,
             common_name: plantType?.common_name || variety.plant_type_name,
             variety_name: variety.variety_name,
             days_to_maturity_seed: variety.days_to_maturity,
@@ -364,11 +414,13 @@ export default function PlantingModal({ open, onOpenChange, item, garden, onPlan
         variety_name: variety.variety_name,
         plant_type_id: variety.plant_type_id || null,
         plant_type_name: variety.plant_type_name || variety.variety_name,
+        plant_family: plantType?.plant_family_id,
         spacing_cols: spacing.cols,
         spacing_rows: spacing.rows
       };
       console.log('[PlantingModal] Setting selected plant:', selectedPlantData);
       setSelectedPlant(selectedPlantData);
+      checkCompanionAndRotation(selectedPlantData);
       
       setNewPlant({ variety_id: '', variety_name: '', plant_type_name: '', spacing_cols: 1, spacing_rows: 1 });
       toast.success('Added to stash - now click a cell to place');
@@ -534,20 +586,38 @@ export default function PlantingModal({ open, onOpenChange, item, garden, onPlan
             </Tabs>
             
             {selectedPlant && (
-              <div className="mt-4 p-3 bg-emerald-50 rounded-lg border border-emerald-200 flex-shrink-0">
-                <p className="text-sm font-medium text-emerald-900">Selected:</p>
-                <p className="text-sm text-emerald-700 truncate">{selectedPlant.variety_name}</p>
-                <p className="text-xs text-emerald-600 mt-1">
-                  Takes {selectedPlant.spacing_cols}×{selectedPlant.spacing_rows} cells
-                </p>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => setSelectedPlant(null)}
-                  className="w-full mt-2"
-                >
-                  Cancel
-                </Button>
+              <div className="mt-4 space-y-2 flex-shrink-0">
+                <div className="p-3 bg-emerald-50 rounded-lg border border-emerald-200">
+                  <p className="text-sm font-medium text-emerald-900">Selected:</p>
+                  <p className="text-sm text-emerald-700 truncate">{selectedPlant.variety_name}</p>
+                  <p className="text-xs text-emerald-600 mt-1">
+                    Takes {selectedPlant.spacing_cols}×{selectedPlant.spacing_rows} cells
+                  </p>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => {
+                      setSelectedPlant(null);
+                      setCompanionWarning(null);
+                      setRotationWarning(null);
+                    }}
+                    className="w-full mt-2"
+                  >
+                    Cancel
+                  </Button>
+                </div>
+
+                {companionWarning && (
+                  <div className="p-3 bg-amber-50 rounded-lg border border-amber-300">
+                    <p className="text-xs text-amber-800">{companionWarning}</p>
+                  </div>
+                )}
+
+                {rotationWarning && (
+                  <div className="p-3 bg-orange-50 rounded-lg border border-orange-300">
+                    <p className="text-xs text-orange-800">{rotationWarning}</p>
+                  </div>
+                )}
               </div>
             )}
           </div>

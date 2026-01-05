@@ -56,10 +56,11 @@ export default function HarvestLog() {
 
   const loadData = async () => {
     try {
+      const userData = await base44.auth.me();
       const [gardensData, harvestsData, plantingsData] = await Promise.all([
-        base44.entities.Garden.filter({ archived: false }),
-        base44.entities.HarvestLog.list('-harvest_date', 100),
-        base44.entities.PlantInstance.list('display_name', 500)
+        base44.entities.Garden.filter({ archived: false, created_by: userData.email }),
+        base44.entities.HarvestLog.filter({ created_by: userData.email }, '-harvest_date'),
+        base44.entities.PlantInstance.filter({ created_by: userData.email }, 'display_name')
       ]);
       
       setGardens(gardensData);

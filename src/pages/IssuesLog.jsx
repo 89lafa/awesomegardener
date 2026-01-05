@@ -58,10 +58,10 @@ export default function IssuesLog() {
 
   const loadData = async () => {
     try {
-      const [userData, gardensData, issuesData] = await Promise.all([
-        base44.auth.me(),
-        base44.entities.Garden.filter({ archived: false }),
-        base44.entities.IssueLog.list('-date', 100)
+      const userData = await base44.auth.me();
+      const [gardensData, issuesData] = await Promise.all([
+        base44.entities.Garden.filter({ archived: false, created_by: userData.email }),
+        base44.entities.IssueLog.filter({ created_by: userData.email }, '-date')
       ]);
       
       setUser(userData);

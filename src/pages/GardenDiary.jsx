@@ -61,10 +61,10 @@ export default function GardenDiary() {
 
   const loadData = async () => {
     try {
-      const [userData, gardensData, entriesData] = await Promise.all([
-        base44.auth.me(),
-        base44.entities.Garden.filter({ archived: false }),
-        base44.entities.GardenDiary.list('-entry_date', 100)
+      const userData = await base44.auth.me();
+      const [gardensData, entriesData] = await Promise.all([
+        base44.entities.Garden.filter({ archived: false, created_by: userData.email }),
+        base44.entities.GardenDiary.filter({ created_by: userData.email }, '-entry_date')
       ]);
       
       setUser(userData);
