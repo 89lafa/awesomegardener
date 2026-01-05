@@ -35,6 +35,7 @@ import SeedStash from './pages/SeedStash';
 import SeedStashDetail from './pages/SeedStashDetail';
 import Settings from './pages/Settings';
 import VarietyReviewQueue from './pages/VarietyReviewQueue';
+import Calendar from './pages/Calendar';
 import __Layout from './Layout.jsx';
 
 
@@ -76,6 +77,7 @@ export const PAGES = {
     "SeedStashDetail": SeedStashDetail,
     "Settings": Settings,
     "VarietyReviewQueue": VarietyReviewQueue,
+    "Calendar": Calendar,
 }
 
 export const pagesConfig = {
