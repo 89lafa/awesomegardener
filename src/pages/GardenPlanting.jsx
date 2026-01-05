@@ -522,6 +522,34 @@ export default function GardenPlanting() {
       toast.error('Failed to delete garden');
     }
   };
+  
+  const handleAddSeason = async () => {
+    const yearInput = prompt('Enter year for new season:', (new Date().getFullYear() + 1).toString());
+    if (!yearInput) return;
+    
+    const year = parseInt(yearInput);
+    if (isNaN(year) || year < 2000 || year > 2100) {
+      toast.error('Invalid year');
+      return;
+    }
+    
+    try {
+      const newSeason = await base44.entities.GardenSeason.create({
+        garden_id: activeGarden.id,
+        year,
+        season: 'Spring',
+        season_key: `${year}-Spring`,
+        status: 'planning'
+      });
+      
+      setAvailableSeasons([...availableSeasons, newSeason].sort((a, b) => b.year - a.year));
+      setActiveSeason(newSeason.season_key);
+      toast.success(`${year} season created`);
+    } catch (error) {
+      console.error('Error creating season:', error);
+      toast.error('Failed to create season');
+    }
+  };
 
   if (loading) {
     return (
@@ -557,49 +585,79 @@ export default function GardenPlanting() {
     <ErrorBoundary fallbackTitle="My Garden Error">
       <div className="space-y-6 max-w-7xl">
         {/* Header */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <Sprout className="w-6 h-6 text-emerald-600" />
-            {gardens.length > 1 ? (
-              <Select 
-                value={activeGarden?.id} 
-                onValueChange={(gardenId) => {
-                  const garden = gardens.find(g => g.id === gardenId);
-                  setActiveGarden(garden);
-                }}
+        <div className="flex flex-col gap-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <Sprout className="w-6 h-6 text-emerald-600" />
+              {gardens.length > 1 ? (
+                <Select 
+                  value={activeGarden?.id} 
+                  onValueChange={(gardenId) => {
+                    const garden = gardens.find(g => g.id === gardenId);
+                    setActiveGarden(garden);
+                  }}
+                >
+                  <SelectTrigger className="w-64">
+                    <SelectValue placeholder="Select a garden" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {gardens.map((garden) => (
+                      <SelectItem key={garden.id} value={garden.id}>
+                        {garden.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              ) : (
+                <h1 className="text-2xl lg:text-3xl font-bold text-gray-900">{activeGarden?.name}</h1>
+              )}
+            </div>
+            <div className="flex gap-2">
+              <Link to={createPageUrl('MyGarden') + `?gardenId=${activeGarden?.id}`}>
+                <Button variant="outline" className="gap-2">
+                  <Settings className="w-4 h-4" />
+                  Edit Layout
+                </Button>
+              </Link>
+              <Button 
+                onClick={() => syncFromPlotBuilder(false)}
+                disabled={syncing}
+                className="bg-emerald-600 hover:bg-emerald-700 gap-2"
               >
-                <SelectTrigger className="w-64">
-                  <SelectValue placeholder="Select a garden" />
+                {syncing ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
+                Refresh from Layout
+              </Button>
+            </div>
+          </div>
+
+          {/* Season Selector */}
+          {availableSeasons.length > 0 && (
+            <div className="flex items-center gap-2">
+              <Calendar className="w-4 h-4 text-gray-500" />
+              <Label className="text-sm font-medium">Season:</Label>
+              <Select value={activeSeason} onValueChange={setActiveSeason}>
+                <SelectTrigger className="w-36">
+                  <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {gardens.map((garden) => (
-                    <SelectItem key={garden.id} value={garden.id}>
-                      {garden.name}
+                  {availableSeasons.map((season) => (
+                    <SelectItem key={season.id} value={season.season_key}>
+                      {season.year} {season.season}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
-            ) : (
-              <h1 className="text-2xl lg:text-3xl font-bold text-gray-900">{activeGarden?.name}</h1>
-            )}
-          </div>
-          <div className="flex gap-2">
-          <Link to={createPageUrl('MyGarden') + `?gardenId=${activeGarden?.id}`}>
-              <Button variant="outline" className="gap-2">
-                <Settings className="w-4 h-4" />
-                Edit Layout
+              <Button 
+                size="sm"
+                variant="outline"
+                onClick={handleAddSeason}
+                className="gap-1"
+              >
+                <Plus className="w-3 h-3" />
+                New Year
               </Button>
-            </Link>
-            <Button 
-              onClick={() => syncFromPlotBuilder(false)}
-              disabled={syncing}
-              className="bg-emerald-600 hover:bg-emerald-700 gap-2"
-            >
-              {syncing ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
-              Refresh from Layout
-            </Button>
             </div>
-            </div>
+          )}
         </div>
 
         {/* Sync Result */}
