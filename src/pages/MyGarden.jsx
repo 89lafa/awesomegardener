@@ -29,7 +29,6 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
-import { toast } from 'sonner';
 import PlotCanvas from '@/components/garden/PlotCanvas';
 import ErrorBoundary from '@/components/common/ErrorBoundary';
 
