@@ -258,6 +258,11 @@ export default function GardenPlanting() {
   const [syncing, setSyncing] = useState(false);
   const [syncResult, setSyncResult] = useState(null);
   const [spaceTypeFilter, setSpaceTypeFilter] = useState('all');
+  const [showAddSeason, setShowAddSeason] = useState(false);
+  const [newSeasonData, setNewSeasonData] = useState({
+    year: new Date().getFullYear() + 1,
+    season: 'Spring'
+  });
 
   useEffect(() => {
     loadData();
@@ -538,27 +543,20 @@ export default function GardenPlanting() {
   };
   
   const handleAddSeason = async () => {
-    const yearInput = prompt('Enter year for new season:', (new Date().getFullYear() + 1).toString());
-    if (!yearInput) return;
-    
-    const year = parseInt(yearInput);
-    if (isNaN(year) || year < 2000 || year > 2100) {
-      toast.error('Invalid year');
-      return;
-    }
-    
     try {
       const newSeason = await base44.entities.GardenSeason.create({
         garden_id: activeGarden.id,
-        year,
-        season: 'Spring',
-        season_key: `${year}-Spring`,
+        year: newSeasonData.year,
+        season: newSeasonData.season,
+        season_key: `${newSeasonData.year}-${newSeasonData.season}`,
         status: 'planning'
       });
       
       setAvailableSeasons([...availableSeasons, newSeason].sort((a, b) => b.year - a.year));
       setActiveSeason(newSeason.season_key);
-      toast.success(`${year} season created`);
+      setShowAddSeason(false);
+      setNewSeasonData({ year: new Date().getFullYear() + 1, season: 'Spring' });
+      toast.success(`${newSeasonData.year} ${newSeasonData.season} created`);
     } catch (error) {
       console.error('Error creating season:', error);
       toast.error('Failed to create season');
@@ -664,11 +662,11 @@ export default function GardenPlanting() {
               <Button 
                 size="sm"
                 variant="outline"
-                onClick={handleAddSeason}
+                onClick={() => setShowAddSeason(true)}
                 className="gap-1"
               >
                 <Plus className="w-3 h-3" />
-                New Year
+                Add Season
               </Button>
             </div>
           )}
@@ -734,6 +732,55 @@ export default function GardenPlanting() {
               ))}
           </div>
         )}
+
+        {/* Add Season Dialog */}
+        <Dialog open={showAddSeason} onOpenChange={setShowAddSeason}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Add Growing Season</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div>
+                <Label htmlFor="seasonYear">Year</Label>
+                <Input
+                  id="seasonYear"
+                  type="number"
+                  min="2000"
+                  max="2100"
+                  value={newSeasonData.year}
+                  onChange={(e) => setNewSeasonData({ ...newSeasonData, year: parseInt(e.target.value) })}
+                  className="mt-2"
+                />
+              </div>
+              <div>
+                <Label htmlFor="seasonName">Season</Label>
+                <Select 
+                  value={newSeasonData.season} 
+                  onValueChange={(v) => setNewSeasonData({ ...newSeasonData, season: v })}
+                >
+                  <SelectTrigger className="mt-2">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Spring">Spring</SelectItem>
+                    <SelectItem value="Summer">Summer</SelectItem>
+                    <SelectItem value="Fall">Fall</SelectItem>
+                    <SelectItem value="Winter">Winter</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setShowAddSeason(false)}>Cancel</Button>
+              <Button 
+                onClick={handleAddSeason}
+                className="bg-emerald-600 hover:bg-emerald-700"
+              >
+                Add Season
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
     </ErrorBoundary>
   );
