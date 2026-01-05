@@ -41,13 +41,27 @@ function SpaceCard({ space, garden, activeSeason }) {
 
   const loadPlantings = async () => {
     if (!activeSeason) return;
-    
+
     try {
-      const plants = await base44.entities.PlantInstance.filter({ 
+      // Load all plantings for this space
+      const allPlants = await base44.entities.PlantInstance.filter({ 
         bed_id: space.plot_item_id,
-        garden_id: space.garden_id,
-        season_year: activeSeason
+        garden_id: space.garden_id
       });
+
+      // Filter by season - show plantings for selected season OR old plantings without season_year (show in current year only)
+      const currentYear = new Date().getFullYear();
+      const isCurrentYearSeason = activeSeason && activeSeason.startsWith(currentYear.toString());
+
+      const plants = allPlants.filter(p => {
+        // If planting has no season_year (old data), only show in current year's season
+        if (!p.season_year) {
+          return isCurrentYearSeason;
+        }
+        // Otherwise, match the selected season exactly
+        return p.season_year === activeSeason;
+      });
+
       console.log('[GardenPlanting] Loaded plantings for plot_item_id:', space.plot_item_id, 'season:', activeSeason, 'count:', plants.length);
       setPlantings(plants);
     } catch (error) {

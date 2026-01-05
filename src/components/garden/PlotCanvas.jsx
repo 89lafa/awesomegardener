@@ -147,20 +147,31 @@ export default function PlotCanvas({ garden, plot, activeSeason, onPlotUpdate, o
     try {
       const user = await base44.auth.me();
       
-      // Filter plantings by active season if available
-      const plantingFilter = { garden_id: garden.id, created_by: user.email };
-      if (activeSeason) {
-        plantingFilter.season_year = activeSeason;
-      }
-      
-      const [itemsData, plantings] = await Promise.all([
+      const [itemsData, allPlantings] = await Promise.all([
         base44.entities.PlotItem.filter({ 
           garden_id: garden.id,
           plot_id: plot.id,
           created_by: user.email
         }, 'z_index'),
-        base44.entities.PlantInstance.filter(plantingFilter)
+        base44.entities.PlantInstance.filter({ garden_id: garden.id, created_by: user.email })
       ]);
+      
+      // Filter plantings by season client-side to handle old plantings without season_year
+      let plantings = allPlantings;
+      if (activeSeason) {
+        // Show plantings for this season OR plantings without season_year (old data - show in current year)
+        const currentYear = new Date().getFullYear();
+        const isCurrentYearSeason = activeSeason && activeSeason.startsWith(currentYear.toString());
+        
+        plantings = allPlantings.filter(p => {
+          // If planting has no season_year (old data), only show in current year's season
+          if (!p.season_year) {
+            return isCurrentYearSeason;
+          }
+          // Otherwise, match the selected season exactly
+          return p.season_year === activeSeason;
+        });
+      }
       
       // Ensure rotation is initialized
       const normalizedItems = itemsData.map(item => ({
