@@ -26,6 +26,8 @@ export default function EditVariety() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [formData, setFormData] = useState({});
+  const [subCategories, setSubCategories] = useState([]);
+  const [plantType, setPlantType] = useState(null);
 
   useEffect(() => {
     if (varietyId) {
@@ -39,8 +41,23 @@ export default function EditVariety() {
     try {
       const varieties = await base44.entities.Variety.filter({ id: varietyId });
       if (varieties.length > 0) {
-        setVariety(varieties[0]);
-        setFormData(varieties[0]);
+        const v = varieties[0];
+        setVariety(v);
+        setFormData(v);
+        
+        // Load plant type and subcategories
+        if (v.plant_type_id) {
+          const [typeData, subcats] = await Promise.all([
+            base44.entities.PlantType.filter({ id: v.plant_type_id }),
+            base44.entities.PlantSubCategory.filter({ 
+              plant_type_id: v.plant_type_id,
+              is_active: true 
+            }, 'sort_order')
+          ]);
+          
+          if (typeData.length > 0) setPlantType(typeData[0]);
+          setSubCategories(subcats);
+        }
       }
     } catch (error) {
       console.error('Error loading variety:', error);
@@ -55,7 +72,7 @@ export default function EditVariety() {
     setSaving(true);
 
     try {
-      await base44.entities.Variety.update(varietyId, {
+      const updateData = {
         variety_name: formData.variety_name,
         days_to_maturity: formData.days_to_maturity ? parseFloat(formData.days_to_maturity) : null,
         spacing_recommended: formData.spacing_recommended ? parseFloat(formData.spacing_recommended) : null,
@@ -64,8 +81,29 @@ export default function EditVariety() {
         water_requirement: formData.water_requirement,
         trellis_required: formData.trellis_required,
         container_friendly: formData.container_friendly,
-        grower_notes: formData.grower_notes
-      });
+        grower_notes: formData.grower_notes,
+        heat_scoville_min: formData.heat_scoville_min ? parseFloat(formData.heat_scoville_min) : null,
+        heat_scoville_max: formData.heat_scoville_max ? parseFloat(formData.heat_scoville_max) : null
+      };
+
+      await base44.entities.Variety.update(varietyId, updateData);
+
+      // Update subcategory mapping if changed
+      if (formData.plant_subcategory_id !== variety.plant_subcategory_id) {
+        // Delete old mapping
+        const oldMaps = await base44.entities.VarietySubCategoryMap.filter({ variety_id: varietyId });
+        for (const map of oldMaps) {
+          await base44.entities.VarietySubCategoryMap.delete(map.id);
+        }
+        
+        // Create new mapping if subcategory selected
+        if (formData.plant_subcategory_id) {
+          await base44.entities.VarietySubCategoryMap.create({
+            variety_id: varietyId,
+            plant_subcategory_id: formData.plant_subcategory_id
+          });
+        }
+      }
 
       toast.success('Variety updated successfully!');
       navigate(-1);
@@ -127,6 +165,29 @@ export default function EditVariety() {
               />
             </div>
 
+            {subCategories.length > 0 && (
+              <div>
+                <Label htmlFor="subcategory">Type/Subcategory</Label>
+                <Select 
+                  value={formData.plant_subcategory_id || ''} 
+                  onValueChange={(v) => setFormData({ ...formData, plant_subcategory_id: v })}
+                >
+                  <SelectTrigger className="mt-1">
+                    <SelectValue placeholder="Select type..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={null}>None</SelectItem>
+                    {subCategories.map((subcat) => (
+                      <SelectItem key={subcat.id} value={subcat.id}>
+                        {subcat.icon && <span className="mr-2">{subcat.icon}</span>}
+                        {subcat.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
             <div className="grid md:grid-cols-2 gap-4">
               <div>
                 <Label htmlFor="days_to_maturity">Days to Maturity</Label>
@@ -145,6 +206,31 @@ export default function EditVariety() {
                   type="number"
                   value={formData.spacing_recommended || ''}
                   onChange={(e) => setFormData({ ...formData, spacing_recommended: e.target.value })}
+                  className="mt-1"
+                />
+              </div>
+            </div>
+
+            <div className="grid md:grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="scoville_min">Scoville Min (peppers)</Label>
+                <Input
+                  id="scoville_min"
+                  type="number"
+                  value={formData.heat_scoville_min || ''}
+                  onChange={(e) => setFormData({ ...formData, heat_scoville_min: e.target.value })}
+                  placeholder="e.g., 1000"
+                  className="mt-1"
+                />
+              </div>
+              <div>
+                <Label htmlFor="scoville_max">Scoville Max</Label>
+                <Input
+                  id="scoville_max"
+                  type="number"
+                  value={formData.heat_scoville_max || ''}
+                  onChange={(e) => setFormData({ ...formData, heat_scoville_max: e.target.value })}
+                  placeholder="e.g., 5000"
                   className="mt-1"
                 />
               </div>

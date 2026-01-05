@@ -321,6 +321,19 @@ export default function SeedStashDetail() {
                     </div>
                   </div>
                 )}
+                {(profile.heat_scoville_min || profile.heat_scoville_max) && (
+                  <div className="flex items-center gap-3 p-3 bg-red-50 rounded-lg border border-red-200">
+                    <div className="text-xl">🌶️</div>
+                    <div>
+                      <p className="text-xs text-gray-500">Scoville Heat</p>
+                      <p className="font-semibold text-red-700">
+                        {profile.heat_scoville_min && profile.heat_scoville_max
+                          ? `${profile.heat_scoville_min.toLocaleString()}-${profile.heat_scoville_max.toLocaleString()}`
+                          : (profile.heat_scoville_min || profile.heat_scoville_max).toLocaleString()} SHU
+                      </p>
+                    </div>
+                  </div>
+                )}
               </div>
 
               <div className="grid sm:grid-cols-3 gap-3">
@@ -589,6 +602,27 @@ export default function SeedStashDetail() {
               </label>
             </div>
 
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label>Scoville Min (peppers)</Label>
+                <Input
+                  type="number"
+                  value={profileForm.heat_scoville_min || ''}
+                  onChange={(e) => setProfileForm({ ...profileForm, heat_scoville_min: parseInt(e.target.value) || null })}
+                  className="mt-2"
+                />
+              </div>
+              <div>
+                <Label>Scoville Max</Label>
+                <Input
+                  type="number"
+                  value={profileForm.heat_scoville_max || ''}
+                  onChange={(e) => setProfileForm({ ...profileForm, heat_scoville_max: parseInt(e.target.value) || null })}
+                  className="mt-2"
+                />
+              </div>
+            </div>
+
             <div>
               <Label>Growing Notes</Label>
               <Textarea
@@ -598,8 +632,8 @@ export default function SeedStashDetail() {
                 rows={3}
               />
             </div>
-          </div>
-          <DialogFooter>
+            </div>
+            <DialogFooter>
             <Button variant="outline" onClick={() => setShowEditProfile(false)}>Cancel</Button>
             <Button onClick={handleSaveProfile} className="bg-emerald-600 hover:bg-emerald-700">
               Save Changes
