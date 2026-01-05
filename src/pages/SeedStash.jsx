@@ -84,8 +84,8 @@ export default function SeedStash() {
   const [filterTag, setFilterTag] = useState('all');
   const [varieties, setVarieties] = useState([]);
   const [selectedPlantType, setSelectedPlantType] = useState(null);
-  const [sortBy, setSortBy] = useState('created_date');
-  const [sortOrder, setSortOrder] = useState('desc');
+  const [sortBy, setSortBy] = useState('name');
+  const [sortOrder, setSortOrder] = useState('asc');
   const [visibleColumns, setVisibleColumns] = useState({
     name: true,
     type: true,
@@ -728,7 +728,7 @@ export default function SeedStash() {
               <TableRow>
                 {visibleColumns.name && (
                   <TableHead 
-                    className="cursor-pointer hover:bg-gray-50"
+                    className="cursor-pointer hover:bg-gray-50 group"
                     onClick={() => {
                       if (sortBy === 'name') {
                         setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
@@ -740,15 +740,17 @@ export default function SeedStash() {
                   >
                     <div className="flex items-center gap-1">
                       Name
-                      {sortBy === 'name' && (
+                      {sortBy === 'name' ? (
                         <span className="text-xs">{sortOrder === 'asc' ? '▲' : '▼'}</span>
+                      ) : (
+                        <span className="text-xs text-gray-300 group-hover:text-gray-400">⇅</span>
                       )}
                     </div>
                   </TableHead>
                 )}
                 {visibleColumns.type && (
                   <TableHead 
-                    className="cursor-pointer hover:bg-gray-50"
+                    className="cursor-pointer hover:bg-gray-50 group"
                     onClick={() => {
                       if (sortBy === 'type') {
                         setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
@@ -760,15 +762,17 @@ export default function SeedStash() {
                   >
                     <div className="flex items-center gap-1">
                       Type
-                      {sortBy === 'type' && (
+                      {sortBy === 'type' ? (
                         <span className="text-xs">{sortOrder === 'asc' ? '▲' : '▼'}</span>
+                      ) : (
+                        <span className="text-xs text-gray-300 group-hover:text-gray-400">⇅</span>
                       )}
                     </div>
                   </TableHead>
                 )}
                 {visibleColumns.source && (
                   <TableHead 
-                    className="cursor-pointer hover:bg-gray-50"
+                    className="cursor-pointer hover:bg-gray-50 group"
                     onClick={() => {
                       if (sortBy === 'source') {
                         setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
@@ -780,15 +784,17 @@ export default function SeedStash() {
                   >
                     <div className="flex items-center gap-1">
                       Source
-                      {sortBy === 'source' && (
+                      {sortBy === 'source' ? (
                         <span className="text-xs">{sortOrder === 'asc' ? '▲' : '▼'}</span>
+                      ) : (
+                        <span className="text-xs text-gray-300 group-hover:text-gray-400">⇅</span>
                       )}
                     </div>
                   </TableHead>
                 )}
                 {visibleColumns.year && (
                   <TableHead 
-                    className="cursor-pointer hover:bg-gray-50"
+                    className="cursor-pointer hover:bg-gray-50 group"
                     onClick={() => {
                       if (sortBy === 'year') {
                         setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
@@ -800,15 +806,17 @@ export default function SeedStash() {
                   >
                     <div className="flex items-center gap-1">
                       Year
-                      {sortBy === 'year' && (
+                      {sortBy === 'year' ? (
                         <span className="text-xs">{sortOrder === 'asc' ? '▲' : '▼'}</span>
+                      ) : (
+                        <span className="text-xs text-gray-300 group-hover:text-gray-400">⇅</span>
                       )}
                     </div>
                   </TableHead>
                 )}
                 {visibleColumns.age && (
                   <TableHead 
-                    className="cursor-pointer hover:bg-gray-50"
+                    className="cursor-pointer hover:bg-gray-50 group"
                     onClick={() => {
                       if (sortBy === 'age') {
                         setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
@@ -820,15 +828,17 @@ export default function SeedStash() {
                   >
                     <div className="flex items-center gap-1">
                       Age
-                      {sortBy === 'age' && (
+                      {sortBy === 'age' ? (
                         <span className="text-xs">{sortOrder === 'asc' ? '▲' : '▼'}</span>
+                      ) : (
+                        <span className="text-xs text-gray-300 group-hover:text-gray-400">⇅</span>
                       )}
                     </div>
                   </TableHead>
                 )}
                 {visibleColumns.maturity && (
                   <TableHead 
-                    className="cursor-pointer hover:bg-gray-50"
+                    className="cursor-pointer hover:bg-gray-50 group"
                     onClick={() => {
                       if (sortBy === 'maturity') {
                         setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
@@ -840,15 +850,17 @@ export default function SeedStash() {
                   >
                     <div className="flex items-center gap-1">
                       DTM
-                      {sortBy === 'maturity' && (
+                      {sortBy === 'maturity' ? (
                         <span className="text-xs">{sortOrder === 'asc' ? '▲' : '▼'}</span>
+                      ) : (
+                        <span className="text-xs text-gray-300 group-hover:text-gray-400">⇅</span>
                       )}
                     </div>
                   </TableHead>
                 )}
                 {visibleColumns.spacing && (
                   <TableHead 
-                    className="cursor-pointer hover:bg-gray-50"
+                    className="cursor-pointer hover:bg-gray-50 group"
                     onClick={() => {
                       if (sortBy === 'spacing') {
                         setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
@@ -860,15 +872,17 @@ export default function SeedStash() {
                   >
                     <div className="flex items-center gap-1">
                       Spacing
-                      {sortBy === 'spacing' && (
+                      {sortBy === 'spacing' ? (
                         <span className="text-xs">{sortOrder === 'asc' ? '▲' : '▼'}</span>
+                      ) : (
+                        <span className="text-xs text-gray-300 group-hover:text-gray-400">⇅</span>
                       )}
                     </div>
                   </TableHead>
                 )}
                 {visibleColumns.quantity && (
                   <TableHead 
-                    className="cursor-pointer hover:bg-gray-50"
+                    className="cursor-pointer hover:bg-gray-50 group"
                     onClick={() => {
                       if (sortBy === 'quantity') {
                         setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
@@ -880,8 +894,10 @@ export default function SeedStash() {
                   >
                     <div className="flex items-center gap-1">
                       Quantity
-                      {sortBy === 'quantity' && (
+                      {sortBy === 'quantity' ? (
                         <span className="text-xs">{sortOrder === 'asc' ? '▲' : '▼'}</span>
+                      ) : (
+                        <span className="text-xs text-gray-300 group-hover:text-gray-400">⇅</span>
                       )}
                     </div>
                   </TableHead>
