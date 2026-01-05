@@ -97,16 +97,22 @@ export default function GrowLists() {
   const loadData = async () => {
     try {
       const user = await base44.auth.me();
-      const [listsData, gardensData, seedsData, typesData] = await Promise.all([
+      const [listsData, gardensData, seedsData, typesData, profilesData] = await Promise.all([
         base44.entities.GrowList.filter({ created_by: user.email }, '-created_date'),
         base44.entities.Garden.filter({ archived: false, created_by: user.email }),
         base44.entities.SeedLot.filter({ is_wishlist: false, created_by: user.email }),
-        base44.entities.PlantType.list('name')
+        base44.entities.PlantType.list('common_name', 100),
+        base44.entities.PlantProfile.list('variety_name', 500)
       ]);
       setGrowLists(listsData);
       setGardens(gardensData);
       setSeeds(seedsData);
       setPlantTypes(typesData);
+      
+      // Build profiles map
+      const pMap = {};
+      profilesData.forEach(p => pMap[p.id] = p);
+      setProfilesMap(pMap);
     } catch (error) {
       console.error('Error loading grow lists:', error);
     } finally {
@@ -352,11 +358,12 @@ export default function GrowLists() {
                   onValueChange={(v) => {
                     const seed = seeds.find(s => s.id === v);
                     if (seed) {
+                      const profile = profilesMap[seed.plant_profile_id];
                       setNewItem({
                         ...newItem,
                         seed_lot_id: v,
-                        plant_type_name: seed.plant_type_name || '',
-                        variety_name: seed.variety_name || seed.custom_name || ''
+                        plant_type_name: profile?.common_name || '',
+                        variety_name: profile?.variety_name || ''
                       });
                     }
                   }}
@@ -365,11 +372,19 @@ export default function GrowLists() {
                     <SelectValue placeholder="Select from your seeds" />
                   </SelectTrigger>
                   <SelectContent>
-                    {seeds.map((seed) => (
-                      <SelectItem key={seed.id} value={seed.id}>
-                        {seed.variety_name || seed.custom_name || seed.plant_type_name}
-                      </SelectItem>
-                    ))}
+                    {seeds.length === 0 ? (
+                      <div className="p-2 text-sm text-gray-500">No seeds in your stash</div>
+                    ) : (
+                      seeds.map((seed) => {
+                        const profile = profilesMap[seed.plant_profile_id];
+                        if (!profile) return null;
+                        return (
+                          <SelectItem key={seed.id} value={seed.id}>
+                            {profile.variety_name} ({profile.common_name})
+                          </SelectItem>
+                        );
+                      })
+                    )}
                   </SelectContent>
                 </Select>
               </div>
@@ -385,9 +400,16 @@ export default function GrowLists() {
                       <SelectValue placeholder="Select type" />
                     </SelectTrigger>
                     <SelectContent>
-                      {plantTypes.map((type) => (
-                        <SelectItem key={type.id} value={type.name}>{type.name}</SelectItem>
-                      ))}
+                      {plantTypes.length === 0 ? (
+                        <div className="p-2 text-sm text-gray-500">No plant types available</div>
+                      ) : (
+                        plantTypes.map((type) => (
+                          <SelectItem key={type.id} value={type.common_name}>
+                            {type.icon && <span className="mr-2">{type.icon}</span>}
+                            {type.common_name}
+                          </SelectItem>
+                        ))
+                      )}
                     </SelectContent>
                   </Select>
                 </div>
