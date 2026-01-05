@@ -458,8 +458,7 @@ export default function PlantingModal({ open, onOpenChange, item, garden, onPlan
       toast.success('Added to stash - now click a cell to place');
       
       // Reload stash
-      const currentUser = await base44.auth.me();
-      const stashData = await base44.entities.SeedLot.filter({ is_wishlist: false, created_by: currentUser.email });
+      const stashData = await base44.entities.SeedLot.filter({ is_wishlist: false, created_by: user.email });
       setStashPlants(stashData);
       console.log('[PlantingModal] Reloaded stash, count:', stashData.length);
     } catch (error) {
