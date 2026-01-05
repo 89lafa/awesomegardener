@@ -33,6 +33,7 @@ import ForumAdmin from './pages/ForumAdmin';
 import GrowingProfile from './pages/GrowingProfile';
 import GardenDiary from './pages/GardenDiary';
 import IssuesLog from './pages/IssuesLog';
+import HarvestLog from './pages/HarvestLog';
 import __Layout from './Layout.jsx';
 
 
@@ -72,6 +73,7 @@ export const PAGES = {
     "GrowingProfile": GrowingProfile,
     "GardenDiary": GardenDiary,
     "IssuesLog": IssuesLog,
+    "HarvestLog": HarvestLog,
 }
 
 export const pagesConfig = {

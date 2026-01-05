@@ -19,7 +19,8 @@ import {
   Shield,
   Database,
   BookText,
-  Bug
+  Bug,
+  Apple
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -35,6 +36,7 @@ const getNavItems = (userRole, isEditor) => {
       { name: 'Tasks', icon: Calendar, page: 'CalendarTasks' },
       { name: 'Planting Calendar', icon: Sprout, page: 'CalendarPlanner' },
       { name: 'Diary', icon: BookText, page: 'GardenDiary' },
+      { name: 'Harvest Log', icon: Apple, page: 'HarvestLog' },
       { name: 'Issues Log', icon: Bug, page: 'IssuesLog' },
       { name: 'Browse Gardens', icon: Globe, page: 'BrowseGardens' },
       { name: 'Community Board', icon: MessageSquare, page: 'CommunityBoard' },
