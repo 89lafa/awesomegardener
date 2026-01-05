@@ -386,6 +386,18 @@ export default function GardenPlanting() {
   const calculateLayoutSchema = (item) => {
     const metadata = item.metadata || {};
     
+    // GREENHOUSE: Always use metadata.capacity (user-specified plant count)
+    if (item.item_type === 'GREENHOUSE') {
+      const capacity = metadata.capacity || 40; // Default to 40 if not set
+      return { type: 'slots', slots: capacity };
+    }
+    
+    // GROW_BAG / CONTAINER: Always 1 plant
+    if (item.item_type === 'GROW_BAG' || item.item_type === 'CONTAINER') {
+      return { type: 'slots', slots: 1 };
+    }
+    
+    // RAISED_BED with grid enabled
     if (metadata.gridEnabled) {
       const gridSize = metadata.gridSize || 12;
       return {
@@ -396,18 +408,7 @@ export default function GardenPlanting() {
       };
     }
     
-    if (item.item_type === 'GREENHOUSE') {
-      // Use metadata.capacity if set, otherwise calculate from grid
-      if (metadata.capacity) {
-        return { type: 'slots', slots: metadata.capacity };
-      }
-      // Fallback to grid calculation if no capacity set
-      const gridSize = metadata.gridSize || 12;
-      const cols = Math.floor(item.width / gridSize);
-      const rows = Math.floor(item.height / gridSize);
-      return { type: 'slots', slots: cols * rows };
-    }
-    
+    // IN_GROUND_BED / OPEN_PLOT: row-based
     if (item.item_type === 'IN_GROUND_BED' || item.item_type === 'OPEN_PLOT') {
       return {
         type: 'rows',
@@ -416,10 +417,7 @@ export default function GardenPlanting() {
       };
     }
     
-    if (item.item_type === 'GROW_BAG' || item.item_type === 'CONTAINER') {
-      return { type: 'slots', slots: 1 };
-    }
-    
+    // Default fallback
     return { type: 'slots', slots: 10 };
   };
 
