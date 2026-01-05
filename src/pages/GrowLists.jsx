@@ -52,6 +52,7 @@ export default function GrowLists() {
   const [gardens, setGardens] = useState([]);
   const [seeds, setSeeds] = useState([]);
   const [plantTypes, setPlantTypes] = useState([]);
+  const [profilesMap, setProfilesMap] = useState({});
   const [loading, setLoading] = useState(true);
   const [selectedList, setSelectedList] = useState(null);
   const [showNewDialog, setShowNewDialog] = useState(searchParams.get('action') === 'new');

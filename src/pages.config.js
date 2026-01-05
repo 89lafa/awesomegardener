@@ -1,16 +1,25 @@
 import AdminDataCleanup from './pages/AdminDataCleanup';
 import AdminDataImport from './pages/AdminDataImport';
+import BrowseGardens from './pages/BrowseGardens';
 import CalendarPlanner from './pages/CalendarPlanner';
 import CalendarTasks from './pages/CalendarTasks';
 import Community from './pages/Community';
+import CommunityBoard from './pages/CommunityBoard';
 import Dashboard from './pages/Dashboard';
 import EditVariety from './pages/EditVariety';
 import EditorReviewQueue from './pages/EditorReviewQueue';
 import FeatureRequests from './pages/FeatureRequests';
+import ForumAdmin from './pages/ForumAdmin';
+import ForumCategory from './pages/ForumCategory';
+import ForumTopic from './pages/ForumTopic';
 import GardenBuilder from './pages/GardenBuilder';
+import GardenDiary from './pages/GardenDiary';
 import GardenPlanting from './pages/GardenPlanting';
 import Gardens from './pages/Gardens';
 import GrowLists from './pages/GrowLists';
+import GrowingProfile from './pages/GrowingProfile';
+import HarvestLog from './pages/HarvestLog';
+import IssuesLog from './pages/IssuesLog';
 import Landing from './pages/Landing';
 import MyGarden from './pages/MyGarden';
 import Onboarding from './pages/Onboarding';
@@ -25,32 +34,32 @@ import SeedStash from './pages/SeedStash';
 import SeedStashDetail from './pages/SeedStashDetail';
 import Settings from './pages/Settings';
 import VarietyReviewQueue from './pages/VarietyReviewQueue';
-import BrowseGardens from './pages/BrowseGardens';
-import CommunityBoard from './pages/CommunityBoard';
-import ForumCategory from './pages/ForumCategory';
-import ForumTopic from './pages/ForumTopic';
-import ForumAdmin from './pages/ForumAdmin';
-import GrowingProfile from './pages/GrowingProfile';
-import GardenDiary from './pages/GardenDiary';
-import IssuesLog from './pages/IssuesLog';
-import HarvestLog from './pages/HarvestLog';
 import __Layout from './Layout.jsx';
 
 
 export const PAGES = {
     "AdminDataCleanup": AdminDataCleanup,
     "AdminDataImport": AdminDataImport,
+    "BrowseGardens": BrowseGardens,
     "CalendarPlanner": CalendarPlanner,
     "CalendarTasks": CalendarTasks,
     "Community": Community,
+    "CommunityBoard": CommunityBoard,
     "Dashboard": Dashboard,
     "EditVariety": EditVariety,
     "EditorReviewQueue": EditorReviewQueue,
     "FeatureRequests": FeatureRequests,
+    "ForumAdmin": ForumAdmin,
+    "ForumCategory": ForumCategory,
+    "ForumTopic": ForumTopic,
     "GardenBuilder": GardenBuilder,
+    "GardenDiary": GardenDiary,
     "GardenPlanting": GardenPlanting,
     "Gardens": Gardens,
     "GrowLists": GrowLists,
+    "GrowingProfile": GrowingProfile,
+    "HarvestLog": HarvestLog,
+    "IssuesLog": IssuesLog,
     "Landing": Landing,
     "MyGarden": MyGarden,
     "Onboarding": Onboarding,
@@ -65,15 +74,6 @@ export const PAGES = {
     "SeedStashDetail": SeedStashDetail,
     "Settings": Settings,
     "VarietyReviewQueue": VarietyReviewQueue,
-    "BrowseGardens": BrowseGardens,
-    "CommunityBoard": CommunityBoard,
-    "ForumCategory": ForumCategory,
-    "ForumTopic": ForumTopic,
-    "ForumAdmin": ForumAdmin,
-    "GrowingProfile": GrowingProfile,
-    "GardenDiary": GardenDiary,
-    "IssuesLog": IssuesLog,
-    "HarvestLog": HarvestLog,
 }
 
 export const pagesConfig = {

@@ -9,7 +9,9 @@ import {
   Loader2,
   Settings,
   Droplet,
-  Sun
+  Sun,
+  List,
+  CalendarDays
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -21,7 +23,9 @@ export default function CalendarPlanner() {
   const [user, setUser] = useState(null);
   const [seeds, setSeeds] = useState([]);
   const [profiles, setProfiles] = useState({});
+  const [plantings, setPlantings] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [viewMode, setViewMode] = useState('list'); // 'list' or 'calendar'
 
   useEffect(() => {
     loadData();
@@ -30,6 +34,23 @@ export default function CalendarPlanner() {
   const loadData = async () => {
     try {
       const userData = await base44.auth.me();
+      
+      // Load user's gardens and plantings to show on calendar
+      const gardensData = await base44.entities.Garden.filter({ 
+        archived: false,
+        created_by: userData.email 
+      });
+      
+      // Load all plantings from user's gardens
+      let allPlantings = [];
+      if (gardensData.length > 0) {
+        const gardenIds = gardensData.map(g => g.id);
+        for (const gardenId of gardenIds) {
+          const plantings = await base44.entities.PlantInstance.filter({ garden_id: gardenId });
+          allPlantings = [...allPlantings, ...plantings];
+        }
+      }
+      
       const [seedsData, profilesData] = await Promise.all([
         base44.entities.SeedLot.filter({ is_wishlist: false, created_by: userData.email }),
         base44.entities.PlantProfile.list('variety_name', 500)
@@ -43,6 +64,9 @@ export default function CalendarPlanner() {
         profilesMap[p.id] = p;
       });
       setProfiles(profilesMap);
+      
+      // Store plantings for calendar display
+      setPlantings(allPlantings);
     } catch (error) {
       console.error('Error loading data:', error);
     } finally {
@@ -204,12 +228,34 @@ export default function CalendarPlanner() {
             Personalized schedule for Zone {user.usda_zone || 'Unknown'} • Last Frost: {user.last_frost_date ? format(new Date(user.last_frost_date), 'MMM d') : 'Not Set'}
           </p>
         </div>
-        <Link to={createPageUrl('GrowingProfile')}>
-          <Button variant="outline" className="gap-2">
-            <Settings className="w-4 h-4" />
-            Edit Profile
-          </Button>
-        </Link>
+        <div className="flex gap-2">
+          <div className="flex border rounded-lg">
+            <Button
+              variant={viewMode === 'list' ? 'default' : 'ghost'}
+              size="sm"
+              onClick={() => setViewMode('list')}
+              className={viewMode === 'list' ? 'bg-emerald-600 hover:bg-emerald-700' : ''}
+            >
+              <List className="w-4 h-4 mr-2" />
+              List
+            </Button>
+            <Button
+              variant={viewMode === 'calendar' ? 'default' : 'ghost'}
+              size="sm"
+              onClick={() => setViewMode('calendar')}
+              className={viewMode === 'calendar' ? 'bg-emerald-600 hover:bg-emerald-700' : ''}
+            >
+              <CalendarDays className="w-4 h-4 mr-2" />
+              Calendar
+            </Button>
+          </div>
+          <Link to={createPageUrl('GrowingProfile')}>
+            <Button variant="outline" className="gap-2">
+              <Settings className="w-4 h-4" />
+              Edit Profile
+            </Button>
+          </Link>
+        </div>
       </div>
 
       {/* This Month */}
@@ -249,45 +295,83 @@ export default function CalendarPlanner() {
       </Card>
 
       {/* Full Planting Schedule */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Full Planting Schedule</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {allSchedules.length === 0 ? (
-            <p className="text-gray-500 text-center py-8">No seeds in your stash to schedule</p>
-          ) : (
-            <div className="space-y-4">
-              {allSchedules.map((schedule, idx) => (
-                <div key={idx} className="border-l-4 border-emerald-500 pl-4 py-2">
-                  <div className="flex items-start justify-between mb-2">
-                    <div>
-                      <h4 className="font-semibold text-gray-900">{schedule.variety}</h4>
-                      <p className="text-sm text-gray-600">{schedule.common_name}</p>
-                    </div>
-                    <div className="flex gap-2">
-                      {schedule.profile.sun_requirement && (
-                        <Badge variant="outline" className="text-xs">
-                          <Sun className="w-3 h-3 mr-1" />
-                          {schedule.profile.sun_requirement.replace('_', ' ')}
-                        </Badge>
-                      )}
-                    </div>
-                  </div>
-                  <div className="space-y-1 text-sm">
-                    {Object.entries(schedule.windows).map(([action, window]) => (
-                      <div key={action} className="flex items-center gap-2 text-gray-700">
-                        <span className="font-medium w-32">{window.label}:</span>
-                        <span>{format(window.start, 'MMM d')} - {format(window.end, 'MMM d')}</span>
+      {viewMode === 'list' ? (
+        <Card>
+          <CardHeader>
+            <CardTitle>Full Planting Schedule</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {allSchedules.length === 0 ? (
+              <p className="text-gray-500 text-center py-8">No seeds in your stash to schedule</p>
+            ) : (
+              <div className="space-y-4">
+                {allSchedules.map((schedule, idx) => (
+                  <div key={idx} className="border-l-4 border-emerald-500 pl-4 py-2">
+                    <div className="flex items-start justify-between mb-2">
+                      <div>
+                        <h4 className="font-semibold text-gray-900">{schedule.variety}</h4>
+                        <p className="text-sm text-gray-600">{schedule.common_name}</p>
                       </div>
-                    ))}
+                      <div className="flex gap-2">
+                        {schedule.profile.sun_requirement && (
+                          <Badge variant="outline" className="text-xs">
+                            <Sun className="w-3 h-3 mr-1" />
+                            {schedule.profile.sun_requirement.replace('_', ' ')}
+                          </Badge>
+                        )}
+                      </div>
+                    </div>
+                    <div className="space-y-1 text-sm">
+                      {Object.entries(schedule.windows).map(([action, window]) => (
+                        <div key={action} className="flex items-center gap-2 text-gray-700">
+                          <span className="font-medium w-32">{window.label}:</span>
+                          <span>{format(window.start, 'MMM d')} - {format(window.end, 'MMM d')}</span>
+                        </div>
+                      ))}
+                    </div>
                   </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      ) : (
+        <Card>
+          <CardHeader>
+            <CardTitle>Calendar View - Planted Items</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {plantings.length === 0 ? (
+              <p className="text-gray-500 text-center py-8">No plants added to your gardens yet</p>
+            ) : (
+              <div className="space-y-3">
+                {plantings.map((planting) => (
+                  <div key={planting.id} className="flex items-center gap-3 p-3 bg-emerald-50 rounded-lg border border-emerald-200">
+                    <div className="w-10 h-10 rounded-lg bg-emerald-600 flex items-center justify-center text-2xl">
+                      {planting.plant_type_icon || '🌱'}
+                    </div>
+                    <div className="flex-1">
+                      <p className="font-medium text-gray-900">{planting.display_name}</p>
+                      <p className="text-sm text-gray-600">
+                        Status: <span className="capitalize">{planting.status || 'planned'}</span>
+                        {planting.planned_sow_date && ` • Sow: ${format(new Date(planting.planned_sow_date), 'MMM d')}`}
+                        {planting.planned_transplant_date && ` • Transplant: ${format(new Date(planting.planned_transplant_date), 'MMM d')}`}
+                      </p>
+                    </div>
+                    <Badge variant="outline">
+                      {planting.status === 'planned' && 'Planned'}
+                      {planting.status === 'started' && 'Started'}
+                      {planting.status === 'transplanted' && 'Transplanted'}
+                      {planting.status === 'in_ground' && 'In Ground'}
+                      {planting.status === 'harvested' && 'Harvested'}
+                    </Badge>
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }
