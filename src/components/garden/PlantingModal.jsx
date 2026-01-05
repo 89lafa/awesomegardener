@@ -815,17 +815,17 @@ export default function PlantingModal({ open, onOpenChange, item, garden, onPlan
                     );
                   }
                   })
-                )}
-              </div>
-            )}
-            
-            {isMoving && (
-              <div className="mt-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
-                <p className="text-sm font-medium text-blue-900">
+                  )}
+                  </div>
+                  )}
+
+                  {isMoving && (
+                  <div className="mt-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
+                  <p className="text-sm font-medium text-blue-900">
                   Moving {selectedPlanting?.display_name}
-                </p>
-                <p className="text-xs text-blue-700 mt-1">Click a cell to place it</p>
-                <Button
+                  </p>
+                  <p className="text-xs text-blue-700 mt-1">Click a cell to place it</p>
+                  <Button
                   size="sm"
                   variant="outline"
                   onClick={() => {
@@ -833,16 +833,14 @@ export default function PlantingModal({ open, onOpenChange, item, garden, onPlan
                     setSelectedPlanting(null);
                   }}
                   className="w-full mt-2"
-                >
+                  >
                   Cancel Move
-                </Button>
-              </div>
-            )}
-          </div>
-        </div>
-        
-
-      </DialogContent>
-    </Dialog>
-  );
-}
+                  </Button>
+                  </div>
+                  )}
+                  </div>
+                  </div>
+                  </DialogContent>
+                  </Dialog>
+                  );
+                  }
