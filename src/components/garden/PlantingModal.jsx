@@ -81,15 +81,33 @@ export default function PlantingModal({ open, onOpenChange, item, garden, onPlan
       setLoading(true);
       const user = await base44.auth.me();
       const seasonKey = activeSeason || `${new Date().getFullYear()}-Spring`;
-      const [plantingsData, stashData, profilesData, varietiesData, typesData] = await Promise.all([
-        base44.entities.PlantInstance.filter({ bed_id: item.id, season_year: seasonKey }),
+
+      // Load all plantings for this bed, then filter client-side (same logic as PlotCanvas)
+      const [allPlantings, stashData, profilesData, varietiesData, typesData] = await Promise.all([
+        base44.entities.PlantInstance.filter({ bed_id: item.id }),
         base44.entities.SeedLot.filter({ is_wishlist: false, created_by: user.email }),
         base44.entities.PlantProfile.list('variety_name', 500),
         base44.entities.Variety.list('variety_name', 500),
         base44.entities.PlantType.list('common_name', 100)
       ]);
-      
-      console.log('[PlantingModal] Loaded:', plantingsData.length, 'plantings,', stashData.length, 'stash,', profilesData.length, 'profiles');
+
+      // Filter by season - same logic as PlotCanvas to handle old data without season_year
+      let plantingsData = allPlantings;
+      if (seasonKey) {
+        const currentYear = new Date().getFullYear();
+        const isCurrentYearSeason = seasonKey && seasonKey.startsWith(currentYear.toString());
+
+        plantingsData = allPlantings.filter(p => {
+          // If planting has no season_year (old data), only show in current year's season
+          if (!p.season_year) {
+            return isCurrentYearSeason;
+          }
+          // Otherwise, match the selected season exactly
+          return p.season_year === seasonKey;
+        });
+      }
+
+      console.log('[PlantingModal] Loaded:', plantingsData.length, 'plantings (filtered from', allPlantings.length, 'total) for season:', seasonKey);
       setPlantings(plantingsData);
       setStashPlants(stashData);
       
