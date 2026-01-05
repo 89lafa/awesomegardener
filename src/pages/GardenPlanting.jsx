@@ -63,12 +63,14 @@ function SpaceCard({ space, garden }) {
   const rows = space.layout_schema?.rows || 1;
   const slots = space.layout_schema?.slots || 1;
   
-  // Count OCCUPIED CELLS (not number of plants)
-  const filledCount = plantings.reduce((sum, p) => {
-    const spanCols = p.cell_span_cols || 1;
-    const spanRows = p.cell_span_rows || 1;
-    return sum + (spanCols * spanRows);
-  }, 0);
+  // Count OCCUPIED CELLS/SLOTS
+  const filledCount = isSlotsSpace 
+    ? plantings.length  // For slots, just count number of plants
+    : plantings.reduce((sum, p) => {  // For grid, count occupied cells
+        const spanCols = p.cell_span_cols || 1;
+        const spanRows = p.cell_span_rows || 1;
+        return sum + (spanCols * spanRows);
+      }, 0);
   
   const capacity = space.capacity;
   

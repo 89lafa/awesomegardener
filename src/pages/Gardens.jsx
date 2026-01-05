@@ -58,7 +58,12 @@ export default function Gardens() {
   const [showNewDialog, setShowNewDialog] = useState(searchParams.get('action') === 'new');
   const [showShareDialog, setShowShareDialog] = useState(false);
   const [selectedGarden, setSelectedGarden] = useState(null);
-  const [formData, setFormData] = useState({ name: '', description: '', privacy: 'private' });
+  const [formData, setFormData] = useState({ 
+    name: '', 
+    description: '', 
+    privacy: 'private',
+    year: new Date().getFullYear()
+  });
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -89,7 +94,8 @@ export default function Gardens() {
       const garden = await base44.entities.Garden.create({
         name: formData.name,
         description: formData.description,
-        privacy: formData.privacy
+        privacy: formData.privacy,
+        current_season_year: `${formData.year}-Spring`
       });
       
       // Create default plot
@@ -108,7 +114,12 @@ export default function Gardens() {
 
       setGardens([garden, ...gardens]);
       setShowNewDialog(false);
-      setFormData({ name: '', description: '', privacy: 'private' });
+      setFormData({ 
+        name: '', 
+        description: '', 
+        privacy: 'private',
+        year: new Date().getFullYear()
+      });
       toast.success('Garden created!');
     } catch (error) {
       console.error('Error creating garden:', error);
@@ -375,6 +386,16 @@ export default function Gardens() {
                 placeholder="What are you growing this season?"
                 value={formData.description}
                 onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                className="mt-2"
+              />
+            </div>
+            <div>
+              <Label htmlFor="year">Default Season Year</Label>
+              <Input
+                id="year"
+                type="number"
+                value={formData.year}
+                onChange={(e) => setFormData({ ...formData, year: parseInt(e.target.value) || new Date().getFullYear() })}
                 className="mt-2"
               />
             </div>

@@ -144,6 +144,7 @@ export default function PlantingModal({ open, onOpenChange, item, garden, onPlan
 
       const plantType = plantTypes.find(t => t.id === selectedPlant.plant_type_id || t.common_name === selectedPlant.plant_type_name);
       const icon = plantType?.icon || '🌱';
+      const plantFamily = plantType?.plant_family_id || selectedPlant.plant_family;
 
       console.log('[PlantingModal] Creating PlantInstance in slot', slotIdx, 'for bed', item.id);
       const planting = await base44.entities.PlantInstance.create({
@@ -152,6 +153,7 @@ export default function PlantingModal({ open, onOpenChange, item, garden, onPlan
         space_id: item.id,
         plant_type_id: selectedPlant.plant_type_id,
         plant_type_icon: icon,
+        plant_family: plantFamily,
         variety_id: selectedPlant.variety_id,
         display_name: displayName,
         placement_mode: 'slot',
@@ -159,6 +161,7 @@ export default function PlantingModal({ open, onOpenChange, item, garden, onPlan
         cell_row: 0,
         cell_span_cols: 1,
         cell_span_rows: 1,
+        season_year: new Date().getFullYear().toString() + '-Spring',
         status: 'planned'
       });
 
@@ -223,6 +226,7 @@ export default function PlantingModal({ open, onOpenChange, item, garden, onPlan
         // Get icon from PlantType
         const plantType = plantTypes.find(t => t.id === selectedPlant.plant_type_id || t.common_name === selectedPlant.plant_type_name);
         const icon = plantType?.icon || '🌱';
+        const plantFamily = plantType?.plant_family_id || selectedPlant.plant_family;
 
         console.log('[PlantingModal] Creating PlantInstance at', col, row, 'for bed', item.id);
         const planting = await base44.entities.PlantInstance.create({
@@ -233,6 +237,7 @@ export default function PlantingModal({ open, onOpenChange, item, garden, onPlan
           cell_y: row,
           plant_type_id: selectedPlant.plant_type_id,
           plant_type_icon: icon,
+          plant_family: plantFamily,
           variety_id: selectedPlant.variety_id,
           display_name: displayName,
           placement_mode: 'grid_cell',
@@ -240,6 +245,7 @@ export default function PlantingModal({ open, onOpenChange, item, garden, onPlan
           cell_row: row,
           cell_span_cols: selectedPlant.spacing_cols,
           cell_span_rows: selectedPlant.spacing_rows,
+          season_year: new Date().getFullYear().toString() + '-Spring',
           status: 'planned'
         });
 
@@ -309,46 +315,59 @@ export default function PlantingModal({ open, onOpenChange, item, garden, onPlan
     checkCompanionAndRotation(plantData);
   };
 
-  const checkCompanionAndRotation = (plantData) => {
-    if (!plantData) return;
+  const checkCompanionAndRotation = async (plantData) => {
+    if (!plantData || !plantData.plant_type_id) {
+      setCompanionWarning(null);
+      setRotationWarning(null);
+      return;
+    }
     
-    // Check companions - look for adjacent plantings
-    const adjacentPlantings = plantings.filter(p => {
-      // For grid-based, check if within 1 cell radius
-      // For slot-based, check if in same bed
-      return p.id !== selectedPlanting?.id;
-    });
-    
-    // Check for companion warnings (simple check)
-    let hasCompanionIssue = false;
-    for (const adj of adjacentPlantings) {
-      // Check if families are incompatible (basic example - tomatoes/peppers ok, but brassicas not)
-      if (plantData.plant_family && adj.plant_family) {
-        // Example: Brassicas don't like Solanaceae
-        if ((plantData.plant_family === 'Brassicaceae' && adj.plant_family === 'Solanaceae') ||
-            (plantData.plant_family === 'Solanaceae' && adj.plant_family === 'Brassicaceae')) {
+    try {
+      // Load companion rules for this plant type
+      const companionRules = await base44.entities.CompanionRule.filter({
+        plant_type_id: plantData.plant_type_id
+      });
+      
+      // Check companions - look for existing plantings in this bed
+      const bedPlantings = plantings.filter(p => p.bed_id === item.id && p.id !== selectedPlanting?.id);
+      
+      let hasCompanionIssue = false;
+      for (const existing of bedPlantings) {
+        // Check if there's a BAD companion rule
+        const badRule = companionRules.find(r => 
+          r.companion_type === 'BAD' && 
+          r.companion_plant_type_id === existing.plant_type_id
+        );
+        
+        if (badRule) {
           hasCompanionIssue = true;
-          setCompanionWarning(`⚠️ ${plantData.plant_type_name} and ${adj.display_name} are not ideal companions`);
+          setCompanionWarning(`⚠️ ${plantData.plant_type_name} should not be planted near ${existing.display_name}`);
           break;
         }
       }
-    }
-    
-    if (!hasCompanionIssue) {
-      setCompanionWarning(null);
-    }
-    
-    // Check rotation - look for same family in this bed last season
-    const lastSeasonPlantings = plantings.filter(p => 
-      p.bed_id === item.id && 
-      p.plant_family === plantData.plant_family &&
-      p.season_year && p.season_year !== new Date().getFullYear().toString()
-    );
-    
-    if (lastSeasonPlantings.length > 0) {
-      setRotationWarning(`⚠️ Same family (${plantData.plant_family}) was grown in this bed last season`);
-    } else {
-      setRotationWarning(null);
+      
+      if (!hasCompanionIssue) {
+        setCompanionWarning(null);
+      }
+      
+      // Check rotation - look for same family in this bed from previous year
+      const currentYear = new Date().getFullYear();
+      const lastYearPlantings = plantings.filter(p => 
+        p.bed_id === item.id && 
+        p.plant_family && 
+        plantData.plant_family &&
+        p.plant_family === plantData.plant_family &&
+        p.season_year && 
+        !p.season_year.startsWith(currentYear.toString())
+      );
+      
+      if (lastYearPlantings.length > 0) {
+        setRotationWarning(`⚠️ Rotation: ${plantData.plant_family} family was grown here last season`);
+      } else {
+        setRotationWarning(null);
+      }
+    } catch (error) {
+      console.error('Error checking companions:', error);
     }
   };
   
@@ -401,12 +420,25 @@ export default function PlantingModal({ open, onOpenChange, item, garden, onPlan
         }
       }
       
-      // Add to stash
-      const newSeedLot = await base44.entities.SeedLot.create({
+      // Check if already in stash to prevent duplicates
+      const currentUser = await base44.auth.me();
+      const existingStash = await base44.entities.SeedLot.filter({
         plant_profile_id: profileId,
-        is_wishlist: false
+        is_wishlist: false,
+        created_by: currentUser.email
       });
-      console.log('[PlantingModal] Created SeedLot:', newSeedLot.id);
+      
+      let newSeedLot;
+      if (existingStash.length > 0) {
+        newSeedLot = existingStash[0];
+        console.log('[PlantingModal] Using existing SeedLot:', newSeedLot.id);
+      } else {
+        newSeedLot = await base44.entities.SeedLot.create({
+          plant_profile_id: profileId,
+          is_wishlist: false
+        });
+        console.log('[PlantingModal] Created new SeedLot:', newSeedLot.id);
+      }
       
       // Select for placing
       const selectedPlantData = {
