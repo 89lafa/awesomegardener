@@ -65,6 +65,16 @@ export default function PlantingModal({ open, onOpenChange, item, garden, onPlan
         base44.entities.Variety.list('variety_name', 500),
         base44.entities.PlantType.list('common_name', 100)
       ]);
+
+      // Build set of stash variety keys for deduplication
+      const stashVarietyKeys = new Set();
+      stashData.forEach(lot => {
+        const prof = profilesData.find(p => p.id === lot.plant_profile_id);
+        if (prof) {
+          stashVarietyKeys.add(`${prof.plant_type_id}_${prof.variety_name}`);
+        }
+      });
+      setStashVarietyKeys(stashVarietyKeys);
       
       console.log('[PlantingModal] Loaded:', plantingsData.length, 'plantings,', stashData.length, 'stash,', profilesData.length, 'profiles');
       setPlantings(plantingsData);

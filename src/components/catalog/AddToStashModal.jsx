@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
+import { createPageUrl } from '@/utils';
 import {
   Dialog,
   DialogContent,
@@ -23,6 +24,8 @@ import { Loader2 } from 'lucide-react';
 
 export default function AddToStashModal({ open, onOpenChange, variety, plantType, onSuccess }) {
   const [saving, setSaving] = useState(false);
+  const [alreadyExists, setAlreadyExists] = useState(false);
+  const [existingLotId, setExistingLotId] = useState(null);
   const [formData, setFormData] = useState({
     quantity: '',
     unit: 'seeds',
@@ -33,6 +36,40 @@ export default function AddToStashModal({ open, onOpenChange, variety, plantType
     lot_notes: '',
     storage_location: ''
   });
+
+  useEffect(() => {
+    if (open && variety) {
+      checkIfExists();
+    }
+  }, [open, variety]);
+
+  const checkIfExists = async () => {
+    try {
+      const user = await base44.auth.me();
+      const existingProfiles = await base44.entities.PlantProfile.filter({
+        variety_name: variety.variety_name,
+        plant_type_id: variety.plant_type_id
+      });
+      
+      if (existingProfiles.length > 0) {
+        const existingLots = await base44.entities.SeedLot.filter({
+          plant_profile_id: existingProfiles[0].id,
+          created_by: user.email
+        });
+        
+        if (existingLots.length > 0) {
+          setAlreadyExists(true);
+          setExistingLotId(existingLots[0].id);
+          return;
+        }
+      }
+      
+      setAlreadyExists(false);
+      setExistingLotId(null);
+    } catch (error) {
+      console.error('Error checking if exists:', error);
+    }
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -134,7 +171,25 @@ export default function AddToStashModal({ open, onOpenChange, variety, plantType
           </p>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        {alreadyExists ? (
+          <div className="py-8 text-center">
+            <div className="w-16 h-16 rounded-full bg-emerald-100 flex items-center justify-center mx-auto mb-4">
+              <Package className="w-8 h-8 text-emerald-600" />
+            </div>
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">Already in Seed Stash</h3>
+            <p className="text-gray-600 mb-6">This variety is already in your seed collection.</p>
+            <div className="flex gap-2 justify-center">
+              <Button variant="outline" onClick={() => onOpenChange(false)}>Close</Button>
+              <Button 
+                onClick={() => window.location.href = createPageUrl('SeedStashDetail') + `?id=${existingLotId}`}
+                className="bg-emerald-600 hover:bg-emerald-700"
+              >
+                View in Stash
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <form onSubmit={handleSubmit} className="space-y-4">
           <div className="grid grid-cols-2 gap-3">
             <div>
               <Label htmlFor="quantity">Quantity</Label>
@@ -249,6 +304,7 @@ export default function AddToStashModal({ open, onOpenChange, variety, plantType
             </Button>
           </DialogFooter>
         </form>
+        )}
       </DialogContent>
     </Dialog>
   );

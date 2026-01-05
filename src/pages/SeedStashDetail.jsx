@@ -15,7 +15,8 @@ import {
   Star,
   Sun,
   Droplets,
-  Ruler
+  Ruler,
+  Plus
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -52,6 +53,7 @@ export default function SeedStashDetail() {
   const [showEditLot, setShowEditLot] = useState(false);
   const [profileForm, setProfileForm] = useState({});
   const [lotForm, setLotForm] = useState({});
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
 
   useEffect(() => {
     if (seedId) {
@@ -142,6 +144,39 @@ export default function SeedStashDetail() {
     } catch (error) {
       console.error('Error updating lot:', error);
       toast.error('Failed to update lot');
+    }
+  };
+
+  const handlePhotoUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setUploadingPhoto(true);
+    try {
+      const { file_url } = await base44.integrations.Core.UploadFile({ file });
+      const updatedImages = [...(seed.lot_images || []), file_url];
+      await base44.entities.SeedLot.update(seed.id, { lot_images: updatedImages });
+      setSeed({ ...seed, lot_images: updatedImages });
+      setLotForm({ ...lotForm, lot_images: updatedImages });
+      toast.success('Photo added');
+    } catch (error) {
+      console.error('Error uploading photo:', error);
+      toast.error('Failed to upload photo');
+    } finally {
+      setUploadingPhoto(false);
+    }
+  };
+
+  const handleDeletePhoto = async (photoUrl) => {
+    try {
+      const updatedImages = seed.lot_images.filter(url => url !== photoUrl);
+      await base44.entities.SeedLot.update(seed.id, { lot_images: updatedImages });
+      setSeed({ ...seed, lot_images: updatedImages });
+      setLotForm({ ...lotForm, lot_images: updatedImages });
+      toast.success('Photo removed');
+    } catch (error) {
+      console.error('Error deleting photo:', error);
+      toast.error('Failed to delete photo');
     }
   };
 
@@ -300,6 +335,19 @@ export default function SeedStashDetail() {
                 )}
               </div>
 
+              {profile.traits && Array.isArray(profile.traits) && profile.traits.length > 0 && (
+                <div className="pt-3 border-t">
+                  <p className="text-xs text-gray-500 mb-2">Traits</p>
+                  <div className="flex flex-wrap gap-1">
+                    {profile.traits.map((trait, idx) => (
+                      <Badge key={idx} variant="secondary" className="text-xs">
+                        {trait}
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               {profile.notes_public && (
                 <div className="pt-3 border-t">
                   <p className="text-sm text-gray-600 whitespace-pre-wrap">{profile.notes_public}</p>
@@ -361,7 +409,7 @@ export default function SeedStashDetail() {
               </div>
             )}
             {seed.storage_location && (
-              <div className="flex items-center justify-between py-2">
+              <div className="flex items-center justify-between py-2 border-b">
                 <span className="text-gray-600 flex items-center gap-2">
                   <MapPin className="w-4 h-4" />
                   Storage
@@ -369,8 +417,45 @@ export default function SeedStashDetail() {
                 <span className="font-medium">{seed.storage_location}</span>
               </div>
             )}
+            {age > 0 && (
+              <div className="flex items-center justify-between py-2">
+                <span className="text-gray-600">Seed Age</span>
+                <Badge variant="outline" className={cn(
+                  ageStatus.status === 'AGING' && "border-amber-500 text-amber-700",
+                  ageStatus.status === 'OLD' && "border-red-500 text-red-700"
+                )}>
+                  {age} year{age !== 1 ? 's' : ''}
+                </Badge>
+              </div>
+            )}
           </CardContent>
         </Card>
+
+        {/* Photos Card */}
+        {seed.lot_images && seed.lot_images.length > 0 && (
+          <Card className="lg:col-span-3">
+            <CardHeader>
+              <CardTitle>Photos</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+                {seed.lot_images.map((url, idx) => (
+                  <div key={idx} className="relative group">
+                    <img src={url} alt="Seed lot" className="w-full h-40 object-cover rounded-lg" />
+                    <Button
+                      variant="destructive"
+                      size="icon"
+                      className="absolute top-2 right-2 h-8 w-8 opacity-0 group-hover:opacity-100"
+                      onClick={() => handleDeletePhoto(url)}
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
       </div>
 
@@ -616,6 +701,49 @@ export default function SeedStashDetail() {
                 className="mt-2"
                 rows={3}
               />
+            </div>
+
+            <div>
+              <Label>Photos</Label>
+              <div className="mt-2 space-y-2">
+                {seed.lot_images?.length > 0 && (
+                  <div className="grid grid-cols-3 gap-2">
+                    {seed.lot_images.map((url, idx) => (
+                      <div key={idx} className="relative group">
+                        <img src={url} alt="Seed lot" className="w-full h-24 object-cover rounded-lg" />
+                        <Button
+                          variant="destructive"
+                          size="icon"
+                          className="absolute top-1 right-1 h-6 w-6 opacity-0 group-hover:opacity-100"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            handleDeletePhoto(url);
+                          }}
+                        >
+                          <Trash2 className="w-3 h-3" />
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={uploadingPhoto}
+                  onClick={() => document.getElementById('photo-upload').click()}
+                  className="w-full"
+                >
+                  {uploadingPhoto ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Plus className="w-4 h-4 mr-2" />}
+                  Add Photo
+                </Button>
+                <input
+                  id="photo-upload"
+                  type="file"
+                  accept="image/*"
+                  onChange={handlePhotoUpload}
+                  className="hidden"
+                />
+              </div>
             </div>
           </div>
           <DialogFooter>

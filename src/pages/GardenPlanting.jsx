@@ -234,6 +234,7 @@ export default function GardenPlanting() {
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
   const [syncResult, setSyncResult] = useState(null);
+  const [spaceTypeFilter, setSpaceTypeFilter] = useState('all');
 
   useEffect(() => {
     loadData();
@@ -543,17 +544,7 @@ export default function GardenPlanting() {
             )}
           </div>
           <div className="flex gap-2">
-            {activeGarden && (
-              <Button 
-                onClick={handleDeleteGarden}
-                variant="outline"
-                className="gap-2 text-red-600 hover:text-red-700"
-              >
-                <Trash2 className="w-4 h-4" />
-                Delete
-              </Button>
-            )}
-            <Link to={createPageUrl('MyGarden') + `?gardenId=${activeGarden?.id}`}>
+          <Link to={createPageUrl('MyGarden') + `?gardenId=${activeGarden?.id}`}>
               <Button variant="outline" className="gap-2">
                 <Settings className="w-4 h-4" />
                 Edit Layout
@@ -580,6 +571,35 @@ export default function GardenPlanting() {
           </Alert>
         )}
 
+        {/* Space Type Filters */}
+        {plantingSpaces.length > 0 && (
+          <div className="flex flex-wrap gap-2">
+            <Button
+              variant={spaceTypeFilter === 'all' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setSpaceTypeFilter('all')}
+              className={spaceTypeFilter === 'all' ? 'bg-emerald-600 hover:bg-emerald-700' : ''}
+            >
+              All ({plantingSpaces.length})
+            </Button>
+            {['RAISED_BED', 'GROW_BAG', 'CONTAINER', 'GREENHOUSE', 'IN_GROUND_BED', 'OPEN_PLOT'].map(type => {
+              const count = plantingSpaces.filter(s => s.space_type === type).length;
+              if (count === 0) return null;
+              return (
+                <Button
+                  key={type}
+                  variant={spaceTypeFilter === type ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setSpaceTypeFilter(type)}
+                  className={spaceTypeFilter === type ? 'bg-emerald-600 hover:bg-emerald-700' : ''}
+                >
+                  {type.replace(/_/g, ' ').split(' ').map(w => w.charAt(0) + w.slice(1).toLowerCase()).join(' ')} ({count})
+                </Button>
+              );
+            })}
+          </div>
+        )}
+
         {/* No Spaces State */}
         {plantingSpaces.length === 0 && (
           <Alert>
@@ -594,9 +614,11 @@ export default function GardenPlanting() {
         {/* Planting Spaces List */}
         {plantingSpaces.length > 0 && (
           <div className="grid gap-6" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))' }}>
-            {plantingSpaces.map((space) => (
-              <SpaceCard key={space.id} space={space} garden={activeGarden} />
-            ))}
+            {plantingSpaces
+              .filter(space => spaceTypeFilter === 'all' || space.space_type === spaceTypeFilter)
+              .map((space) => (
+                <SpaceCard key={space.id} space={space} garden={activeGarden} />
+              ))}
           </div>
         )}
       </div>
