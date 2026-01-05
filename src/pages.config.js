@@ -27,6 +27,9 @@ import Settings from './pages/Settings';
 import VarietyReviewQueue from './pages/VarietyReviewQueue';
 import BrowseGardens from './pages/BrowseGardens';
 import CommunityBoard from './pages/CommunityBoard';
+import ForumCategory from './pages/ForumCategory';
+import ForumTopic from './pages/ForumTopic';
+import ForumAdmin from './pages/ForumAdmin';
 import __Layout from './Layout.jsx';
 
 
@@ -60,6 +63,9 @@ export const PAGES = {
     "VarietyReviewQueue": VarietyReviewQueue,
     "BrowseGardens": BrowseGardens,
     "CommunityBoard": CommunityBoard,
+    "ForumCategory": ForumCategory,
+    "ForumTopic": ForumTopic,
+    "ForumAdmin": ForumAdmin,
 }
 
 export const pagesConfig = {
