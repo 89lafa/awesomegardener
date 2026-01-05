@@ -177,9 +177,9 @@ export default function PlantingModal({ open, onOpenChange, item, garden, onPlan
         cell_row: 0,
         cell_span_cols: 1,
         cell_span_rows: 1,
-        season_year: new Date().getFullYear().toString() + '-Spring',
+        season_year: activeSeason || `${new Date().getFullYear()}-Spring`,
         status: 'planned'
-      });
+        });
 
       console.log('[PlantingModal] Created PlantInstance:', planting.id);
       setPlantings([...plantings, planting]);
