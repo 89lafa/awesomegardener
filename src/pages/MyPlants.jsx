@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
-import { Sprout, Plus, Filter, Calendar, Loader2, Image as ImageIcon } from 'lucide-react';
+import { Sprout, Plus, Loader2, Image as ImageIcon, Upload } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -12,7 +12,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   Dialog,
   DialogContent,
@@ -49,7 +48,6 @@ export default function MyPlants() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedPlant, setSelectedPlant] = useState(null);
   const [showAddPlant, setShowAddPlant] = useState(false);
-  const [showPhotoUpload, setShowPhotoUpload] = useState(false);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
   
   const [newPlant, setNewPlant] = useState({
@@ -74,11 +72,19 @@ export default function MyPlants() {
       const userData = await base44.auth.me();
       setUser(userData);
 
-      const gardensData = await base44.entities.Garden.filter({
-        archived: false,
-        created_by: userData.email
-      }, '-updated_date');
+      const [gardensData, profilesData] = await Promise.all([
+        base44.entities.Garden.filter({
+          archived: false,
+          created_by: userData.email
+        }, '-updated_date'),
+        base44.entities.PlantProfile.list('variety_name', 500)
+      ]);
+
       setGardens(gardensData);
+
+      const profilesMap = {};
+      profilesData.forEach(p => { profilesMap[p.id] = p; });
+      setProfiles(profilesMap);
 
       if (gardensData.length > 0) {
         const garden = gardensData[0];
@@ -93,12 +99,6 @@ export default function MyPlants() {
           setActiveSeason(seasonsData[0]);
         }
       }
-
-      // Load profiles
-      const profilesData = await base44.entities.PlantProfile.list('variety_name', 500);
-      const profilesMap = {};
-      profilesData.forEach(p => { profilesMap[p.id] = p; });
-      setProfiles(profilesMap);
     } catch (error) {
       console.error('Error loading data:', error);
     } finally {
@@ -185,8 +185,9 @@ export default function MyPlants() {
       });
 
       await loadMyPlants();
+      const updatedPlant = myPlants.find(p => p.id === selectedPlant.id);
+      setSelectedPlant(updatedPlant);
       toast.success('Photo added!');
-      setShowPhotoUpload(false);
     } catch (error) {
       console.error('Error uploading photo:', error);
       toast.error('Failed to upload photo');
@@ -256,16 +257,21 @@ export default function MyPlants() {
             onChange={(e) => setSearchQuery(e.target.value)}
           />
         </div>
-        <Select value={activeGarden?.id} onValueChange={(id) => setActiveGarden(gardens.find(g => g.id === id))}>
-          <SelectTrigger className="w-48">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {gardens.map(g => (
-              <SelectItem key={g.id} value={g.id}>{g.name}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        {gardens.length > 1 && (
+          <Select value={activeGarden?.id} onValueChange={(id) => {
+            const garden = gardens.find(g => g.id === id);
+            setActiveGarden(garden);
+          }}>
+            <SelectTrigger className="w-48">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {gardens.map(g => (
+                <SelectItem key={g.id} value={g.id}>{g.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
         <Select value={activeSeason?.id} onValueChange={(id) => setActiveSeason(seasons.find(s => s.id === id))}>
           <SelectTrigger className="w-36">
             <SelectValue />
@@ -374,13 +380,20 @@ export default function MyPlants() {
               <Label>Variety</Label>
               <Select
                 value={newPlant.plant_profile_id}
-                onValueChange={(v) => setNewPlant({ ...newPlant, plant_profile_id: v })}
+                onValueChange={(v) => {
+                  const profile = profiles[v];
+                  setNewPlant({ 
+                    ...newPlant, 
+                    plant_profile_id: v,
+                    name: profile?.variety_name || ''
+                  });
+                }}
               >
                 <SelectTrigger className="mt-2">
                   <SelectValue placeholder="Select variety" />
                 </SelectTrigger>
-                <SelectContent>
-                  {Object.values(profiles).map(p => (
+                <SelectContent className="max-h-64">
+                  {Object.values(profiles).slice(0, 100).map(p => (
                     <SelectItem key={p.id} value={p.id}>
                       {p.variety_name} ({p.common_name})
                     </SelectItem>
@@ -420,6 +433,7 @@ export default function MyPlants() {
                 onChange={(e) => setNewPlant({ ...newPlant, notes: e.target.value })}
                 placeholder="Add notes..."
                 className="mt-2"
+                rows={3}
               />
             </div>
           </div>
@@ -427,6 +441,7 @@ export default function MyPlants() {
             <Button variant="outline" onClick={() => setShowAddPlant(false)}>Cancel</Button>
             <Button
               onClick={handleAddPlant}
+              disabled={!newPlant.plant_profile_id}
               className="bg-emerald-600 hover:bg-emerald-700"
             >
               Add Plant
@@ -438,7 +453,7 @@ export default function MyPlants() {
       {/* Plant Detail Modal */}
       {selectedPlant && (
         <Dialog open={!!selectedPlant} onOpenChange={() => setSelectedPlant(null)}>
-          <DialogContent className="max-w-2xl">
+          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>
                 {selectedPlant.name || profiles[selectedPlant.plant_profile_id]?.variety_name}
@@ -462,70 +477,87 @@ export default function MyPlants() {
                 </Select>
               </div>
 
-              {selectedPlant.photos && selectedPlant.photos.length > 0 && (
-                <div>
+              <div>
+                <div className="flex items-center justify-between mb-2">
                   <Label>Photos</Label>
-                  <div className="grid grid-cols-3 gap-2 mt-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => document.getElementById('photo-upload-input').click()}
+                    disabled={uploadingPhoto}
+                  >
+                    {uploadingPhoto ? (
+                      <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                    ) : (
+                      <Upload className="w-4 h-4 mr-2" />
+                    )}
+                    Add Photo
+                  </Button>
+                  <input
+                    id="photo-upload-input"
+                    type="file"
+                    accept="image/*"
+                    onChange={handlePhotoUpload}
+                    className="hidden"
+                  />
+                </div>
+                {selectedPlant.photos && selectedPlant.photos.length > 0 && (
+                  <div className="grid grid-cols-3 gap-2">
                     {selectedPlant.photos.map((photo, idx) => (
                       <img
                         key={idx}
                         src={photo.url}
                         alt={photo.caption || 'Plant photo'}
-                        className="w-full h-24 object-cover rounded"
+                        className="w-full h-24 object-cover rounded border"
                       />
                     ))}
                   </div>
-                </div>
-              )}
-
-              <Button
-                variant="outline"
-                className="w-full"
-                onClick={() => setShowPhotoUpload(true)}
-              >
-                <ImageIcon className="w-4 h-4 mr-2" />
-                Add Photo
-              </Button>
+                )}
+                {(!selectedPlant.photos || selectedPlant.photos.length === 0) && (
+                  <div className="text-center py-8 bg-gray-50 rounded-lg">
+                    <ImageIcon className="w-8 h-8 text-gray-300 mx-auto mb-2" />
+                    <p className="text-sm text-gray-500">No photos yet</p>
+                  </div>
+                )}
+              </div>
 
               {selectedPlant.notes && (
                 <div>
                   <Label>Notes</Label>
-                  <p className="text-sm text-gray-700 mt-2">{selectedPlant.notes}</p>
+                  <p className="text-sm text-gray-700 mt-2 whitespace-pre-wrap">{selectedPlant.notes}</p>
                 </div>
               )}
 
               {/* Milestones */}
-              <div className="space-y-2 text-sm">
-                {selectedPlant.germination_date && (
-                  <p className="text-gray-600">
-                    🌱 Germinated: {format(new Date(selectedPlant.germination_date), 'MMM d, yyyy')}
-                  </p>
-                )}
-                {selectedPlant.transplant_date && (
-                  <p className="text-gray-600">
-                    🪴 Transplanted: {format(new Date(selectedPlant.transplant_date), 'MMM d, yyyy')}
-                  </p>
-                )}
-                {selectedPlant.first_harvest_date && (
-                  <p className="text-gray-600">
-                    ✂️ First Harvest: {format(new Date(selectedPlant.first_harvest_date), 'MMM d, yyyy')}
-                  </p>
-                )}
+              <div>
+                <Label>Milestones</Label>
+                <div className="space-y-2 mt-2 text-sm">
+                  {selectedPlant.germination_date ? (
+                    <p className="text-gray-600">
+                      🌱 Germinated: {format(new Date(selectedPlant.germination_date), 'MMM d, yyyy')}
+                    </p>
+                  ) : (
+                    <p className="text-gray-400">🌱 Not germinated yet</p>
+                  )}
+                  {selectedPlant.transplant_date ? (
+                    <p className="text-gray-600">
+                      🪴 Transplanted: {format(new Date(selectedPlant.transplant_date), 'MMM d, yyyy')}
+                    </p>
+                  ) : (
+                    <p className="text-gray-400">🪴 Not transplanted yet</p>
+                  )}
+                  {selectedPlant.first_harvest_date ? (
+                    <p className="text-gray-600">
+                      ✂️ First Harvest: {format(new Date(selectedPlant.first_harvest_date), 'MMM d, yyyy')}
+                    </p>
+                  ) : (
+                    <p className="text-gray-400">✂️ Not harvested yet</p>
+                  )}
+                </div>
               </div>
             </div>
           </DialogContent>
         </Dialog>
-      )}
-
-      {/* Photo Upload Input */}
-      {showPhotoUpload && (
-        <input
-          type="file"
-          accept="image/*"
-          onChange={handlePhotoUpload}
-          className="hidden"
-          id="photo-upload"
-        />
       )}
     </div>
   );
