@@ -172,7 +172,7 @@ function SpaceCard({ space, garden }) {
               }}
             >
               {Array.from({ length: slots }).map((_, idx) => {
-                const plant = plantings[idx];
+                const plant = plantings.find(p => p.cell_col === idx);
                 return (
                   <div
                     key={idx}
@@ -182,7 +182,7 @@ function SpaceCard({ space, garden }) {
                         ? "bg-emerald-500 border-emerald-600" 
                         : "bg-white border-amber-300"
                     )}
-                    title={plant ? (plant.display_name || plant.plant_display_name) : 'Empty slot'}
+                    title={plant ? (plant.display_name || 'Plant') : 'Empty slot'}
                   >
                     {plant && <span className="text-lg">{plant.plant_type_icon || '🌱'}</span>}
                   </div>
