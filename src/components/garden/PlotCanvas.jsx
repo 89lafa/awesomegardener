@@ -509,6 +509,11 @@ export default function PlotCanvas({ garden, plot, activeSeason, onPlotUpdate, o
   };
 
   const handleCanvasMouseDown = (e) => {
+    // Ignore clicks on buttons/controls
+    if (e.target.closest('button') || e.target.closest('.plot-item-controls')) {
+      return;
+    }
+
     const rect = canvasRef.current.getBoundingClientRect();
     const x = (e.clientX - rect.left) / zoom;
     const y = (e.clientY - rect.top) / zoom;
@@ -524,7 +529,7 @@ export default function PlotCanvas({ garden, plot, activeSeason, onPlotUpdate, o
       setDraggingItem(clickedItem);
       setDragStartPos({ x: e.clientX, y: e.clientY });
       setDragOffset({ x: x - clickedItem.x, y: y - clickedItem.y });
-      
+
       // Prevent text selection
       document.body.style.userSelect = 'none';
     } else {
@@ -569,9 +574,9 @@ export default function PlotCanvas({ garden, plot, activeSeason, onPlotUpdate, o
   const handleCanvasMouseUp = async () => {
     if (draggingItem) {
       const item = items.find(i => i.id === draggingItem.id);
-      
+
       // Only save if actually dragged
-      if (isDragging) {
+      if (isDragging && item) {
         try {
           console.log('[LAYOUT] Saving position for', item.label, 'x=', item.x, 'y=', item.y);
           await base44.entities.PlotItem.update(item.id, { x: item.x, y: item.y });
@@ -582,7 +587,7 @@ export default function PlotCanvas({ garden, plot, activeSeason, onPlotUpdate, o
           console.error('Error updating position:', error);
         }
       }
-      
+
       setDraggingItem(null);
       setIsDragging(false);
       document.body.style.userSelect = '';
@@ -1020,17 +1025,17 @@ export default function PlotCanvas({ garden, plot, activeSeason, onPlotUpdate, o
             const itemType = ITEM_TYPES.find(t => t.value === item.item_type);
             const status = itemType?.plantable ? getPlantingStatus(item.id) : null;
             const counts = itemsPlantingCounts[item.id];
-            
+
             return (
             <div
               key={item.id}
               className={cn(
-                "absolute border-4 rounded-lg flex items-center justify-center text-sm font-medium overflow-hidden plot-item",
-                selectedItem?.id === item.id && "ring-2 ring-emerald-100",
+                "absolute border-4 rounded-lg flex items-center justify-center text-sm font-medium overflow-hidden plot-item group",
+                selectedItem?.id === item.id && "ring-4 ring-emerald-300",
                 !status && "border-gray-400",
                 status?.status === 'empty' && "border-gray-400",
-                status?.status === 'partial' && "border-amber-500",
-                status?.status === 'full' && "border-emerald-600"
+                status?.status === 'partial' && "border-amber-500 bg-amber-500/5",
+                status?.status === 'full' && "border-emerald-600 bg-emerald-500/5"
               )}
               style={{
                 left: item.x * zoom,
@@ -1041,17 +1046,28 @@ export default function PlotCanvas({ garden, plot, activeSeason, onPlotUpdate, o
                 cursor: isDragging && draggingItem?.id === item.id ? 'grabbing' : 'grab'
               }}
             >
-              {/* Status overlay with pointer-events: none */}
+              {/* Enhanced status overlay */}
               {status && status.status === 'partial' && (
                 <div 
                   className="absolute inset-0 pointer-events-none"
                   style={{
-                    background: 'repeating-linear-gradient(45deg, rgba(245, 158, 11, 0.1), rgba(245, 158, 11, 0.1) 10px, transparent 10px, transparent 20px)'
+                    background: 'repeating-linear-gradient(45deg, rgba(245, 158, 11, 0.15), rgba(245, 158, 11, 0.15) 12px, transparent 12px, transparent 24px)'
                   }}
                 />
               )}
               {status && status.status === 'full' && (
-                <div className="absolute inset-0 bg-emerald-600/10 pointer-events-none" />
+                <div className="absolute inset-0 bg-emerald-600/15 pointer-events-none" />
+              )}
+
+              {/* Status badge - top left corner */}
+              {status && status.status !== 'empty' && (
+                <div className={cn(
+                  "absolute top-2 left-2 px-2 py-0.5 rounded-full text-[10px] font-bold shadow-sm pointer-events-none",
+                  status.status === 'partial' && "bg-amber-500 text-white",
+                  status.status === 'full' && "bg-emerald-600 text-white"
+                )}>
+                  {status.label}
+                </div>
               )}
               
               {/* Badge with pointer-events: none */}

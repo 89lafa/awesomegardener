@@ -448,7 +448,7 @@ export default function MyGarden() {
         </div>
 
         {/* Plot Canvas */}
-        {activeGarden && plot && (
+        {activeGarden && plot && activeSeason && (
           <>
             <PlotCanvas 
               garden={activeGarden}

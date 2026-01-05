@@ -537,6 +537,8 @@ export default function PlantingModal({ open, onOpenChange, item, garden, onPlan
     setSelectedPlanting(null);
     setSelectedPlant(null);
     setIsMoving(false);
+    setCompanionWarning(null);
+    setRotationWarning(null);
     onOpenChange(false);
     if (onPlantingUpdate) {
       onPlantingUpdate();

@@ -24,6 +24,7 @@ import HarvestLog from './pages/HarvestLog';
 import IssuesLog from './pages/IssuesLog';
 import Landing from './pages/Landing';
 import MyGarden from './pages/MyGarden';
+import MyPlants from './pages/MyPlants';
 import Onboarding from './pages/Onboarding';
 import PlantCatalog from './pages/PlantCatalog';
 import PlantCatalogBrowse from './pages/PlantCatalogBrowse';
@@ -36,7 +37,6 @@ import SeedStash from './pages/SeedStash';
 import SeedStashDetail from './pages/SeedStashDetail';
 import Settings from './pages/Settings';
 import VarietyReviewQueue from './pages/VarietyReviewQueue';
-import MyPlants from './pages/MyPlants';
 import __Layout from './Layout.jsx';
 
 
@@ -67,6 +67,7 @@ export const PAGES = {
     "IssuesLog": IssuesLog,
     "Landing": Landing,
     "MyGarden": MyGarden,
+    "MyPlants": MyPlants,
     "Onboarding": Onboarding,
     "PlantCatalog": PlantCatalog,
     "PlantCatalogBrowse": PlantCatalogBrowse,
@@ -79,7 +80,6 @@ export const PAGES = {
     "SeedStashDetail": SeedStashDetail,
     "Settings": Settings,
     "VarietyReviewQueue": VarietyReviewQueue,
-    "MyPlants": MyPlants,
 }
 
 export const pagesConfig = {

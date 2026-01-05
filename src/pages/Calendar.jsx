@@ -34,6 +34,7 @@ import { toast } from 'sonner';
 import { format, addDays, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay } from 'date-fns';
 import AddCropModal from '@/components/calendar/AddCropModal';
 import TaskDetailPanel from '@/components/calendar/TaskDetailPanel';
+import CropEditModal from '@/components/calendar/CropEditModal';
 import { cn } from '@/lib/utils';
 
 export default function Calendar() {
@@ -46,6 +47,7 @@ export default function Calendar() {
   const [tasks, setTasks] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showAddCrop, setShowAddCrop] = useState(false);
+  const [showEditCrop, setShowEditCrop] = useState(false);
   const [selectedCrop, setSelectedCrop] = useState(null);
   const [selectedTask, setSelectedTask] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
@@ -254,6 +256,13 @@ export default function Calendar() {
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
+                      <DropdownMenuItem onClick={() => {
+                        setSelectedCrop(crop);
+                        setShowEditCrop(true);
+                      }}>
+                        <Edit className="w-4 h-4 mr-2" />
+                        Edit
+                      </DropdownMenuItem>
                       <DropdownMenuItem onClick={() => handleDuplicateCrop(crop)}>
                         <Copy className="w-4 h-4 mr-2" />
                         Duplicate
@@ -361,16 +370,62 @@ export default function Calendar() {
           onClose={() => setSelectedTask(null)}
         />
       )}
+      
+      {/* Edit Crop Modal */}
+      <CropEditModal
+        crop={selectedCrop}
+        open={showEditCrop}
+        onOpenChange={setShowEditCrop}
+        onSuccess={loadPlansAndTasks}
+      />
     </div>
   );
 }
 
 function TimelineView({ tasks, crops, viewStart, monthCount, onTaskClick }) {
+  const [draggingTask, setDraggingTask] = useState(null);
+  
   const months = [];
   for (let i = 0; i < monthCount; i++) {
     const month = addDays(startOfMonth(viewStart), i * 30);
     months.push(month);
   }
+  
+  const handleTaskDragStart = (e, task) => {
+    e.dataTransfer.effectAllowed = 'move';
+    setDraggingTask(task);
+  };
+  
+  const handleTaskDrop = async (e, targetDate) => {
+    e.preventDefault();
+    if (!draggingTask) return;
+    
+    const oldDate = new Date(draggingTask.start_date);
+    const daysDiff = Math.floor((targetDate - oldDate) / (1000 * 60 * 60 * 24));
+    
+    if (daysDiff === 0) {
+      setDraggingTask(null);
+      return;
+    }
+    
+    try {
+      const newStartDate = addDays(new Date(draggingTask.start_date), daysDiff);
+      const newEndDate = draggingTask.end_date ? addDays(new Date(draggingTask.end_date), daysDiff) : null;
+      
+      await base44.entities.CropTask.update(draggingTask.id, {
+        start_date: newStartDate.toISOString().split('T')[0],
+        end_date: newEndDate ? newEndDate.toISOString().split('T')[0] : null
+      });
+      
+      toast.success('Task rescheduled');
+      window.location.reload();
+    } catch (error) {
+      console.error('Error updating task:', error);
+      toast.error('Failed to reschedule');
+    } finally {
+      setDraggingTask(null);
+    }
+  };
   
   return (
     <div className="min-w-max">
@@ -394,13 +449,161 @@ function TimelineView({ tasks, crops, viewStart, monthCount, onTaskClick }) {
           <div key={crop.id} className="flex border-b hover:bg-gray-50">
             <div className="w-40 flex-shrink-0 border-r p-2 flex items-center gap-2">
               <div 
-                className="w-2 h-2 rounded-full"
+                className="w-3 h-3 rounded-full"
                 style={{ backgroundColor: crop.color_hex || '#10b981' }}
               />
               <span className="text-sm truncate">{crop.label}</span>
             </div>
             
-            <div className="flex-1 relative" style={{ height: '80px' }}>
+            <div 
+              className="flex-1 relative" 
+              style={{ height: '80px' }}
+              onDragOver={(e) => e.preventDefault()}
+              onDrop={(e) => {
+                const rect = e.currentTarget.getBoundingClientRect();
+                const x = e.clientX - rect.left;
+                const totalWidth = rect.width;
+                const totalDays = monthCount * 30;
+                const daysFromStart = Math.floor((x / totalWidth) * totalDays);
+                const targetDate = addDays(viewStart, daysFromStart);
+                handleTaskDrop(e, targetDate);
+              }}
+            >
+              {cropTasks.map(task => {
+                const taskStart = new Date(task.start_date);
+                const taskEnd = task.end_date ? new Date(task.end_date) : taskStart;
+                
+                const daysSinceStart = Math.floor((taskStart - viewStart) / (1000 * 60 * 60 * 24));
+                const duration = Math.floor((taskEnd - taskStart) / (1000 * 60 * 60 * 24)) + 1;
+                const leftPercent = (daysSinceStart / (monthCount * 30)) * 100;
+                const widthPercent = (duration / (monthCount * 30)) * 100;
+                
+                if (leftPercent < -widthPercent || leftPercent > 100) return null;
+                
+                const taskColor = task.color_hex || crop.color_hex || '#10b981';
+                
+                return (
+                  <div
+                    key={task.id}
+                    draggable
+                    onDragStart={(e) => handleTaskDragStart(e, task)}
+                    className={cn(
+                      "absolute top-2 rounded px-2 py-1 text-xs text-white cursor-move hover:opacity-90 hover:shadow-lg transition-all",
+                      draggingTask?.id === task.id && "opacity-50"
+                    )}
+                    style={{
+                      left: `${Math.max(0, leftPercent)}%`,
+                      width: `${Math.min(100 - Math.max(0, leftPercent), widthPercent)}%`,
+                      backgroundColor: taskColor,
+                      minWidth: '60px'
+                    }}
+                    onClick={() => onTaskClick(task)}
+                  >
+                    <div className="truncate font-medium">{task.title}</div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        );
+      })}
+      
+      {crops.length === 0 && (
+        <div className="p-8 text-center text-gray-500">
+          No crops planned yet. Click "Add Crop" to start planning.
+        </div>
+      )}
+    </div>
+  );
+}
+
+function TimelineView({ tasks, crops, viewStart, monthCount, onTaskClick }) {
+  const [draggingTask, setDraggingTask] = useState(null);
+  
+  const months = [];
+  for (let i = 0; i < monthCount; i++) {
+    const month = addDays(startOfMonth(viewStart), i * 30);
+    months.push(month);
+  }
+  
+  const handleTaskDragStart = (e, task) => {
+    e.dataTransfer.effectAllowed = 'move';
+    setDraggingTask(task);
+  };
+  
+  const handleTaskDrop = async (e, targetDate) => {
+    e.preventDefault();
+    if (!draggingTask) return;
+    
+    const oldDate = new Date(draggingTask.start_date);
+    const daysDiff = Math.floor((targetDate - oldDate) / (1000 * 60 * 60 * 24));
+    
+    if (daysDiff === 0) {
+      setDraggingTask(null);
+      return;
+    }
+    
+    try {
+      const newStartDate = addDays(new Date(draggingTask.start_date), daysDiff);
+      const newEndDate = draggingTask.end_date ? addDays(new Date(draggingTask.end_date), daysDiff) : null;
+      
+      await base44.entities.CropTask.update(draggingTask.id, {
+        start_date: newStartDate.toISOString().split('T')[0],
+        end_date: newEndDate ? newEndDate.toISOString().split('T')[0] : null
+      });
+      
+      toast.success('Task rescheduled');
+      window.location.reload(); // Quick refresh
+    } catch (error) {
+      console.error('Error updating task:', error);
+      toast.error('Failed to reschedule');
+    } finally {
+      setDraggingTask(null);
+    }
+  };
+  
+  return (
+    <div className="min-w-max">
+      {/* Month Headers */}
+      <div className="flex sticky top-0 bg-white border-b z-10">
+        <div className="w-40 flex-shrink-0 border-r p-2 font-semibold text-sm">
+          Crop
+        </div>
+        {months.map((month, idx) => (
+          <div key={idx} className="flex-1 min-w-[200px] border-r p-2 text-center">
+            <div className="font-semibold">{format(month, 'MMM yyyy')}</div>
+          </div>
+        ))}
+      </div>
+      
+      {/* Crop Rows */}
+      {crops.map(crop => {
+        const cropTasks = tasks.filter(t => t.crop_plan_id === crop.id);
+        
+        return (
+          <div key={crop.id} className="flex border-b hover:bg-gray-50">
+            <div className="w-40 flex-shrink-0 border-r p-2 flex items-center gap-2">
+              <div 
+                className="w-3 h-3 rounded-full"
+                style={{ backgroundColor: crop.color_hex || '#10b981' }}
+              />
+              <span className="text-sm truncate">{crop.label}</span>
+            </div>
+            
+            <div 
+              className="flex-1 relative" 
+              style={{ height: '80px' }}
+              onDragOver={(e) => e.preventDefault()}
+              onDrop={(e) => {
+                const rect = e.currentTarget.getBoundingClientRect();
+                const x = e.clientX - rect.left;
+                const totalWidth = rect.width;
+                const totalDays = monthCount * 30;
+                const daysFromStart = Math.floor((x / totalWidth) * totalDays);
+                const targetDate = addDays(viewStart, daysFromStart);
+                handleTaskDrop(e, targetDate);
+              }}
+            >
               {cropTasks.map(task => {
                 const taskStart = new Date(task.start_date);
                 const taskEnd = task.end_date ? new Date(task.end_date) : taskStart;
@@ -413,14 +616,22 @@ function TimelineView({ tasks, crops, viewStart, monthCount, onTaskClick }) {
                 
                 if (leftPercent < -widthPercent || leftPercent > 100) return null;
                 
+                const taskColor = task.color_hex || crop.color_hex || '#10b981';
+                
                 return (
                   <div
                     key={task.id}
-                    className="absolute top-2 rounded px-2 py-1 text-xs text-white cursor-pointer hover:opacity-90 transition-opacity"
+                    draggable
+                    onDragStart={(e) => handleTaskDragStart(e, task)}
+                    className={cn(
+                      "absolute top-2 rounded px-2 py-1 text-xs text-white cursor-move hover:opacity-90 hover:shadow-lg transition-all",
+                      draggingTask?.id === task.id && "opacity-50"
+                    )}
                     style={{
                       left: `${Math.max(0, leftPercent)}%`,
                       width: `${Math.min(100 - Math.max(0, leftPercent), widthPercent)}%`,
-                      backgroundColor: task.color_hex || crop.color_hex || '#10b981'
+                      backgroundColor: taskColor,
+                      minWidth: '60px'
                     }}
                     onClick={() => onTaskClick(task)}
                   >
