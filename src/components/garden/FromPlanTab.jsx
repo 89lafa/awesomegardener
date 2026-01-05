@@ -4,7 +4,7 @@ import { Calendar, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
-export default function FromPlanTab({ activeSeason, garden, onSelectPlan }) {
+export default function FromPlanTab({ activeSeason, garden, bedId, onSelectPlan }) {
   const [cropPlans, setCropPlans] = useState([]);
   const [profiles, setProfiles] = useState({});
   const [plantTypes, setPlantTypes] = useState({});
@@ -66,9 +66,12 @@ export default function FromPlanTab({ activeSeason, garden, onSelectPlan }) {
     }
   };
   
-  const markAsPlaced = async (planId) => {
+  const markAsPlaced = async (planId, bedId) => {
     try {
-      await base44.entities.CropPlan.update(planId, { is_placed: true });
+      await base44.entities.CropPlan.update(planId, { 
+        is_placed: true,
+        garden_item_id: bedId
+      });
       // Remove from list
       setCropPlans(cropPlans.filter(p => p.id !== planId));
     } catch (error) {
@@ -110,7 +113,7 @@ export default function FromPlanTab({ activeSeason, garden, onSelectPlan }) {
             key={plan.id}
             onClick={() => {
               onSelectPlan(plan);
-              markAsPlaced(plan.id);
+              markAsPlaced(plan.id, bedId);
             }}
             className={cn(
               "w-full p-3 rounded-lg border-2 text-left transition-colors",

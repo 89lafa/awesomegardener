@@ -609,6 +609,7 @@ export default function PlantingModal({ open, onOpenChange, item, garden, onPlan
                   <FromPlanTab
                     activeSeason={activeSeason}
                     garden={garden}
+                    bedId={item.id}
                     onSelectPlan={(plan) => {
                       const profile = profiles[plan.plant_profile_id];
                       if (profile) {
