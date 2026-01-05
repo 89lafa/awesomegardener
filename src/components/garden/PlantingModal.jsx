@@ -21,6 +21,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Plus, X, Trash2, Move, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
+import FromPlanTab from './FromPlanTab';
 
 export default function PlantingModal({ open, onOpenChange, item, garden, onPlantingUpdate, activeSeason }) {
   const [plantings, setPlantings] = useState([]);
@@ -598,6 +599,41 @@ export default function PlantingModal({ open, onOpenChange, item, garden, onPlan
                       })
                     )}
                   </div>
+                </ScrollArea>
+              </TabsContent>
+              
+              <TabsContent value="plan" className="mt-4 flex-1 min-h-0">
+                <ScrollArea className="h-full">
+                  <FromPlanTab
+                    activeSeason={activeSeason}
+                    garden={garden}
+                    onSelectPlan={(plan) => {
+                      const profile = profiles[plan.plant_profile_id];
+                      if (profile) {
+                        const variety = varieties.find(v => 
+                          v.variety_name === profile.variety_name && 
+                          v.plant_type_id === profile.plant_type_id
+                        );
+                        
+                        const spacing = variety 
+                          ? getSpacingForPlant(variety) 
+                          : getDefaultSpacing(profile.common_name);
+                        
+                        const plantData = {
+                          variety_id: variety?.id || null,
+                          variety_name: profile.variety_name,
+                          plant_type_id: profile.plant_type_id,
+                          plant_type_name: profile.common_name,
+                          plant_family: profile.plant_family,
+                          spacing_cols: spacing.cols,
+                          spacing_rows: spacing.rows
+                        };
+                        
+                        setSelectedPlant(plantData);
+                        checkCompanionAndRotation(plantData);
+                      }
+                    }}
+                  />
                 </ScrollArea>
               </TabsContent>
               

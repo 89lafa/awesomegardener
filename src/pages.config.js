@@ -1,6 +1,7 @@
 import AdminDataCleanup from './pages/AdminDataCleanup';
 import AdminDataImport from './pages/AdminDataImport';
 import BrowseGardens from './pages/BrowseGardens';
+import Calendar from './pages/Calendar';
 import CalendarPlanner from './pages/CalendarPlanner';
 import CalendarTasks from './pages/CalendarTasks';
 import Community from './pages/Community';
@@ -35,7 +36,7 @@ import SeedStash from './pages/SeedStash';
 import SeedStashDetail from './pages/SeedStashDetail';
 import Settings from './pages/Settings';
 import VarietyReviewQueue from './pages/VarietyReviewQueue';
-import Calendar from './pages/Calendar';
+import MyPlants from './pages/MyPlants';
 import __Layout from './Layout.jsx';
 
 
@@ -43,6 +44,7 @@ export const PAGES = {
     "AdminDataCleanup": AdminDataCleanup,
     "AdminDataImport": AdminDataImport,
     "BrowseGardens": BrowseGardens,
+    "Calendar": Calendar,
     "CalendarPlanner": CalendarPlanner,
     "CalendarTasks": CalendarTasks,
     "Community": Community,
@@ -77,7 +79,7 @@ export const PAGES = {
     "SeedStashDetail": SeedStashDetail,
     "Settings": Settings,
     "VarietyReviewQueue": VarietyReviewQueue,
-    "Calendar": Calendar,
+    "MyPlants": MyPlants,
 }
 
 export const pagesConfig = {
