@@ -387,11 +387,11 @@ export default function GardenPlanting() {
 
   const calculateLayoutSchema = (item) => {
     const metadata = item.metadata || {};
-    
+
     // GREENHOUSE: Always use metadata.capacity (user-specified plant count)
     if (item.item_type === 'GREENHOUSE') {
-      const capacity = metadata.capacity || 40; // Default to 40 if not set
-      console.log('[GREENHOUSE SYNC] item:', item.label, 'capacity from metadata:', capacity);
+      const capacity = parseInt(metadata.capacity) || 40;
+      console.log('[GREENHOUSE SYNC] item:', item.label, 'metadata:', metadata, 'parsed capacity:', capacity);
       return { type: 'slots', slots: capacity };
     }
     

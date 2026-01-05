@@ -20,7 +20,8 @@ import {
   Database,
   BookText,
   Bug,
-  Apple
+  Apple,
+  Users
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -35,6 +36,7 @@ const getNavItems = (userRole, isEditor) => {
       { name: 'Grow Lists', icon: ListChecks, page: 'GrowLists' },
       { name: 'Tasks', icon: Calendar, page: 'CalendarTasks' },
       { name: 'Planting Calendar', icon: Sprout, page: 'CalendarPlanner' },
+      { name: 'Companion Planting', icon: Users, page: 'CompanionPlanner' },
       { name: 'Diary', icon: BookText, page: 'GardenDiary' },
       { name: 'Harvest Log', icon: Apple, page: 'HarvestLog' },
       { name: 'Issues Log', icon: Bug, page: 'IssuesLog' },

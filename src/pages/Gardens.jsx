@@ -153,15 +153,57 @@ export default function Gardens() {
 
   const handleDuplicate = async (garden) => {
     try {
+      // Ask for new year
+      const newYear = prompt('Enter year for the new garden season:', new Date().getFullYear().toString());
+      if (!newYear) return;
+
       const newGarden = await base44.entities.Garden.create({
-        name: `${garden.name} (Copy)`,
+        name: `${garden.name} (${newYear})`,
         description: garden.description,
-        privacy: 'private'
+        privacy: 'private',
+        current_season_year: `${newYear}-Spring`
       });
+
+      // Copy plot structure
+      const plots = await base44.entities.GardenPlot.filter({ garden_id: garden.id });
+      for (const plot of plots) {
+        await base44.entities.GardenPlot.create({
+          garden_id: newGarden.id,
+          width: plot.width,
+          height: plot.height,
+          units: plot.units,
+          shape_type: plot.shape_type,
+          grid_enabled: plot.grid_enabled,
+          grid_size: plot.grid_size
+        });
+      }
+
+      // Copy plot items
+      const plotItems = await base44.entities.PlotItem.filter({ garden_id: garden.id });
+      for (const item of plotItems) {
+        const newPlot = await base44.entities.GardenPlot.filter({ garden_id: newGarden.id });
+        if (newPlot.length > 0) {
+          await base44.entities.PlotItem.create({
+            plot_id: newPlot[0].id,
+            garden_id: newGarden.id,
+            item_type: item.item_type,
+            label: item.label,
+            width: item.width,
+            height: item.height,
+            x: item.x,
+            y: item.y,
+            rotation: item.rotation,
+            z_index: item.z_index,
+            metadata: item.metadata
+          });
+        }
+      }
+
       setGardens([newGarden, ...gardens]);
-      toast.success('Garden duplicated');
+      toast.success(`Garden duplicated for ${newYear}`);
     } catch (error) {
       console.error('Error duplicating garden:', error);
+      toast.error('Failed to duplicate garden');
     }
   };
 
