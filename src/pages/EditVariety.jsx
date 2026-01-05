@@ -43,20 +43,36 @@ export default function EditVariety() {
       if (varieties.length > 0) {
         const v = varieties[0];
         setVariety(v);
-        setFormData(v);
         
         // Load plant type and subcategories
         if (v.plant_type_id) {
-          const [typeData, subcats] = await Promise.all([
+          const [typeData, subcats, subcatMaps] = await Promise.all([
             base44.entities.PlantType.filter({ id: v.plant_type_id }),
             base44.entities.PlantSubCategory.filter({ 
               plant_type_id: v.plant_type_id,
               is_active: true 
-            }, 'sort_order')
+            }, 'sort_order'),
+            base44.entities.VarietySubCategoryMap.filter({ variety_id: varietyId })
           ]);
           
           if (typeData.length > 0) setPlantType(typeData[0]);
-          setSubCategories(subcats);
+          
+          // Deduplicate subcategories by name
+          const uniqueSubcats = [];
+          const seen = new Set();
+          for (const subcat of subcats) {
+            if (!seen.has(subcat.name)) {
+              seen.add(subcat.name);
+              uniqueSubcats.push(subcat);
+            }
+          }
+          setSubCategories(uniqueSubcats);
+          
+          // Load existing subcategory mapping
+          const existingSubcatId = v.plant_subcategory_id || (subcatMaps.length > 0 ? subcatMaps[0].plant_subcategory_id : '');
+          setFormData({ ...v, plant_subcategory_id: existingSubcatId });
+        } else {
+          setFormData(v);
         }
       }
     } catch (error) {
@@ -74,6 +90,7 @@ export default function EditVariety() {
     try {
       const updateData = {
         variety_name: formData.variety_name,
+        plant_subcategory_id: formData.plant_subcategory_id || null,
         days_to_maturity: formData.days_to_maturity ? parseFloat(formData.days_to_maturity) : null,
         spacing_recommended: formData.spacing_recommended ? parseFloat(formData.spacing_recommended) : null,
         plant_height_typical: formData.plant_height_typical,
@@ -88,21 +105,17 @@ export default function EditVariety() {
 
       await base44.entities.Variety.update(varietyId, updateData);
 
-      // Update subcategory mapping if changed
-      if (formData.plant_subcategory_id !== variety.plant_subcategory_id) {
-        // Delete old mapping
-        const oldMaps = await base44.entities.VarietySubCategoryMap.filter({ variety_id: varietyId });
-        for (const map of oldMaps) {
-          await base44.entities.VarietySubCategoryMap.delete(map.id);
-        }
-        
-        // Create new mapping if subcategory selected
-        if (formData.plant_subcategory_id) {
-          await base44.entities.VarietySubCategoryMap.create({
-            variety_id: varietyId,
-            plant_subcategory_id: formData.plant_subcategory_id
-          });
-        }
+      // Always update VarietySubCategoryMap to ensure consistency
+      const oldMaps = await base44.entities.VarietySubCategoryMap.filter({ variety_id: varietyId });
+      for (const map of oldMaps) {
+        await base44.entities.VarietySubCategoryMap.delete(map.id);
+      }
+      
+      if (formData.plant_subcategory_id) {
+        await base44.entities.VarietySubCategoryMap.create({
+          variety_id: varietyId,
+          plant_subcategory_id: formData.plant_subcategory_id
+        });
       }
 
       toast.success('Variety updated successfully!');
