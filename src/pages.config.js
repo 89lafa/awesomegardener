@@ -30,6 +30,7 @@ import CommunityBoard from './pages/CommunityBoard';
 import ForumCategory from './pages/ForumCategory';
 import ForumTopic from './pages/ForumTopic';
 import ForumAdmin from './pages/ForumAdmin';
+import GrowingProfile from './pages/GrowingProfile';
 import __Layout from './Layout.jsx';
 
 
@@ -66,6 +67,7 @@ export const PAGES = {
     "ForumCategory": ForumCategory,
     "ForumTopic": ForumTopic,
     "ForumAdmin": ForumAdmin,
+    "GrowingProfile": GrowingProfile,
 }
 
 export const pagesConfig = {

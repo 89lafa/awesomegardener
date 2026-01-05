@@ -1,18 +1,27 @@
 import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
+import { createPageUrl } from '@/utils';
 import { base44 } from '@/api/base44Client';
-import { Calendar as CalendarIcon, Sprout, Clock, Loader2 } from 'lucide-react';
+import { 
+  Calendar as CalendarIcon, 
+  Sprout, 
+  Clock, 
+  Loader2,
+  Settings,
+  Droplet,
+  Sun
+} from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { format, addWeeks, addDays } from 'date-fns';
+import { format, addWeeks, addDays, isWithinInterval } from 'date-fns';
 
 export default function CalendarPlanner() {
   const [user, setUser] = useState(null);
   const [seeds, setSeeds] = useState([]);
   const [profiles, setProfiles] = useState({});
   const [loading, setLoading] = useState(true);
-  const [currentMonth, setCurrentMonth] = useState(new Date());
 
   useEffect(() => {
     loadData();
@@ -23,7 +32,7 @@ export default function CalendarPlanner() {
       const [userData, seedsData, profilesData] = await Promise.all([
         base44.auth.me(),
         base44.entities.SeedLot.filter({ is_wishlist: false }),
-        base44.entities.PlantProfile.list()
+        base44.entities.PlantProfile.list('variety_name', 500)
       ]);
       
       setUser(userData);
@@ -42,41 +51,49 @@ export default function CalendarPlanner() {
   };
 
   const calculatePlantingWindows = (profile, lastFrostDate) => {
-    if (!lastFrostDate) return null;
+    if (!lastFrostDate || !profile) return null;
     
     const lastFrost = new Date(lastFrostDate);
     const windows = {};
     
     // Start indoors
-    if (profile.start_indoors_weeks_before_last_frost_min) {
+    if (profile.start_indoors_weeks_before_last_frost_min !== undefined) {
+      const weeksMax = profile.start_indoors_weeks_before_last_frost_max || profile.start_indoors_weeks_before_last_frost_min;
       windows.startIndoors = {
-        start: addWeeks(lastFrost, -profile.start_indoors_weeks_before_last_frost_max || -profile.start_indoors_weeks_before_last_frost_min),
-        end: addWeeks(lastFrost, -profile.start_indoors_weeks_before_last_frost_min)
+        start: addWeeks(lastFrost, -weeksMax),
+        end: addWeeks(lastFrost, -profile.start_indoors_weeks_before_last_frost_min),
+        label: 'Start Indoors'
       };
     }
     
     // Transplant
     if (profile.transplant_weeks_after_last_frost_min !== undefined) {
+      const weeksMax = profile.transplant_weeks_after_last_frost_max || (profile.transplant_weeks_after_last_frost_min + 2);
       windows.transplant = {
         start: addWeeks(lastFrost, profile.transplant_weeks_after_last_frost_min),
-        end: addWeeks(lastFrost, profile.transplant_weeks_after_last_frost_max || profile.transplant_weeks_after_last_frost_min + 2)
+        end: addWeeks(lastFrost, weeksMax),
+        label: 'Transplant Out'
       };
     }
     
     // Direct sow
     if (profile.direct_sow_weeks_relative_to_last_frost_min !== undefined) {
+      const weeksMax = profile.direct_sow_weeks_relative_to_last_frost_max || (profile.direct_sow_weeks_relative_to_last_frost_min + 4);
       windows.directSow = {
         start: addWeeks(lastFrost, profile.direct_sow_weeks_relative_to_last_frost_min),
-        end: addWeeks(lastFrost, profile.direct_sow_weeks_relative_to_last_frost_max || profile.direct_sow_weeks_relative_to_last_frost_min + 4)
+        end: addWeeks(lastFrost, weeksMax),
+        label: 'Direct Sow'
       };
     }
     
-    // Harvest (estimate based on maturity)
-    if (profile.days_to_maturity_seed) {
-      const transplantDate = windows.transplant?.start || windows.directSow?.start || lastFrost;
+    // Harvest (estimate)
+    const maturityDays = profile.days_to_maturity_transplant || profile.days_to_maturity_seed;
+    if (maturityDays) {
+      const baseDate = windows.transplant?.start || windows.directSow?.start || addWeeks(lastFrost, 2);
       windows.harvest = {
-        start: addDays(transplantDate, profile.days_to_maturity_seed - 7),
-        end: addDays(transplantDate, profile.days_to_maturity_seed + 7)
+        start: addDays(baseDate, maturityDays - 7),
+        end: addDays(baseDate, maturityDays + 14),
+        label: 'Expected Harvest'
       };
     }
     
@@ -100,10 +117,12 @@ export default function CalendarPlanner() {
       if (!windows) return;
       
       Object.entries(windows).forEach(([action, window]) => {
-        if (window.start <= monthEnd && window.end >= monthStart) {
+        const overlaps = window.start <= monthEnd && window.end >= monthStart;
+        if (overlaps) {
           actions.push({
             action,
             variety: profile.variety_name,
+            common_name: profile.common_name,
             window,
             profile
           });
@@ -127,55 +146,100 @@ export default function CalendarPlanner() {
   if (!user?.last_frost_date) {
     return (
       <div className="space-y-6 max-w-4xl">
-        <h1 className="text-2xl lg:text-3xl font-bold text-gray-900">Planting Calendar</h1>
+        <div className="flex items-center justify-between">
+          <h1 className="text-2xl lg:text-3xl font-bold text-gray-900">Planting Calendar</h1>
+          <Link to={createPageUrl('GrowingProfile')}>
+            <Button variant="outline" className="gap-2">
+              <Settings className="w-4 h-4" />
+              Set Growing Profile
+            </Button>
+          </Link>
+        </div>
         <Alert>
           <CalendarIcon className="w-4 h-4" />
           <AlertDescription>
-            Set your last frost date in Settings to see personalized planting windows.
+            Set your frost dates in your Growing Profile to see personalized planting windows for your seed stash.
           </AlertDescription>
         </Alert>
       </div>
     );
   }
 
+  const getAllPlantingSchedules = () => {
+    if (!user?.last_frost_date) return [];
+    
+    const schedules = [];
+    
+    seeds.forEach(seed => {
+      const profile = profiles[seed.plant_profile_id];
+      if (!profile) return;
+      
+      const windows = calculatePlantingWindows(profile, user.last_frost_date);
+      if (!windows) return;
+      
+      schedules.push({
+        variety: profile.variety_name,
+        common_name: profile.common_name,
+        windows,
+        profile
+      });
+    });
+    
+    return schedules.sort((a, b) => {
+      const aStart = a.windows.startIndoors?.start || a.windows.directSow?.start || a.windows.transplant?.start;
+      const bStart = b.windows.startIndoors?.start || b.windows.directSow?.start || b.windows.transplant?.start;
+      if (!aStart || !bStart) return 0;
+      return aStart - bStart;
+    });
+  };
+
+  const allSchedules = getAllPlantingSchedules();
+
   return (
-    <div className="space-y-6 max-w-5xl">
-      <div>
-        <h1 className="text-2xl lg:text-3xl font-bold text-gray-900">Planting Calendar</h1>
-        <p className="text-gray-600 mt-1">
-          Personalized planting schedule for Zone {user.usda_zone || 'Unknown'}
-        </p>
+    <div className="space-y-6 max-w-6xl">
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl lg:text-3xl font-bold text-gray-900">Planting Calendar</h1>
+          <p className="text-gray-600 mt-1">
+            Personalized schedule for Zone {user.usda_zone || 'Unknown'} • Last Frost: {user.last_frost_date ? format(new Date(user.last_frost_date), 'MMM d') : 'Not Set'}
+          </p>
+        </div>
+        <Link to={createPageUrl('GrowingProfile')}>
+          <Button variant="outline" className="gap-2">
+            <Settings className="w-4 h-4" />
+            Edit Profile
+          </Button>
+        </Link>
       </div>
 
       {/* This Month */}
       <Card>
         <CardHeader>
-          <CardTitle>This Month's Actions</CardTitle>
+          <CardTitle className="flex items-center gap-2">
+            <Clock className="w-5 h-5 text-emerald-600" />
+            This Month's Actions
+          </CardTitle>
         </CardHeader>
         <CardContent>
           {thisMonthActions.length === 0 ? (
-            <p className="text-gray-500 text-center py-8">No planting actions this month</p>
+            <p className="text-gray-500 text-center py-8">No planting actions scheduled for this month</p>
           ) : (
-            <div className="space-y-3">
+            <div className="space-y-2">
               {thisMonthActions.map((item, idx) => (
-                <div key={idx} className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
-                  <div className="w-10 h-10 rounded-lg bg-emerald-100 flex items-center justify-center">
-                    <Sprout className="w-5 h-5 text-emerald-600" />
+                <div key={idx} className="flex items-center gap-3 p-3 bg-emerald-50 rounded-lg border border-emerald-200">
+                  <div className="w-10 h-10 rounded-lg bg-emerald-600 flex items-center justify-center">
+                    <Sprout className="w-5 h-5 text-white" />
                   </div>
                   <div className="flex-1">
                     <p className="font-medium text-gray-900">
-                      {item.action === 'startIndoors' && 'Start Indoors'}
-                      {item.action === 'transplant' && 'Transplant'}
-                      {item.action === 'directSow' && 'Direct Sow'}
-                      {item.action === 'harvest' && 'Harvest'}
-                      : {item.variety}
+                      {item.window.label}: {item.variety}
                     </p>
                     <p className="text-sm text-gray-600">
                       {format(item.window.start, 'MMM d')} - {format(item.window.end, 'MMM d')}
                     </p>
                   </div>
-                  <Badge variant="outline">
-                    {item.profile.common_name}
+                  <Badge variant="outline" className="text-xs">
+                    {item.common_name}
                   </Badge>
                 </div>
               ))}
@@ -184,15 +248,44 @@ export default function CalendarPlanner() {
         </CardContent>
       </Card>
 
-      {/* Full Calendar View */}
+      {/* Full Planting Schedule */}
       <Card>
         <CardHeader>
-          <CardTitle>Yearly Overview</CardTitle>
+          <CardTitle>Full Planting Schedule</CardTitle>
         </CardHeader>
         <CardContent>
-          <p className="text-gray-500 text-center py-8">
-            Full calendar view coming soon
-          </p>
+          {allSchedules.length === 0 ? (
+            <p className="text-gray-500 text-center py-8">No seeds in your stash to schedule</p>
+          ) : (
+            <div className="space-y-4">
+              {allSchedules.map((schedule, idx) => (
+                <div key={idx} className="border-l-4 border-emerald-500 pl-4 py-2">
+                  <div className="flex items-start justify-between mb-2">
+                    <div>
+                      <h4 className="font-semibold text-gray-900">{schedule.variety}</h4>
+                      <p className="text-sm text-gray-600">{schedule.common_name}</p>
+                    </div>
+                    <div className="flex gap-2">
+                      {schedule.profile.sun_requirement && (
+                        <Badge variant="outline" className="text-xs">
+                          <Sun className="w-3 h-3 mr-1" />
+                          {schedule.profile.sun_requirement.replace('_', ' ')}
+                        </Badge>
+                      )}
+                    </div>
+                  </div>
+                  <div className="space-y-1 text-sm">
+                    {Object.entries(schedule.windows).map(([action, window]) => (
+                      <div key={action} className="flex items-center gap-2 text-gray-700">
+                        <span className="font-medium w-32">{window.label}:</span>
+                        <span>{format(window.start, 'MMM d')} - {format(window.end, 'MMM d')}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>
