@@ -41,6 +41,8 @@ export default function MyGarden() {
   const [activeSeason, setActiveSeason] = useState(null);
   const [availableSeasons, setAvailableSeasons] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [selectedItem, setSelectedItem] = useState(null);
+  const [selectedItemPlantings, setSelectedItemPlantings] = useState([]);
   const [showCreateGarden, setShowCreateGarden] = useState(false);
   const [newGardenName, setNewGardenName] = useState('');
   const [creating, setCreating] = useState(false);
@@ -60,6 +62,37 @@ export default function MyGarden() {
       loadSeasons();
     }
   }, [activeGarden]);
+
+  useEffect(() => {
+    if (selectedItem && activeSeason) {
+      loadSelectedItemPlantings();
+    }
+  }, [selectedItem, activeSeason]);
+
+  const loadSelectedItemPlantings = async () => {
+    if (!selectedItem || !activeSeason) return;
+    
+    try {
+      const allPlantings = await base44.entities.PlantInstance.filter({ 
+        bed_id: selectedItem.id,
+        garden_id: activeGarden.id
+      });
+      
+      const currentYear = new Date().getFullYear();
+      const isCurrentYearSeason = activeSeason && activeSeason.startsWith(currentYear.toString());
+      
+      const filteredPlantings = allPlantings.filter(p => {
+        if (!p.season_year) {
+          return isCurrentYearSeason;
+        }
+        return p.season_year === activeSeason;
+      });
+      
+      setSelectedItemPlantings(filteredPlantings);
+    } catch (error) {
+      console.error('Error loading plantings:', error);
+    }
+  };
 
   const loadData = async () => {
     try {
@@ -416,13 +449,61 @@ export default function MyGarden() {
 
         {/* Plot Canvas */}
         {activeGarden && plot && (
-          <PlotCanvas 
-            garden={activeGarden}
-            plot={plot}
-            activeSeason={activeSeason}
-            onPlotUpdate={loadPlot}
-            onDeleteGarden={handleDeleteGarden}
-          />
+          <>
+            <PlotCanvas 
+              garden={activeGarden}
+              plot={plot}
+              activeSeason={activeSeason}
+              onPlotUpdate={loadPlot}
+              onDeleteGarden={handleDeleteGarden}
+              onItemSelect={setSelectedItem}
+            />
+
+            {/* Selected Item Detail View */}
+            {selectedItem && (
+              <Card className="mt-6">
+                <CardContent className="p-6">
+                  <div className="flex items-start justify-between mb-4">
+                    <div>
+                      <h3 className="text-xl font-bold text-gray-900">{selectedItem.label}</h3>
+                      <p className="text-sm text-gray-600 capitalize mt-1">
+                        {selectedItem.item_type.replace(/_/g, ' ')}
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <div className="text-2xl font-bold text-emerald-600">
+                        {selectedItemPlantings.reduce((sum, p) => sum + ((p.cell_span_cols || 1) * (p.cell_span_rows || 1)), 0)}
+                      </div>
+                      <p className="text-xs text-gray-500">plants growing</p>
+                    </div>
+                  </div>
+
+                  {selectedItemPlantings.length > 0 ? (
+                    <div className="space-y-2">
+                      <h4 className="font-semibold text-sm text-gray-700">Currently Growing:</h4>
+                      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
+                        {selectedItemPlantings.map((planting) => (
+                          <div 
+                            key={planting.id}
+                            className="flex items-center gap-2 p-2 bg-emerald-50 rounded-lg border border-emerald-200"
+                          >
+                            <span className="text-xl">{planting.plant_type_icon || '🌱'}</span>
+                            <span className="text-sm font-medium text-gray-900 truncate">
+                              {planting.display_name}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="text-center py-8 bg-gray-50 rounded-lg">
+                      <p className="text-gray-500">No plants in this {selectedItem.item_type.replace(/_/g, ' ').toLowerCase()} yet</p>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            )}
+          </>
         )}
       </div>
 

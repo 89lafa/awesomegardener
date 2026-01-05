@@ -57,7 +57,7 @@ const GALLON_SIZES = [
   { value: 20, footprint: 24 }, { value: 30, footprint: 30 }
 ];
 
-export default function PlotCanvas({ garden, plot, activeSeason, onPlotUpdate, onDeleteGarden }) {
+export default function PlotCanvas({ garden, plot, activeSeason, onPlotUpdate, onDeleteGarden, onItemSelect }) {
   const canvasRef = useRef(null);
   const [items, setItems] = useState([]);
   const [itemsPlantingCounts, setItemsPlantingCounts] = useState({});
@@ -520,6 +520,7 @@ export default function PlotCanvas({ garden, plot, activeSeason, onPlotUpdate, o
 
     if (clickedItem) {
       setSelectedItem(clickedItem);
+      if (onItemSelect) onItemSelect(clickedItem);
       setDraggingItem(clickedItem);
       setDragStartPos({ x: e.clientX, y: e.clientY });
       setDragOffset({ x: x - clickedItem.x, y: y - clickedItem.y });
@@ -528,6 +529,7 @@ export default function PlotCanvas({ garden, plot, activeSeason, onPlotUpdate, o
       document.body.style.userSelect = 'none';
     } else {
       setSelectedItem(null);
+      if (onItemSelect) onItemSelect(null);
     }
   };
 
