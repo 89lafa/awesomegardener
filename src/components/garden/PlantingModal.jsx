@@ -575,7 +575,8 @@ export default function PlantingModal({ open, onOpenChange, item, garden, onPlan
                     {stashPlants.length === 0 ? (
                       <p className="text-sm text-gray-500 text-center py-8">No plants in stash</p>
                     ) : (
-                      stashPlants.map((plant) => {
+                      // Deduplicate by plant_profile_id to avoid showing same variety multiple times
+                      Array.from(new Map(stashPlants.map(p => [p.plant_profile_id, p])).values()).map((plant) => {
                         const profile = profiles[plant.plant_profile_id];
                         if (!profile) return null;
                         return (

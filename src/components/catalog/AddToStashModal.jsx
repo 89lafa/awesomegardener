@@ -121,6 +121,22 @@ export default function AddToStashModal({ open, onOpenChange, variety, plantType
         console.log('[AddToStashModal] Created new PlantProfile:', profileId, newProfile);
       }
 
+      // Check for duplicate SeedLots before creating
+      const user = await base44.auth.me();
+      const existingSeedLots = await base44.entities.SeedLot.filter({
+        plant_profile_id: profileId,
+        is_wishlist: false,
+        created_by: user.email
+      });
+      
+      if (existingSeedLots.length > 0) {
+        console.log('[AddToStashModal] SeedLot already exists, not creating duplicate:', existingSeedLots[0].id);
+        toast.info('This variety is already in your stash');
+        onOpenChange(false);
+        if (onSuccess) onSuccess();
+        return;
+      }
+
       const seedLotData = {
         plant_profile_id: profileId,
         quantity: formData.quantity ? parseInt(formData.quantity) : null,
