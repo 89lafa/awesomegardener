@@ -35,6 +35,7 @@ import { format, addDays, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay
 import AddCropModal from '@/components/calendar/AddCropModal';
 import TaskDetailPanel from '@/components/calendar/TaskDetailPanel';
 import CropEditModal from '@/components/calendar/CropEditModal';
+import CalendarGuide from '@/components/help/CalendarGuide';
 import { cn } from '@/lib/utils';
 
 export default function Calendar() {
@@ -48,6 +49,7 @@ export default function Calendar() {
   const [loading, setLoading] = useState(true);
   const [showAddCrop, setShowAddCrop] = useState(false);
   const [showEditCrop, setShowEditCrop] = useState(false);
+  const [showGuide, setShowGuide] = useState(false);
   const [selectedCrop, setSelectedCrop] = useState(null);
   const [selectedTask, setSelectedTask] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
@@ -226,6 +228,14 @@ export default function Calendar() {
             <Plus className="w-4 h-4 mr-2" />
             Add Crop
           </Button>
+          <Button
+            onClick={() => setShowGuide(true)}
+            variant="outline"
+            size="sm"
+            className="w-full mt-2"
+          >
+            📖 User Guide
+          </Button>
         </div>
         
         <div className="flex-1 overflow-y-auto p-2">
@@ -377,6 +387,12 @@ export default function Calendar() {
         open={showEditCrop}
         onOpenChange={setShowEditCrop}
         onSuccess={loadPlansAndTasks}
+      />
+      
+      {/* User Guide */}
+      <CalendarGuide
+        open={showGuide}
+        onOpenChange={setShowGuide}
       />
     </div>
   );
