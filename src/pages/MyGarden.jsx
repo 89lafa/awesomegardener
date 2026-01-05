@@ -7,7 +7,8 @@ import {
   Settings,
   Loader2,
   ChevronDown,
-  Trash2
+  Trash2,
+  Calendar
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -28,6 +29,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
+import { toast } from 'sonner';
 import PlotCanvas from '@/components/garden/PlotCanvas';
 import ErrorBoundary from '@/components/common/ErrorBoundary';
 
@@ -37,6 +39,8 @@ export default function MyGarden() {
   const [gardens, setGardens] = useState([]);
   const [activeGarden, setActiveGarden] = useState(null);
   const [plot, setPlot] = useState(null);
+  const [activeSeason, setActiveSeason] = useState(null);
+  const [availableSeasons, setAvailableSeasons] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showCreateGarden, setShowCreateGarden] = useState(false);
   const [newGardenName, setNewGardenName] = useState('');
@@ -49,6 +53,7 @@ export default function MyGarden() {
   useEffect(() => {
     if (activeGarden) {
       loadPlot();
+      loadSeasons();
     }
   }, [activeGarden]);
 
@@ -123,6 +128,66 @@ export default function MyGarden() {
       }
     } catch (error) {
       console.error('Error loading plot:', error);
+    }
+  };
+
+  const loadSeasons = async () => {
+    if (!activeGarden) return;
+    
+    try {
+      const seasons = await base44.entities.GardenSeason.filter({ 
+        garden_id: activeGarden.id 
+      }, '-year');
+      
+      if (seasons.length === 0) {
+        // Create default season for current year
+        const currentYear = new Date().getFullYear();
+        const newSeason = await base44.entities.GardenSeason.create({
+          garden_id: activeGarden.id,
+          year: currentYear,
+          season: 'Spring',
+          season_key: `${currentYear}-Spring`,
+          status: 'active'
+        });
+        setAvailableSeasons([newSeason]);
+        setActiveSeason(newSeason.season_key);
+      } else {
+        setAvailableSeasons(seasons);
+        // Set active season to most recent or user's current year
+        const currentYear = new Date().getFullYear();
+        const currentSeason = seasons.find(s => s.year === currentYear);
+        setActiveSeason(currentSeason?.season_key || seasons[0].season_key);
+      }
+    } catch (error) {
+      console.error('Error loading seasons:', error);
+    }
+  };
+
+  const handleAddSeason = async () => {
+    const yearInput = prompt('Enter year for new season:', (new Date().getFullYear() + 1).toString());
+    if (!yearInput) return;
+    
+    const year = parseInt(yearInput);
+    if (isNaN(year) || year < 2000 || year > 2100) {
+      toast.error('Invalid year');
+      return;
+    }
+    
+    try {
+      const newSeason = await base44.entities.GardenSeason.create({
+        garden_id: activeGarden.id,
+        year,
+        season: 'Spring',
+        season_key: `${year}-Spring`,
+        status: 'planning'
+      });
+      
+      setAvailableSeasons([...availableSeasons, newSeason].sort((a, b) => b.year - a.year));
+      setActiveSeason(newSeason.season_key);
+      toast.success(`${year} season created`);
+    } catch (error) {
+      console.error('Error creating season:', error);
+      toast.error('Failed to create season');
     }
   };
 
@@ -291,25 +356,26 @@ export default function MyGarden() {
     <ErrorBoundary fallbackTitle="Garden Error">
       <div className="h-[calc(100vh-8rem)] flex flex-col">
         {/* Header with Garden Selector */}
-        <div className="flex items-center justify-between pb-4 border-b">
-          <div className="flex items-center gap-3">
-            <TreeDeciduous className="w-6 h-6 text-emerald-600" />
-            {gardens.length > 1 ? (
-              <Select value={activeGarden?.id} onValueChange={handleGardenChange}>
-                <SelectTrigger className="w-64">
-                  <SelectValue placeholder="Select a garden" />
-                </SelectTrigger>
-                <SelectContent>
-                  {gardens.map((garden) => (
-                    <SelectItem key={garden.id} value={garden.id}>
-                      {garden.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            ) : (
-              <h1 className="text-xl lg:text-2xl font-bold text-gray-900">{activeGarden?.name}</h1>
-            )}
+        <div className="flex flex-col gap-3 pb-4 border-b">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <TreeDeciduous className="w-6 h-6 text-emerald-600" />
+              {gardens.length > 1 ? (
+                <Select value={activeGarden?.id} onValueChange={handleGardenChange}>
+                  <SelectTrigger className="w-64">
+                    <SelectValue placeholder="Select a garden" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {gardens.map((garden) => (
+                      <SelectItem key={garden.id} value={garden.id}>
+                        {garden.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              ) : (
+                <h1 className="text-xl lg:text-2xl font-bold text-gray-900">{activeGarden?.name}</h1>
+              )}
             </div>
             <Button 
               onClick={() => setShowCreateGarden(true)}
@@ -319,6 +385,36 @@ export default function MyGarden() {
               <Plus className="w-4 h-4" />
               New Garden
             </Button>
+          </div>
+
+          {/* Season Selector */}
+          {availableSeasons.length > 0 && (
+            <div className="flex items-center gap-2">
+              <Calendar className="w-4 h-4 text-gray-500" />
+              <Label className="text-sm font-medium">Season:</Label>
+              <Select value={activeSeason} onValueChange={setActiveSeason}>
+                <SelectTrigger className="w-36">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {availableSeasons.map((season) => (
+                    <SelectItem key={season.id} value={season.season_key}>
+                      {season.year} {season.season}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Button 
+                size="sm"
+                variant="outline"
+                onClick={handleAddSeason}
+                className="gap-1"
+              >
+                <Plus className="w-3 h-3" />
+                New Year
+              </Button>
+            </div>
+          )}
         </div>
 
         {/* Plot Canvas */}
@@ -326,6 +422,7 @@ export default function MyGarden() {
           <PlotCanvas 
             garden={activeGarden}
             plot={plot}
+            activeSeason={activeSeason}
             onPlotUpdate={loadPlot}
             onDeleteGarden={handleDeleteGarden}
           />

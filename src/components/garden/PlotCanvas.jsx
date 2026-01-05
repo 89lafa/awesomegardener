@@ -57,7 +57,7 @@ const GALLON_SIZES = [
   { value: 20, footprint: 24 }, { value: 30, footprint: 30 }
 ];
 
-export default function PlotCanvas({ garden, plot, onPlotUpdate, onDeleteGarden }) {
+export default function PlotCanvas({ garden, plot, activeSeason, onPlotUpdate, onDeleteGarden }) {
   const canvasRef = useRef(null);
   const [items, setItems] = useState([]);
   const [itemsPlantingCounts, setItemsPlantingCounts] = useState({});
