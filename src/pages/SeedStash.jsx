@@ -60,6 +60,7 @@ import {
 import { toast } from 'sonner';
 import { motion, AnimatePresence } from 'framer-motion';
 import AdBanner from '@/components/monetization/AdBanner';
+import { cn } from '@/lib/utils';
 
 const TAGS = [
   { value: 'favorite', label: 'Favorite', icon: Star, color: 'text-yellow-500' },
