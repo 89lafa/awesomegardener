@@ -10,6 +10,7 @@ import {
   ListChecks, 
   Calendar, 
   Globe,
+  MessageSquare,
   Lightbulb,
   Settings,
   ChevronLeft,
@@ -30,7 +31,8 @@ const getNavItems = (userRole, isEditor) => {
       { name: 'Seed Stash', icon: Package, page: 'SeedStash' },
       { name: 'Grow Lists', icon: ListChecks, page: 'GrowLists' },
       { name: 'Calendar', icon: Calendar, page: 'CalendarTasks' },
-      { name: 'Community', icon: Globe, page: 'Community' },
+      { name: 'Browse Gardens', icon: Globe, page: 'BrowseGardens' },
+      { name: 'Community Board', icon: MessageSquare, page: 'CommunityBoard' },
       { name: 'Feature Requests', icon: Lightbulb, page: 'FeatureRequests' },
     ];
 
