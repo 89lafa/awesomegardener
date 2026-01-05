@@ -66,6 +66,23 @@ export default function PlantCatalogDetail() {
         plant_type_id: plantTypeId
       }, 'variety_name');
       
+      // Load subcategory mappings
+      const varietyIds = vars.map(v => v.id);
+      if (varietyIds.length > 0) {
+        const allMaps = await base44.entities.VarietySubCategoryMap.list();
+        const mapsForThese = allMaps.filter(m => varietyIds.includes(m.variety_id));
+        
+        vars = vars.map(v => {
+          if (!v.plant_subcategory_id) {
+            const mapping = mapsForThese.find(m => m.variety_id === v.id);
+            if (mapping) {
+              return { ...v, plant_subcategory_id: mapping.plant_subcategory_id };
+            }
+          }
+          return v;
+        });
+      }
+      
       console.log('[VARIETY RELOAD] Found varieties:', vars.length);
       setVarieties(vars);
     } catch (error) {
@@ -103,7 +120,17 @@ export default function PlantCatalogDetail() {
         is_active: true 
       }, 'sort_order');
       console.log('[SUBCATEGORY] Found subcategories:', subcats.length);
-      setSubCategories(subcats);
+      
+      // Deduplicate subcategories by name (in case of duplicates)
+      const uniqueSubcats = [];
+      const seenNames = new Set();
+      for (const subcat of subcats) {
+        if (!seenNames.has(subcat.name)) {
+          seenNames.add(subcat.name);
+          uniqueSubcats.push(subcat);
+        }
+      }
+      setSubCategories(uniqueSubcats);
 
       // Load varieties - try Variety table first (primary source), then PlantProfile
       console.log('[VARIETY DEBUG] Attempting to load varieties for plant_type_id:', plantTypeId);
@@ -120,6 +147,24 @@ export default function PlantCatalogDetail() {
           plant_type_id: plantTypeId
         }, 'variety_name');
         console.log('[VARIETY DEBUG] Found PlantProfile records:', vars.length);
+      }
+      
+      // Load subcategory mappings for varieties that don't have direct subcategory_id
+      const varietyIds = vars.map(v => v.id);
+      if (varietyIds.length > 0) {
+        const allMaps = await base44.entities.VarietySubCategoryMap.list();
+        const mapsForThese = allMaps.filter(m => varietyIds.includes(m.variety_id));
+        
+        // Merge subcategory IDs from mappings into varieties
+        vars = vars.map(v => {
+          if (!v.plant_subcategory_id) {
+            const mapping = mapsForThese.find(m => m.variety_id === v.id);
+            if (mapping) {
+              return { ...v, plant_subcategory_id: mapping.plant_subcategory_id };
+            }
+          }
+          return v;
+        });
       }
       
       console.log('[VARIETY DEBUG] Final varieties:', vars.slice(0, 3));
