@@ -287,13 +287,42 @@ export default function SeedStash() {
   };
 
   const handleDelete = async (seed) => {
-    if (!confirm(`Delete "${seed.variety_name || seed.custom_name}"?`)) return;
     try {
+      // Check if this seed is currently planted
+      const profile = profiles[seed.plant_profile_id];
+      if (profile) {
+        const user = await base44.auth.me();
+        const currentYear = new Date().getFullYear();
+        const plantings = await base44.entities.PlantInstance.filter({
+          plant_profile_id: seed.plant_profile_id,
+          created_by: user.email
+        });
+        
+        // Check if any plantings are for current season
+        const currentSeasonPlantings = plantings.filter(p => {
+          if (!p.season_year) {
+            // Old data without season - consider it current
+            return true;
+          }
+          return p.season_year.startsWith(currentYear.toString());
+        });
+        
+        if (currentSeasonPlantings.length > 0) {
+          const confirmMsg = `⚠️ These seeds are currently planted in this season's garden.\n\nAre you sure you want to delete "${profile.variety_name || seed.custom_label}"?\n\nThis will NOT remove the plants from your garden.`;
+          if (!confirm(confirmMsg)) return;
+        } else {
+          if (!confirm(`Delete "${profile.variety_name || seed.custom_label}"?`)) return;
+        }
+      } else {
+        if (!confirm(`Delete this seed?`)) return;
+      }
+      
       await base44.entities.SeedLot.delete(seed.id);
       setSeeds(seeds.filter(s => s.id !== seed.id));
       toast.success('Seed deleted');
     } catch (error) {
       console.error('Error deleting seed:', error);
+      toast.error('Failed to delete seed');
     }
   };
 
