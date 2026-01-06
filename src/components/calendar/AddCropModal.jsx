@@ -101,11 +101,17 @@ export default function AddCropModal({ open, onOpenChange, seasonId, onSuccess }
     const variety = varieties.find(v => v.id === varietyId);
     if (!variety) return;
     
+    // Get default timing from variety
+    const startIndoorsWeeks = variety.start_indoors_weeks || 6;
+    const transplantWeeks = variety.transplant_weeks_after_last_frost_min || 2;
+    
     setFormData({ 
       ...formData, 
       variety_id: varietyId,
       dtm_days: variety.days_to_maturity || 75,
-      label: variety.variety_name
+      label: variety.variety_name,
+      seed_offset_days: -(startIndoorsWeeks * 7), // Convert weeks to days, negative = before frost
+      transplant_offset_days: transplantWeeks * 7 // Positive = after frost
     });
   };
   
@@ -116,50 +122,63 @@ export default function AddCropModal({ open, onOpenChange, seasonId, onSuccess }
     const profile = profiles[lot.plant_profile_id];
     if (!profile) return;
     
+    // Get timing from profile
+    const startIndoorsWeeks = profile.start_indoors_weeks_before_last_frost_min || 6;
+    const transplantWeeks = profile.transplant_weeks_after_last_frost_min || 2;
+    
     setFormData({
       ...formData,
       seed_lot_id: lotId,
       plant_type_id: profile.plant_type_id || '',
       dtm_days: profile.days_to_maturity_seed || 75,
-      label: profile.variety_name || 'Crop'
+      label: profile.variety_name || 'Crop',
+      seed_offset_days: -(startIndoorsWeeks * 7),
+      transplant_offset_days: transplantWeeks * 7
     });
   };
   
   const generateTasks = async (cropPlan) => {
     const tasks = [];
-    const anchorDate = season?.last_frost_date ? new Date(season.last_frost_date) : new Date();
+    
+    // Use season's frost dates, fallback to UserSettings if not set on season
+    let lastFrostDate = season?.last_frost_date ? new Date(season.last_frost_date) : null;
+    
+    if (!lastFrostDate) {
+      // Load from UserSettings as fallback
+      try {
+        const user = await base44.auth.me();
+        const settings = await base44.entities.UserSettings.filter({ created_by: user.email });
+        if (settings.length > 0 && settings[0].last_frost_date) {
+          lastFrostDate = new Date(settings[0].last_frost_date);
+        }
+      } catch (error) {
+        console.error('Error loading frost dates:', error);
+      }
+    }
+    
+    // Final fallback to May 1st of the season year
+    if (!lastFrostDate) {
+      lastFrostDate = new Date(season.year, 4, 1); // May 1st
+    }
     
     const color = cropPlan.color_hex;
     
     if (cropPlan.planting_method === 'transplant') {
-      // Bed Prep
-      const bedPrepDate = addDays(anchorDate, cropPlan.transplant_offset_days - 7);
-      tasks.push({
-        garden_season_id: seasonId,
-        crop_plan_id: cropPlan.id,
-        task_type: 'bed_prep',
-        title: `Bed Prep ${cropPlan.label}`,
-        start_date: bedPrepDate.toISOString().split('T')[0],
-        end_date: addDays(bedPrepDate, 1).toISOString().split('T')[0],
-        color_hex: color,
-        how_to_content: '# Bed Preparation\n\nPrepare the bed by:\n- Removing weeds\n- Adding compost\n- Loosening soil'
-      });
-      
-      // Seeding (indoors)
-      const seedDate = addDays(anchorDate, cropPlan.seed_offset_days);
+      // Seeding (indoors) - X weeks BEFORE last frost
+      const seedDate = addDays(lastFrostDate, cropPlan.seed_offset_days);
       tasks.push({
         garden_season_id: seasonId,
         crop_plan_id: cropPlan.id,
         task_type: 'seed',
-        title: `Seed ${cropPlan.label} (indoors)`,
+        title: `Start Seeds ${cropPlan.label}`,
         start_date: seedDate.toISOString().split('T')[0],
         end_date: seedDate.toISOString().split('T')[0],
         color_hex: color,
         how_to_content: '# Indoor Seeding\n\nStart seeds indoors:\n- Use seed starting mix\n- Keep warm and moist\n- Provide light once germinated'
       });
       
-      // Transplant
-      const transplantDate = addDays(anchorDate, cropPlan.transplant_offset_days);
+      // Transplant - X days AFTER last frost
+      const transplantDate = addDays(lastFrostDate, cropPlan.transplant_offset_days);
       tasks.push({
         garden_season_id: seasonId,
         crop_plan_id: cropPlan.id,
@@ -171,7 +190,7 @@ export default function AddCropModal({ open, onOpenChange, seasonId, onSuccess }
         how_to_content: '# Transplanting\n\nTransplant seedlings:\n- Harden off for 7-10 days\n- Plant on overcast day\n- Water well after planting'
       });
       
-      // Harvest
+      // Harvest - DTM days after transplant
       const harvestStart = addDays(transplantDate, cropPlan.dtm_days);
       const harvestEnd = addDays(harvestStart, cropPlan.harvest_window_days);
       tasks.push({
@@ -186,20 +205,7 @@ export default function AddCropModal({ open, onOpenChange, seasonId, onSuccess }
       });
     } else {
       // Direct Seed
-      const directSeedDate = addDays(anchorDate, cropPlan.direct_seed_offset_days);
-      
-      // Bed Prep
-      const bedPrepDate = addDays(directSeedDate, -7);
-      tasks.push({
-        garden_season_id: seasonId,
-        crop_plan_id: cropPlan.id,
-        task_type: 'bed_prep',
-        title: `Bed Prep ${cropPlan.label}`,
-        start_date: bedPrepDate.toISOString().split('T')[0],
-        end_date: addDays(bedPrepDate, 1).toISOString().split('T')[0],
-        color_hex: color,
-        how_to_content: '# Bed Preparation\n\nPrepare the bed'
-      });
+      const directSeedDate = addDays(lastFrostDate, cropPlan.direct_seed_offset_days);
       
       tasks.push({
         garden_season_id: seasonId,

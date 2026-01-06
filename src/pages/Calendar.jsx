@@ -413,7 +413,7 @@ export default function Calendar() {
   );
 }
 
-// Calendar Grid View - Full year with day cells
+// Calendar Grid View - Compact full year view like SeedTime
 function CalendarGridView({ tasks, crops, season, onTaskClick }) {
   if (!season) {
     return (
@@ -426,98 +426,82 @@ function CalendarGridView({ tasks, crops, season, onTaskClick }) {
   const startDate = startOfYear(new Date(season.year, 0, 1));
   const months = Array.from({ length: 12 }, (_, i) => addMonths(startDate, i));
 
-  // Group tasks by crop
-  const tasksByCrop = {};
-  tasks.forEach(task => {
-    if (!tasksByCrop[task.crop_plan_id]) {
-      tasksByCrop[task.crop_plan_id] = [];
-    }
-    tasksByCrop[task.crop_plan_id].push(task);
-  });
-
   return (
-    <div className="p-4">
-      <div className="text-center mb-4">
-        <h2 className="text-xl font-bold">{season.year} {season.season}</h2>
-      </div>
-      
-      {/* Calendar Grid */}
-      <div className="space-y-0">
+    <div className="p-2">
+      {/* Calendar Grid - Compact */}
+      <div className="space-y-0 border rounded-lg overflow-hidden">
         {months.map((month, monthIdx) => {
           const daysInMonth = getDaysInMonth(month);
           const monthStart = startOfMonth(month);
-          const startDayOfWeek = monthStart.getDay(); // 0 = Sunday
+          const startDayOfWeek = monthStart.getDay();
           
           return (
-            <div key={monthIdx} className="border-b">
-              {/* Month Header */}
-              <div className="bg-gray-100 px-3 py-2 font-semibold text-sm border-b sticky top-0 z-10">
-                {format(month, 'MMMM yyyy')}
+            <div key={monthIdx} className="border-b last:border-b-0">
+              {/* Month Header - Compact */}
+              <div className="grid grid-cols-[80px_1fr] bg-gray-50 border-b">
+                <div className="px-2 py-1.5 font-semibold text-xs border-r">
+                  {format(month, 'MMMM')}
+                </div>
+                <div className="grid grid-cols-7">
+                  {monthIdx === 0 && ['Su', 'M', 'T', 'W', 'Th', 'F', 'Sa'].map((day, i) => (
+                    <div key={i} className="text-center text-[10px] font-medium py-1 border-r last:border-r-0 text-gray-500">
+                      {day}
+                    </div>
+                  ))}
+                </div>
               </div>
               
-              {/* Day Headers */}
-              <div className="grid grid-cols-7 bg-gray-50 border-b">
-                {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day) => (
-                  <div key={day} className="text-center text-xs font-medium py-1 border-r last:border-r-0">
-                    {day}
-                  </div>
-                ))}
-              </div>
-              
-              {/* Days Grid */}
-              <div className="grid grid-cols-7">
-                {/* Empty cells for days before month starts */}
-                {Array.from({ length: startDayOfWeek }).map((_, i) => (
-                  <div key={`empty-${i}`} className="min-h-[80px] border-r border-b bg-gray-50" />
-                ))}
-                
-                {/* Actual days */}
-                {Array.from({ length: daysInMonth }).map((_, dayIdx) => {
-                  const day = dayIdx + 1;
-                  const currentDate = new Date(season.year, monthIdx, day);
+              {/* Days Grid - Very Compact */}
+              <div className="grid grid-cols-[80px_1fr]">
+                <div className="border-r" />
+                <div className="grid grid-cols-7">
+                  {/* Empty cells */}
+                  {Array.from({ length: startDayOfWeek }).map((_, i) => (
+                    <div key={`empty-${i}`} className="h-12 border-r border-b bg-gray-50/50" />
+                  ))}
                   
-                  // Find tasks for this day
-                  const dayTasks = tasks.filter(task => {
-                    const taskStart = new Date(task.start_date);
-                    const taskEnd = task.end_date ? new Date(task.end_date) : taskStart;
-                    return currentDate >= taskStart && currentDate <= taskEnd;
-                  });
-                  
-                  return (
-                    <div
-                      key={day}
-                      className="min-h-[80px] border-r border-b relative p-1 hover:bg-gray-50"
-                    >
-                      <div className="text-xs text-gray-500 mb-1">{day}</div>
-                      <div className="space-y-0.5">
-                        {dayTasks.slice(0, 3).map((task) => {
-                          const crop = crops.find(c => c.id === task.crop_plan_id);
-                          return (
-                            <div
-                              key={task.id}
-                              className="text-[10px] px-1 py-0.5 rounded text-white truncate cursor-pointer hover:opacity-80"
-                              style={{ backgroundColor: task.color_hex || crop?.color_hex || '#10b981' }}
-                              onClick={() => onTaskClick(task)}
-                              title={task.title}
-                            >
-                              {task.title}
-                            </div>
-                          );
-                        })}
-                        {dayTasks.length > 3 && (
-                          <div className="text-[10px] text-gray-500 px-1">
-                            +{dayTasks.length - 3} more
+                  {/* Days */}
+                  {Array.from({ length: daysInMonth }).map((_, dayIdx) => {
+                    const day = dayIdx + 1;
+                    const currentDate = new Date(season.year, monthIdx, day);
+                    
+                    const dayTasks = tasks.filter(task => {
+                      const taskStart = new Date(task.start_date);
+                      const taskEnd = task.end_date ? new Date(task.end_date) : taskStart;
+                      return currentDate >= taskStart && currentDate <= taskEnd;
+                    });
+                    
+                    return (
+                      <div
+                        key={day}
+                        className="h-12 border-r border-b relative hover:bg-blue-50/30 group"
+                      >
+                        <div className="absolute top-0.5 left-0.5 text-[9px] text-gray-400">{day}</div>
+                        {dayTasks.length > 0 && (
+                          <div className="absolute inset-0 flex flex-col justify-center items-center gap-0.5 p-1 pt-2">
+                            {dayTasks.slice(0, 2).map((task) => {
+                              const crop = crops.find(c => c.id === task.crop_plan_id);
+                              return (
+                                <div
+                                  key={task.id}
+                                  className="w-full h-1.5 rounded-sm cursor-pointer opacity-80 hover:opacity-100"
+                                  style={{ backgroundColor: task.color_hex || crop?.color_hex || '#10b981' }}
+                                  onClick={() => onTaskClick(task)}
+                                  title={`${crop?.label || 'Crop'}: ${task.title}`}
+                                />
+                              );
+                            })}
                           </div>
                         )}
                       </div>
-                    </div>
-                  );
-                })}
-                
-                {/* Fill remaining cells */}
-                {Array.from({ length: (7 - ((startDayOfWeek + daysInMonth) % 7)) % 7 }).map((_, i) => (
-                  <div key={`fill-${i}`} className="min-h-[80px] border-r border-b bg-gray-50" />
-                ))}
+                    );
+                  })}
+                  
+                  {/* Fill */}
+                  {Array.from({ length: (7 - ((startDayOfWeek + daysInMonth) % 7)) % 7 }).map((_, i) => (
+                    <div key={`fill-${i}`} className="h-12 border-r border-b bg-gray-50/50" />
+                  ))}
+                </div>
               </div>
             </div>
           );
