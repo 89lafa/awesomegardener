@@ -464,35 +464,41 @@ function CalendarGridView({ tasks, crops, season, onTaskClick }) {
                   {Array.from({ length: daysInMonth }).map((_, dayIdx) => {
                     const day = dayIdx + 1;
                     const currentDate = new Date(season.year, monthIdx, day);
+                    currentDate.setHours(0, 0, 0, 0);
                     
                     const dayTasks = tasks.filter(task => {
                       if (!task.start_date) return false;
                       const taskStart = new Date(task.start_date);
+                      taskStart.setHours(0, 0, 0, 0);
                       const taskEnd = task.end_date ? new Date(task.end_date) : taskStart;
+                      taskEnd.setHours(0, 0, 0, 0);
                       return currentDate >= taskStart && currentDate <= taskEnd;
                     });
                     
                     return (
                       <div
                         key={day}
-                        className="h-12 border-r border-b relative hover:bg-blue-50/30 group"
+                        className="h-16 border-r border-b relative hover:bg-blue-50/30"
                       >
-                        <div className="absolute top-0.5 left-0.5 text-[9px] text-gray-400">{day}</div>
+                        <div className="absolute top-0.5 left-0.5 text-[9px] text-gray-400 font-medium">{day}</div>
                         {dayTasks.length > 0 && (
-                          <div className="absolute inset-0 flex flex-col justify-center items-center gap-0.5 p-0.5 pt-2.5">
-                            {dayTasks.slice(0, 3).map((task) => {
+                          <div className="absolute inset-0 flex flex-col gap-0.5 p-0.5 pt-3">
+                            {dayTasks.slice(0, 4).map((task) => {
                               const crop = crops.find(c => c.id === task.crop_plan_id);
-                              const taskType = task.task_type?.charAt(0).toUpperCase() || '';
+                              const taskTypeShort = task.task_type === 'seed' ? 'Start' : 
+                                                   task.task_type === 'transplant' ? 'Trans' :
+                                                   task.task_type === 'harvest' ? 'Harv' :
+                                                   task.task_type === 'direct_seed' ? 'Sow' : 'Task';
                               return (
                                 <div
                                   key={task.id}
-                                  className="w-full h-2.5 rounded-sm cursor-pointer hover:opacity-100 flex items-center justify-center relative group"
+                                  className="w-full h-3 rounded cursor-pointer hover:opacity-90 flex items-center px-1 overflow-hidden"
                                   style={{ backgroundColor: task.color_hex || crop?.color_hex || '#10b981' }}
                                   onClick={() => onTaskClick(task)}
                                   title={`${crop?.label || 'Crop'}: ${task.title}`}
                                 >
-                                  <span className="text-[8px] text-white font-bold opacity-0 group-hover:opacity-100 absolute inset-0 flex items-center justify-center">
-                                    {taskType}
+                                  <span className="text-[9px] text-white font-semibold truncate leading-none">
+                                    {crop?.label} - {taskTypeShort}
                                   </span>
                                 </div>
                               );
