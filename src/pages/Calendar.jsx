@@ -466,6 +466,7 @@ function CalendarGridView({ tasks, crops, season, onTaskClick }) {
                     const currentDate = new Date(season.year, monthIdx, day);
                     
                     const dayTasks = tasks.filter(task => {
+                      if (!task.start_date) return false;
                       const taskStart = new Date(task.start_date);
                       const taskEnd = task.end_date ? new Date(task.end_date) : taskStart;
                       return currentDate >= taskStart && currentDate <= taskEnd;
@@ -478,17 +479,22 @@ function CalendarGridView({ tasks, crops, season, onTaskClick }) {
                       >
                         <div className="absolute top-0.5 left-0.5 text-[9px] text-gray-400">{day}</div>
                         {dayTasks.length > 0 && (
-                          <div className="absolute inset-0 flex flex-col justify-center items-center gap-0.5 p-1 pt-2">
-                            {dayTasks.slice(0, 2).map((task) => {
+                          <div className="absolute inset-0 flex flex-col justify-center items-center gap-0.5 p-0.5 pt-2.5">
+                            {dayTasks.slice(0, 3).map((task) => {
                               const crop = crops.find(c => c.id === task.crop_plan_id);
+                              const taskType = task.task_type?.charAt(0).toUpperCase() || '';
                               return (
                                 <div
                                   key={task.id}
-                                  className="w-full h-1.5 rounded-sm cursor-pointer opacity-80 hover:opacity-100"
+                                  className="w-full h-2.5 rounded-sm cursor-pointer hover:opacity-100 flex items-center justify-center relative group"
                                   style={{ backgroundColor: task.color_hex || crop?.color_hex || '#10b981' }}
                                   onClick={() => onTaskClick(task)}
                                   title={`${crop?.label || 'Crop'}: ${task.title}`}
-                                />
+                                >
+                                  <span className="text-[8px] text-white font-bold opacity-0 group-hover:opacity-100 absolute inset-0 flex items-center justify-center">
+                                    {taskType}
+                                  </span>
+                                </div>
                               );
                             })}
                           </div>
@@ -598,7 +604,7 @@ function TimelineView({ tasks, crops, season, onTaskClick }) {
             
             <div 
               className="flex-1 relative" 
-              style={{ height: '80px' }}
+              style={{ height: '40px' }}
               onDragOver={(e) => e.preventDefault()}
               onDrop={(e) => {
                 const rect = e.currentTarget.getBoundingClientRect();
@@ -610,7 +616,7 @@ function TimelineView({ tasks, crops, season, onTaskClick }) {
                 handleTaskDrop(e, targetDate);
               }}
             >
-              {cropTasks.map(task => {
+              {cropTasks.map((task, idx) => {
                 const taskStart = new Date(task.start_date);
                 const taskEnd = task.end_date ? new Date(task.end_date) : taskStart;
                 
@@ -623,24 +629,29 @@ function TimelineView({ tasks, crops, season, onTaskClick }) {
                 
                 const taskColor = task.color_hex || crop.color_hex || '#10b981';
                 
+                // Stack tasks vertically within the row
+                const verticalOffset = (idx % 2) * 18;
+                
                 return (
                   <div
                     key={task.id}
                     draggable
                     onDragStart={(e) => handleTaskDragStart(e, task)}
                     className={cn(
-                      "absolute top-2 rounded px-2 py-1 text-xs text-white cursor-move hover:opacity-90 hover:shadow-lg transition-all",
+                      "absolute rounded px-2 py-0.5 text-xs text-white cursor-move hover:opacity-90 hover:shadow-lg transition-all",
                       draggingTask?.id === task.id && "opacity-50"
                     )}
                     style={{
+                      top: `${2 + verticalOffset}px`,
                       left: `${Math.max(0, leftPercent)}%`,
                       width: `${Math.min(100 - Math.max(0, leftPercent), widthPercent)}%`,
                       backgroundColor: taskColor,
-                      minWidth: '60px'
+                      minWidth: '60px',
+                      height: '16px'
                     }}
                     onClick={() => onTaskClick(task)}
                   >
-                    <div className="truncate font-medium">{task.title}</div>
+                    <div className="truncate font-medium leading-none">{task.title}</div>
                   </div>
                 );
               })}

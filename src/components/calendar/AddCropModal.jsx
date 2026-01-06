@@ -140,25 +140,20 @@ export default function AddCropModal({ open, onOpenChange, seasonId, onSuccess }
   const generateTasks = async (cropPlan) => {
     const tasks = [];
     
-    // Use season's frost dates, fallback to UserSettings if not set on season
-    let lastFrostDate = season?.last_frost_date ? new Date(season.last_frost_date) : null;
+    // CRITICAL: Use season's frost dates but adjust to the season's YEAR
+    let lastFrostDate = null;
     
-    if (!lastFrostDate) {
-      // Load from UserSettings as fallback
-      try {
-        const user = await base44.auth.me();
-        const settings = await base44.entities.UserSettings.filter({ created_by: user.email });
-        if (settings.length > 0 && settings[0].last_frost_date) {
-          lastFrostDate = new Date(settings[0].last_frost_date);
-        }
-      } catch (error) {
-        console.error('Error loading frost dates:', error);
-      }
-    }
-    
-    // Final fallback to May 1st of the season year
-    if (!lastFrostDate) {
-      lastFrostDate = new Date(season.year, 4, 1); // May 1st
+    if (season?.last_frost_date) {
+      // Parse the stored date and use the SEASON'S year
+      const storedDate = new Date(season.last_frost_date);
+      const month = storedDate.getMonth();
+      const day = storedDate.getDate();
+      lastFrostDate = new Date(season.year, month, day);
+      console.log('[AddCropModal] Using last frost:', lastFrostDate, 'for season year:', season.year);
+    } else {
+      // Fallback to May 1st of the season year
+      lastFrostDate = new Date(season.year, 4, 1);
+      console.log('[AddCropModal] No frost date on season, using fallback:', lastFrostDate);
     }
     
     const color = cropPlan.color_hex;
