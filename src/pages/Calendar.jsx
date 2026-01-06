@@ -31,7 +31,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
-import { format, addDays, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay } from 'date-fns';
+import { format, addDays, addMonths, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, startOfYear, getDaysInMonth } from 'date-fns';
 import AddCropModal from '@/components/calendar/AddCropModal';
 import TaskDetailPanel from '@/components/calendar/TaskDetailPanel';
 import CropEditModal from '@/components/calendar/CropEditModal';
@@ -55,8 +55,8 @@ export default function Calendar() {
   const [searchQuery, setSearchQuery] = useState('');
   const [taskFilter, setTaskFilter] = useState('all');
   const [sortBy, setSortBy] = useState('date');
-  const [timelineMonths, setTimelineMonths] = useState(18);
-  const [viewStart, setViewStart] = useState(new Date());
+  const [timelineMonths, setTimelineMonths] = useState(12);
+  const [viewMode, setViewMode] = useState('calendar'); // 'calendar' or 'timeline'
   
   useEffect(() => {
     loadData();
@@ -67,6 +67,15 @@ export default function Calendar() {
       loadPlansAndTasks();
     }
   }, [activeSeasonId]);
+
+  const getSeasonStartDate = () => {
+    if (!seasons.length || !activeSeasonId) return new Date();
+    const season = seasons.find(s => s.id === activeSeasonId);
+    if (!season) return new Date();
+    
+    // Start from beginning of the year for the selected season
+    return startOfYear(new Date(season.year, 0, 1));
+  };
   
   const loadData = async () => {
     try {
@@ -185,8 +194,9 @@ export default function Calendar() {
     return true;
   });
   
-  const goToToday = () => {
-    setViewStart(new Date());
+  const getCurrentSeason = () => {
+    if (!seasons.length || !activeSeasonId) return null;
+    return seasons.find(s => s.id === activeSeasonId);
   };
   
   if (loading) {
@@ -322,18 +332,15 @@ export default function Calendar() {
             </SelectContent>
           </Select>
           
-          <Button variant="outline" size="sm" onClick={goToToday}>
-            Today
-          </Button>
+
           
-          <Select value={timelineMonths.toString()} onValueChange={(v) => setTimelineMonths(parseInt(v))}>
+          <Select value={viewMode} onValueChange={setViewMode}>
             <SelectTrigger className="w-32">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="12">12 months</SelectItem>
-              <SelectItem value="18">18 months</SelectItem>
-              <SelectItem value="24">24 months</SelectItem>
+              <SelectItem value="calendar">Calendar</SelectItem>
+              <SelectItem value="timeline">Timeline</SelectItem>
             </SelectContent>
           </Select>
           
@@ -353,15 +360,23 @@ export default function Calendar() {
           </Select>
         </div>
         
-        {/* Timeline */}
+        {/* Calendar/Timeline View */}
         <div className="flex-1 overflow-auto bg-gray-50">
-          <TimelineView 
-            tasks={filteredTasks}
-            crops={cropPlans}
-            viewStart={viewStart}
-            monthCount={timelineMonths}
-            onTaskClick={setSelectedTask}
-          />
+          {viewMode === 'calendar' ? (
+            <CalendarGridView
+              tasks={filteredTasks}
+              crops={cropPlans}
+              season={getCurrentSeason()}
+              onTaskClick={setSelectedTask}
+            />
+          ) : (
+            <TimelineView 
+              tasks={filteredTasks}
+              crops={cropPlans}
+              season={getCurrentSeason()}
+              onTaskClick={setSelectedTask}
+            />
+          )}
         </div>
       </div>
       
@@ -398,14 +413,140 @@ export default function Calendar() {
   );
 }
 
-function TimelineView({ tasks, crops, viewStart, monthCount, onTaskClick }) {
+// Calendar Grid View - Full year with day cells
+function CalendarGridView({ tasks, crops, season, onTaskClick }) {
+  if (!season) {
+    return (
+      <div className="p-8 text-center text-gray-500">
+        Select a season to view calendar
+      </div>
+    );
+  }
+
+  const startDate = startOfYear(new Date(season.year, 0, 1));
+  const months = Array.from({ length: 12 }, (_, i) => addMonths(startDate, i));
+
+  // Group tasks by crop
+  const tasksByCrop = {};
+  tasks.forEach(task => {
+    if (!tasksByCrop[task.crop_plan_id]) {
+      tasksByCrop[task.crop_plan_id] = [];
+    }
+    tasksByCrop[task.crop_plan_id].push(task);
+  });
+
+  return (
+    <div className="p-4">
+      <div className="text-center mb-4">
+        <h2 className="text-xl font-bold">{season.year} {season.season}</h2>
+      </div>
+      
+      {/* Calendar Grid */}
+      <div className="space-y-0">
+        {months.map((month, monthIdx) => {
+          const daysInMonth = getDaysInMonth(month);
+          const monthStart = startOfMonth(month);
+          const startDayOfWeek = monthStart.getDay(); // 0 = Sunday
+          
+          return (
+            <div key={monthIdx} className="border-b">
+              {/* Month Header */}
+              <div className="bg-gray-100 px-3 py-2 font-semibold text-sm border-b sticky top-0 z-10">
+                {format(month, 'MMMM yyyy')}
+              </div>
+              
+              {/* Day Headers */}
+              <div className="grid grid-cols-7 bg-gray-50 border-b">
+                {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day) => (
+                  <div key={day} className="text-center text-xs font-medium py-1 border-r last:border-r-0">
+                    {day}
+                  </div>
+                ))}
+              </div>
+              
+              {/* Days Grid */}
+              <div className="grid grid-cols-7">
+                {/* Empty cells for days before month starts */}
+                {Array.from({ length: startDayOfWeek }).map((_, i) => (
+                  <div key={`empty-${i}`} className="min-h-[80px] border-r border-b bg-gray-50" />
+                ))}
+                
+                {/* Actual days */}
+                {Array.from({ length: daysInMonth }).map((_, dayIdx) => {
+                  const day = dayIdx + 1;
+                  const currentDate = new Date(season.year, monthIdx, day);
+                  
+                  // Find tasks for this day
+                  const dayTasks = tasks.filter(task => {
+                    const taskStart = new Date(task.start_date);
+                    const taskEnd = task.end_date ? new Date(task.end_date) : taskStart;
+                    return currentDate >= taskStart && currentDate <= taskEnd;
+                  });
+                  
+                  return (
+                    <div
+                      key={day}
+                      className="min-h-[80px] border-r border-b relative p-1 hover:bg-gray-50"
+                    >
+                      <div className="text-xs text-gray-500 mb-1">{day}</div>
+                      <div className="space-y-0.5">
+                        {dayTasks.slice(0, 3).map((task) => {
+                          const crop = crops.find(c => c.id === task.crop_plan_id);
+                          return (
+                            <div
+                              key={task.id}
+                              className="text-[10px] px-1 py-0.5 rounded text-white truncate cursor-pointer hover:opacity-80"
+                              style={{ backgroundColor: task.color_hex || crop?.color_hex || '#10b981' }}
+                              onClick={() => onTaskClick(task)}
+                              title={task.title}
+                            >
+                              {task.title}
+                            </div>
+                          );
+                        })}
+                        {dayTasks.length > 3 && (
+                          <div className="text-[10px] text-gray-500 px-1">
+                            +{dayTasks.length - 3} more
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+                
+                {/* Fill remaining cells */}
+                {Array.from({ length: (7 - ((startDayOfWeek + daysInMonth) % 7)) % 7 }).map((_, i) => (
+                  <div key={`fill-${i}`} className="min-h-[80px] border-r border-b bg-gray-50" />
+                ))}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+      
+      {crops.length === 0 && (
+        <div className="p-8 text-center text-gray-500">
+          No crops planned yet. Click "Add Crop" to start planning.
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Timeline View - Horizontal bars
+function TimelineView({ tasks, crops, season, onTaskClick }) {
   const [draggingTask, setDraggingTask] = useState(null);
   
-  const months = [];
-  for (let i = 0; i < monthCount; i++) {
-    const month = addDays(startOfMonth(viewStart), i * 30);
-    months.push(month);
+  if (!season) {
+    return (
+      <div className="p-8 text-center text-gray-500">
+        Select a season to view timeline
+      </div>
+    );
   }
+
+  const viewStart = startOfYear(new Date(season.year, 0, 1));
+  const months = Array.from({ length: 12 }, (_, i) => addMonths(viewStart, i));
   
   const handleTaskDragStart = (e, task) => {
     e.dataTransfer.effectAllowed = 'move';
@@ -479,7 +620,7 @@ function TimelineView({ tasks, crops, viewStart, monthCount, onTaskClick }) {
                 const rect = e.currentTarget.getBoundingClientRect();
                 const x = e.clientX - rect.left;
                 const totalWidth = rect.width;
-                const totalDays = monthCount * 30;
+                const totalDays = 365;
                 const daysFromStart = Math.floor((x / totalWidth) * totalDays);
                 const targetDate = addDays(viewStart, daysFromStart);
                 handleTaskDrop(e, targetDate);
@@ -491,8 +632,8 @@ function TimelineView({ tasks, crops, viewStart, monthCount, onTaskClick }) {
                 
                 const daysSinceStart = Math.floor((taskStart - viewStart) / (1000 * 60 * 60 * 24));
                 const duration = Math.floor((taskEnd - taskStart) / (1000 * 60 * 60 * 24)) + 1;
-                const leftPercent = (daysSinceStart / (monthCount * 30)) * 100;
-                const widthPercent = (duration / (monthCount * 30)) * 100;
+                const leftPercent = (daysSinceStart / 365) * 100;
+                const widthPercent = (duration / 365) * 100;
                 
                 if (leftPercent < -widthPercent || leftPercent > 100) return null;
                 
