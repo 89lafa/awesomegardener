@@ -40,6 +40,7 @@ import Settings from './pages/Settings';
 import Users from './pages/Users';
 import VarietyReviewQueue from './pages/VarietyReviewQueue';
 import ViewVariety from './pages/ViewVariety';
+import ChangeRequests from './pages/ChangeRequests';
 import __Layout from './Layout.jsx';
 
 
@@ -86,6 +87,7 @@ export const PAGES = {
     "Users": Users,
     "VarietyReviewQueue": VarietyReviewQueue,
     "ViewVariety": ViewVariety,
+    "ChangeRequests": ChangeRequests,
 }
 
 export const pagesConfig = {

@@ -26,7 +26,7 @@ import {
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 
-const getNavItems = (userRole, isEditor) => {
+const getNavItems = (userRole, isEditor, user) => {
     const items = [
       { name: 'Dashboard', icon: LayoutDashboard, page: 'Dashboard' },
       { name: 'Plot Layout', icon: Hammer, page: 'MyGarden' },
@@ -46,9 +46,10 @@ const getNavItems = (userRole, isEditor) => {
       { name: 'Feature Requests', icon: Lightbulb, page: 'FeatureRequests' },
     ];
 
-  if (isEditor || userRole === 'admin') {
+  if (isEditor || userRole === 'admin' || user?.is_moderator) {
     items.push({ name: 'Review Queue', icon: Shield, page: 'EditorReviewQueue' });
     items.push({ name: 'Variety Reviews', icon: Sprout, page: 'VarietyReviewQueue' });
+    items.push({ name: 'Change Requests', icon: Shield, page: 'ChangeRequests' });
   }
 
   if (userRole === 'admin') {
@@ -62,7 +63,7 @@ const getNavItems = (userRole, isEditor) => {
 };
 
 export default function Sidebar({ collapsed, onToggle, currentPage, user }) {
-  const navItems = getNavItems(user?.role, user?.is_editor);
+  const navItems = getNavItems(user?.role, user?.is_editor, user);
 
   return (
     <aside className={cn(

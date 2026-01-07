@@ -21,7 +21,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Plus, X, Trash2, Move, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
-import FromPlanTab from './FromPlanTab';
+import StashTypeSelector from './StashTypeSelector';
+import PlanTypeSelector from './PlanTypeSelector';
+import CatalogTypeSelector from './CatalogTypeSelector';
 
 export default function PlantingModal({ open, onOpenChange, item, garden, onPlantingUpdate, activeSeason }) {
   const [plantings, setPlantings] = useState([]);
@@ -211,11 +213,10 @@ export default function PlantingModal({ open, onOpenChange, item, garden, onPlan
       console.log('[PlantingModal] Created PlantInstance:', planting.id);
       const updatedPlantings = [...plantings, planting];
       setPlantings(updatedPlantings);
-      
-      // Re-analyze companions immediately
-      setTimeout(() => analyzeCompanions(), 100);
-      
       toast.success('Plant added');
+      
+      // Re-run companion analysis with new plantings state
+      analyzeCompanionsWithPlantings(updatedPlantings);
     } catch (error) {
       console.error('[PlantingModal] Error adding plant:', error);
       toast.error('Failed to add plant: ' + (error.message || 'Unknown error'));
@@ -315,11 +316,10 @@ export default function PlantingModal({ open, onOpenChange, item, garden, onPlan
       const updatedPlantings = plantings.filter(p => p.id !== planting.id);
       setPlantings(updatedPlantings);
       setSelectedPlanting(null);
-      
-      // Re-analyze companions immediately
-      setTimeout(() => analyzeCompanions(), 100);
-      
       toast.success('Plant removed');
+      
+      // Re-run companion analysis with updated plantings
+      analyzeCompanionsWithPlantings(updatedPlantings);
     } catch (error) {
       console.error('Error deleting planting:', error);
       toast.error('Failed to remove plant');
@@ -424,8 +424,8 @@ export default function PlantingModal({ open, onOpenChange, item, garden, onPlan
     }
   };
 
-  const analyzeCompanions = async () => {
-    if (plantings.length === 0 || !item?.id) {
+  const analyzeCompanionsWithPlantings = async (currentPlantings) => {
+    if (currentPlantings.length === 0 || !item?.id) {
       setCompanionResults([]);
       return;
     }
@@ -435,10 +435,10 @@ export default function PlantingModal({ open, onOpenChange, item, garden, onPlan
       const results = [];
 
       // Check ALL pairs of plantings for companion relationships
-      for (let i = 0; i < plantings.length; i++) {
-        for (let j = i + 1; j < plantings.length; j++) {
-          const plantA = plantings[i];
-          const plantB = plantings[j];
+      for (let i = 0; i < currentPlantings.length; i++) {
+        for (let j = i + 1; j < currentPlantings.length; j++) {
+          const plantA = currentPlantings[i];
+          const plantB = currentPlantings[j];
 
           if (!plantA.plant_type_id || !plantB.plant_type_id) continue;
 
@@ -472,6 +472,8 @@ export default function PlantingModal({ open, onOpenChange, item, garden, onPlan
       console.error('Error analyzing companions:', error);
     }
   };
+
+  const analyzeCompanions = () => analyzeCompanionsWithPlantings(plantings);
   
   const handleCreateNewPlant = async () => {
     if (!newPlant.variety_id || creating) return;
@@ -641,100 +643,46 @@ export default function PlantingModal({ open, onOpenChange, item, garden, onPlan
               </TabsList>
               
               <TabsContent value="stash" className="mt-4 flex-1 min-h-0">
-                <ScrollArea className="h-full">
-                  <div className="space-y-2">
-                    {stashPlants.length === 0 ? (
-                      <p className="text-sm text-gray-500 text-center py-8">No plants in stash</p>
-                    ) : (
-                      // Deduplicate by plant_profile_id to avoid showing same variety multiple times
-                      Array.from(new Map(stashPlants.map(p => [p.plant_profile_id, p])).values()).map((plant) => {
-                        const profile = profiles[plant.plant_profile_id];
-                        if (!profile) return null;
-                        return (
-                          <button
-                            key={plant.id}
-                            onClick={() => handleSelectStashPlant(plant)}
-                            className={cn(
-                              "w-full p-3 rounded-lg border-2 text-left transition-colors",
-                              selectedPlant?.variety_name === profile.variety_name
-                                ? "border-emerald-600 bg-emerald-50"
-                                : "border-gray-200 hover:border-gray-300"
-                            )}
-                          >
-                            <p className="font-medium text-sm">{profile.variety_name}</p>
-                            <p className="text-xs text-gray-500">{profile.common_name}</p>
-                          </button>
-                        );
-                      })
-                    )}
-                  </div>
-                </ScrollArea>
+                <StashTypeSelector
+                  onSelect={(plantData) => {
+                    setSelectedPlant(plantData);
+                    checkCompanionAndRotation(plantData);
+                  }}
+                  selectedPlant={selectedPlant}
+                  getSpacingForPlant={getSpacingForPlant}
+                  getDefaultSpacing={getDefaultSpacing}
+                />
               </TabsContent>
               
               <TabsContent value="plan" className="mt-4 flex-1 min-h-0">
-                <ScrollArea className="h-full">
-                  <FromPlanTab
-                    activeSeason={activeSeason}
-                    garden={garden}
-                    bedId={item.id}
-                    selectedPlanId={selectedPlanItem?.id}
-                    onSelectPlan={(plantData, planItem) => {
-                      setSelectedPlanItem(planItem);
-                      setSelectedPlant(plantData);
-                      checkCompanionAndRotation(plantData);
-                    }}
-                  />
-                </ScrollArea>
+                <PlanTypeSelector
+                  activeSeason={activeSeason}
+                  garden={garden}
+                  bedId={item.id}
+                  selectedPlanId={selectedPlanItem?.id}
+                  plantings={plantings}
+                  onSelectPlan={(plantData, planItem) => {
+                    setSelectedPlanItem(planItem);
+                    setSelectedPlant(plantData);
+                    checkCompanionAndRotation(plantData);
+                  }}
+                  getSpacingForPlant={getSpacingForPlant}
+                  getDefaultSpacing={getDefaultSpacing}
+                />
               </TabsContent>
               
               <TabsContent value="new" className="mt-4 flex-1">
-                <div className="space-y-4">
-                  <div>
-                    <Label>Variety</Label>
-                    <Select 
-                      value={newPlant.variety_id} 
-                      onValueChange={(v) => {
-                        const variety = varieties.find(vr => vr.id === v);
-                        setNewPlant({
-                          ...newPlant,
-                          variety_id: v,
-                          variety_name: variety?.variety_name || '',
-                          plant_type_name: variety?.common_name || variety?.plant_type_name || ''
-                        });
-                      }}
-                    >
-                      <SelectTrigger className="mt-2">
-                        <SelectValue placeholder="Select variety" />
-                      </SelectTrigger>
-                      <SelectContent className="max-h-64">
-                        {varieties.slice(0, 50).map((v) => (
-                          <SelectItem key={v.id} value={v.id}>
-                            {v.variety_name} ({v.common_name || v.plant_type_name || 'Unknown'})
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  
-                  <Button 
-                    type="button"
-                    onClick={handleCreateNewPlant}
-                    disabled={!newPlant.variety_id || creating}
-                    className="w-full bg-emerald-600 hover:bg-emerald-700"
-                  >
-                    {creating ? (
-                      <>
-                        <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                        Adding...
-                      </>
-                    ) : (
-                      <>
-                        <Plus className="w-4 h-4 mr-2" />
-                        Add to Stash & Place
-                      </>
-                    )}
-                  </Button>
-                </div>
+                <CatalogTypeSelector
+                  onSelect={(plantData) => {
+                    setSelectedPlant(plantData);
+                    checkCompanionAndRotation(plantData);
+                  }}
+                  selectedPlant={selectedPlant}
+                  getSpacingForPlant={getSpacingForPlant}
+                  plantTypes={plantTypes}
+                  varieties={varieties}
+                  profiles={profiles}
+                />
               </TabsContent>
             </Tabs>
             
