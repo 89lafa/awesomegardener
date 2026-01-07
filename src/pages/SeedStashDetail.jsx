@@ -521,31 +521,7 @@ export default function SeedStashDetail() {
           </CardContent>
         </Card>
 
-        {/* Photos Card */}
-        {seed.lot_images && seed.lot_images.length > 0 && (
-          <Card className="lg:col-span-3">
-            <CardHeader>
-              <CardTitle>Photos</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-                {seed.lot_images.map((url, idx) => (
-                  <div key={idx} className="relative group">
-                    <img src={url} alt="Seed lot" className="w-full h-40 object-cover rounded-lg" />
-                    <Button
-                      variant="destructive"
-                      size="icon"
-                      className="absolute top-2 right-2 h-8 w-8 opacity-0 group-hover:opacity-100"
-                      onClick={() => handleDeletePhoto(url)}
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </Button>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        )}
+
 
       </div>
 
