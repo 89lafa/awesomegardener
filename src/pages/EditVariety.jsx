@@ -84,9 +84,13 @@ export default function EditVariety() {
           }
           setSubCategories(uniqueSubcats);
           
-          // Load existing subcategory mapping
-          const existingSubcatId = v.plant_subcategory_id || (subcatMaps.length > 0 ? subcatMaps[0].plant_subcategory_id : '');
-          setFormData({ ...v, plant_subcategory_id: existingSubcatId });
+          // Migrate to multi-subcategory if needed
+          let subcatIds = v.plant_subcategory_ids || [];
+          if (subcatIds.length === 0 && v.plant_subcategory_id) {
+            subcatIds = [v.plant_subcategory_id];
+          }
+          
+          setFormData({ ...v, plant_subcategory_ids: subcatIds });
         } else {
           setFormData(v);
         }
@@ -104,9 +108,17 @@ export default function EditVariety() {
     setSaving(true);
 
     try {
+      // Ensure plant_subcategory_id is in plant_subcategory_ids
+      const selectedIds = formData.plant_subcategory_ids || [];
+      let primaryId = formData.plant_subcategory_id;
+      if (selectedIds.length > 0 && !selectedIds.includes(primaryId)) {
+        primaryId = selectedIds[0];
+      }
+      
       const updateData = {
         variety_name: formData.variety_name,
-        plant_subcategory_id: formData.plant_subcategory_id || null,
+        plant_subcategory_id: primaryId || null,
+        plant_subcategory_ids: selectedIds,
         days_to_maturity: formData.days_to_maturity ? parseFloat(formData.days_to_maturity) : null,
         spacing_recommended: formData.spacing_recommended ? parseFloat(formData.spacing_recommended) : null,
         plant_height_typical: formData.plant_height_typical,
@@ -121,19 +133,6 @@ export default function EditVariety() {
       };
 
       await base44.entities.Variety.update(varietyId, updateData);
-
-      // Always update VarietySubCategoryMap to ensure consistency
-      const oldMaps = await base44.entities.VarietySubCategoryMap.filter({ variety_id: varietyId });
-      for (const map of oldMaps) {
-        await base44.entities.VarietySubCategoryMap.delete(map.id);
-      }
-      
-      if (formData.plant_subcategory_id) {
-        await base44.entities.VarietySubCategoryMap.create({
-          variety_id: varietyId,
-          plant_subcategory_id: formData.plant_subcategory_id
-        });
-      }
 
       toast.success('Variety updated successfully!');
       navigate(-1);
@@ -197,24 +196,71 @@ export default function EditVariety() {
 
             {subCategories.length > 0 && (
               <div>
-                <Label htmlFor="subcategory">Type/Subcategory</Label>
-                <Select 
-                  value={formData.plant_subcategory_id || ''} 
-                  onValueChange={(v) => setFormData({ ...formData, plant_subcategory_id: v })}
-                >
-                  <SelectTrigger className="mt-1">
-                    <SelectValue placeholder="Select type..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value={null}>None</SelectItem>
-                    {subCategories.map((subcat) => (
-                      <SelectItem key={subcat.id} value={subcat.id}>
-                        {subcat.icon && <span className="mr-2">{subcat.icon}</span>}
-                        {subcat.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <Label>Categories (multi-select)</Label>
+                <div className="mt-2 p-3 border rounded-lg max-h-64 overflow-y-auto space-y-3">
+                  {(() => {
+                    const grouped = {};
+                    subCategories.forEach(s => {
+                      const dim = s.dimension || 'Other';
+                      if (!grouped[dim]) grouped[dim] = [];
+                      grouped[dim].push(s);
+                    });
+                    
+                    return Object.entries(grouped).map(([dimension, subcats]) => (
+                      <div key={dimension} className="space-y-2">
+                        <p className="text-xs font-semibold text-gray-500 uppercase">{dimension}</p>
+                        <div className="flex flex-wrap gap-2">
+                          {subcats.map(subcat => {
+                            const isSelected = (formData.plant_subcategory_ids || []).includes(subcat.id);
+                            const isPrimary = formData.plant_subcategory_id === subcat.id;
+                            return (
+                              <Button
+                                key={subcat.id}
+                                type="button"
+                                size="sm"
+                                variant={isSelected ? 'default' : 'outline'}
+                                onClick={() => {
+                                  const currentIds = formData.plant_subcategory_ids || [];
+                                  let newIds;
+                                  if (isSelected) {
+                                    newIds = currentIds.filter(id => id !== subcat.id);
+                                    if (isPrimary) {
+                                      setFormData({ 
+                                        ...formData, 
+                                        plant_subcategory_ids: newIds,
+                                        plant_subcategory_id: newIds.length > 0 ? newIds[0] : null
+                                      });
+                                      return;
+                                    }
+                                  } else {
+                                    newIds = [...currentIds, subcat.id];
+                                    if (!formData.plant_subcategory_id && dimension === 'CulinaryUse') {
+                                      setFormData({ 
+                                        ...formData, 
+                                        plant_subcategory_ids: newIds,
+                                        plant_subcategory_id: subcat.id
+                                      });
+                                      return;
+                                    }
+                                  }
+                                  setFormData({ ...formData, plant_subcategory_ids: newIds });
+                                }}
+                                className={isSelected ? 'bg-emerald-600 hover:bg-emerald-700' : ''}
+                              >
+                                {subcat.icon && <span className="mr-1">{subcat.icon}</span>}
+                                {subcat.name}
+                                {isPrimary && <span className="ml-1 text-xs">★</span>}
+                              </Button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    ));
+                  })()}
+                </div>
+                <p className="text-xs text-gray-500 mt-1">
+                  Primary category (★) is used for main classification. Click to toggle selection.
+                </p>
               </div>
             )}
 
