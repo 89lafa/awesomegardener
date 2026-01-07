@@ -180,11 +180,15 @@ export default function AdminDataImport() {
           let rejected = 0;
           const skipReasons = [];
 
-          // For Variety import, preload PlantType lookup
+          // For Variety import, preload PlantType and PlantSubCategory lookup
           let plantTypeLookup = {};
           let plantTypeByName = {};
+          let subCategoryLookup = {};
           if (item.key === 'Variety') {
-            const allPlantTypes = await base44.entities.PlantType.list();
+            const [allPlantTypes, allSubCategories] = await Promise.all([
+              base44.entities.PlantType.list(),
+              base44.entities.PlantSubCategory.list()
+            ]);
             console.log('[Variety Import] Loaded', allPlantTypes.length, 'plant types');
             allPlantTypes.forEach(pt => {
               if (pt.plant_type_code) {
@@ -194,6 +198,15 @@ export default function AdminDataImport() {
                 plantTypeByName[pt.common_name.toLowerCase()] = pt;
               }
               plantTypeLookup[pt.id] = pt; // Also map id to id
+            });
+            console.log('[Variety Import] Loaded', allSubCategories.length, 'subcategories');
+            allSubCategories.forEach(sc => {
+              const key = `${sc.plant_type_id}_${sc.subcat_code}`;
+              subCategoryLookup[key] = sc;
+              if (sc.subcat_code) {
+                subCategoryLookup[sc.subcat_code] = sc;
+              }
+              subCategoryLookup[sc.id] = sc;
             });
             console.log('[Variety Import] Lookup keys:', Object.keys(plantTypeLookup).slice(0, 10));
           }
@@ -273,6 +286,93 @@ export default function AdminDataImport() {
                 const resolvedTypeId = plantType.id;
                 const plantTypeName = plantType.common_name;
 
+                // Resolve plant_subcategory_id using multiple strategies
+                let resolvedSubcategoryId = null;
+                
+                // Strategy 1: Direct ID provided
+                if (row.plant_subcategory_id) {
+                  const subcat = subCategoryLookup[row.plant_subcategory_id];
+                  if (subcat && subcat.plant_type_id === resolvedTypeId) {
+                    resolvedSubcategoryId = subcat.id;
+                  } else {
+                    rejected++;
+                    skipReasons.push({ 
+                      row, 
+                      reason: `Invalid plant_subcategory_id: ${row.plant_subcategory_id} (doesn't exist or wrong plant_type)` 
+                    });
+                    continue;
+                  }
+                }
+                // Strategy 2: Subcategory code provided (preferred for imports)
+                else if (row.plant_subcategory_code) {
+                  // Normalize code: TOMATO_CHERRY -> PSC_TOMATO_CHERRY
+                  let normalizedCode = row.plant_subcategory_code;
+                  if (!normalizedCode.startsWith('PSC_')) {
+                    normalizedCode = 'PSC_' + normalizedCode;
+                  }
+                  
+                  const lookupKey = `${resolvedTypeId}_${normalizedCode}`;
+                  let subcat = subCategoryLookup[lookupKey];
+                  
+                  if (!subcat) {
+                    // Try without plant_type_id prefix
+                    subcat = Object.values(subCategoryLookup).find(sc => 
+                      sc.subcat_code === normalizedCode && sc.plant_type_id === resolvedTypeId
+                    );
+                  }
+                  
+                  if (subcat) {
+                    resolvedSubcategoryId = subcat.id;
+                  } else {
+                    // Create new subcategory
+                    const subcatName = row.plant_subcategory_name || 
+                                      normalizedCode.replace(/^PSC_/, '').replace(/_/g, ' ')
+                                        .split(' ')
+                                        .map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
+                                        .join(' ');
+                    
+                    const newSubcat = await base44.entities.PlantSubCategory.create({
+                      subcat_code: normalizedCode,
+                      plant_type_id: resolvedTypeId,
+                      name: subcatName,
+                      is_active: true,
+                      sort_order: 0
+                    });
+                    
+                    resolvedSubcategoryId = newSubcat.id;
+                    subCategoryLookup[lookupKey] = newSubcat;
+                    subCategoryLookup[normalizedCode] = newSubcat;
+                    console.log('[Variety Import] Created subcategory:', subcatName, normalizedCode);
+                  }
+                }
+                // Strategy 3: Subcategory name only
+                else if (row.plant_subcategory_name) {
+                  const subcat = Object.values(subCategoryLookup).find(sc => 
+                    sc.plant_type_id === resolvedTypeId && 
+                    sc.name?.toLowerCase() === row.plant_subcategory_name.toLowerCase()
+                  );
+                  
+                  if (subcat) {
+                    resolvedSubcategoryId = subcat.id;
+                  } else {
+                    // Create with generated code
+                    const generatedCode = 'PSC_' + plantType.plant_type_code + '_' + 
+                                         row.plant_subcategory_name.toUpperCase().replace(/[^A-Z0-9]/g, '_');
+                    
+                    const newSubcat = await base44.entities.PlantSubCategory.create({
+                      subcat_code: generatedCode,
+                      plant_type_id: resolvedTypeId,
+                      name: row.plant_subcategory_name,
+                      is_active: true,
+                      sort_order: 0
+                    });
+                    
+                    resolvedSubcategoryId = newSubcat.id;
+                    subCategoryLookup[`${resolvedTypeId}_${generatedCode}`] = newSubcat;
+                    console.log('[Variety Import] Created subcategory from name:', row.plant_subcategory_name);
+                  }
+                }
+
                 // Check for duplicate
                 const existing = await base44.entities.Variety.filter({ 
                   plant_type_id: resolvedTypeId,
@@ -282,6 +382,7 @@ export default function AdminDataImport() {
                 const varietyData = {
                   plant_type_id: resolvedTypeId,
                   plant_type_name: plantTypeName,
+                  plant_subcategory_id: resolvedSubcategoryId,
                   variety_code: row.variety_code || null,
                   variety_name: row.variety_name,
                   synonyms: row.synonyms ? row.synonyms.split('|') : [],

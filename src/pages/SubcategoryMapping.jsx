@@ -49,15 +49,15 @@ export default function SubcategoryMapping() {
   };
 
   const exportToCSV = () => {
-    const rows = [['PlantType Name', 'PlantType ID', 'SubCategory Name', 'SubCategory ID']];
+    const rows = [['PlantType Name', 'PlantType ID', 'PlantType Code', 'SubCategory Name', 'SubCategory Code', 'SubCategory ID']];
 
     plantTypes.forEach(type => {
       const typeSubs = subCategories.filter(s => s.plant_type_id === type.id);
       if (typeSubs.length === 0) {
-        rows.push([type.common_name, type.id, '', '']);
+        rows.push([type.common_name, type.id, type.plant_type_code || '', '', '', '']);
       } else {
         typeSubs.forEach(sub => {
-          rows.push([type.common_name, type.id, sub.name, sub.id]);
+          rows.push([type.common_name, type.id, type.plant_type_code || '', sub.name, sub.subcat_code || '', sub.id]);
         });
       }
     });
@@ -73,6 +73,22 @@ export default function SubcategoryMapping() {
     window.URL.revokeObjectURL(url);
     a.remove();
     toast.success('Exported mapping to CSV');
+  };
+
+  const exportTemplate = () => {
+    const template = `variety_code,variety_name,plant_type_id,plant_subcategory_code,plant_subcategory_name,days_to_maturity,spacing_recommended,sun_requirement,water_requirement
+VAR_EXAMPLE_001,Example Variety,<paste_plant_type_id_here>,PSC_TOMATO_CHERRY,Cherry,70,24,full_sun,moderate`;
+    
+    const blob = new Blob([template], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'variety_import_template.csv';
+    document.body.appendChild(a);
+    a.click();
+    window.URL.revokeObjectURL(url);
+    a.remove();
+    toast.success('Downloaded import template');
   };
 
   const filteredTypes = plantTypes.filter(type =>
@@ -94,10 +110,16 @@ export default function SubcategoryMapping() {
           <h1 className="text-3xl font-bold text-gray-900">SubCategory Mapping Reference</h1>
           <p className="text-gray-600 mt-1">Plant Type and SubCategory IDs for data import</p>
         </div>
-        <Button onClick={exportToCSV} className="bg-emerald-600 hover:bg-emerald-700">
-          <Download className="w-4 h-4 mr-2" />
-          Export CSV
-        </Button>
+        <div className="flex gap-2">
+          <Button onClick={exportTemplate} variant="outline">
+            <Download className="w-4 h-4 mr-2" />
+            CSV Template
+          </Button>
+          <Button onClick={exportToCSV} className="bg-emerald-600 hover:bg-emerald-700">
+            <Download className="w-4 h-4 mr-2" />
+            Export Mapping
+          </Button>
+        </div>
       </div>
 
       <Card>
@@ -121,7 +143,9 @@ export default function SubcategoryMapping() {
                 <tr>
                   <th className="text-left p-3 text-sm font-semibold">PlantType Name</th>
                   <th className="text-left p-3 text-sm font-semibold">PlantType ID</th>
+                  <th className="text-left p-3 text-sm font-semibold">PlantType Code</th>
                   <th className="text-left p-3 text-sm font-semibold">SubCategory Name</th>
+                  <th className="text-left p-3 text-sm font-semibold">SubCategory Code</th>
                   <th className="text-left p-3 text-sm font-semibold">SubCategory ID</th>
                 </tr>
               </thead>
@@ -133,8 +157,8 @@ export default function SubcategoryMapping() {
                       <tr key={type.id} className="border-b hover:bg-gray-50">
                         <td className="p-3 font-medium">{type.common_name}</td>
                         <td className="p-3 text-sm text-gray-600 font-mono">{type.id}</td>
-                        <td className="p-3 text-sm text-gray-400 italic">No subcategories</td>
-                        <td className="p-3"></td>
+                        <td className="p-3 text-sm text-gray-600 font-mono">{type.plant_type_code || '-'}</td>
+                        <td className="p-3 text-sm text-gray-400 italic" colSpan="3">No subcategories</td>
                       </tr>
                     );
                   }
@@ -142,7 +166,9 @@ export default function SubcategoryMapping() {
                     <tr key={`${type.id}-${sub.id}`} className="border-b hover:bg-gray-50">
                       <td className="p-3 font-medium">{idx === 0 ? type.common_name : ''}</td>
                       <td className="p-3 text-sm text-gray-600 font-mono">{idx === 0 ? type.id : ''}</td>
+                      <td className="p-3 text-sm text-gray-600 font-mono">{idx === 0 ? (type.plant_type_code || '-') : ''}</td>
                       <td className="p-3 text-sm">{sub.name}</td>
+                      <td className="p-3 text-sm text-gray-600 font-mono">{sub.subcat_code || '-'}</td>
                       <td className="p-3 text-sm text-gray-600 font-mono">{sub.id}</td>
                     </tr>
                   ));
@@ -156,11 +182,18 @@ export default function SubcategoryMapping() {
       <Card className="bg-blue-50 border-blue-200">
         <CardContent className="p-4">
           <h3 className="font-semibold text-blue-900 mb-2">How to use this mapping:</h3>
-          <ol className="text-sm text-blue-800 space-y-1">
-            <li>1. Export this table to CSV for reference</li>
-            <li>2. When importing varieties, use <code className="bg-white px-1 rounded">plant_type_id</code> to assign the parent type</li>
-            <li>3. Use <code className="bg-white px-1 rounded">plant_subcategory_id</code> to assign the specific subcategory</li>
-            <li>4. If a PlantType has no subcategories, leave <code className="bg-white px-1 rounded">plant_subcategory_id</code> blank</li>
+          <ol className="text-sm text-blue-800 space-y-2">
+            <li>1. <strong>Download "CSV Template"</strong> for the recommended import format</li>
+            <li>2. <strong>Export Mapping</strong> to get a reference list of all types and subcategories</li>
+            <li>3. In your variety CSV, use one of these to assign subcategory:
+              <ul className="ml-4 mt-1 space-y-0.5">
+                <li>• <code className="bg-white px-1 rounded">plant_subcategory_code</code> (PREFERRED - e.g., "PSC_TOMATO_CHERRY")</li>
+                <li>• <code className="bg-white px-1 rounded">plant_subcategory_name</code> (e.g., "Cherry")</li>
+                <li>• <code className="bg-white px-1 rounded">plant_subcategory_id</code> (raw ID)</li>
+              </ul>
+            </li>
+            <li>4. If subcategory doesn't exist, it will be auto-created using the code/name provided</li>
+            <li>5. Old "TOMATO_*" codes are auto-normalized to "PSC_TOMATO_*" format</li>
           </ol>
         </CardContent>
       </Card>
