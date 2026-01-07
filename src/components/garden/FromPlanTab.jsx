@@ -33,14 +33,28 @@ export default function FromPlanTab({ activeSeason, garden, bedId, onSelectPlan 
       
       const season = seasons[0];
       
-      // Load crop plans for this season
+      // Load ALL crop plans for this season (not just unplaced)
       const plans = await base44.entities.CropPlan.filter({
         garden_season_id: season.id,
-        created_by: user.email,
-        is_placed: false // Only show unplaced plans
+        created_by: user.email
       });
       
-      setCropPlans(plans);
+      // Load all plantings for this garden/season to count quantities
+      const allPlantings = await base44.entities.PlantInstance.filter({
+        garden_id: garden.id,
+        season_year: activeSeason
+      });
+      
+      // Attach planting count to each plan
+      const plansWithCounts = plans.map(plan => {
+        const plantedCount = allPlantings.filter(p => 
+          p.plant_type_id === plan.plant_type_id &&
+          (plan.plant_profile_id ? p.variety_id === plan.plant_profile_id : true)
+        ).length;
+        return { ...plan, plantedCount };
+      });
+      
+      setCropPlans(plansWithCounts);
       
       // Load related data
       const profileIds = [...new Set(plans.map(p => p.plant_profile_id).filter(Boolean))];
@@ -66,17 +80,9 @@ export default function FromPlanTab({ activeSeason, garden, bedId, onSelectPlan 
     }
   };
   
-  const markAsPlaced = async (planId, bedId) => {
-    try {
-      await base44.entities.CropPlan.update(planId, { 
-        is_placed: true,
-        garden_item_id: bedId
-      });
-      // Remove from list
-      setCropPlans(cropPlans.filter(p => p.id !== planId));
-    } catch (error) {
-      console.error('Error marking plan as placed:', error);
-    }
+  // No longer marking as placed - just reload to update counts
+  const reloadCounts = async () => {
+    await loadPlans();
   };
   
   if (loading) {
@@ -113,27 +119,34 @@ export default function FromPlanTab({ activeSeason, garden, bedId, onSelectPlan 
             key={plan.id}
             onClick={() => {
               onSelectPlan(plan);
-              markAsPlaced(plan.id, bedId);
+              setTimeout(() => reloadCounts(), 500);
             }}
             className={cn(
               "w-full p-3 rounded-lg border-2 text-left transition-colors",
               "border-gray-200 hover:border-emerald-300 hover:bg-emerald-50"
             )}
           >
-            <div className="flex items-center gap-2">
-              <div 
-                className="w-3 h-3 rounded-full"
-                style={{ backgroundColor: plan.color_hex || '#10b981' }}
-              />
-              <div className="flex-1">
-                <p className="font-medium text-sm">
-                  {profile?.variety_name || plan.label || 'Unnamed Crop'}
-                </p>
-                <p className="text-xs text-gray-500">
-                  {plantType?.common_name || profile?.common_name}
-                  {plan.label && ` • ${plan.label}`}
-                </p>
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2 flex-1">
+                <div 
+                  className="w-3 h-3 rounded-full"
+                  style={{ backgroundColor: plan.color_hex || '#10b981' }}
+                />
+                <div className="flex-1">
+                  <p className="font-medium text-sm">
+                    {profile?.variety_name || plan.label || 'Unnamed Crop'}
+                  </p>
+                  <p className="text-xs text-gray-500">
+                    {plantType?.common_name || profile?.common_name}
+                    {plan.label && ` • ${plan.label}`}
+                  </p>
+                </div>
               </div>
+              {plan.plantedCount > 0 && (
+                <div className="px-2 py-1 bg-emerald-100 text-emerald-800 rounded text-xs font-semibold">
+                  {plan.plantedCount} planted
+                </div>
+              )}
             </div>
           </button>
         );

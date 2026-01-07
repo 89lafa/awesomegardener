@@ -76,6 +76,11 @@ export default function PlantCatalogDetail() {
   const [currentPage, setCurrentPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
   const itemsPerPage = 50;
+  const [visibleColumns, setVisibleColumns] = useState(() => {
+    const saved = localStorage.getItem('variety_columns');
+    return saved ? JSON.parse(saved) : ['name', 'subcategory', 'days', 'spacing', 'traits', 'actions'];
+  });
+  const [showColumnSelector, setShowColumnSelector] = useState(false);
 
   useEffect(() => {
     loadUser();
@@ -498,20 +503,34 @@ export default function PlantCatalogDetail() {
         <Card>
           <CardContent className="p-4">
             <div className="flex flex-wrap items-center gap-4">
-              <div className="flex items-center gap-2">
-                <Droplets className="w-4 h-4 text-blue-600" />
-                <span className="text-sm font-medium">{plantType.typical_water || 'Moderate'} Water</span>
+              <div className="flex flex-col">
+                <span className="text-xs text-gray-500 mb-0.5">Water Needs</span>
+                <div className="flex items-center gap-2">
+                  <Droplets className="w-4 h-4 text-blue-600" />
+                  <span className="text-sm font-medium capitalize">{plantType.typical_water || 'Moderate'}</span>
+                </div>
               </div>
-              <div className="flex items-center gap-2">
-                <Sun className="w-4 h-4 text-yellow-600" />
-                <span className="text-sm font-medium">{plantType.typical_sun?.replace(/_/g, ' ') || 'Full Sun'}</span>
+              <div className="flex flex-col">
+                <span className="text-xs text-gray-500 mb-0.5">Sun Exposure</span>
+                <div className="flex items-center gap-2">
+                  <Sun className="w-4 h-4 text-yellow-600" />
+                  <span className="text-sm font-medium capitalize">{plantType.typical_sun?.replace(/_/g, ' ') || 'Full Sun'}</span>
+                </div>
               </div>
-              <div className="flex items-center gap-2">
-                <TrendingUp className="w-4 h-4 text-green-600" />
-                <span className="text-sm font-medium">{plantType.default_days_to_maturity || 'Varies'} days</span>
+              <div className="flex flex-col">
+                <span className="text-xs text-gray-500 mb-0.5">Days to Maturity</span>
+                <div className="flex items-center gap-2">
+                  <TrendingUp className="w-4 h-4 text-green-600" />
+                  <span className="text-sm font-medium">{plantType.default_days_to_maturity || 'Varies'}</span>
+                </div>
               </div>
               {user?.role === 'admin' && (
-                <Button size="sm" variant="outline" className="ml-auto">
+                <Button 
+                  size="sm" 
+                  variant="outline" 
+                  className="ml-auto"
+                  onClick={() => window.location.href = `/EditPlantType?id=${plantType.id}`}
+                >
                   Edit PlantType
                 </Button>
               )}
@@ -609,7 +628,54 @@ export default function PlantCatalogDetail() {
                   Clear
                 </Button>
               )}
+              {viewMode === 'list' && (
+                <Button
+                  variant="outline"
+                  onClick={() => setShowColumnSelector(!showColumnSelector)}
+                  className="gap-2"
+                >
+                  <SlidersHorizontal className="w-4 h-4" />
+                  Columns
+                </Button>
+              )}
             </div>
+            
+            {/* Column Selector */}
+            {showColumnSelector && viewMode === 'list' && (
+              <div className="p-3 bg-gray-50 rounded-lg border">
+                <p className="text-sm font-semibold mb-2">Select Columns</p>
+                <div className="flex flex-wrap gap-2">
+                  {[
+                    { id: 'name', label: 'Variety Name' },
+                    { id: 'subcategory', label: 'Sub-Category' },
+                    { id: 'days', label: 'Days to Maturity' },
+                    { id: 'spacing', label: 'Spacing' },
+                    { id: 'height', label: 'Height' },
+                    { id: 'sun', label: 'Sun' },
+                    { id: 'water', label: 'Water' },
+                    { id: 'color', label: 'Color' },
+                    { id: 'traits', label: 'Traits' },
+                    { id: 'actions', label: 'Actions' }
+                  ].map(col => (
+                    <Button
+                      key={col.id}
+                      size="sm"
+                      variant={visibleColumns.includes(col.id) ? 'default' : 'outline'}
+                      onClick={() => {
+                        const newCols = visibleColumns.includes(col.id)
+                          ? visibleColumns.filter(c => c !== col.id)
+                          : [...visibleColumns, col.id];
+                        setVisibleColumns(newCols);
+                        localStorage.setItem('variety_columns', JSON.stringify(newCols));
+                      }}
+                      className={visibleColumns.includes(col.id) ? 'bg-emerald-600 hover:bg-emerald-700' : ''}
+                    >
+                      {col.label}
+                    </Button>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {/* Active Filter Chips */}
             {activeFilterCount > 0 && (
@@ -719,6 +785,7 @@ export default function PlantCatalogDetail() {
                 <VarietyListView
                   varieties={paginatedVarieties}
                   subCategories={subCategories}
+                  visibleColumns={visibleColumns}
                   onAddToStash={(variety) => {
                     setSelectedVariety(variety);
                     setShowAddToStash(true);
