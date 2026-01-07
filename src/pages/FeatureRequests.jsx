@@ -98,6 +98,7 @@ export default function FeatureRequests() {
     try {
       const request = await base44.entities.FeatureRequest.create({
         ...formData,
+        submitted_by: user.email,
         status: 'submitted',
         vote_count: 1,
         voters: [user.email]
