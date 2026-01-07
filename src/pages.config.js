@@ -38,6 +38,8 @@ import SeedStashDetail from './pages/SeedStashDetail';
 import Settings from './pages/Settings';
 import VarietyReviewQueue from './pages/VarietyReviewQueue';
 import EditPlantType from './pages/EditPlantType';
+import Users from './pages/Users';
+import ViewVariety from './pages/ViewVariety';
 import __Layout from './Layout.jsx';
 
 
@@ -82,6 +84,8 @@ export const PAGES = {
     "Settings": Settings,
     "VarietyReviewQueue": VarietyReviewQueue,
     "EditPlantType": EditPlantType,
+    "Users": Users,
+    "ViewVariety": ViewVariety,
 }
 
 export const pagesConfig = {

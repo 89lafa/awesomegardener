@@ -8,6 +8,7 @@ import { Package, ListChecks } from 'lucide-react';
 export default function VarietyListView({ 
   varieties, 
   subCategories,
+  user,
   onAddToStash,
   onAddToGrowList,
   visibleColumns = ['name', 'subcategory', 'days', 'spacing', 'traits', 'actions']
@@ -104,11 +105,19 @@ export default function VarietyListView({
               {visibleColumns.includes('actions') && (
                 <td className="p-3">
                   <div className="flex gap-1 justify-end">
-                    <Link to={createPageUrl('EditVariety') + `?id=${variety.id}`}>
-                      <Button size="sm" variant="ghost">
-                        <span className="text-xs">Edit</span>
-                      </Button>
-                    </Link>
+                    {user?.role === 'admin' ? (
+                      <Link to={createPageUrl('EditVariety') + `?id=${variety.id}`}>
+                        <Button size="sm" variant="ghost">
+                          <span className="text-xs">Edit</span>
+                        </Button>
+                      </Link>
+                    ) : (
+                      <Link to={createPageUrl('ViewVariety') + `?id=${variety.id}`}>
+                        <Button size="sm" variant="ghost">
+                          <span className="text-xs">View</span>
+                        </Button>
+                      </Link>
+                    )}
                     <Button 
                       size="sm"
                       variant="ghost"
