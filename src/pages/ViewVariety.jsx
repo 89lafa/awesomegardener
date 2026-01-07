@@ -25,7 +25,7 @@ export default function ViewVariety() {
 
   const [variety, setVariety] = useState(null);
   const [plantType, setPlantType] = useState(null);
-  const [subCategory, setSubCategory] = useState(null);
+  const [subCategories, setSubCategories] = useState([]);
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [showRequestChange, setShowRequestChange] = useState(false);
@@ -73,9 +73,11 @@ export default function ViewVariety() {
         }
       }
 
-      if (v.plant_subcategory_id) {
-        const subcats = await base44.entities.PlantSubCategory.filter({ id: v.plant_subcategory_id });
-        if (subcats.length > 0) setSubCategory(subcats[0]);
+      // Load all subcategories for this variety
+      const allSubcatIds = v.plant_subcategory_ids || (v.plant_subcategory_id ? [v.plant_subcategory_id] : []);
+      if (allSubcatIds.length > 0) {
+        const subcats = await base44.entities.PlantSubCategory.list();
+        setSubCategories(subcats.filter(s => allSubcatIds.includes(s.id)));
       }
     } catch (error) {
       console.error('[ViewVariety] Error loading variety:', error);
@@ -283,12 +285,25 @@ export default function ViewVariety() {
               <Label className="text-gray-600">Plant Type</Label>
               <p className="font-medium mt-1">{plantType?.common_name || variety?.plant_type_name || 'Unknown'}</p>
             </div>
-            {subCategory && (
-              <div>
-                <Label className="text-gray-600">Sub-Category</Label>
-                <p className="font-medium mt-1">{subCategory.name}</p>
-              </div>
-            )}
+            {(() => {
+              const allSubcatIds = variety?.plant_subcategory_ids || (variety?.plant_subcategory_id ? [variety.plant_subcategory_id] : []);
+              return allSubcatIds.length > 0 && (
+                <div className="col-span-2">
+                  <Label className="text-gray-600">Categories</Label>
+                  <div className="flex flex-wrap gap-2 mt-1">
+                    {allSubcatIds.map(subcatId => {
+                      const subcat = subCategories.find(s => s.id === subcatId);
+                      return subcat ? (
+                        <Badge key={subcatId} variant="secondary">
+                          {subcat.icon && <span className="mr-1">{subcat.icon}</span>}
+                          {subcat.name}
+                        </Badge>
+                      ) : null;
+                    })}
+                  </div>
+                </div>
+              );
+            })()}
             {(variety?.days_to_maturity || variety?.days_to_maturity_min) && (
               <div>
                 <Label className="text-gray-600">Days to Maturity</Label>
