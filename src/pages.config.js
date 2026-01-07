@@ -42,8 +42,7 @@ import SubcategoryMapping from './pages/SubcategoryMapping';
 import Users from './pages/Users';
 import VarietyReviewQueue from './pages/VarietyReviewQueue';
 import ViewVariety from './pages/ViewVariety';
-import CompanionRulesAudit from './pages/CompanionRulesAudit';
-import ImageSubmissions from './pages/ImageSubmissions';
+import CompanionRuleImport from './pages/CompanionRuleImport';
 import __Layout from './Layout.jsx';
 
 
@@ -92,8 +91,7 @@ export const PAGES = {
     "Users": Users,
     "VarietyReviewQueue": VarietyReviewQueue,
     "ViewVariety": ViewVariety,
-    "CompanionRulesAudit": CompanionRulesAudit,
-    "ImageSubmissions": ImageSubmissions,
+    "CompanionRuleImport": CompanionRuleImport,
 }
 
 export const pagesConfig = {
