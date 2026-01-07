@@ -813,27 +813,24 @@ export default function PlantCatalogDetail() {
               <>
                 <div className="grid md:grid-cols-2 gap-4">
                   {paginatedVarieties.map((variety) => (
-                    <Card key={variety.id} className="hover:shadow-md transition-shadow">
+                    <Card 
+                      key={variety.id} 
+                      className="hover:shadow-md transition-shadow cursor-pointer"
+                      onClick={() => {
+                        const targetPage = user?.role === 'admin' ? 'EditVariety' : 'ViewVariety';
+                        window.location.href = createPageUrl(targetPage) + `?id=${variety.id}`;
+                      }}
+                    >
                       <CardContent className="p-4">
                         <div className="flex items-start justify-between mb-2">
                           <h4 className="font-semibold text-gray-900">{variety.variety_name}</h4>
-                          <div className="flex gap-1">
-                            {user?.role === 'admin' ? (
-                              <Link to={createPageUrl('EditVariety') + `?id=${variety.id}`}>
-                                <Button 
-                                  size="sm"
-                                  variant="ghost"
-                                  title="Edit Details"
-                                >
-                                  <span className="text-xs">Edit</span>
-                                </Button>
-                              </Link>
-                            ) : (
+                          <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>
+                            {user?.role === 'admin' && (
                               <Link to={createPageUrl('ViewVariety') + `?id=${variety.id}`}>
                                 <Button 
                                   size="sm"
                                   variant="ghost"
-                                  title="View Details"
+                                  title="View as User"
                                 >
                                   <span className="text-xs">View</span>
                                 </Button>

@@ -88,8 +88,14 @@ export default function Calendar() {
       }, '-updated_date');
       setGardens(gardensData);
       
+      // Load saved state
+      const savedGardenId = localStorage.getItem('calendar_active_garden');
+      const savedSeasonId = localStorage.getItem('calendar_active_season');
+      
       if (gardensData.length > 0) {
-        const garden = gardensData[0];
+        const garden = savedGardenId 
+          ? gardensData.find(g => g.id === savedGardenId) || gardensData[0]
+          : gardensData[0];
         setActiveGarden(garden);
         
         const seasonsData = await base44.entities.GardenSeason.filter({ 
@@ -98,7 +104,10 @@ export default function Calendar() {
         setSeasons(seasonsData);
         
         if (seasonsData.length > 0) {
-          setActiveSeasonId(seasonsData[0].id);
+          const season = savedSeasonId 
+            ? seasonsData.find(s => s.id === savedSeasonId) || seasonsData[0]
+            : seasonsData[0];
+          setActiveSeasonId(season.id);
         }
       }
     } catch (error) {
@@ -304,10 +313,19 @@ export default function Calendar() {
       <div className="flex-1 flex flex-col">
         {/* Top Controls */}
         <div className="p-4 border-b bg-white flex items-center gap-3">
-          <Select value={activeGarden?.id} onValueChange={(id) => {
+          <Select value={activeGarden?.id} onValueChange={async (id) => {
             const garden = gardens.find(g => g.id === id);
             setActiveGarden(garden);
+            localStorage.setItem('calendar_active_garden', id);
             // Load seasons for new garden
+            const seasonsData = await base44.entities.GardenSeason.filter({ 
+              garden_id: id 
+            }, '-year');
+            setSeasons(seasonsData);
+            if (seasonsData.length > 0) {
+              setActiveSeasonId(seasonsData[0].id);
+              localStorage.setItem('calendar_active_season', seasonsData[0].id);
+            }
           }}>
             <SelectTrigger className="w-48">
               <SelectValue placeholder="Select garden" />
@@ -319,7 +337,10 @@ export default function Calendar() {
             </SelectContent>
           </Select>
           
-          <Select value={activeSeasonId} onValueChange={setActiveSeasonId}>
+          <Select value={activeSeasonId} onValueChange={(seasonId) => {
+            setActiveSeasonId(seasonId);
+            localStorage.setItem('calendar_active_season', seasonId);
+          }}>
             <SelectTrigger className="w-40">
               <SelectValue placeholder="Season" />
             </SelectTrigger>

@@ -11,8 +11,16 @@ const publicPages = ['Landing', 'PublicGarden', 'PublicPlant', 'Community'];
 export default function Layout({ children, currentPageName }) {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
+    return localStorage.getItem('sidebar_collapsed') === 'true';
+  });
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  const handleToggleSidebar = () => {
+    const newCollapsed = !sidebarCollapsed;
+    setSidebarCollapsed(newCollapsed);
+    localStorage.setItem('sidebar_collapsed', String(newCollapsed));
+  };
 
   const isPublicPage = publicPages.includes(currentPageName);
   const isLandingPage = currentPageName === 'Landing';
@@ -26,6 +34,14 @@ export default function Layout({ children, currentPageName }) {
       const isAuth = await base44.auth.isAuthenticated();
       if (isAuth) {
         const userData = await base44.auth.me();
+        
+        // Check if user is blocked
+        if (userData.is_blocked) {
+          await base44.auth.logout();
+          window.location.href = '/Landing?blocked=true';
+          return;
+        }
+        
         setUser(userData);
       } else if (!isPublicPage) {
         // Redirect to landing for non-public pages
@@ -73,10 +89,10 @@ export default function Layout({ children, currentPageName }) {
   return (
     <div className="min-h-screen bg-[#FDFBF7]">
       {/* Sidebar - Desktop */}
-      <div className="hidden lg:block">
+      <div className={cn(sidebarCollapsed ? 'hidden' : 'hidden lg:block')}>
         <Sidebar 
-          collapsed={sidebarCollapsed} 
-          onToggle={() => setSidebarCollapsed(!sidebarCollapsed)}
+          collapsed={false} 
+          onToggle={handleToggleSidebar}
           currentPage={currentPageName}
           user={user}
         />
@@ -106,11 +122,13 @@ export default function Layout({ children, currentPageName }) {
       {/* Main Content */}
       <div className={cn(
         "transition-all duration-300",
-        sidebarCollapsed ? "lg:ml-16" : "lg:ml-64"
+        sidebarCollapsed ? "ml-0" : "lg:ml-64"
       )}>
         <TopBar 
           user={user} 
           onMobileMenuToggle={() => setMobileMenuOpen(true)}
+          onSidebarToggle={handleToggleSidebar}
+          sidebarCollapsed={sidebarCollapsed}
         />
         <main className="p-4 lg:p-6">
           {children}

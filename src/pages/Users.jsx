@@ -64,6 +64,38 @@ export default function Users() {
     }
   };
 
+  const handleToggleBlocked = async (user) => {
+    if (user.role === 'admin') {
+      toast.error('Cannot block admin users');
+      return;
+    }
+
+    const reason = user.is_blocked 
+      ? null 
+      : prompt('Reason for blocking this user?');
+    
+    if (!user.is_blocked && !reason) return;
+
+    try {
+      await base44.entities.User.update(user.id, {
+        is_blocked: !user.is_blocked,
+        blocked_at: !user.is_blocked ? new Date().toISOString() : null,
+        blocked_reason: reason
+      });
+
+      setUsers(users.map(u => 
+        u.id === user.id 
+          ? { ...u, is_blocked: !u.is_blocked, blocked_at: !u.is_blocked ? new Date().toISOString() : null, blocked_reason: reason }
+          : u
+      ));
+
+      toast.success(user.is_blocked ? 'User unblocked' : 'User blocked');
+    } catch (error) {
+      console.error('Error updating blocked status:', error);
+      toast.error('Failed to update user status');
+    }
+  };
+
   const filteredUsers = users.filter(user => {
     if (!searchQuery) return true;
     const query = searchQuery.toLowerCase();
@@ -125,7 +157,12 @@ export default function Users() {
                   </p>
                 </div>
 
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-3 flex-wrap">
+                  {user.is_blocked && (
+                    <Badge className="bg-red-100 text-red-800">
+                      BLOCKED
+                    </Badge>
+                  )}
                   {user.role === 'admin' ? (
                     <Badge className="bg-purple-100 text-purple-800">
                       <Shield className="w-3 h-3 mr-1" />
@@ -141,16 +178,25 @@ export default function Users() {
                   )}
 
                   {user.role !== 'admin' && (
-                    <div className="flex items-center gap-2">
-                      <Label htmlFor={`mod-${user.id}`} className="text-sm">
-                        Moderator
-                      </Label>
-                      <Switch
-                        id={`mod-${user.id}`}
-                        checked={user.is_moderator || false}
-                        onCheckedChange={() => handleToggleModerator(user)}
-                      />
-                    </div>
+                    <>
+                      <div className="flex items-center gap-2">
+                        <Label htmlFor={`mod-${user.id}`} className="text-sm">
+                          Moderator
+                        </Label>
+                        <Switch
+                          id={`mod-${user.id}`}
+                          checked={user.is_moderator || false}
+                          onCheckedChange={() => handleToggleModerator(user)}
+                        />
+                      </div>
+                      <Button
+                        variant={user.is_blocked ? "outline" : "destructive"}
+                        size="sm"
+                        onClick={() => handleToggleBlocked(user)}
+                      >
+                        {user.is_blocked ? 'Unblock' : 'Block User'}
+                      </Button>
+                    </>
                   )}
                 </div>
               </div>

@@ -12,7 +12,9 @@ import {
   Calendar,
   LogOut,
   Settings,
-  Menu
+  Menu,
+  PanelLeftClose,
+  PanelLeft
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -26,7 +28,7 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { base44 } from '@/api/base44Client';
 
-export default function TopBar({ user, onMobileMenuToggle }) {
+export default function TopBar({ user, onMobileMenuToggle, onSidebarToggle, sidebarCollapsed }) {
   const [searchQuery, setSearchQuery] = useState('');
 
   const handleLogout = async () => {
@@ -40,15 +42,26 @@ export default function TopBar({ user, onMobileMenuToggle }) {
 
   return (
     <header className="h-16 bg-white border-b border-gray-200 flex items-center justify-between px-4 lg:px-6">
-      {/* Mobile Menu Toggle */}
-      <Button
-        variant="ghost"
-        size="icon"
-        className="lg:hidden"
-        onClick={onMobileMenuToggle}
-      >
-        <Menu className="w-5 h-5" />
-      </Button>
+      {/* Sidebar Toggle - Works on all screens */}
+      <div className="flex items-center gap-2">
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={sidebarCollapsed ? onSidebarToggle : onMobileMenuToggle}
+          className="lg:hidden"
+        >
+          <Menu className="w-5 h-5" />
+        </Button>
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={onSidebarToggle}
+          className="hidden lg:flex"
+          title={sidebarCollapsed ? 'Show sidebar' : 'Hide sidebar'}
+        >
+          {sidebarCollapsed ? <PanelLeft className="w-5 h-5" /> : <PanelLeftClose className="w-5 h-5" />}
+        </Button>
+      </div>
 
       {/* Search */}
       <div className="hidden md:flex flex-1 max-w-md">
