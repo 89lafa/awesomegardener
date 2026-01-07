@@ -1,6 +1,7 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
+import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Package, ListChecks } from 'lucide-react';
@@ -8,11 +9,25 @@ import { Package, ListChecks } from 'lucide-react';
 export default function VarietyListView({ 
   varieties, 
   subCategories,
-  user,
   onAddToStash,
   onAddToGrowList,
   visibleColumns = ['name', 'subcategory', 'days', 'spacing', 'traits', 'actions']
 }) {
+  const [user, setUser] = useState(null);
+
+  useEffect(() => {
+    loadUser();
+  }, []);
+
+  const loadUser = async () => {
+    try {
+      const userData = await base44.auth.me();
+      setUser(userData);
+    } catch (error) {
+      console.error('Error loading user:', error);
+    }
+  };
+
   const getSubCategoryName = (subcatId) => {
     const subcat = subCategories.find(s => s.id === subcatId);
     return subcat?.name || '-';
