@@ -116,7 +116,8 @@ export default function EditVariety() {
         container_friendly: formData.container_friendly,
         grower_notes: formData.grower_notes,
         heat_scoville_min: formData.heat_scoville_min ? parseFloat(formData.heat_scoville_min) : null,
-        heat_scoville_max: formData.heat_scoville_max ? parseFloat(formData.heat_scoville_max) : null
+        heat_scoville_max: formData.heat_scoville_max ? parseFloat(formData.heat_scoville_max) : null,
+        affiliate_url: formData.affiliate_url || null
       };
 
       await base44.entities.Variety.update(varietyId, updateData);
@@ -354,6 +355,21 @@ export default function EditVariety() {
                 rows={4}
                 className="mt-1"
               />
+            </div>
+
+            <div>
+              <Label htmlFor="affiliate_url">Affiliate/Buy Seeds Link (Admin Only)</Label>
+              <Input
+                id="affiliate_url"
+                type="url"
+                value={formData.affiliate_url || ''}
+                onChange={(e) => setFormData({ ...formData, affiliate_url: e.target.value })}
+                placeholder="https://..."
+                className="mt-1"
+              />
+              <p className="text-xs text-gray-500 mt-1">
+                This link will appear as a "Buy Seeds" button on the variety page
+              </p>
             </div>
 
             <div className="flex gap-3 pt-4">
