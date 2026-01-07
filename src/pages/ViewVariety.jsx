@@ -122,7 +122,7 @@ export default function ViewVariety() {
   return (
     <div className="max-w-4xl mx-auto space-y-6">
       <div className="flex items-center gap-3">
-        <Link to={createPageUrl('PlantCatalogDetail') + `?plantTypeId=${variety.plant_type_id}`}>
+        <Link to={createPageUrl('PlantCatalogDetail') + `?id=${variety.plant_type_id}`}>
           <Button variant="ghost" size="icon">
             <ArrowLeft className="w-5 h-5" />
           </Button>

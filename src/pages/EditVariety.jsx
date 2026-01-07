@@ -30,12 +30,28 @@ export default function EditVariety() {
   const [plantType, setPlantType] = useState(null);
 
   useEffect(() => {
-    if (varietyId) {
-      loadVariety();
-    } else {
-      setLoading(false);
-    }
+    checkAccess();
   }, [varietyId]);
+
+  const checkAccess = async () => {
+    try {
+      const userData = await base44.auth.me();
+      if (userData.role !== 'admin') {
+        // Non-admin cannot edit - redirect to view
+        window.location.href = createPageUrl('ViewVariety') + `?id=${varietyId}`;
+        return;
+      }
+      
+      if (varietyId) {
+        loadVariety();
+      } else {
+        setLoading(false);
+      }
+    } catch (error) {
+      console.error('Access check failed:', error);
+      window.location.href = createPageUrl('PlantCatalog');
+    }
+  };
 
   const loadVariety = async () => {
     try {

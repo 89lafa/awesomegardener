@@ -56,7 +56,7 @@ export default function VarietyListView({
               {visibleColumns.includes('name') && (
                 <td className="p-3">
                   <Link 
-                    to={createPageUrl('EditVariety') + `?id=${variety.id}`}
+                    to={(user?.role === 'admin' ? createPageUrl('EditVariety') : createPageUrl('ViewVariety')) + `?id=${variety.id}`}
                     className="font-medium text-emerald-600 hover:text-emerald-700"
                   >
                     {variety.variety_name}
