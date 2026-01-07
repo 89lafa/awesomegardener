@@ -43,6 +43,7 @@ import Users from './pages/Users';
 import VarietyReviewQueue from './pages/VarietyReviewQueue';
 import ViewVariety from './pages/ViewVariety';
 import CompanionRulesAudit from './pages/CompanionRulesAudit';
+import ImageSubmissions from './pages/ImageSubmissions';
 import __Layout from './Layout.jsx';
 
 
@@ -92,6 +93,7 @@ export const PAGES = {
     "VarietyReviewQueue": VarietyReviewQueue,
     "ViewVariety": ViewVariety,
     "CompanionRulesAudit": CompanionRulesAudit,
+    "ImageSubmissions": ImageSubmissions,
 }
 
 export const pagesConfig = {
