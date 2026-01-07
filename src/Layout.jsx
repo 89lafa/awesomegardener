@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
+import { createPageUrl } from '@/utils';
 import Sidebar from '@/components/layout/Sidebar';
 import TopBar from '@/components/layout/TopBar';
 import { cn } from '@/lib/utils';
@@ -45,13 +46,13 @@ export default function Layout({ children, currentPageName }) {
         setUser(userData);
       } else if (!isPublicPage) {
         // Redirect to landing for non-public pages
-        window.location.href = '/Landing';
+        window.location.href = createPageUrl('Landing');
         return;
       }
     } catch (error) {
       console.error('Error loading user:', error);
       if (!isPublicPage) {
-        window.location.href = '/Landing';
+        window.location.href = createPageUrl('Landing');
         return;
       }
     } finally {
@@ -82,7 +83,7 @@ export default function Layout({ children, currentPageName }) {
 
   // Check if onboarding is needed
   if (user && !user.onboarding_completed && currentPageName !== 'Onboarding') {
-    window.location.href = '/Onboarding';
+    window.location.href = createPageUrl('Onboarding');
     return null;
   }
 
