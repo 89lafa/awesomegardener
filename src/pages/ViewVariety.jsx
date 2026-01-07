@@ -29,13 +29,13 @@ export default function ViewVariety() {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [showRequestChange, setShowRequestChange] = useState(false);
+  const [showAddImage, setShowAddImage] = useState(false);
+  const [showAddToStash, setShowAddToStash] = useState(false);
   const [requestReason, setRequestReason] = useState('');
   const [submitting, setSubmitting] = useState(false);
-  const [showAddToStash, setShowAddToStash] = useState(false);
-  const [showAddImage, setShowAddImage] = useState(false);
   const [uploadingImage, setUploadingImage] = useState(false);
-  const [imageOwnership, setImageOwnership] = useState(false);
   const [imageFile, setImageFile] = useState(null);
+  const [imageOwnership, setImageOwnership] = useState(false);
 
   useEffect(() => {
     if (varietyId) {
@@ -45,24 +45,32 @@ export default function ViewVariety() {
 
   const loadData = async () => {
     try {
+      console.log('[ViewVariety] Loading variety:', varietyId);
       const [userData, varietyData] = await Promise.all([
         base44.auth.me(),
         base44.entities.Variety.filter({ id: varietyId })
       ]);
 
       setUser(userData);
+      console.log('[ViewVariety] Found varieties:', varietyData.length);
 
       if (varietyData.length === 0) {
+        console.error('[ViewVariety] Variety not found');
         setLoading(false);
         return;
       }
 
       const v = varietyData[0];
+      console.log('[ViewVariety] Loaded variety:', v);
       setVariety(v);
 
       if (v.plant_type_id) {
         const types = await base44.entities.PlantType.filter({ id: v.plant_type_id });
-        if (types.length > 0) setPlantType(types[0]);
+        console.log('[ViewVariety] Found plant types:', types.length);
+        if (types.length > 0) {
+          console.log('[ViewVariety] Plant type:', types[0]);
+          setPlantType(types[0]);
+        }
       }
 
       if (v.plant_subcategory_id) {
@@ -70,7 +78,7 @@ export default function ViewVariety() {
         if (subcats.length > 0) setSubCategory(subcats[0]);
       }
     } catch (error) {
-      console.error('Error loading variety:', error);
+      console.error('[ViewVariety] Error loading variety:', error);
     } finally {
       setLoading(false);
     }
@@ -121,11 +129,13 @@ export default function ViewVariety() {
     try {
       const { file_url } = await base44.integrations.Core.UploadFile({ file: imageFile });
       
-      await base44.entities.VarietyImageSubmission.create({
+      await base44.entities.VarietyChangeRequest.create({
         variety_id: varietyId,
-        image_url: file_url,
+        requested_changes: {
+          images: [file_url]
+        },
+        reason: 'User submitted image for variety',
         submitted_by: user.email,
-        ownership_confirmed: true,
         status: 'pending'
       });
 
@@ -179,31 +189,33 @@ export default function ViewVariety() {
         <div className="flex gap-2 flex-wrap">
           <Button
             onClick={() => setShowAddToStash(true)}
-            className="bg-emerald-600 hover:bg-emerald-700"
+            className="bg-emerald-600 hover:bg-emerald-700 gap-2"
           >
-            <Package className="w-4 h-4 mr-2" />
-            Add to Seed Stash
+            <Package className="w-4 h-4" />
+            Add to Stash
           </Button>
           <Button
             variant="outline"
             onClick={() => setShowAddImage(true)}
+            className="gap-2"
           >
-            <ImageIcon className="w-4 h-4 mr-2" />
+            <ImageIcon className="w-4 h-4" />
             Add Image
           </Button>
           {isAdmin ? (
             <Link to={createPageUrl('EditVariety') + `?id=${varietyId}`}>
-              <Button variant="outline">
-                <Edit className="w-4 h-4 mr-2" />
-                Edit Variety
+              <Button variant="outline" className="gap-2">
+                <Edit className="w-4 h-4" />
+                Edit
               </Button>
             </Link>
           ) : (
             <Button
               variant="outline"
               onClick={() => setShowRequestChange(true)}
+              className="gap-2"
             >
-              <Edit className="w-4 h-4 mr-2" />
+              <Edit className="w-4 h-4" />
               Request Change
             </Button>
           )}
@@ -242,30 +254,20 @@ export default function ViewVariety() {
         </CardHeader>
         <CardContent className="space-y-4">
           {/* Images */}
-          {variety.images && variety.images.length > 0 && (
+          {variety?.images && variety.images.length > 0 && (
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-4">
               {variety.images.map((url, idx) => (
                 <img 
                   key={idx}
                   src={url} 
                   alt={`${variety.variety_name} ${idx + 1}`}
-                  className="w-full h-32 object-cover rounded-lg shadow-sm"
+                  className="w-full h-32 object-cover rounded-lg"
                 />
               ))}
             </div>
           )}
 
-          {variety.image_url && (!variety.images || variety.images.length === 0) && (
-            <div className="mb-4">
-              <img 
-                src={variety.image_url} 
-                alt={variety.variety_name}
-                className="w-full h-48 object-cover rounded-lg shadow-sm"
-              />
-            </div>
-          )}
-
-          {variety.description && (
+          {variety?.description && (
             <div className="mb-4">
               <Label className="text-gray-600">Description</Label>
               <p className="mt-1 text-gray-900">{variety.description}</p>
@@ -275,11 +277,11 @@ export default function ViewVariety() {
           <div className="grid grid-cols-2 gap-4">
             <div>
               <Label className="text-gray-600">Variety Name</Label>
-              <p className="font-medium mt-1">{variety.variety_name}</p>
+              <p className="font-medium mt-1">{variety?.variety_name || 'Unknown'}</p>
             </div>
             <div>
               <Label className="text-gray-600">Plant Type</Label>
-              <p className="font-medium mt-1">{plantType?.common_name || variety.plant_type_name}</p>
+              <p className="font-medium mt-1">{plantType?.common_name || variety?.plant_type_name || 'Unknown'}</p>
             </div>
             {subCategory && (
               <div>
@@ -287,34 +289,44 @@ export default function ViewVariety() {
                 <p className="font-medium mt-1">{subCategory.name}</p>
               </div>
             )}
-            {variety.days_to_maturity && (
+            {(variety?.days_to_maturity || variety?.days_to_maturity_min) && (
               <div>
                 <Label className="text-gray-600">Days to Maturity</Label>
-                <p className="font-medium mt-1">{variety.days_to_maturity}</p>
+                <p className="font-medium mt-1">
+                  {variety.days_to_maturity || 
+                   (variety.days_to_maturity_min && variety.days_to_maturity_max 
+                     ? `${variety.days_to_maturity_min}-${variety.days_to_maturity_max}`
+                     : variety.days_to_maturity_min)}
+                </p>
               </div>
             )}
           </div>
 
           <div className="grid grid-cols-2 gap-4">
-            {variety.spacing_recommended && (
+            {(variety?.spacing_recommended || variety?.spacing_min) && (
               <div>
                 <Label className="text-gray-600">Spacing</Label>
-                <p className="font-medium mt-1">{variety.spacing_recommended}"</p>
+                <p className="font-medium mt-1">
+                  {variety.spacing_recommended || 
+                   (variety.spacing_min && variety.spacing_max 
+                     ? `${variety.spacing_min}-${variety.spacing_max}"`
+                     : `${variety.spacing_min}"`)}
+                </p>
               </div>
             )}
-            {variety.sun_requirement && (
+            {variety?.sun_requirement && (
               <div>
                 <Label className="text-gray-600">Sun Requirement</Label>
                 <p className="font-medium mt-1 capitalize">{variety.sun_requirement.replace(/_/g, ' ')}</p>
               </div>
             )}
-            {variety.water_requirement && (
+            {variety?.water_requirement && (
               <div>
                 <Label className="text-gray-600">Water Requirement</Label>
                 <p className="font-medium mt-1 capitalize">{variety.water_requirement}</p>
               </div>
             )}
-            {variety.growth_habit && (
+            {variety?.growth_habit && (
               <div>
                 <Label className="text-gray-600">Growth Habit</Label>
                 <p className="font-medium mt-1 capitalize">{variety.growth_habit.replace(/_/g, ' ')}</p>
@@ -323,18 +335,18 @@ export default function ViewVariety() {
           </div>
 
           <div className="flex flex-wrap gap-2">
-            {variety.trellis_required && (
+            {variety?.trellis_required && (
               <Badge>Trellis Required</Badge>
             )}
-            {variety.container_friendly && (
+            {variety?.container_friendly && (
               <Badge>Container Friendly</Badge>
             )}
           </div>
 
-          {variety.grower_notes && (
+          {(variety?.grower_notes || variety?.notes_public) && (
             <div>
               <Label className="text-gray-600">Grower Notes</Label>
-              <p className="mt-1 text-gray-900">{variety.grower_notes}</p>
+              <p className="mt-1 text-gray-900">{variety.grower_notes || variety.notes_public}</p>
             </div>
           )}
         </CardContent>
@@ -375,6 +387,8 @@ export default function ViewVariety() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+
 
       <Dialog open={showAddImage} onOpenChange={setShowAddImage}>
         <DialogContent>
