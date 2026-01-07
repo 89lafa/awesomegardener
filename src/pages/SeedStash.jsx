@@ -272,23 +272,12 @@ export default function SeedStash() {
     }
 
     try {
-      // Normalize URL by adding https:// if not present
-      let normalizedUrl = formData.source_vendor_url;
-      if (normalizedUrl && !normalizedUrl.match(/^https?:\/\//i)) {
-        normalizedUrl = 'https://' + normalizedUrl;
-      }
-
-      const data = {
-        ...formData,
-        source_vendor_url: normalizedUrl || ''
-      };
-
       if (editingSeed) {
-        await base44.entities.SeedLot.update(editingSeed.id, data);
+        await base44.entities.SeedLot.update(editingSeed.id, formData);
         await loadData(); // Reload to get updated profiles
         toast.success('Seed updated!');
       } else {
-        const seed = await base44.entities.SeedLot.create(data);
+        const seed = await base44.entities.SeedLot.create(formData);
         await loadData(); // Reload to get updated profiles
         toast.success(formData.is_wishlist ? 'Added to wishlist!' : 'Seed added to stash!');
       }
@@ -374,7 +363,7 @@ export default function SeedStash() {
       year_acquired: seed.year_acquired || new Date().getFullYear(),
       packed_for_year: seed.packed_for_year || '',
       source_vendor_name: seed.source_vendor_name || '',
-      source_vendor_url: seed.source_vendor_url ? seed.source_vendor_url.replace(/^https?:\/\//i, '') : '',
+      source_vendor_url: seed.source_vendor_url || '',
       storage_location: seed.storage_location || '',
       lot_notes: seed.lot_notes || '',
       tags: seed.tags || [],
@@ -1100,21 +1089,23 @@ export default function SeedStash() {
               <div>
                 <Label>Variety Name *</Label>
                 {varieties.length > 0 ? (
-                  <Select 
-                    value={formData.plant_profile_id} 
-                    onValueChange={handleVarietyChange}
-                  >
-                    <SelectTrigger className="mt-2">
-                      <SelectValue placeholder="Select variety" />
-                    </SelectTrigger>
-                    <SelectContent>
+                  <div className="mt-2">
+                    <div className="max-h-48 overflow-y-auto border rounded-md bg-white">
                       {varieties.map((variety) => (
-                        <SelectItem key={variety.id} value={variety.id}>
+                        <button
+                          key={variety.id}
+                          type="button"
+                          onClick={() => handleVarietyChange(variety.id)}
+                          className={cn(
+                            "w-full text-left px-3 py-2.5 hover:bg-gray-100 border-b last:border-b-0 transition-colors",
+                            formData.plant_profile_id === variety.id && "bg-emerald-50 text-emerald-900 font-medium"
+                          )}
+                        >
                           {variety.variety_name}
-                        </SelectItem>
+                        </button>
                       ))}
-                    </SelectContent>
-                  </Select>
+                    </div>
+                  </div>
                 ) : (
                   <p className="text-sm text-gray-500 mt-2">No varieties available for {selectedPlantType?.common_name}</p>
                 )}
@@ -1191,10 +1182,9 @@ export default function SeedStash() {
               <Label htmlFor="source_url">Vendor URL</Label>
               <Input
                 id="source_url"
-                type="text"
-                placeholder="e.g., PepperSeeds.net or www.example.com"
                 value={formData.source_vendor_url}
                 onChange={(e) => setFormData({ ...formData, source_vendor_url: e.target.value })}
+                placeholder="pepperseeds.net or www.example.com"
                 className="mt-2"
               />
             </div>

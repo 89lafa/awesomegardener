@@ -34,14 +34,8 @@ export default function ViewVariety() {
   const [requestReason, setRequestReason] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [uploadingImage, setUploadingImage] = useState(false);
-  const [imageToAdd, setImageToAdd] = useState(null);
-  const [imageReason, setImageReason] = useState('');
-  const [imageOwnership, setImageOwnership] = useState(false);
-  const [showAddToStash, setShowAddToStash] = useState(false);
-  const [showAddImage, setShowAddImage] = useState(false);
-  const [uploadingImage, setUploadingImage] = useState(false);
-  const [imageOwnership, setImageOwnership] = useState(false);
   const [imageFile, setImageFile] = useState(null);
+  const [imageOwnership, setImageOwnership] = useState(false);
 
   useEffect(() => {
     if (varietyId) {
@@ -187,31 +181,33 @@ export default function ViewVariety() {
         <div className="flex gap-2 flex-wrap">
           <Button
             onClick={() => setShowAddToStash(true)}
-            className="bg-emerald-600 hover:bg-emerald-700"
+            className="bg-emerald-600 hover:bg-emerald-700 gap-2"
           >
-            <Package className="w-4 h-4 mr-2" />
-            Add to Seed Stash
+            <Package className="w-4 h-4" />
+            Add to Stash
           </Button>
           <Button
             variant="outline"
             onClick={() => setShowAddImage(true)}
+            className="gap-2"
           >
-            <ImageIcon className="w-4 h-4 mr-2" />
+            <ImageIcon className="w-4 h-4" />
             Add Image
           </Button>
           {isAdmin ? (
             <Link to={createPageUrl('EditVariety') + `?id=${varietyId}`}>
-              <Button variant="outline">
-                <Edit className="w-4 h-4 mr-2" />
-                Edit Variety
+              <Button variant="outline" className="gap-2">
+                <Edit className="w-4 h-4" />
+                Edit
               </Button>
             </Link>
           ) : (
             <Button
               variant="outline"
               onClick={() => setShowRequestChange(true)}
+              className="gap-2"
             >
-              <Edit className="w-4 h-4 mr-2" />
+              <Edit className="w-4 h-4" />
               Request Change
             </Button>
           )}
@@ -374,96 +370,7 @@ export default function ViewVariety() {
         </DialogContent>
       </Dialog>
 
-      <Dialog open={showAddImage} onOpenChange={setShowAddImage}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Add Image to {variety.variety_name}</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4">
-            <p className="text-sm text-gray-600">
-              Submit a photo for review. Admins will approve it before it's added to this variety.
-            </p>
 
-            {imageToAdd ? (
-              <div className="relative">
-                <img src={imageToAdd} alt="Preview" className="w-full h-48 object-cover rounded-lg" />
-                <Button
-                  variant="destructive"
-                  size="icon"
-                  className="absolute top-2 right-2"
-                  onClick={() => setImageToAdd(null)}
-                >
-                  <Trash2 className="w-4 h-4" />
-                </Button>
-              </div>
-            ) : (
-              <div>
-                <Button
-                  variant="outline"
-                  onClick={() => document.getElementById('image-upload').click()}
-                  disabled={uploadingImage}
-                  className="w-full"
-                >
-                  {uploadingImage ? (
-                    <><Loader2 className="w-4 h-4 animate-spin mr-2" />Uploading...</>
-                  ) : (
-                    <><Plus className="w-4 h-4 mr-2" />Upload Image</>
-                  )}
-                </Button>
-                <input
-                  id="image-upload"
-                  type="file"
-                  accept="image/*"
-                  onChange={handleImageUpload}
-                  className="hidden"
-                />
-              </div>
-            )}
-
-            <div>
-              <Label>Context</Label>
-              <Textarea
-                placeholder="Tell us about this photo (where it was grown, any special notes)"
-                value={imageReason}
-                onChange={(e) => setImageReason(e.target.value)}
-                className="mt-2"
-                rows={3}
-              />
-            </div>
-
-            <div className="flex items-center gap-2">
-              <Checkbox
-                id="ownership"
-                checked={imageOwnership}
-                onCheckedChange={setImageOwnership}
-              />
-              <Label htmlFor="ownership" className="text-sm font-normal cursor-pointer">
-                I confirm this image is my own
-              </Label>
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowAddImage(false)}>
-              Cancel
-            </Button>
-            <Button
-              onClick={handleSubmitImage}
-              disabled={!imageToAdd || !imageReason.trim() || !imageOwnership || submitting}
-              className="bg-emerald-600 hover:bg-emerald-700"
-            >
-              {submitting ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
-              Submit for Review
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      <AddToStashModal
-        open={showAddToStash}
-        onOpenChange={setShowAddToStash}
-        variety={variety}
-        plantType={plantType}
-      />
 
       <Dialog open={showAddImage} onOpenChange={setShowAddImage}>
         <DialogContent>

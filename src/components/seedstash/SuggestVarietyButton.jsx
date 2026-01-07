@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
 import { Lightbulb, Loader2 } from 'lucide-react';
@@ -17,9 +17,36 @@ export default function SuggestVarietyButton({ profile, seedLot, isFromCatalog }
   const [showDialog, setShowDialog] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [reason, setReason] = useState('');
+  const [catalogCheck, setCatalogCheck] = useState(null);
+  const [checkingCatalog, setCheckingCatalog] = useState(true);
 
-  // Don't render if this was added from catalog
-  if (isFromCatalog) {
+  useEffect(() => {
+    checkIfInCatalog();
+  }, [profile]);
+
+  const checkIfInCatalog = async () => {
+    if (isFromCatalog) {
+      setCatalogCheck(true);
+      setCheckingCatalog(false);
+      return;
+    }
+
+    try {
+      const existing = await base44.entities.Variety.filter({
+        plant_type_id: profile.plant_type_id,
+        variety_name: profile.variety_name
+      });
+      setCatalogCheck(existing.length > 0);
+    } catch (error) {
+      console.error('Error checking catalog:', error);
+      setCatalogCheck(false);
+    } finally {
+      setCheckingCatalog(false);
+    }
+  };
+
+  // Don't render if this was added from catalog or already in catalog
+  if (checkingCatalog || catalogCheck) {
     return null;
   }
 
