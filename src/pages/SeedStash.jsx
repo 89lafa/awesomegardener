@@ -363,7 +363,7 @@ export default function SeedStash() {
       year_acquired: seed.year_acquired || new Date().getFullYear(),
       packed_for_year: seed.packed_for_year || '',
       source_vendor_name: seed.source_vendor_name || '',
-      source_vendor_url: seed.source_vendor_url || '',
+      source_vendor_url: seed.source_vendor_url ? seed.source_vendor_url.replace(/^https?:\/\//i, '') : '',
       storage_location: seed.storage_location || '',
       lot_notes: seed.lot_notes || '',
       tags: seed.tags || [],
