@@ -17,10 +17,9 @@ import {
   Ruler,
   Plus,
   TrendingUp,
-  Lightbulb,
   Droplets
 } from 'lucide-react';
-import SuggestVarietyFromStash from '@/components/stash/SuggestVarietyFromStash';
+import SuggestVarietyButton from '@/components/seedstash/SuggestVarietyButton';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -57,7 +56,6 @@ export default function SeedStashDetail() {
   const [profileForm, setProfileForm] = useState({});
   const [lotForm, setLotForm] = useState({});
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
-  const [showSuggestVariety, setShowSuggestVariety] = useState(false);
 
   useEffect(() => {
     if (seedId) {
@@ -228,7 +226,7 @@ export default function SeedStashDetail() {
   const age = getAge();
 
   return (
-    <div className="space-y-6 max-w-5xl mx-auto">
+    <div className="space-y-6 max-w-6xl mx-auto">
       <div className="flex items-center gap-3">
         <Link to={createPageUrl('SeedStash')}>
           <Button variant="ghost">
@@ -239,7 +237,7 @@ export default function SeedStashDetail() {
       </div>
 
       <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
-        <div className="flex-1">
+        <div>
           <div className="flex items-center gap-3 flex-wrap">
             <h1 className="text-2xl lg:text-3xl font-bold text-gray-900">
               {profile?.variety_name || seed.custom_label || 'Unknown Seed'}
@@ -260,14 +258,7 @@ export default function SeedStashDetail() {
         </div>
         <div className="flex gap-2">
           {profile && (
-            <Button 
-              variant="outline"
-              onClick={() => setShowSuggestVariety(true)}
-              className="gap-2 text-emerald-600 hover:text-emerald-700"
-            >
-              <Lightbulb className="w-4 h-4" />
-              Suggest to Catalog
-            </Button>
+            <SuggestVarietyButton profile={profile} seedLot={seed} />
           )}
           <Button 
             variant="outline" 
@@ -280,15 +271,15 @@ export default function SeedStashDetail() {
         </div>
       </div>
 
-      {/* Photos Gallery - Featured */}
+      {/* Photo Gallery */}
       {seed.lot_images && seed.lot_images.length > 0 && (
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
           {seed.lot_images.map((url, idx) => (
             <div key={idx} className="relative group aspect-square">
               <img 
                 src={url} 
-                alt="Seed lot" 
-                className="w-full h-full object-cover rounded-xl shadow-md group-hover:shadow-lg transition-shadow" 
+                alt="Variety photo" 
+                className="w-full h-full object-cover rounded-xl shadow-md"
               />
               <Button
                 variant="destructive"
@@ -300,6 +291,26 @@ export default function SeedStashDetail() {
               </Button>
             </div>
           ))}
+          <button
+            onClick={() => document.getElementById('photo-upload-main').click()}
+            className="aspect-square rounded-xl border-2 border-dashed border-gray-300 hover:border-emerald-500 hover:bg-emerald-50 transition-all flex flex-col items-center justify-center gap-2 text-gray-500 hover:text-emerald-600"
+          >
+            {uploadingPhoto ? (
+              <Loader2 className="w-8 h-8 animate-spin" />
+            ) : (
+              <>
+                <Plus className="w-8 h-8" />
+                <span className="text-sm font-medium">Add Photo</span>
+              </>
+            )}
+          </button>
+          <input
+            id="photo-upload-main"
+            type="file"
+            accept="image/*"
+            onChange={handlePhotoUpload}
+            className="hidden"
+          />
         </div>
       )}
 
@@ -308,103 +319,110 @@ export default function SeedStashDetail() {
         {profile && (
           <Card className="lg:col-span-2">
             <CardHeader className="flex flex-row items-center justify-between">
-              <CardTitle className="flex items-center gap-2">
-                <TrendingUp className="w-5 h-5 text-emerald-600" />
-                Growing Profile
-              </CardTitle>
+              <CardTitle className="text-xl">Variety Profile</CardTitle>
               <Button variant="outline" size="sm" onClick={() => setShowEditProfile(true)}>
                 <Edit className="w-4 h-4 mr-2" />
-                Edit
+                Edit Attributes
               </Button>
             </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid sm:grid-cols-2 gap-3">
+            <CardContent className="space-y-6">
+              {/* Key Growing Stats - Hero Section */}
+              <div className="grid sm:grid-cols-2 md:grid-cols-4 gap-3">
                 {profile.days_to_maturity_seed && (
-                  <div className="flex items-center gap-3 p-4 bg-gradient-to-br from-emerald-50 to-green-50 rounded-xl border border-emerald-200">
-                    <Calendar className="w-6 h-6 text-emerald-600" />
-                    <div>
-                      <p className="text-xs font-medium text-emerald-700">Days to Maturity</p>
-                      <p className="text-lg font-bold text-emerald-900">{profile.days_to_maturity_seed} days</p>
-                    </div>
+                  <div className="flex flex-col items-center p-4 bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl border border-blue-200">
+                    <Calendar className="w-6 h-6 text-blue-600 mb-2" />
+                    <p className="text-xs text-blue-700 mb-1">Days to Maturity</p>
+                    <p className="text-2xl font-bold text-blue-900">{profile.days_to_maturity_seed}</p>
                   </div>
                 )}
                 {profile.sun_requirement && (
-                  <div className="flex items-center gap-3 p-4 bg-gradient-to-br from-yellow-50 to-amber-50 rounded-xl border border-yellow-200">
-                    <Sun className="w-6 h-6 text-yellow-600" />
-                    <div>
-                      <p className="text-xs font-medium text-yellow-700">Sun Requirement</p>
-                      <p className="text-lg font-bold text-yellow-900 capitalize">{profile.sun_requirement.replace(/_/g, ' ')}</p>
-                    </div>
-                  </div>
-                )}
-                {profile.water_requirement && (
-                  <div className="flex items-center gap-3 p-4 bg-gradient-to-br from-blue-50 to-cyan-50 rounded-xl border border-blue-200">
-                    <Droplets className="w-6 h-6 text-blue-600" />
-                    <div>
-                      <p className="text-xs font-medium text-blue-700">Water Needs</p>
-                      <p className="text-lg font-bold text-blue-900 capitalize">{profile.water_requirement}</p>
-                    </div>
+                  <div className="flex flex-col items-center p-4 bg-gradient-to-br from-yellow-50 to-amber-100 rounded-xl border border-yellow-200">
+                    <Sun className="w-6 h-6 text-yellow-600 mb-2" />
+                    <p className="text-xs text-yellow-700 mb-1">Sun Exposure</p>
+                    <p className="text-sm font-bold text-yellow-900 capitalize">
+                      {profile.sun_requirement.replace(/_/g, ' ')}
+                    </p>
                   </div>
                 )}
                 {(profile.spacing_in_min || profile.spacing_in_max) && (
-                  <div className="flex items-center gap-3 p-4 bg-gradient-to-br from-purple-50 to-pink-50 rounded-xl border border-purple-200">
-                    <Ruler className="w-6 h-6 text-purple-600" />
-                    <div>
-                      <p className="text-xs font-medium text-purple-700">Spacing</p>
-                      <p className="text-lg font-bold text-purple-900">
-                        {profile.spacing_in_min && profile.spacing_in_max
-                          ? `${profile.spacing_in_min}-${profile.spacing_in_max}"`
-                          : profile.spacing_in_min || profile.spacing_in_max}
-                      </p>
-                    </div>
+                  <div className="flex flex-col items-center p-4 bg-gradient-to-br from-green-50 to-emerald-100 rounded-xl border border-green-200">
+                    <Ruler className="w-6 h-6 text-green-600 mb-2" />
+                    <p className="text-xs text-green-700 mb-1">Spacing</p>
+                    <p className="text-lg font-bold text-green-900">
+                      {profile.spacing_in_min && profile.spacing_in_max
+                        ? `${profile.spacing_in_min}-${profile.spacing_in_max}"`
+                        : `${profile.spacing_in_min || profile.spacing_in_max}"`}
+                    </p>
                   </div>
                 )}
-                {(profile.height_in_min || profile.height_in_max) && (
-                  <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
-                    <div className="w-5 h-5 text-gray-500 flex items-center">↕</div>
-                    <div>
-                      <p className="text-xs text-gray-500">Height</p>
-                      <p className="font-semibold">
+                {profile.water_requirement && (
+                  <div className="flex flex-col items-center p-4 bg-gradient-to-br from-cyan-50 to-blue-100 rounded-xl border border-cyan-200">
+                    <Droplets className="w-6 h-6 text-cyan-600 mb-2" />
+                    <p className="text-xs text-cyan-700 mb-1">Water Needs</p>
+                    <p className="text-sm font-bold text-cyan-900 capitalize">
+                      {profile.water_requirement}
+                    </p>
+                  </div>
+                )}
+              </div>
+
+              {/* Additional Details */}
+              {(profile.height_in_min || profile.height_in_max || (profile.heat_scoville_min || profile.heat_scoville_max)) && (
+                <div className="grid sm:grid-cols-2 gap-4">
+                  {(profile.height_in_min || profile.height_in_max) && (
+                    <div className="p-4 bg-gray-50 rounded-lg border">
+                      <div className="flex items-center gap-2 mb-2">
+                        <TrendingUp className="w-5 h-5 text-gray-600" />
+                        <p className="font-semibold text-gray-900">Plant Height</p>
+                      </div>
+                      <p className="text-lg text-gray-700">
                         {profile.height_in_min && profile.height_in_max
-                          ? `${profile.height_in_min}-${profile.height_in_max}"`
-                          : profile.height_in_min || profile.height_in_max}
+                          ? `${profile.height_in_min}-${profile.height_in_max} inches`
+                          : `${profile.height_in_min || profile.height_in_max} inches`}
                       </p>
                     </div>
-                  </div>
-                )}
-                {(profile.heat_scoville_min || profile.heat_scoville_max) && (
-                  <div className="flex items-center gap-3 p-3 bg-red-50 rounded-lg border border-red-200">
-                    <div className="text-xl">🌶️</div>
-                    <div>
-                      <p className="text-xs text-gray-500">Scoville Heat</p>
-                      <p className="font-semibold text-red-700">
+                  )}
+                  {(profile.heat_scoville_min || profile.heat_scoville_max) && (
+                    <div className="p-4 bg-gradient-to-br from-red-50 to-orange-50 rounded-lg border border-red-200">
+                      <div className="flex items-center gap-2 mb-2">
+                        <div className="text-2xl">🌶️</div>
+                        <p className="font-semibold text-red-900">Heat Level</p>
+                      </div>
+                      <p className="text-lg font-bold text-red-700">
                         {profile.heat_scoville_min && profile.heat_scoville_max
                           ? `${profile.heat_scoville_min.toLocaleString()}-${profile.heat_scoville_max.toLocaleString()}`
                           : (profile.heat_scoville_min || profile.heat_scoville_max).toLocaleString()} SHU
                       </p>
                     </div>
+                  )}
+                </div>
+              )}
+
+              {/* Growing Characteristics */}
+              {(profile.container_friendly || profile.trellis_required || profile.perennial) && (
+                <div>
+                  <p className="text-sm font-semibold text-gray-700 mb-3">Growing Characteristics</p>
+                  <div className="flex flex-wrap gap-2">
+                    {profile.container_friendly && (
+                      <Badge className="bg-blue-100 text-blue-800 px-3 py-1">📦 Container Friendly</Badge>
+                    )}
+                    {profile.trellis_required && (
+                      <Badge className="bg-green-100 text-green-800 px-3 py-1">🌿 Needs Trellis</Badge>
+                    )}
+                    {profile.perennial && (
+                      <Badge className="bg-purple-100 text-purple-800 px-3 py-1">🔄 Perennial</Badge>
+                    )}
                   </div>
-                )}
-              </div>
+                </div>
+              )}
 
-              <div className="grid sm:grid-cols-3 gap-3">
-                {profile.container_friendly && (
-                  <Badge variant="secondary">Container Friendly</Badge>
-                )}
-                {profile.trellis_required && (
-                  <Badge variant="secondary">Trellis Required</Badge>
-                )}
-                {profile.perennial && (
-                  <Badge variant="secondary">Perennial</Badge>
-                )}
-              </div>
-
+              {/* Traits */}
               {profile.traits && Array.isArray(profile.traits) && profile.traits.length > 0 && (
-                <div className="pt-3 border-t">
-                  <p className="text-xs text-gray-500 mb-2">Traits</p>
-                  <div className="flex flex-wrap gap-1">
+                <div className="p-4 bg-emerald-50 rounded-lg border border-emerald-200">
+                  <p className="font-semibold text-emerald-900 mb-3">Variety Traits</p>
+                  <div className="flex flex-wrap gap-2">
                     {profile.traits.map((trait, idx) => (
-                      <Badge key={idx} variant="secondary" className="text-xs">
+                      <Badge key={idx} className="bg-emerald-600 text-white px-3 py-1">
                         {trait}
                       </Badge>
                     ))}
@@ -412,9 +430,11 @@ export default function SeedStashDetail() {
                 </div>
               )}
 
+              {/* Growing Notes */}
               {profile.notes_public && (
-                <div className="pt-3 border-t">
-                  <p className="text-sm text-gray-600 whitespace-pre-wrap">{profile.notes_public}</p>
+                <div className="p-4 bg-gray-50 rounded-lg border">
+                  <p className="font-semibold text-gray-900 mb-2">Growing Notes</p>
+                  <p className="text-gray-700 whitespace-pre-wrap leading-relaxed">{profile.notes_public}</p>
                 </div>
               )}
             </CardContent>
@@ -422,75 +442,78 @@ export default function SeedStashDetail() {
         )}
 
         {/* Lot Details Card */}
-        <Card className="lg:col-span-1">
-          <CardHeader className="flex flex-row items-center justify-between">
-            <CardTitle className="flex items-center gap-2">
-              <Package className="w-5 h-5 text-emerald-600" />
-              My Stash
-            </CardTitle>
+        <Card className="bg-gradient-to-br from-white to-gray-50">
+          <CardHeader className="flex flex-row items-center justify-between border-b">
+            <CardTitle className="text-xl">My Stash Info</CardTitle>
             <Button variant="outline" size="sm" onClick={() => setShowEditLot(true)}>
               <Edit className="w-4 h-4 mr-2" />
               Edit
             </Button>
           </CardHeader>
-          <CardContent className="space-y-3">
+          <CardContent className="space-y-3 pt-6">
             {seed.quantity && (
-              <div className="p-3 bg-emerald-50 rounded-lg border border-emerald-200">
-                <p className="text-xs text-emerald-700 mb-1">Quantity</p>
-                <p className="text-xl font-bold text-emerald-900">
+              <div className="flex items-center justify-between py-3 px-4 bg-white rounded-lg border">
+                <span className="text-gray-700 font-medium flex items-center gap-2">
+                  <Package className="w-4 h-4 text-emerald-600" />
+                  Quantity
+                </span>
+                <Badge className="bg-emerald-600 text-white text-sm px-3 py-1">
                   {seed.quantity} {seed.unit}
-                </p>
+                </Badge>
               </div>
             )}
             {seed.year_acquired && (
-              <div className="flex items-center justify-between py-2 border-b">
-                <span className="text-gray-600 flex items-center gap-2">
-                  <Calendar className="w-4 h-4" />
+              <div className="flex items-center justify-between py-3 px-4 bg-white rounded-lg border">
+                <span className="text-gray-700 font-medium flex items-center gap-2">
+                  <Calendar className="w-4 h-4 text-blue-600" />
                   Year Acquired
                 </span>
-                <span className="font-medium">{seed.year_acquired}</span>
+                <span className="font-semibold text-gray-900">{seed.year_acquired}</span>
               </div>
             )}
             {seed.packed_for_year && (
-              <div className="flex items-center justify-between py-2 border-b">
-                <span className="text-gray-600">Packed For</span>
-                <span className="font-medium">{seed.packed_for_year}</span>
+              <div className="flex items-center justify-between py-3 px-4 bg-white rounded-lg border">
+                <span className="text-gray-700 font-medium">Packed For</span>
+                <span className="font-semibold text-gray-900">{seed.packed_for_year}</span>
               </div>
             )}
             {seed.source_vendor_name && (
-              <div className="flex items-center justify-between py-2 border-b">
-                <span className="text-gray-600">Vendor</span>
-                <div className="text-right">
-                  <p className="font-medium">{seed.source_vendor_name}</p>
+              <div className="flex flex-col gap-2 py-3 px-4 bg-white rounded-lg border">
+                <span className="text-gray-700 font-medium">Vendor</span>
+                <div>
+                  <p className="font-semibold text-gray-900">{seed.source_vendor_name}</p>
                   {seed.source_vendor_url && (
                     <a 
                       href={seed.source_vendor_url} 
                       target="_blank" 
                       rel="noopener noreferrer"
-                      className="text-sm text-blue-600 hover:underline flex items-center gap-1 justify-end"
+                      className="text-sm text-blue-600 hover:underline inline-flex items-center gap-1 mt-1"
                     >
-                      Visit <ExternalLink className="w-3 h-3" />
+                      Visit website <ExternalLink className="w-3 h-3" />
                     </a>
                   )}
                 </div>
               </div>
             )}
             {seed.storage_location && (
-              <div className="flex items-center justify-between py-2 border-b">
-                <span className="text-gray-600 flex items-center gap-2">
-                  <MapPin className="w-4 h-4" />
-                  Storage
+              <div className="flex items-center justify-between py-3 px-4 bg-white rounded-lg border">
+                <span className="text-gray-700 font-medium flex items-center gap-2">
+                  <MapPin className="w-4 h-4 text-red-600" />
+                  Storage Location
                 </span>
-                <span className="font-medium">{seed.storage_location}</span>
+                <span className="font-semibold text-gray-900">{seed.storage_location}</span>
               </div>
             )}
             {age > 0 && (
-              <div className="flex items-center justify-between py-2">
-                <span className="text-gray-600">Seed Age</span>
-                <Badge variant="outline" className={cn(
-                  ageStatus.status === 'AGING' && "border-amber-500 text-amber-700",
-                  ageStatus.status === 'OLD' && "border-red-500 text-red-700"
+              <div className="flex items-center justify-between py-3 px-4 bg-white rounded-lg border">
+                <span className="text-gray-700 font-medium">Seed Age</span>
+                <Badge className={cn(
+                  "px-3 py-1 text-sm",
+                  ageStatus.status === 'OK' && "bg-green-100 text-green-800",
+                  ageStatus.status === 'AGING' && "bg-amber-100 text-amber-800",
+                  ageStatus.status === 'OLD' && "bg-red-100 text-red-800"
                 )}>
+                  {ageStatus.icon && <ageStatus.icon className="w-4 h-4 mr-1" />}
                   {age} year{age !== 1 ? 's' : ''}
                 </Badge>
               </div>
@@ -528,12 +551,14 @@ export default function SeedStashDetail() {
 
       {/* Notes */}
       {seed.lot_notes && (
-        <Card>
+        <Card className="lg:col-span-3">
           <CardHeader>
-            <CardTitle>My Notes</CardTitle>
+            <CardTitle className="flex items-center gap-2">
+              📝 My Notes
+            </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-gray-700 whitespace-pre-wrap">{seed.lot_notes}</p>
+            <p className="text-gray-700 whitespace-pre-wrap leading-relaxed">{seed.lot_notes}</p>
           </CardContent>
         </Card>
       )}
@@ -695,16 +720,6 @@ export default function SeedStashDetail() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-
-      {/* Suggest Variety Modal */}
-      {profile && (
-        <SuggestVarietyFromStash
-          open={showSuggestVariety}
-          onOpenChange={setShowSuggestVariety}
-          seedLot={seed}
-          profile={profile}
-        />
-      )}
 
       {/* Edit Lot Dialog */}
       <Dialog open={showEditLot} onOpenChange={setShowEditLot}>

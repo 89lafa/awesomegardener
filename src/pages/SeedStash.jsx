@@ -99,6 +99,7 @@ export default function SeedStash() {
   });
   const [showColumnChooser, setShowColumnChooser] = useState(false);
   const [settings, setSettings] = useState({ aging_threshold_years: 2, old_threshold_years: 3 });
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
 
   const [formData, setFormData] = useState({
     plant_profile_id: '',
@@ -111,6 +112,7 @@ export default function SeedStash() {
     storage_location: '',
     lot_notes: '',
     tags: [],
+    lot_images: [],
     is_wishlist: false
   });
 
@@ -365,6 +367,7 @@ export default function SeedStash() {
       storage_location: seed.storage_location || '',
       lot_notes: seed.lot_notes || '',
       tags: seed.tags || [],
+      lot_images: seed.lot_images || [],
       is_wishlist: seed.is_wishlist || false
     });
 
@@ -385,6 +388,26 @@ export default function SeedStash() {
     setShowAddDialog(true);
   };
 
+  const handlePhotoUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setUploadingPhoto(true);
+    try {
+      const { file_url } = await base44.integrations.Core.UploadFile({ file });
+      setFormData({ 
+        ...formData, 
+        lot_images: [...(formData.lot_images || []), file_url] 
+      });
+      toast.success('Photo added');
+    } catch (error) {
+      console.error('Error uploading photo:', error);
+      toast.error('Failed to upload photo');
+    } finally {
+      setUploadingPhoto(false);
+    }
+  };
+
   const closeDialog = () => {
     setShowAddDialog(false);
     setEditingSeed(null);
@@ -402,6 +425,7 @@ export default function SeedStash() {
       storage_location: '',
       lot_notes: '',
       tags: [],
+      lot_images: [],
       is_wishlist: false
     });
   };
@@ -1065,21 +1089,22 @@ export default function SeedStash() {
               <div>
                 <Label>Variety Name *</Label>
                 {varieties.length > 0 ? (
-                  <Select 
-                    value={formData.plant_profile_id} 
-                    onValueChange={handleVarietyChange}
-                  >
-                    <SelectTrigger className="mt-2">
-                      <SelectValue placeholder="Select variety" />
-                    </SelectTrigger>
-                    <SelectContent>
+                  <div className="mt-2">
+                    <div className="max-h-48 overflow-y-auto border rounded-md">
                       {varieties.map((variety) => (
-                        <SelectItem key={variety.id} value={variety.id}>
+                        <div
+                          key={variety.id}
+                          onClick={() => handleVarietyChange(variety.id)}
+                          className={cn(
+                            "px-3 py-2 cursor-pointer hover:bg-gray-100 border-b last:border-b-0",
+                            formData.plant_profile_id === variety.id && "bg-emerald-50 text-emerald-900 font-medium"
+                          )}
+                        >
                           {variety.variety_name}
-                        </SelectItem>
+                        </div>
                       ))}
-                    </SelectContent>
-                  </Select>
+                    </div>
+                  </div>
                 ) : (
                   <p className="text-sm text-gray-500 mt-2">No varieties available for {selectedPlantType?.common_name}</p>
                 )}
@@ -1184,6 +1209,50 @@ export default function SeedStash() {
                 onChange={(e) => setFormData({ ...formData, lot_notes: e.target.value })}
                 className="mt-2"
               />
+            </div>
+
+            <div>
+              <Label>Photos (optional)</Label>
+              <div className="mt-2 space-y-2">
+                {formData.lot_images?.length > 0 && (
+                  <div className="grid grid-cols-3 gap-2">
+                    {formData.lot_images.map((url, idx) => (
+                      <div key={idx} className="relative group">
+                        <img src={url} alt="Seed" className="w-full h-20 object-cover rounded-lg" />
+                        <Button
+                          type="button"
+                          variant="destructive"
+                          size="icon"
+                          className="absolute top-1 right-1 h-6 w-6 opacity-0 group-hover:opacity-100"
+                          onClick={() => {
+                            const updated = formData.lot_images.filter((_, i) => i !== idx);
+                            setFormData({ ...formData, lot_images: updated });
+                          }}
+                        >
+                          <Trash2 className="w-3 h-3" />
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={uploadingPhoto}
+                  onClick={() => document.getElementById('stash-photo-upload').click()}
+                  className="w-full"
+                >
+                  {uploadingPhoto ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Plus className="w-4 h-4 mr-2" />}
+                  Add Photo
+                </Button>
+                <input
+                  id="stash-photo-upload"
+                  type="file"
+                  accept="image/*"
+                  onChange={handlePhotoUpload}
+                  className="hidden"
+                />
+              </div>
             </div>
 
             <div className="flex items-center gap-2">

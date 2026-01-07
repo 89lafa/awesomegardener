@@ -132,16 +132,16 @@ export default function ViewVariety() {
           <p className="text-gray-600">{plantType?.common_name || variety.plant_type_name}</p>
         </div>
         
-        {isAdmin && (
-          <Link to={createPageUrl('EditVariety') + `?id=${varietyId}`}>
-            <Button className="bg-emerald-600 hover:bg-emerald-700">
-              <Edit className="w-4 h-4 mr-2" />
-              Edit Variety
-            </Button>
-          </Link>
-        )}
-
-        {!isAdmin && (
+        {isAdmin ? (
+          <div className="flex gap-2">
+            <Link to={createPageUrl('EditVariety') + `?id=${varietyId}`}>
+              <Button className="bg-emerald-600 hover:bg-emerald-700">
+                <Edit className="w-4 h-4 mr-2" />
+                Edit Variety
+              </Button>
+            </Link>
+          </div>
+        ) : (
           <Button
             variant="outline"
             onClick={() => setShowRequestChange(true)}
