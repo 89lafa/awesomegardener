@@ -945,13 +945,13 @@ export default function PlantingModal({ open, onOpenChange, item, garden, onPlan
                   </div>
                   )}
 
-                  {isMoving && (
-                  <div className="mt-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
-                  <p className="text-sm font-medium text-blue-900">
+            {isMoving && (
+              <div className="mt-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
+                <p className="text-sm font-medium text-blue-900">
                   Moving {selectedPlanting?.display_name}
-                  </p>
-                  <p className="text-xs text-blue-700 mt-1">Click a cell to place it</p>
-                  <Button
+                </p>
+                <p className="text-xs text-blue-700 mt-1">Click a cell to place it</p>
+                <Button
                   size="sm"
                   variant="outline"
                   onClick={() => {
@@ -959,50 +959,48 @@ export default function PlantingModal({ open, onOpenChange, item, garden, onPlan
                     setSelectedPlanting(null);
                   }}
                   className="w-full mt-2"
-                  >
+                >
                   Cancel Move
-                  </Button>
-                  </div>
-                  )}
+                </Button>
+              </div>
+            )}
 
-                  </div>
-
-                      {/* Companion Analysis - Below Grid */}
-                      {companionResults.length > 0 && (
-                        <div className="mt-4 p-4 bg-gray-50 rounded-lg border">
-                          <h4 className="font-semibold text-sm mb-2">🌱 Companion Planting in This Bed</h4>
-                          <div className="space-y-2">
-                            {companionResults.map((result, idx) => (
-                              <div 
-                                key={idx}
-                                className={`p-2 rounded text-xs ${
-                                  result.type === 'GOOD' ? 'bg-green-50 border border-green-200' :
-                                  result.type === 'BAD' ? 'bg-red-50 border border-red-200' :
-                                  'bg-amber-50 border border-amber-200'
-                                }`}
-                              >
-                                <p className={`font-semibold ${
-                                  result.type === 'GOOD' ? 'text-green-800' :
-                                  result.type === 'BAD' ? 'text-red-800' :
-                                  'text-amber-800'
-                                }`}>
-                                  {result.plantA} + {result.plantB}: {
-                                    result.type === 'GOOD' ? '✓ Good Companions' :
-                                    result.type === 'BAD' ? '✗ Bad Companions' :
-                                    '⚠ Conditional'
-                                  }
-                                </p>
-                                {result.notes && (
-                                  <p className="text-gray-600 mt-1">{result.notes}</p>
-                                )}
-                              </div>
-                            ))}
-                          </div>
-                        </div>
+            {/* Companion Analysis - Below Grid */}
+            {companionResults.length > 0 && (
+              <div className="mt-4 p-4 bg-gray-50 rounded-lg border">
+                <h4 className="font-semibold text-sm mb-2">🌱 Companion Planting in This Bed</h4>
+                <div className="space-y-2">
+                  {companionResults.map((result, idx) => (
+                    <div 
+                      key={idx}
+                      className={`p-2 rounded text-xs ${
+                        result.type === 'GOOD' ? 'bg-green-50 border border-green-200' :
+                        result.type === 'BAD' ? 'bg-red-50 border border-red-200' :
+                        'bg-amber-50 border border-amber-200'
+                      }`}
+                    >
+                      <p className={`font-semibold ${
+                        result.type === 'GOOD' ? 'text-green-800' :
+                        result.type === 'BAD' ? 'text-red-800' :
+                        'text-amber-800'
+                      }`}>
+                        {result.plantA} + {result.plantB}: {
+                          result.type === 'GOOD' ? '✓ Good Companions' :
+                          result.type === 'BAD' ? '✗ Bad Companions' :
+                          '⚠ Conditional'
+                        }
+                      </p>
+                      {result.notes && (
+                        <p className="text-gray-600 mt-1">{result.notes}</p>
                       )}
                     </div>
-                  </div>
-                  </DialogContent>
-                  </Dialog>
-                  );
-                  }
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
