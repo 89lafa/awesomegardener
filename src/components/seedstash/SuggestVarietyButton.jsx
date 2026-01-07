@@ -13,10 +13,15 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
 
-export default function SuggestVarietyButton({ profile, seedLot }) {
+export default function SuggestVarietyButton({ profile, seedLot, isFromCatalog }) {
   const [showDialog, setShowDialog] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [reason, setReason] = useState('');
+
+  // Don't render if this was added from catalog
+  if (isFromCatalog) {
+    return null;
+  }
 
   const handleSubmit = async () => {
     if (!reason.trim()) {

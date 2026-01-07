@@ -150,6 +150,7 @@ export default function AddToStashModal({ open, onOpenChange, variety, plantType
         source_vendor_url: formData.source_vendor_url || null,
         lot_notes: formData.lot_notes || null,
         storage_location: formData.storage_location || null,
+        from_catalog: true,
         is_wishlist: false
       };
       
@@ -276,10 +277,9 @@ export default function AddToStashModal({ open, onOpenChange, variety, plantType
             <Label htmlFor="vendor_url">Vendor URL</Label>
             <Input
               id="vendor_url"
-              type="url"
               value={formData.source_vendor_url}
               onChange={(e) => setFormData({ ...formData, source_vendor_url: e.target.value })}
-              placeholder="https://..."
+              placeholder="pepperseeds.net or www.example.com"
               className="mt-1"
             />
           </div>
