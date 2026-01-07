@@ -272,12 +272,23 @@ export default function SeedStash() {
     }
 
     try {
+      // Normalize URL by adding https:// if not present
+      let normalizedUrl = formData.source_vendor_url;
+      if (normalizedUrl && !normalizedUrl.match(/^https?:\/\//i)) {
+        normalizedUrl = 'https://' + normalizedUrl;
+      }
+
+      const data = {
+        ...formData,
+        source_vendor_url: normalizedUrl || ''
+      };
+
       if (editingSeed) {
-        await base44.entities.SeedLot.update(editingSeed.id, formData);
+        await base44.entities.SeedLot.update(editingSeed.id, data);
         await loadData(); // Reload to get updated profiles
         toast.success('Seed updated!');
       } else {
-        const seed = await base44.entities.SeedLot.create(formData);
+        const seed = await base44.entities.SeedLot.create(data);
         await loadData(); // Reload to get updated profiles
         toast.success(formData.is_wishlist ? 'Added to wishlist!' : 'Seed added to stash!');
       }
@@ -1180,8 +1191,8 @@ export default function SeedStash() {
               <Label htmlFor="source_url">Vendor URL</Label>
               <Input
                 id="source_url"
-                type="url"
-                placeholder="https://..."
+                type="text"
+                placeholder="e.g., PepperSeeds.net or www.example.com"
                 value={formData.source_vendor_url}
                 onChange={(e) => setFormData({ ...formData, source_vendor_url: e.target.value })}
                 className="mt-2"
