@@ -37,7 +37,7 @@ const getNavItems = (userRole, isEditor) => {
       { name: 'Tasks', icon: Calendar, page: 'CalendarTasks' },
       { name: 'Calendar Planner', icon: Sprout, page: 'Calendar' },
       { name: 'My Plants', icon: Apple, page: 'MyPlants' },
-      { name: 'Companion Planting', icon: Users, page: 'CompanionPlanner' },
+      { name: 'Companion Planting', icon: Sprout, page: 'CompanionPlanner' },
       { name: 'Diary', icon: BookText, page: 'GardenDiary' },
       { name: 'Harvest Log', icon: Apple, page: 'HarvestLog' },
       { name: 'Issues Log', icon: Bug, page: 'IssuesLog' },
@@ -52,6 +52,7 @@ const getNavItems = (userRole, isEditor) => {
   }
 
   if (userRole === 'admin') {
+    items.push({ name: 'Users', icon: Users, page: 'Users' });
     items.push({ name: 'Data Import', icon: Database, page: 'AdminDataImport' });
   }
 
