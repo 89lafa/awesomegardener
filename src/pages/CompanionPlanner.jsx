@@ -53,6 +53,7 @@ export default function CompanionPlanner() {
     companion_type: 'GOOD',
     companion_plant_type_id: '',
     notes: '',
+    source: '',
     evidence_level: 'C'
   });
 
@@ -102,6 +103,7 @@ export default function CompanionPlanner() {
         companion_plant_type_id: plantB,
         companion_type: formData.companion_type,
         notes: formData.notes,
+        source: formData.source || null,
         evidence_level: formData.evidence_level
       };
       
@@ -133,6 +135,7 @@ export default function CompanionPlanner() {
         companion_type: 'GOOD',
         companion_plant_type_id: '',
         notes: '',
+        source: '',
         evidence_level: 'C'
       });
     } catch (error) {
@@ -150,6 +153,7 @@ export default function CompanionPlanner() {
       companion_plant_type_id: rule.companion_plant_type_id,
       companion_type: rule.companion_type,
       notes: rule.notes || '',
+      source: rule.source || '',
       evidence_level: rule.evidence_level || 'C'
     });
     setShowDialog(true);
@@ -255,6 +259,7 @@ Cucumber,Radish,Good Conditional,Radishes can deter cucumber beetles but compete
                     companion_type: 'GOOD',
                     companion_plant_type_id: '',
                     notes: '',
+                    source: '',
                     evidence_level: 'C'
                   });
                   setShowDialog(true);
@@ -314,9 +319,9 @@ Cucumber,Radish,Good Conditional,Radishes can deter cucumber beetles but compete
             .map((rule) => (
             <Card key={rule.id}>
               <CardContent className="p-4">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
+                <div className="flex items-start justify-between gap-4">
+                  <div className="flex items-start gap-3 flex-1">
+                    <div className={`w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 ${
                       rule.companion_type === 'GOOD' ? 'bg-green-100' : 
                       rule.companion_type === 'BAD' ? 'bg-red-100' : 'bg-amber-100'
                     }`}>
@@ -329,24 +334,43 @@ Cucumber,Radish,Good Conditional,Radishes can deter cucumber beetles but compete
                       )}
                     </div>
                     <div className="flex-1">
-                     <p className="font-medium text-gray-900">
-                       {getPlantTypeName(rule.plant_type_id)} + {getPlantTypeName(rule.companion_plant_type_id)}
-                     </p>
-                     {rule.notes && (
-                       <p className="text-sm text-gray-600 mt-1">{rule.notes}</p>
-                     )}
-                     <div className="flex items-center gap-2 mt-2 text-xs">
-                       <Badge variant="outline" className="text-xs">
-                         Evidence: {rule.evidence_level || 'C'}
-                       </Badge>
-                       {rule.source && (
-                         <span className="text-gray-500">Source: {rule.source}</span>
-                       )}
-                     </div>
+                      <div className="flex items-center gap-2 flex-wrap mb-2">
+                        <p className="font-medium text-gray-900">
+                          {getPlantTypeName(rule.plant_type_id)} ↔ {getPlantTypeName(rule.companion_plant_type_id)}
+                        </p>
+                        <Badge className={
+                          rule.companion_type === 'GOOD' ? 'bg-green-600' : 
+                          rule.companion_type === 'BAD' ? 'bg-red-600' : 'bg-amber-600'
+                        }>
+                          {rule.companion_type.replace('_', ' ')}
+                        </Badge>
+                        {rule.evidence_level && (
+                          <Badge variant="outline">
+                            Evidence: {rule.evidence_level}
+                          </Badge>
+                        )}
+                      </div>
+                      {rule.notes && (
+                        <p className="text-sm text-gray-700 mb-2">{rule.notes}</p>
+                      )}
+                      {rule.source && (
+                        <p className="text-xs text-gray-500">
+                          Source: {rule.source.split('|').map((s, i) => (
+                            <span key={i}>
+                              {s.startsWith('http') ? (
+                                <a href={s} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
+                                  link {i + 1}
+                                </a>
+                              ) : s}
+                              {i < rule.source.split('|').length - 1 && ', '}
+                            </span>
+                          ))}
+                        </p>
+                      )}
                     </div>
                   </div>
                   {user?.role === 'admin' && (
-                    <div className="flex gap-1">
+                    <div className="flex gap-1 flex-shrink-0">
                       <Button 
                         variant="ghost" 
                         size="sm"
@@ -447,14 +471,24 @@ Cucumber,Radish,Good Conditional,Radishes can deter cucumber beetles but compete
               </Select>
             </div>
             <div>
-              <Label>Notes</Label>
+              <Label>Notes (explain WHY + risk/management) *</Label>
               <Textarea
-                placeholder="Why are they good/bad companions?"
+                placeholder="Explain why they are good/bad companions, risks, and management notes..."
                 value={formData.notes}
                 onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
                 className="mt-2"
                 rows={3}
               />
+            </div>
+            <div>
+              <Label>Source (URL or reference)</Label>
+              <Input
+                placeholder="https://example.com or book reference"
+                value={formData.source || ''}
+                onChange={(e) => setFormData({ ...formData, source: e.target.value })}
+                className="mt-2"
+              />
+              <p className="text-xs text-gray-500 mt-1">Separate multiple sources with | (pipe)</p>
             </div>
           </div>
           <DialogFooter>
