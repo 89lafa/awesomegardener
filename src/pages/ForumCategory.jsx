@@ -88,10 +88,21 @@ export default function ForumCategory() {
         last_activity_at: new Date().toISOString()
       });
       
+      // Update category counts
+      if (category) {
+        await base44.entities.ForumCategory.update(categoryId, {
+          topic_count: (category.topic_count || 0) + 1,
+          last_activity_at: new Date().toISOString()
+        });
+      }
+      
       setTopics([topic, ...topics]);
       setShowCreateTopic(false);
       setFormData({ title: '', body: '', tags: '' });
       toast.success('Topic created!');
+      
+      // Reload to refresh counts
+      loadData();
     } catch (error) {
       console.error('Error creating topic:', error);
       toast.error('Failed to create topic');

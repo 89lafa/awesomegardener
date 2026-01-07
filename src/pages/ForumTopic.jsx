@@ -87,12 +87,24 @@ export default function ForumTopic() {
       setPosts([...posts, post]);
       setNewPostBody('');
       
-      // Update topic
+      // Update topic counts
+      const newPostCount = (topic.post_count || 0) + 1;
       await base44.entities.ForumTopic.update(topicId, {
-        post_count: (topic.post_count || 0) + 1,
+        post_count: newPostCount,
         last_activity_at: new Date().toISOString(),
         last_post_by: user.email
       });
+      
+      // Update category counts
+      if (topic.category_id) {
+        const categories = await base44.entities.ForumCategory.filter({ id: topic.category_id });
+        if (categories.length > 0) {
+          await base44.entities.ForumCategory.update(topic.category_id, {
+            post_count: (categories[0].post_count || 0) + 1,
+            last_activity_at: new Date().toISOString()
+          });
+        }
+      }
       
       toast.success('Post added!');
     } catch (error) {
