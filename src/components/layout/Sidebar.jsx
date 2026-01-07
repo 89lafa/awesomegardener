@@ -64,18 +64,21 @@ const getNavItems = (userRole, isEditor, user) => {
 
 export default function Sidebar({ collapsed, onToggle, currentPage, user, isMobile }) {
   const navItems = getNavItems(user?.role, user?.is_editor, user);
+  
+  // On mobile, don't apply collapsed state
+  const effectiveCollapsed = isMobile ? false : collapsed;
 
   return (
     <aside className={cn(
       "fixed left-0 top-0 h-full bg-[#1a2e12] text-white transition-all duration-300 z-50 flex flex-col",
-      collapsed ? "w-16" : "w-64"
+      effectiveCollapsed ? "w-16" : "w-64"
     )}>
       {/* Logo */}
       <div className="p-4 border-b border-white/10 flex items-center gap-3">
         <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-400 to-green-600 flex items-center justify-center flex-shrink-0">
           <Sprout className="w-6 h-6 text-white" />
         </div>
-        {!collapsed && (
+        {!effectiveCollapsed && (
           <div className="overflow-hidden">
             <h1 className="font-bold text-lg leading-tight">AwesomeGardener</h1>
             <p className="text-xs text-emerald-300/70">Plan • Grow • Harvest</p>
@@ -99,26 +102,29 @@ export default function Sidebar({ collapsed, onToggle, currentPage, user, isMobi
               )}
             >
               <item.icon className={cn("w-5 h-5 flex-shrink-0", isActive && "text-emerald-400")} />
-              {!collapsed && <span className="font-medium text-sm">{item.name}</span>}
+              {!effectiveCollapsed && <span className="font-medium text-sm">{item.name}</span>}
             </Link>
           );
         })}
       </nav>
 
       {/* Collapse Toggle */}
-      <div className="p-3 border-t border-white/10">
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={onToggle}
-          className="w-full justify-center text-white/70 hover:text-white hover:bg-white/5"
-        >
-          {collapsed ? <ChevronRight className="w-5 h-5" /> : <ChevronLeft className="w-5 h-5" />}
-        </Button>
-      </div>
+      {isMobile && (
+        <div className="p-3 border-t border-white/10">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={onToggle}
+            className="w-full justify-start gap-2 text-white/70 hover:text-white hover:bg-white/5"
+          >
+            <ChevronLeft className="w-5 h-5" />
+            <span className="text-sm">Close</span>
+          </Button>
+        </div>
+      )}
 
       {/* PepperSeeds Attribution */}
-      {!collapsed && (
+      {!effectiveCollapsed && (
         <div className="p-4 border-t border-white/10">
           <a 
             href="https://pepperseeds.net" 
