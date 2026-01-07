@@ -20,7 +20,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { toast } from 'sonner';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Package } from 'lucide-react';
 
 export default function AddToStashModal({ open, onOpenChange, variety, plantType, onSuccess }) {
   const [saving, setSaving] = useState(false);
@@ -76,9 +76,15 @@ export default function AddToStashModal({ open, onOpenChange, variety, plantType
     setSaving(true);
 
     try {
-      console.log('[AddToStashModal] Starting submission for variety:', variety.variety_name);
+      console.log('[AddToStashModal] Starting submission for variety:', variety?.variety_name);
       
-      // Always work with Variety entity - find or create PlantProfile
+      if (!variety?.plant_type_id || !variety?.variety_name) {
+        toast.error('Invalid variety data');
+        setSaving(false);
+        return;
+      }
+
+      // Find or create PlantProfile with proper null checks
       const existingProfiles = await base44.entities.PlantProfile.filter({
         variety_name: variety.variety_name,
         plant_type_id: variety.plant_type_id
@@ -94,31 +100,28 @@ export default function AddToStashModal({ open, onOpenChange, variety, plantType
         const plantTypeResults = await base44.entities.PlantType.filter({ id: variety.plant_type_id });
         const plantTypeData = plantTypeResults.length > 0 ? plantTypeResults[0] : null;
         
-        console.log('[AddToStashModal] Creating new PlantProfile with:', {
-          plant_type_id: variety.plant_type_id,
-          common_name: plantTypeData?.common_name || plantType?.common_name,
-          variety_name: variety.variety_name
-        });
+        console.log('[AddToStashModal] Creating new PlantProfile');
         
-        // Create new PlantProfile from Variety data
+        // Create new PlantProfile from Variety data with null-safe defaults
         const newProfile = await base44.entities.PlantProfile.create({
           plant_type_id: variety.plant_type_id,
-          plant_subcategory_id: variety.plant_subcategory_id,
-          common_name: plantTypeData?.common_name || plantType?.common_name,
+          plant_subcategory_id: variety.plant_subcategory_id || null,
+          plant_family: plantTypeData?.plant_family_id || null,
+          common_name: plantTypeData?.common_name || plantType?.common_name || 'Unknown',
           variety_name: variety.variety_name,
-          days_to_maturity_seed: variety.days_to_maturity,
-          spacing_in_min: variety.spacing_recommended,
-          spacing_in_max: variety.spacing_recommended,
-          height_in_min: variety.height_min,
-          height_in_max: variety.height_max,
-          sun_requirement: variety.sun_requirement,
+          days_to_maturity_seed: variety.days_to_maturity || null,
+          spacing_in_min: variety.spacing_recommended || null,
+          spacing_in_max: variety.spacing_recommended || null,
+          height_in_min: variety.height_min || null,
+          height_in_max: variety.height_max || null,
+          sun_requirement: variety.sun_requirement || null,
           trellis_required: variety.trellis_required || false,
           container_friendly: variety.container_friendly || false,
-          notes_public: variety.grower_notes,
+          notes_public: variety.grower_notes || null,
           source_type: 'user_private'
         });
         profileId = newProfile.id;
-        console.log('[AddToStashModal] Created new PlantProfile:', profileId, newProfile);
+        console.log('[AddToStashModal] Created new PlantProfile:', profileId);
       }
 
       // Check for duplicate SeedLots before creating
@@ -140,13 +143,13 @@ export default function AddToStashModal({ open, onOpenChange, variety, plantType
       const seedLotData = {
         plant_profile_id: profileId,
         quantity: formData.quantity ? parseInt(formData.quantity) : null,
-        unit: formData.unit,
-        year_acquired: parseInt(formData.year_acquired),
+        unit: formData.unit || 'seeds',
+        year_acquired: formData.year_acquired ? parseInt(formData.year_acquired) : new Date().getFullYear(),
         packed_for_year: formData.packed_for_year ? parseInt(formData.packed_for_year) : null,
-        source_vendor_name: formData.source_vendor_name,
-        source_vendor_url: formData.source_vendor_url,
-        lot_notes: formData.lot_notes,
-        storage_location: formData.storage_location,
+        source_vendor_name: formData.source_vendor_name || null,
+        source_vendor_url: formData.source_vendor_url || null,
+        lot_notes: formData.lot_notes || null,
+        storage_location: formData.storage_location || null,
         is_wishlist: false
       };
       
