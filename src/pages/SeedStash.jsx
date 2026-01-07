@@ -1089,22 +1089,21 @@ export default function SeedStash() {
               <div>
                 <Label>Variety Name *</Label>
                 {varieties.length > 0 ? (
-                  <div className="mt-2">
-                    <div className="max-h-48 overflow-y-auto border rounded-md">
+                  <Select 
+                    value={formData.plant_profile_id} 
+                    onValueChange={handleVarietyChange}
+                  >
+                    <SelectTrigger className="mt-2">
+                      <SelectValue placeholder="Select variety" />
+                    </SelectTrigger>
+                    <SelectContent>
                       {varieties.map((variety) => (
-                        <div
-                          key={variety.id}
-                          onClick={() => handleVarietyChange(variety.id)}
-                          className={cn(
-                            "px-3 py-2 cursor-pointer hover:bg-gray-100 border-b last:border-b-0",
-                            formData.plant_profile_id === variety.id && "bg-emerald-50 text-emerald-900 font-medium"
-                          )}
-                        >
+                        <SelectItem key={variety.id} value={variety.id}>
                           {variety.variety_name}
-                        </div>
+                        </SelectItem>
                       ))}
-                    </div>
-                  </div>
+                    </SelectContent>
+                  </Select>
                 ) : (
                   <p className="text-sm text-gray-500 mt-2">No varieties available for {selectedPlantType?.common_name}</p>
                 )}

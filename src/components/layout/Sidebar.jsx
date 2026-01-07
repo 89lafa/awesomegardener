@@ -62,7 +62,7 @@ const getNavItems = (userRole, isEditor, user) => {
   return items;
 };
 
-export default function Sidebar({ collapsed, onToggle, currentPage, user }) {
+export default function Sidebar({ collapsed, onToggle, currentPage, user, isMobile }) {
   const navItems = getNavItems(user?.role, user?.is_editor, user);
 
   return (

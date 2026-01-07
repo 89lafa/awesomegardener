@@ -95,6 +95,7 @@ export default function Layout({ children, currentPageName }) {
           onToggle={handleToggleSidebar}
           currentPage={currentPageName}
           user={user}
+          isMobile={false}
         />
       </div>
 
@@ -112,10 +113,11 @@ export default function Layout({ children, currentPageName }) {
         mobileMenuOpen ? "translate-x-0" : "-translate-x-full"
       )}>
         <Sidebar 
-          collapsed={false} 
-          onToggle={() => setMobileMenuOpen(false)}
+          collapsed={sidebarCollapsed} 
+          onToggle={handleToggleSidebar}
           currentPage={currentPageName}
           user={user}
+          isMobile={true}
         />
       </div>
 

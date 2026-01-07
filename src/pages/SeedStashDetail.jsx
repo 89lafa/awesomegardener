@@ -257,7 +257,7 @@ export default function SeedStashDetail() {
           )}
         </div>
         <div className="flex gap-2">
-          {profile && (
+          {profile && !seed.from_catalog && (
             <SuggestVarietyButton profile={profile} seedLot={seed} />
           )}
           <Button 

@@ -5,6 +5,7 @@ import { base44 } from '@/api/base44Client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
   Dialog,
   DialogContent,
@@ -14,8 +15,9 @@ import {
 } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { ArrowLeft, ExternalLink, Loader2, Edit, ShoppingCart } from 'lucide-react';
+import { ArrowLeft, ExternalLink, Loader2, Edit, ShoppingCart, Package, Plus, Image as ImageIcon } from 'lucide-react';
 import { toast } from 'sonner';
+import AddToStashModal from '@/components/catalog/AddToStashModal';
 
 export default function ViewVariety() {
   const [searchParams] = useSearchParams();
@@ -29,6 +31,11 @@ export default function ViewVariety() {
   const [showRequestChange, setShowRequestChange] = useState(false);
   const [requestReason, setRequestReason] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [showAddToStash, setShowAddToStash] = useState(false);
+  const [showAddImage, setShowAddImage] = useState(false);
+  const [uploadingImage, setUploadingImage] = useState(false);
+  const [imageOwnership, setImageOwnership] = useState(false);
+  const [imageFile, setImageFile] = useState(null);
 
   useEffect(() => {
     if (varietyId) {
@@ -83,6 +90,7 @@ export default function ViewVariety() {
           note: 'User requested edit access'
         },
         reason: requestReason,
+        submitted_by: user.email,
         status: 'pending'
       });
 
@@ -94,6 +102,44 @@ export default function ViewVariety() {
       toast.error('Failed to submit request');
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const handleImageUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setImageFile(file);
+  };
+
+  const handleSubmitImage = async () => {
+    if (!imageFile || !imageOwnership) {
+      toast.error('Please upload an image and confirm ownership');
+      return;
+    }
+
+    setUploadingImage(true);
+    try {
+      const { file_url } = await base44.integrations.Core.UploadFile({ file: imageFile });
+      
+      await base44.entities.VarietyChangeRequest.create({
+        variety_id: varietyId,
+        requested_changes: {
+          images: [file_url]
+        },
+        reason: 'User submitted image for variety',
+        submitted_by: user.email,
+        status: 'pending'
+      });
+
+      toast.success('Image submitted for review');
+      setShowAddImage(false);
+      setImageFile(null);
+      setImageOwnership(false);
+    } catch (error) {
+      console.error('Error submitting image:', error);
+      toast.error('Failed to submit image');
+    } finally {
+      setUploadingImage(false);
     }
   };
 
@@ -132,24 +178,38 @@ export default function ViewVariety() {
           <p className="text-gray-600">{plantType?.common_name || variety.plant_type_name}</p>
         </div>
         
-        {isAdmin ? (
-          <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap">
+          <Button
+            onClick={() => setShowAddToStash(true)}
+            className="bg-emerald-600 hover:bg-emerald-700"
+          >
+            <Package className="w-4 h-4 mr-2" />
+            Add to Seed Stash
+          </Button>
+          <Button
+            variant="outline"
+            onClick={() => setShowAddImage(true)}
+          >
+            <ImageIcon className="w-4 h-4 mr-2" />
+            Add Image
+          </Button>
+          {isAdmin ? (
             <Link to={createPageUrl('EditVariety') + `?id=${varietyId}`}>
-              <Button className="bg-emerald-600 hover:bg-emerald-700">
+              <Button variant="outline">
                 <Edit className="w-4 h-4 mr-2" />
                 Edit Variety
               </Button>
             </Link>
-          </div>
-        ) : (
-          <Button
-            variant="outline"
-            onClick={() => setShowRequestChange(true)}
-          >
-            <Edit className="w-4 h-4 mr-2" />
-            Request Change
-          </Button>
-        )}
+          ) : (
+            <Button
+              variant="outline"
+              onClick={() => setShowRequestChange(true)}
+            >
+              <Edit className="w-4 h-4 mr-2" />
+              Request Change
+            </Button>
+          )}
+        </div>
       </div>
 
       {variety.affiliate_url && (
@@ -183,6 +243,20 @@ export default function ViewVariety() {
           <CardTitle>Variety Details</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
+          {/* Images */}
+          {variety.images && variety.images.length > 0 && (
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-4">
+              {variety.images.map((url, idx) => (
+                <img 
+                  key={idx}
+                  src={url} 
+                  alt={`${variety.variety_name} ${idx + 1}`}
+                  className="w-full h-32 object-cover rounded-lg"
+                />
+              ))}
+            </div>
+          )}
+
           {variety.description && (
             <div className="mb-4">
               <Label className="text-gray-600">Description</Label>
@@ -293,6 +367,91 @@ export default function ViewVariety() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <Dialog open={showAddImage} onOpenChange={setShowAddImage}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Add Image to {variety.variety_name}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <p className="text-sm text-gray-600">
+              Upload a photo of this variety. Images are reviewed by moderators before being added.
+            </p>
+            <div>
+              <Label>Upload Image</Label>
+              <div className="mt-2">
+                {imageFile ? (
+                  <div className="relative">
+                    <img 
+                      src={URL.createObjectURL(imageFile)} 
+                      alt="Preview" 
+                      className="w-full h-48 object-cover rounded-lg"
+                    />
+                    <Button
+                      variant="destructive"
+                      size="icon"
+                      className="absolute top-2 right-2"
+                      onClick={() => setImageFile(null)}
+                    >
+                      <Plus className="w-4 h-4 rotate-45" />
+                    </Button>
+                  </div>
+                ) : (
+                  <Button
+                    variant="outline"
+                    onClick={() => document.getElementById('variety-image-upload').click()}
+                    className="w-full"
+                  >
+                    <Plus className="w-4 h-4 mr-2" />
+                    Select Image
+                  </Button>
+                )}
+                <input
+                  id="variety-image-upload"
+                  type="file"
+                  accept="image/*"
+                  onChange={handleImageUpload}
+                  className="hidden"
+                />
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <Checkbox
+                id="imageOwnership"
+                checked={imageOwnership}
+                onCheckedChange={setImageOwnership}
+              />
+              <Label htmlFor="imageOwnership" className="text-sm font-normal">
+                This image is my own and I have the right to share it
+              </Label>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => {
+              setShowAddImage(false);
+              setImageFile(null);
+              setImageOwnership(false);
+            }}>
+              Cancel
+            </Button>
+            <Button
+              onClick={handleSubmitImage}
+              disabled={!imageFile || !imageOwnership || uploadingImage}
+              className="bg-emerald-600 hover:bg-emerald-700"
+            >
+              {uploadingImage ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+              Submit Image
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <AddToStashModal
+        open={showAddToStash}
+        onOpenChange={setShowAddToStash}
+        variety={variety}
+        plantType={plantType}
+      />
     </div>
   );
 }
