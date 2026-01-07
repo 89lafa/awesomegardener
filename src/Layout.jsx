@@ -100,11 +100,10 @@ export default function Layout({ children, currentPageName }) {
       </div>
 
       {/* Mobile Sidebar Overlay */}
-      {(mobileMenuOpen || (sidebarCollapsed === false)) && (
+      {!sidebarCollapsed && (
         <div 
           className="fixed inset-0 bg-black/50 z-40 lg:hidden"
           onClick={() => {
-            setMobileMenuOpen(false);
             setSidebarCollapsed(true);
             localStorage.setItem('sidebar_collapsed', 'true');
           }}
@@ -133,7 +132,6 @@ export default function Layout({ children, currentPageName }) {
         <TopBar 
           user={user} 
           onMobileMenuToggle={() => {
-            setMobileMenuOpen(true);
             setSidebarCollapsed(false);
             localStorage.setItem('sidebar_collapsed', 'false');
           }}
