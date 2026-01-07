@@ -37,6 +37,7 @@ export default function PlantingModal({ open, onOpenChange, item, garden, onPlan
   const [companionWarning, setCompanionWarning] = useState(null);
   const [rotationWarning, setRotationWarning] = useState(null);
   const [companionResults, setCompanionResults] = useState([]);
+  const [selectedPlanItem, setSelectedPlanItem] = useState(null);
   
   const [newPlant, setNewPlant] = useState({
     variety_id: '',
@@ -62,6 +63,12 @@ export default function PlantingModal({ open, onOpenChange, item, garden, onPlan
       loadData();
     }
   }, [open, item, activeSeason]);
+
+  useEffect(() => {
+    if (plantings.length > 0) {
+      analyzeCompanions();
+    }
+  }, [plantings]);
   
   // ESC key and click-outside handler
   useEffect(() => {
@@ -202,7 +209,12 @@ export default function PlantingModal({ open, onOpenChange, item, garden, onPlan
         });
 
       console.log('[PlantingModal] Created PlantInstance:', planting.id);
-      setPlantings([...plantings, planting]);
+      const updatedPlantings = [...plantings, planting];
+      setPlantings(updatedPlantings);
+      
+      // Re-analyze companions immediately
+      setTimeout(() => analyzeCompanions(), 100);
+      
       toast.success('Plant added');
     } catch (error) {
       console.error('[PlantingModal] Error adding plant:', error);
@@ -300,8 +312,13 @@ export default function PlantingModal({ open, onOpenChange, item, garden, onPlan
     
     try {
       await base44.entities.PlantInstance.delete(planting.id);
-      setPlantings(plantings.filter(p => p.id !== planting.id));
+      const updatedPlantings = plantings.filter(p => p.id !== planting.id);
+      setPlantings(updatedPlantings);
       setSelectedPlanting(null);
+      
+      // Re-analyze companions immediately
+      setTimeout(() => analyzeCompanions(), 100);
+      
       toast.success('Plant removed');
     } catch (error) {
       console.error('Error deleting planting:', error);
@@ -660,31 +677,11 @@ export default function PlantingModal({ open, onOpenChange, item, garden, onPlan
                     activeSeason={activeSeason}
                     garden={garden}
                     bedId={item.id}
-                    onSelectPlan={(plan) => {
-                      const profile = profiles[plan.plant_profile_id];
-                      if (profile) {
-                        const variety = varieties.find(v => 
-                          v.variety_name === profile.variety_name && 
-                          v.plant_type_id === profile.plant_type_id
-                        );
-                        
-                        const spacing = variety 
-                          ? getSpacingForPlant(variety) 
-                          : getDefaultSpacing(profile.common_name);
-                        
-                        const plantData = {
-                          variety_id: variety?.id || null,
-                          variety_name: profile.variety_name,
-                          plant_type_id: profile.plant_type_id,
-                          plant_type_name: profile.common_name,
-                          plant_family: profile.plant_family,
-                          spacing_cols: spacing.cols,
-                          spacing_rows: spacing.rows
-                        };
-                        
-                        setSelectedPlant(plantData);
-                        checkCompanionAndRotation(plantData);
-                      }
+                    selectedPlanId={selectedPlanItem?.id}
+                    onSelectPlan={(plantData, planItem) => {
+                      setSelectedPlanItem(planItem);
+                      setSelectedPlant(plantData);
+                      checkCompanionAndRotation(plantData);
                     }}
                   />
                 </ScrollArea>

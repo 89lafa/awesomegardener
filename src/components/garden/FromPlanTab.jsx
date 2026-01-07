@@ -4,7 +4,7 @@ import { Calendar, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
-export default function FromPlanTab({ activeSeason, garden, bedId, onSelectPlan }) {
+export default function FromPlanTab({ activeSeason, garden, bedId, selectedPlanId, onSelectPlan }) {
   const [cropPlans, setCropPlans] = useState([]);
   const [profiles, setProfiles] = useState({});
   const [plantTypes, setPlantTypes] = useState({});
@@ -113,6 +113,7 @@ export default function FromPlanTab({ activeSeason, garden, bedId, onSelectPlan 
       {cropPlans.map(plan => {
         const profile = profiles[plan.plant_profile_id];
         const plantType = plantTypes[plan.plant_type_id];
+        const isSelected = selectedPlanId === plan.id;
         
         return (
           <button
@@ -137,16 +138,19 @@ export default function FromPlanTab({ activeSeason, garden, bedId, onSelectPlan 
                   plant_type_name: plantType?.common_name || profile?.common_name,
                   plant_family: plantType?.plant_family_id || profile?.plant_family,
                   spacing_cols: spacing.cols,
-                  spacing_rows: spacing.rows
+                  spacing_rows: spacing.rows,
+                  crop_plan_id: plan.id
                 };
                 
-                onSelectPlan(plantData);
+                onSelectPlan(plantData, plan);
                 setTimeout(() => reloadCounts(), 500);
               }
             }}
             className={cn(
               "w-full p-3 rounded-lg border-2 text-left transition-colors",
-              "border-gray-200 hover:border-emerald-300 hover:bg-emerald-50"
+              isSelected 
+                ? "border-emerald-600 bg-emerald-50"
+                : "border-gray-200 hover:border-emerald-300 hover:bg-emerald-50"
             )}
           >
             <div className="flex items-center justify-between gap-2">

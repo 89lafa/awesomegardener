@@ -8,6 +8,7 @@ import Community from './pages/Community';
 import CommunityBoard from './pages/CommunityBoard';
 import CompanionPlanner from './pages/CompanionPlanner';
 import Dashboard from './pages/Dashboard';
+import EditPlantType from './pages/EditPlantType';
 import EditVariety from './pages/EditVariety';
 import EditorReviewQueue from './pages/EditorReviewQueue';
 import FeatureRequests from './pages/FeatureRequests';
@@ -36,9 +37,8 @@ import SeedInventory from './pages/SeedInventory';
 import SeedStash from './pages/SeedStash';
 import SeedStashDetail from './pages/SeedStashDetail';
 import Settings from './pages/Settings';
-import VarietyReviewQueue from './pages/VarietyReviewQueue';
-import EditPlantType from './pages/EditPlantType';
 import Users from './pages/Users';
+import VarietyReviewQueue from './pages/VarietyReviewQueue';
 import ViewVariety from './pages/ViewVariety';
 import __Layout from './Layout.jsx';
 
@@ -54,6 +54,7 @@ export const PAGES = {
     "CommunityBoard": CommunityBoard,
     "CompanionPlanner": CompanionPlanner,
     "Dashboard": Dashboard,
+    "EditPlantType": EditPlantType,
     "EditVariety": EditVariety,
     "EditorReviewQueue": EditorReviewQueue,
     "FeatureRequests": FeatureRequests,
@@ -82,9 +83,8 @@ export const PAGES = {
     "SeedStash": SeedStash,
     "SeedStashDetail": SeedStashDetail,
     "Settings": Settings,
-    "VarietyReviewQueue": VarietyReviewQueue,
-    "EditPlantType": EditPlantType,
     "Users": Users,
+    "VarietyReviewQueue": VarietyReviewQueue,
     "ViewVariety": ViewVariety,
 }
 

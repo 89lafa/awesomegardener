@@ -28,12 +28,28 @@ export default function CommunityBoard() {
 
   const loadData = async () => {
     try {
-      const [userData, categoriesData] = await Promise.all([
+      const [userData, categoriesData, topicsData, postsData] = await Promise.all([
         base44.auth.me(),
-        base44.entities.ForumCategory.list('sort_order')
+        base44.entities.ForumCategory.list('sort_order'),
+        base44.entities.ForumTopic.list(),
+        base44.entities.ForumPost.list()
       ]);
       setUser(userData);
-      setCategories(categoriesData);
+      
+      // Compute accurate counts for each category
+      const categoriesWithCounts = categoriesData.map(cat => {
+        const topicCount = topicsData.filter(t => t.category_id === cat.id).length;
+        const topicIds = topicsData.filter(t => t.category_id === cat.id).map(t => t.id);
+        const postCount = postsData.filter(p => topicIds.includes(p.topic_id) && !p.deleted_at).length;
+        
+        return {
+          ...cat,
+          topic_count: topicCount,
+          post_count: postCount
+        };
+      });
+      
+      setCategories(categoriesWithCounts);
     } catch (error) {
       console.error('Error loading forum data:', error);
     } finally {
