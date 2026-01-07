@@ -46,6 +46,7 @@ export default function CompanionPlanner() {
   const [editingRule, setEditingRule] = useState(null);
   const [csvFile, setCsvFile] = useState(null);
   const [importResults, setImportResults] = useState(null);
+  const [filterPlantId, setFilterPlantId] = useState('');
   
   const [formData, setFormData] = useState({
     plant_type_id: '',
@@ -268,6 +269,27 @@ Cucumber,Radish,Good Conditional,Radishes can deter cucumber beetles but compete
         </div>
       </div>
 
+      {/* Filter by Plant */}
+      <Card>
+        <CardContent className="p-4">
+          <Label>Filter by Plant</Label>
+          <Select value={filterPlantId} onValueChange={setFilterPlantId}>
+            <SelectTrigger className="mt-2">
+              <SelectValue placeholder="Select a plant to see its companions..." />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value={null}>All Plants</SelectItem>
+              {plantTypes.map((type) => (
+                <SelectItem key={type.id} value={type.id}>
+                  {type.icon && <span className="mr-2">{type.icon}</span>}
+                  {type.common_name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </CardContent>
+      </Card>
+
       {rules.length === 0 ? (
         <Card className="py-16">
           <CardContent className="text-center">
@@ -284,7 +306,12 @@ Cucumber,Radish,Good Conditional,Radishes can deter cucumber beetles but compete
         </Card>
       ) : (
         <div className="space-y-3">
-          {rules.map((rule) => (
+          {rules
+            .filter(rule => {
+              if (!filterPlantId) return true;
+              return rule.plant_type_id === filterPlantId || rule.companion_plant_type_id === filterPlantId;
+            })
+            .map((rule) => (
             <Card key={rule.id}>
               <CardContent className="p-4">
                 <div className="flex items-center justify-between">

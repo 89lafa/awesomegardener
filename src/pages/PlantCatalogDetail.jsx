@@ -494,53 +494,28 @@ export default function PlantCatalogDetail() {
           </div>
         </div>
 
-        {/* Overview */}
+        {/* Overview - Compact */}
         <Card>
-          <CardHeader>
-            <CardTitle>Overview</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid md:grid-cols-3 gap-6">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-lg bg-blue-100 flex items-center justify-center">
-                  <Droplets className="w-5 h-5 text-blue-600" />
-                </div>
-                <div>
-                  <p className="text-sm text-gray-500">Water Needs</p>
-                  <p className="font-medium capitalize">
-                    {plantType.typical_water || 'Moderate'}
-                  </p>
-                </div>
+          <CardContent className="p-4">
+            <div className="flex flex-wrap items-center gap-4">
+              <div className="flex items-center gap-2">
+                <Droplets className="w-4 h-4 text-blue-600" />
+                <span className="text-sm font-medium">{plantType.typical_water || 'Moderate'} Water</span>
               </div>
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-lg bg-yellow-100 flex items-center justify-center">
-                  <Sun className="w-5 h-5 text-yellow-600" />
-                </div>
-                <div>
-                  <p className="text-sm text-gray-500">Sun Exposure</p>
-                  <p className="font-medium capitalize">
-                    {plantType.typical_sun?.replace(/_/g, ' ') || 'Full Sun'}
-                  </p>
-                </div>
+              <div className="flex items-center gap-2">
+                <Sun className="w-4 h-4 text-yellow-600" />
+                <span className="text-sm font-medium">{plantType.typical_sun?.replace(/_/g, ' ') || 'Full Sun'}</span>
               </div>
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-lg bg-green-100 flex items-center justify-center">
-                  <TrendingUp className="w-5 h-5 text-green-600" />
-                </div>
-                <div>
-                  <p className="text-sm text-gray-500">Days to Maturity</p>
-                  <p className="font-medium">
-                    {plantType.default_days_to_maturity || 'Varies'}
-                  </p>
-                </div>
+              <div className="flex items-center gap-2">
+                <TrendingUp className="w-4 h-4 text-green-600" />
+                <span className="text-sm font-medium">{plantType.default_days_to_maturity || 'Varies'} days</span>
               </div>
+              {user?.role === 'admin' && (
+                <Button size="sm" variant="outline" className="ml-auto">
+                  Edit PlantType
+                </Button>
+              )}
             </div>
-
-            {plantType.notes && (
-              <div className="mt-6 p-4 bg-gray-50 rounded-lg">
-                <p className="text-sm text-gray-700">{plantType.notes}</p>
-              </div>
-            )}
           </CardContent>
         </Card>
 
@@ -563,11 +538,39 @@ export default function PlantCatalogDetail() {
                   />
                 </div>
               </div>
+              
+              {/* Sub-Category Dropdown */}
+              {subCategories.length > 0 && (
+                <Select 
+                  value={selectedSubCategories[0] || ''} 
+                  onValueChange={(v) => {
+                    setSelectedSubCategories(v ? [v] : []);
+                    setCurrentPage(1);
+                  }}
+                >
+                  <SelectTrigger className="w-[200px]">
+                    <SelectValue placeholder="All Sub-Categories" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={null}>All ({varieties.length})</SelectItem>
+                    {subCategories.map((subcat) => {
+                      const count = varieties.filter(v => v.plant_subcategory_id === subcat.id).length;
+                      return (
+                        <SelectItem key={subcat.id} value={subcat.id}>
+                          {subcat.icon && <span className="mr-1">{subcat.icon}</span>}
+                          {subcat.name} ({count})
+                        </SelectItem>
+                      );
+                    })}
+                  </SelectContent>
+                </Select>
+              )}
+
               <Select value={sortBy} onValueChange={(v) => {
                 setSortBy(v);
                 setCurrentPage(1);
               }}>
-                <SelectTrigger className="w-[200px]">
+                <SelectTrigger className="w-[180px]">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -607,46 +610,6 @@ export default function PlantCatalogDetail() {
                 </Button>
               )}
             </div>
-
-            {/* Sub-Category Chips */}
-            {subCategories.length > 0 && (
-              <div>
-                <h3 className="text-sm font-semibold text-gray-700 mb-2">Filter by Sub-Category</h3>
-                <div className="flex flex-wrap gap-2">
-                  {selectedSubCategories.length === 0 && (
-                    <Badge variant="secondary" className="cursor-default">
-                      All ({varieties.length})
-                    </Badge>
-                  )}
-                  {subCategories.map((subcat) => {
-                    const count = varieties.filter(v => v.plant_subcategory_id === subcat.id).length;
-                    const isSelected = selectedSubCategories.includes(subcat.id);
-                    return (
-                      <Button
-                        key={subcat.id}
-                        variant={isSelected ? 'default' : 'outline'}
-                        size="sm"
-                        onClick={() => handleSubCategoryToggle(subcat.id)}
-                        className={isSelected ? 'bg-emerald-600 hover:bg-emerald-700' : ''}
-                      >
-                        {subcat.icon && <span className="mr-1">{subcat.icon}</span>}
-                        {subcat.name} ({count})
-                      </Button>
-                    );
-                  })}
-                  {varieties.some(v => !v.plant_subcategory_id) && (
-                    <Button
-                      variant={selectedSubCategories.includes('uncategorized') ? 'default' : 'outline'}
-                      size="sm"
-                      onClick={() => handleSubCategoryToggle('uncategorized')}
-                      className={selectedSubCategories.includes('uncategorized') ? 'bg-emerald-600 hover:bg-emerald-700' : ''}
-                    >
-                      Uncategorized ({varieties.filter(v => !v.plant_subcategory_id).length})
-                    </Button>
-                  )}
-                </div>
-              </div>
-            )}
 
             {/* Active Filter Chips */}
             {activeFilterCount > 0 && (

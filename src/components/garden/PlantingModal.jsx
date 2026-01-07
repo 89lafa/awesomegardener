@@ -36,6 +36,7 @@ export default function PlantingModal({ open, onOpenChange, item, garden, onPlan
   const [creating, setCreating] = useState(false);
   const [companionWarning, setCompanionWarning] = useState(null);
   const [rotationWarning, setRotationWarning] = useState(null);
+  const [companionResults, setCompanionResults] = useState([]);
   
   const [newPlant, setNewPlant] = useState({
     variety_id: '',
@@ -403,6 +404,46 @@ export default function PlantingModal({ open, onOpenChange, item, garden, onPlan
       }
     } catch (error) {
       console.error('Error checking companions:', error);
+    }
+  };
+
+  const analyzeCompanions = async () => {
+    if (plantings.length === 0 || !item?.id) {
+      setCompanionResults([]);
+      return;
+    }
+
+    try {
+      const companionRules = await base44.entities.CompanionRule.list();
+      const results = [];
+
+      for (let i = 0; i < plantings.length; i++) {
+        for (let j = i + 1; j < plantings.length; j++) {
+          const plantA = plantings[i];
+          const plantB = plantings[j];
+
+          if (!plantA.plant_type_id || !plantB.plant_type_id) continue;
+
+          // Check both directions
+          const rule = companionRules.find(r =>
+            (r.plant_type_id === plantA.plant_type_id && r.companion_plant_type_id === plantB.plant_type_id) ||
+            (r.plant_type_id === plantB.plant_type_id && r.companion_plant_type_id === plantA.plant_type_id)
+          );
+
+          if (rule) {
+            results.push({
+              plantA: plantA.display_name,
+              plantB: plantB.display_name,
+              type: rule.companion_type,
+              notes: rule.notes
+            });
+          }
+        }
+      }
+
+      setCompanionResults(results);
+    } catch (error) {
+      console.error('Error analyzing companions:', error);
     }
   };
   
@@ -896,6 +937,40 @@ export default function PlantingModal({ open, onOpenChange, item, garden, onPlan
                   Cancel Move
                   </Button>
                   </div>
+                  )}
+
+                  {/* Companion Analysis */}
+                  {companionResults.length > 0 && (
+                    <div className="mt-4 p-4 bg-gray-50 rounded-lg border">
+                      <h4 className="font-semibold text-sm mb-2">Companion Planting Analysis</h4>
+                      <div className="space-y-2">
+                        {companionResults.map((result, idx) => (
+                          <div 
+                            key={idx}
+                            className={`p-2 rounded text-xs ${
+                              result.type === 'GOOD' ? 'bg-green-50 border border-green-200' :
+                              result.type === 'BAD' ? 'bg-red-50 border border-red-200' :
+                              'bg-amber-50 border border-amber-200'
+                            }`}
+                          >
+                            <p className={`font-semibold ${
+                              result.type === 'GOOD' ? 'text-green-800' :
+                              result.type === 'BAD' ? 'text-red-800' :
+                              'text-amber-800'
+                            }`}>
+                              {result.plantA} + {result.plantB}: {
+                                result.type === 'GOOD' ? '✓ Good Companions' :
+                                result.type === 'BAD' ? '✗ Bad Companions' :
+                                '⚠ Conditional'
+                              }
+                            </p>
+                            {result.notes && (
+                              <p className="text-gray-600 mt-1">{result.notes}</p>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
                   )}
                   </div>
                   </div>
