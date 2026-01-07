@@ -4,6 +4,7 @@ import BrowseGardens from './pages/BrowseGardens';
 import Calendar from './pages/Calendar';
 import CalendarPlanner from './pages/CalendarPlanner';
 import CalendarTasks from './pages/CalendarTasks';
+import ChangeRequests from './pages/ChangeRequests';
 import Community from './pages/Community';
 import CommunityBoard from './pages/CommunityBoard';
 import CompanionPlanner from './pages/CompanionPlanner';
@@ -37,11 +38,10 @@ import SeedInventory from './pages/SeedInventory';
 import SeedStash from './pages/SeedStash';
 import SeedStashDetail from './pages/SeedStashDetail';
 import Settings from './pages/Settings';
+import SubcategoryMapping from './pages/SubcategoryMapping';
 import Users from './pages/Users';
 import VarietyReviewQueue from './pages/VarietyReviewQueue';
 import ViewVariety from './pages/ViewVariety';
-import ChangeRequests from './pages/ChangeRequests';
-import SubcategoryMapping from './pages/SubcategoryMapping';
 import __Layout from './Layout.jsx';
 
 
@@ -52,6 +52,7 @@ export const PAGES = {
     "Calendar": Calendar,
     "CalendarPlanner": CalendarPlanner,
     "CalendarTasks": CalendarTasks,
+    "ChangeRequests": ChangeRequests,
     "Community": Community,
     "CommunityBoard": CommunityBoard,
     "CompanionPlanner": CompanionPlanner,
@@ -85,11 +86,10 @@ export const PAGES = {
     "SeedStash": SeedStash,
     "SeedStashDetail": SeedStashDetail,
     "Settings": Settings,
+    "SubcategoryMapping": SubcategoryMapping,
     "Users": Users,
     "VarietyReviewQueue": VarietyReviewQueue,
     "ViewVariety": ViewVariety,
-    "ChangeRequests": ChangeRequests,
-    "SubcategoryMapping": SubcategoryMapping,
 }
 
 export const pagesConfig = {

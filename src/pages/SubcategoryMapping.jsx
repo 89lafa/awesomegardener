@@ -12,6 +12,8 @@ export default function SubcategoryMapping() {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [user, setUser] = useState(null);
+  const [validating, setValidating] = useState(false);
+  const [validationResults, setValidationResults] = useState(null);
 
   useEffect(() => {
     checkAccess();
@@ -89,6 +91,41 @@ VAR_EXAMPLE_001,Example Variety,<paste_plant_type_id_here>,PSC_TOMATO_CHERRY,Che
     window.URL.revokeObjectURL(url);
     a.remove();
     toast.success('Downloaded import template');
+  };
+
+  const validateSubcategoryLinks = async () => {
+    setValidating(true);
+    try {
+      const varieties = await base44.entities.Variety.list();
+      const errors = [];
+      
+      for (const variety of varieties) {
+        if (variety.plant_subcategory_id) {
+          const subcat = subCategories.find(s => s.id === variety.plant_subcategory_id);
+          if (!subcat) {
+            errors.push(`${variety.variety_name}: subcategory ID ${variety.plant_subcategory_id} not found`);
+          } else if (subcat.plant_type_id !== variety.plant_type_id) {
+            errors.push(`${variety.variety_name}: subcategory "${subcat.name}" belongs to different plant type`);
+          }
+        }
+      }
+      
+      setValidationResults({
+        total: varieties.length,
+        errors: errors
+      });
+      
+      if (errors.length === 0) {
+        toast.success('All subcategory links are valid!');
+      } else {
+        toast.error(`Found ${errors.length} mismatched links`);
+      }
+    } catch (error) {
+      console.error('Error validating:', error);
+      toast.error('Validation failed');
+    } finally {
+      setValidating(false);
+    }
   };
 
   const filteredTypes = plantTypes.filter(type =>

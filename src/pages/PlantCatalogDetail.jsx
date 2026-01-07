@@ -559,31 +559,34 @@ export default function PlantCatalogDetail() {
               </div>
               
               {/* Sub-Category Dropdown */}
-              {subCategories.length > 0 && (
-                <Select 
-                  value={selectedSubCategories[0] || ''} 
-                  onValueChange={(v) => {
-                    setSelectedSubCategories(v ? [v] : []);
-                    setCurrentPage(1);
-                  }}
-                >
-                  <SelectTrigger className="w-[200px]">
-                    <SelectValue placeholder="All Sub-Categories" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value={null}>All ({varieties.length})</SelectItem>
-                    {subCategories.map((subcat) => {
-                      const count = varieties.filter(v => v.plant_subcategory_id === subcat.id).length;
-                      return (
-                        <SelectItem key={subcat.id} value={subcat.id}>
-                          {subcat.icon && <span className="mr-1">{subcat.icon}</span>}
-                          {subcat.name} ({count})
-                        </SelectItem>
-                      );
-                    })}
-                  </SelectContent>
-                </Select>
-              )}
+              <Select 
+                value={selectedSubCategories[0] || ''} 
+                onValueChange={(v) => {
+                  setSelectedSubCategories(v ? [v] : []);
+                  setCurrentPage(1);
+                }}
+              >
+                <SelectTrigger className="w-[200px]">
+                  <SelectValue placeholder="All Sub-Categories" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={null}>All ({varieties.length})</SelectItem>
+                  {subCategories.map((subcat) => {
+                    const count = varieties.filter(v => v.plant_subcategory_id === subcat.id).length;
+                    return (
+                      <SelectItem key={subcat.id} value={subcat.id}>
+                        {subcat.icon && <span className="mr-1">{subcat.icon}</span>}
+                        {subcat.name} ({count})
+                      </SelectItem>
+                    );
+                  })}
+                  {varieties.filter(v => !v.plant_subcategory_id).length > 0 && (
+                    <SelectItem value="uncategorized">
+                      Uncategorized ({varieties.filter(v => !v.plant_subcategory_id).length})
+                    </SelectItem>
+                  )}
+                </SelectContent>
+              </Select>
 
               <Select value={sortBy} onValueChange={(v) => {
                 setSortBy(v);
