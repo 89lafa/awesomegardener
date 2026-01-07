@@ -183,6 +183,13 @@ export default function ViewVariety() {
           <CardTitle>Variety Details</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
+          {variety.description && (
+            <div className="mb-4">
+              <Label className="text-gray-600">Description</Label>
+              <p className="mt-1 text-gray-900">{variety.description}</p>
+            </div>
+          )}
+
           <div className="grid grid-cols-2 gap-4">
             <div>
               <Label className="text-gray-600">Variety Name</Label>
@@ -205,13 +212,6 @@ export default function ViewVariety() {
               </div>
             )}
           </div>
-
-          {variety.description && (
-            <div>
-              <Label className="text-gray-600">Description</Label>
-              <p className="mt-1 text-gray-900">{variety.description}</p>
-            </div>
-          )}
 
           <div className="grid grid-cols-2 gap-4">
             {variety.spacing_recommended && (

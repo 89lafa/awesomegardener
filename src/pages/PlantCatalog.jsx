@@ -53,6 +53,7 @@ const CATEGORIES = ['vegetable', 'fruit', 'herb', 'flower', 'other'];
 
 export default function PlantCatalog() {
   const [plantTypes, setPlantTypes] = useState([]);
+  const [allVarieties, setAllVarieties] = useState([]);
   const [varieties, setVarieties] = useState([]);
   const [subCategories, setSubCategories] = useState([]);
   const [selectedSubCategory, setSelectedSubCategory] = useState('all');
@@ -75,6 +76,7 @@ export default function PlantCatalog() {
 
   useEffect(() => {
     loadPlantTypes();
+    loadAllVarieties();
   }, []);
 
   useEffect(() => {
@@ -98,6 +100,17 @@ export default function PlantCatalog() {
       console.error('Error loading plant types:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadAllVarieties = async () => {
+    try {
+      const vars = await base44.entities.Variety.filter({ 
+        status: 'active'
+      }, 'variety_name', 5000);
+      setAllVarieties(vars);
+    } catch (error) {
+      console.error('Error loading all varieties:', error);
     }
   };
 
@@ -197,9 +210,16 @@ export default function PlantCatalog() {
 
   const filteredTypes = plantTypes.filter(type => {
     const name = type.common_name || '';
+    
+    // If search query exists, check both PlantType names AND Variety names
     const matchesSearch = searchQuery === '' || 
                          name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         type.scientific_name?.toLowerCase().includes(searchQuery.toLowerCase());
+                         type.scientific_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                         allVarieties.some(v => 
+                           v.plant_type_id === type.id && 
+                           v.variety_name?.toLowerCase().includes(searchQuery.toLowerCase())
+                         );
+    
     const matchesCategory = selectedCategory === 'all' || type.category === selectedCategory;
     return matchesSearch && matchesCategory;
   }).sort((a, b) => {
