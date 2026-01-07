@@ -29,13 +29,13 @@ export default function ViewVariety() {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [showRequestChange, setShowRequestChange] = useState(false);
-  const [showAddImage, setShowAddImage] = useState(false);
-  const [showAddToStash, setShowAddToStash] = useState(false);
   const [requestReason, setRequestReason] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [showAddToStash, setShowAddToStash] = useState(false);
+  const [showAddImage, setShowAddImage] = useState(false);
   const [uploadingImage, setUploadingImage] = useState(false);
-  const [imageFile, setImageFile] = useState(null);
   const [imageOwnership, setImageOwnership] = useState(false);
+  const [imageFile, setImageFile] = useState(null);
 
   useEffect(() => {
     if (varietyId) {
@@ -121,13 +121,11 @@ export default function ViewVariety() {
     try {
       const { file_url } = await base44.integrations.Core.UploadFile({ file: imageFile });
       
-      await base44.entities.VarietyChangeRequest.create({
+      await base44.entities.VarietyImageSubmission.create({
         variety_id: varietyId,
-        requested_changes: {
-          images: [file_url]
-        },
-        reason: 'User submitted image for variety',
+        image_url: file_url,
         submitted_by: user.email,
+        ownership_confirmed: true,
         status: 'pending'
       });
 
@@ -181,33 +179,31 @@ export default function ViewVariety() {
         <div className="flex gap-2 flex-wrap">
           <Button
             onClick={() => setShowAddToStash(true)}
-            className="bg-emerald-600 hover:bg-emerald-700 gap-2"
+            className="bg-emerald-600 hover:bg-emerald-700"
           >
-            <Package className="w-4 h-4" />
-            Add to Stash
+            <Package className="w-4 h-4 mr-2" />
+            Add to Seed Stash
           </Button>
           <Button
             variant="outline"
             onClick={() => setShowAddImage(true)}
-            className="gap-2"
           >
-            <ImageIcon className="w-4 h-4" />
+            <ImageIcon className="w-4 h-4 mr-2" />
             Add Image
           </Button>
           {isAdmin ? (
             <Link to={createPageUrl('EditVariety') + `?id=${varietyId}`}>
-              <Button variant="outline" className="gap-2">
-                <Edit className="w-4 h-4" />
-                Edit
+              <Button variant="outline">
+                <Edit className="w-4 h-4 mr-2" />
+                Edit Variety
               </Button>
             </Link>
           ) : (
             <Button
               variant="outline"
               onClick={() => setShowRequestChange(true)}
-              className="gap-2"
             >
-              <Edit className="w-4 h-4" />
+              <Edit className="w-4 h-4 mr-2" />
               Request Change
             </Button>
           )}
@@ -253,9 +249,19 @@ export default function ViewVariety() {
                   key={idx}
                   src={url} 
                   alt={`${variety.variety_name} ${idx + 1}`}
-                  className="w-full h-32 object-cover rounded-lg"
+                  className="w-full h-32 object-cover rounded-lg shadow-sm"
                 />
               ))}
+            </div>
+          )}
+
+          {variety.image_url && (!variety.images || variety.images.length === 0) && (
+            <div className="mb-4">
+              <img 
+                src={variety.image_url} 
+                alt={variety.variety_name}
+                className="w-full h-48 object-cover rounded-lg shadow-sm"
+              />
             </div>
           )}
 
@@ -369,8 +375,6 @@ export default function ViewVariety() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-
-
 
       <Dialog open={showAddImage} onOpenChange={setShowAddImage}>
         <DialogContent>

@@ -109,19 +109,17 @@ export default function Sidebar({ collapsed, onToggle, currentPage, user, isMobi
       </nav>
 
       {/* Collapse Toggle */}
-      {isMobile && (
-        <div className="p-3 border-t border-white/10">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={onToggle}
-            className="w-full justify-start gap-2 text-white/70 hover:text-white hover:bg-white/5"
-          >
-            <ChevronLeft className="w-5 h-5" />
-            <span className="text-sm">Close</span>
-          </Button>
-        </div>
-      )}
+      <div className="p-3 border-t border-white/10">
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={onToggle}
+          className="w-full justify-start gap-2 text-white/70 hover:text-white hover:bg-white/5"
+        >
+          <ChevronLeft className="w-5 h-5" />
+          <span className="text-sm">{isMobile ? 'Close' : 'Collapse'}</span>
+        </Button>
+      </div>
 
       {/* PepperSeeds Attribution */}
       {!effectiveCollapsed && (

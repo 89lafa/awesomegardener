@@ -42,16 +42,18 @@ export default function TopBar({ user, onMobileMenuToggle, onSidebarToggle, side
 
   return (
     <header className="h-16 bg-white border-b border-gray-200 flex items-center justify-between px-4 lg:px-6">
-      {/* Sidebar Toggle - Works on all screens */}
+      {/* Sidebar Toggle */}
       <div className="flex items-center gap-2">
+        {/* Mobile: Show menu when sidebar closed, or collapse when open */}
         <Button
           variant="ghost"
           size="icon"
-          onClick={sidebarCollapsed ? onSidebarToggle : onMobileMenuToggle}
+          onClick={sidebarCollapsed ? onMobileMenuToggle : onSidebarToggle}
           className="lg:hidden"
         >
-          <Menu className="w-5 h-5" />
+          {sidebarCollapsed ? <Menu className="w-5 h-5" /> : <PanelLeftClose className="w-5 h-5" />}
         </Button>
+        {/* Desktop: Toggle sidebar */}
         <Button
           variant="ghost"
           size="icon"

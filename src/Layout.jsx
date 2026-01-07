@@ -100,20 +100,24 @@ export default function Layout({ children, currentPageName }) {
       </div>
 
       {/* Mobile Sidebar Overlay */}
-      {mobileMenuOpen && (
+      {(mobileMenuOpen || (sidebarCollapsed === false)) && (
         <div 
           className="fixed inset-0 bg-black/50 z-40 lg:hidden"
-          onClick={() => setMobileMenuOpen(false)}
+          onClick={() => {
+            setMobileMenuOpen(false);
+            setSidebarCollapsed(true);
+            localStorage.setItem('sidebar_collapsed', 'true');
+          }}
         />
       )}
 
       {/* Sidebar - Mobile */}
       <div className={cn(
         "lg:hidden fixed inset-y-0 left-0 z-50 transform transition-transform duration-300",
-        mobileMenuOpen ? "translate-x-0" : "-translate-x-full"
+        !sidebarCollapsed ? "translate-x-0" : "-translate-x-full"
       )}>
         <Sidebar 
-          collapsed={sidebarCollapsed} 
+          collapsed={false} 
           onToggle={handleToggleSidebar}
           currentPage={currentPageName}
           user={user}
@@ -128,7 +132,11 @@ export default function Layout({ children, currentPageName }) {
       )}>
         <TopBar 
           user={user} 
-          onMobileMenuToggle={() => setMobileMenuOpen(true)}
+          onMobileMenuToggle={() => {
+            setMobileMenuOpen(true);
+            setSidebarCollapsed(false);
+            localStorage.setItem('sidebar_collapsed', 'false');
+          }}
           onSidebarToggle={handleToggleSidebar}
           sidebarCollapsed={sidebarCollapsed}
         />

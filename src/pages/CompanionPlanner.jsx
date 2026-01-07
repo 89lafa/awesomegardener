@@ -328,13 +328,21 @@ Cucumber,Radish,Good Conditional,Radishes can deter cucumber beetles but compete
                         <AlertTriangle className="w-5 h-5 text-amber-600" />
                       )}
                     </div>
-                    <div>
-                      <p className="font-medium text-gray-900">
-                        {getPlantTypeName(rule.plant_type_id)} + {getPlantTypeName(rule.companion_plant_type_id)}
-                      </p>
-                      {rule.notes && (
-                        <p className="text-sm text-gray-600">{rule.notes}</p>
-                      )}
+                    <div className="flex-1">
+                     <p className="font-medium text-gray-900">
+                       {getPlantTypeName(rule.plant_type_id)} + {getPlantTypeName(rule.companion_plant_type_id)}
+                     </p>
+                     {rule.notes && (
+                       <p className="text-sm text-gray-600 mt-1">{rule.notes}</p>
+                     )}
+                     <div className="flex items-center gap-2 mt-2 text-xs">
+                       <Badge variant="outline" className="text-xs">
+                         Evidence: {rule.evidence_level || 'C'}
+                       </Badge>
+                       {rule.source && (
+                         <span className="text-gray-500">Source: {rule.source}</span>
+                       )}
+                     </div>
                     </div>
                   </div>
                   {user?.role === 'admin' && (
