@@ -29,8 +29,9 @@ export default function VarietyListView({
   };
 
   const getSubCategoryName = (subcatId) => {
+    if (!subcatId) return 'Uncategorized';
     const subcat = subCategories.find(s => s.id === subcatId);
-    return subcat?.name || '-';
+    return subcat?.name || 'Uncategorized';
   };
 
   return (
