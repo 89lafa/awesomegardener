@@ -8,6 +8,8 @@ import ChangeRequests from './pages/ChangeRequests';
 import Community from './pages/Community';
 import CommunityBoard from './pages/CommunityBoard';
 import CompanionPlanner from './pages/CompanionPlanner';
+import CompanionRuleImport from './pages/CompanionRuleImport';
+import CompanionRulesAudit from './pages/CompanionRulesAudit';
 import Dashboard from './pages/Dashboard';
 import EditPlantType from './pages/EditPlantType';
 import EditVariety from './pages/EditVariety';
@@ -23,6 +25,7 @@ import Gardens from './pages/Gardens';
 import GrowLists from './pages/GrowLists';
 import GrowingProfile from './pages/GrowingProfile';
 import HarvestLog from './pages/HarvestLog';
+import ImageSubmissions from './pages/ImageSubmissions';
 import IssuesLog from './pages/IssuesLog';
 import Landing from './pages/Landing';
 import MyGarden from './pages/MyGarden';
@@ -42,7 +45,6 @@ import SubcategoryMapping from './pages/SubcategoryMapping';
 import Users from './pages/Users';
 import VarietyReviewQueue from './pages/VarietyReviewQueue';
 import ViewVariety from './pages/ViewVariety';
-import CompanionRuleImport from './pages/CompanionRuleImport';
 import __Layout from './Layout.jsx';
 
 
@@ -57,6 +59,8 @@ export const PAGES = {
     "Community": Community,
     "CommunityBoard": CommunityBoard,
     "CompanionPlanner": CompanionPlanner,
+    "CompanionRuleImport": CompanionRuleImport,
+    "CompanionRulesAudit": CompanionRulesAudit,
     "Dashboard": Dashboard,
     "EditPlantType": EditPlantType,
     "EditVariety": EditVariety,
@@ -72,6 +76,7 @@ export const PAGES = {
     "GrowLists": GrowLists,
     "GrowingProfile": GrowingProfile,
     "HarvestLog": HarvestLog,
+    "ImageSubmissions": ImageSubmissions,
     "IssuesLog": IssuesLog,
     "Landing": Landing,
     "MyGarden": MyGarden,
@@ -91,7 +96,6 @@ export const PAGES = {
     "Users": Users,
     "VarietyReviewQueue": VarietyReviewQueue,
     "ViewVariety": ViewVariety,
-    "CompanionRuleImport": CompanionRuleImport,
 }
 
 export const pagesConfig = {

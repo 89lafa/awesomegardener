@@ -261,12 +261,15 @@ export default function PlantCatalogDetail() {
       );
     }
 
-    // Sub-category filter
+    // Sub-category filter (supports multi-subcategory)
     if (selectedSubCategories.length > 0) {
-      filtered = filtered.filter(v => 
-        selectedSubCategories.includes(v.plant_subcategory_id) ||
-        (selectedSubCategories.includes('uncategorized') && !v.plant_subcategory_id)
-      );
+      filtered = filtered.filter(v => {
+        if (selectedSubCategories.includes('uncategorized') && !v.plant_subcategory_id && (!v.plant_subcategory_ids || v.plant_subcategory_ids.length === 0)) {
+          return true;
+        }
+        const allSubcats = v.plant_subcategory_ids || (v.plant_subcategory_id ? [v.plant_subcategory_id] : []);
+        return selectedSubCategories.some(selectedId => allSubcats.includes(selectedId));
+      });
     }
 
     // Days to maturity range
@@ -572,7 +575,10 @@ export default function PlantCatalogDetail() {
                 <SelectContent>
                   <SelectItem value={null}>All ({varieties.length})</SelectItem>
                   {subCategories.map((subcat) => {
-                    const count = varieties.filter(v => v.plant_subcategory_id === subcat.id).length;
+                    const count = varieties.filter(v => {
+                      const allSubcats = v.plant_subcategory_ids || (v.plant_subcategory_id ? [v.plant_subcategory_id] : []);
+                      return allSubcats.includes(subcat.id);
+                    }).length;
                     return (
                       <SelectItem key={subcat.id} value={subcat.id}>
                         {subcat.icon && <span className="mr-1">{subcat.icon}</span>}
@@ -580,9 +586,9 @@ export default function PlantCatalogDetail() {
                       </SelectItem>
                     );
                   })}
-                  {varieties.filter(v => !v.plant_subcategory_id).length > 0 && (
+                  {varieties.filter(v => !v.plant_subcategory_id && (!v.plant_subcategory_ids || v.plant_subcategory_ids.length === 0)).length > 0 && (
                     <SelectItem value="uncategorized">
-                      Uncategorized ({varieties.filter(v => !v.plant_subcategory_id).length})
+                      Uncategorized ({varieties.filter(v => !v.plant_subcategory_id && (!v.plant_subcategory_ids || v.plant_subcategory_ids.length === 0)).length})
                     </SelectItem>
                   )}
                 </SelectContent>
@@ -861,22 +867,34 @@ export default function PlantCatalogDetail() {
                           </div>
                         </div>
                         <div className="flex flex-wrap gap-2">
-                          {(variety.days_to_maturity || variety.days_to_maturity_seed) && (
-                            <Badge variant="outline" className="text-xs">
-                              {variety.days_to_maturity || variety.days_to_maturity_seed} days
-                            </Badge>
-                          )}
-                          {(variety.spacing_recommended || variety.spacing_in_min) && (
-                            <Badge variant="outline" className="text-xs">
-                              {variety.spacing_recommended || variety.spacing_in_min}" spacing
-                            </Badge>
-                          )}
-                          {variety.trellis_required && (
-                            <Badge className="bg-green-100 text-green-800 text-xs">Needs Trellis</Badge>
-                          )}
-                          {variety.container_friendly && (
-                            <Badge className="bg-blue-100 text-blue-800 text-xs">Container</Badge>
-                          )}
+                         {(() => {
+                           const allSubcatIds = variety.plant_subcategory_ids || (variety.plant_subcategory_id ? [variety.plant_subcategory_id] : []);
+                           return allSubcatIds.map(subcatId => {
+                             const subcat = subCategories.find(s => s.id === subcatId);
+                             return subcat ? (
+                               <Badge key={subcatId} variant="secondary" className="text-xs">
+                                 {subcat.icon && <span className="mr-1">{subcat.icon}</span>}
+                                 {subcat.name}
+                               </Badge>
+                             ) : null;
+                           });
+                         })()}
+                         {(variety.days_to_maturity || variety.days_to_maturity_seed) && (
+                           <Badge variant="outline" className="text-xs">
+                             {variety.days_to_maturity || variety.days_to_maturity_seed} days
+                           </Badge>
+                         )}
+                         {(variety.spacing_recommended || variety.spacing_in_min) && (
+                           <Badge variant="outline" className="text-xs">
+                             {variety.spacing_recommended || variety.spacing_in_min}" spacing
+                           </Badge>
+                         )}
+                         {variety.trellis_required && (
+                           <Badge className="bg-green-100 text-green-800 text-xs">Needs Trellis</Badge>
+                         )}
+                         {variety.container_friendly && (
+                           <Badge className="bg-blue-100 text-blue-800 text-xs">Container</Badge>
+                         )}
                         </div>
                         {(variety.grower_notes || variety.notes_public) && (
                           <p className="text-sm text-gray-600 mt-3 line-clamp-2">{variety.grower_notes || variety.notes_public}</p>
