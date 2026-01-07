@@ -3,7 +3,7 @@ import { base44 } from '@/api/base44Client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Loader2, Search, Download } from 'lucide-react';
+import { Loader2, Search, Download, CheckCircle2 } from 'lucide-react';
 import { toast } from 'sonner';
 
 export default function SubcategoryMapping() {
@@ -232,6 +232,44 @@ VAR_EXAMPLE_001,Example Variety,<paste_plant_type_id_here>,PSC_TOMATO_CHERRY,Che
             <li>4. If subcategory doesn't exist, it will be auto-created using the code/name provided</li>
             <li>5. Old "TOMATO_*" codes are auto-normalized to "PSC_TOMATO_*" format</li>
           </ol>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardContent className="p-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="font-semibold text-gray-900">Validate Variety Links</h3>
+              <p className="text-sm text-gray-600">Find varieties with mismatched subcategories</p>
+            </div>
+            <Button 
+              variant="outline" 
+              onClick={validateSubcategoryLinks}
+              disabled={validating}
+              className="gap-2"
+            >
+              {validating ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
+              Validate Links
+            </Button>
+          </div>
+          {validationResults && (
+            <div className="mt-3 p-3 bg-gray-50 rounded-lg">
+              <p className="text-sm text-gray-600 mb-2">
+                {validationResults.errors.length === 0 
+                  ? '✓ All variety subcategory links are valid' 
+                  : `Found ${validationResults.errors.length} mismatched links`}
+              </p>
+              {validationResults.errors.length > 0 && (
+                <div className="space-y-1 max-h-48 overflow-auto">
+                  {validationResults.errors.map((err, idx) => (
+                    <p key={idx} className="text-xs text-red-600">
+                      {err}
+                    </p>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>
