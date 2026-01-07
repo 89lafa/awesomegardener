@@ -417,6 +417,7 @@ export default function PlantingModal({ open, onOpenChange, item, garden, onPlan
       const companionRules = await base44.entities.CompanionRule.list();
       const results = [];
 
+      // Check ALL pairs of plantings for companion relationships
       for (let i = 0; i < plantings.length; i++) {
         for (let j = i + 1; j < plantings.length; j++) {
           const plantA = plantings[i];
@@ -424,23 +425,31 @@ export default function PlantingModal({ open, onOpenChange, item, garden, onPlan
 
           if (!plantA.plant_type_id || !plantB.plant_type_id) continue;
 
-          // Check both directions
+          // Check adjacency - are they next to each other?
+          const isAdjacent = Math.abs(plantA.cell_col - plantB.cell_col) <= 1 && 
+                            Math.abs(plantA.cell_row - plantB.cell_row) <= 1 &&
+                            !(plantA.cell_col === plantB.cell_col && plantA.cell_row === plantB.cell_row);
+
+          // Look for companion rule (bidirectional)
           const rule = companionRules.find(r =>
             (r.plant_type_id === plantA.plant_type_id && r.companion_plant_type_id === plantB.plant_type_id) ||
             (r.plant_type_id === plantB.plant_type_id && r.companion_plant_type_id === plantA.plant_type_id)
           );
 
-          if (rule) {
+          if (rule && isAdjacent) {
             results.push({
               plantA: plantA.display_name,
               plantB: plantB.display_name,
               type: rule.companion_type,
-              notes: rule.notes
+              notes: rule.notes,
+              cellA: { col: plantA.cell_col, row: plantA.cell_row },
+              cellB: { col: plantB.cell_col, row: plantB.cell_row }
             });
           }
         }
       }
 
+      console.log('[PlantingModal] Companion analysis found', results.length, 'adjacent pairs');
       setCompanionResults(results);
     } catch (error) {
       console.error('Error analyzing companions:', error);
@@ -845,10 +854,27 @@ export default function PlantingModal({ open, onOpenChange, item, garden, onPlan
                   
                   if (cellContent?.isOrigin) {
                     const p = cellContent.planting;
+
+                    // Check if this plant has companion relationships
+                    const companionBorders = companionResults
+                      .filter(cr => 
+                        (cr.cellA.col === p.cell_col && cr.cellA.row === p.cell_row) ||
+                        (cr.cellB.col === p.cell_col && cr.cellB.row === p.cell_row)
+                      )
+                      .map(cr => cr.type);
+
+                    const hasBad = companionBorders.includes('BAD');
+                    const hasGood = companionBorders.includes('GOOD');
+                    const hasConditional = companionBorders.includes('GOOD_CONDITIONAL');
+
+                    const borderColor = hasBad ? 'border-red-500' : 
+                                       hasGood ? 'border-green-500' : 
+                                       hasConditional ? 'border-amber-500' : 'border-emerald-600';
+
                     return (
                       <div
                         key={`${colIdx}-${rowIdx}`}
-                        className="relative bg-emerald-500 border-2 border-emerald-600 rounded flex items-center justify-center text-white font-medium cursor-pointer hover:bg-emerald-600 transition-colors group"
+                        className={`relative bg-emerald-500 border-4 rounded flex items-center justify-center text-white font-medium cursor-pointer hover:bg-emerald-600 transition-colors group ${borderColor}`}
                         style={{
                           gridColumn: `span ${p.cell_span_cols || 1}`,
                           gridRow: `span ${p.cell_span_rows || 1}`
@@ -939,40 +965,42 @@ export default function PlantingModal({ open, onOpenChange, item, garden, onPlan
                   </div>
                   )}
 
-                  {/* Companion Analysis */}
-                  {companionResults.length > 0 && (
-                    <div className="mt-4 p-4 bg-gray-50 rounded-lg border">
-                      <h4 className="font-semibold text-sm mb-2">Companion Planting Analysis</h4>
-                      <div className="space-y-2">
-                        {companionResults.map((result, idx) => (
-                          <div 
-                            key={idx}
-                            className={`p-2 rounded text-xs ${
-                              result.type === 'GOOD' ? 'bg-green-50 border border-green-200' :
-                              result.type === 'BAD' ? 'bg-red-50 border border-red-200' :
-                              'bg-amber-50 border border-amber-200'
-                            }`}
-                          >
-                            <p className={`font-semibold ${
-                              result.type === 'GOOD' ? 'text-green-800' :
-                              result.type === 'BAD' ? 'text-red-800' :
-                              'text-amber-800'
-                            }`}>
-                              {result.plantA} + {result.plantB}: {
-                                result.type === 'GOOD' ? '✓ Good Companions' :
-                                result.type === 'BAD' ? '✗ Bad Companions' :
-                                '⚠ Conditional'
-                              }
-                            </p>
-                            {result.notes && (
-                              <p className="text-gray-600 mt-1">{result.notes}</p>
-                            )}
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
                   </div>
+
+                      {/* Companion Analysis - Below Grid */}
+                      {companionResults.length > 0 && (
+                        <div className="mt-4 p-4 bg-gray-50 rounded-lg border">
+                          <h4 className="font-semibold text-sm mb-2">🌱 Companion Planting in This Bed</h4>
+                          <div className="space-y-2">
+                            {companionResults.map((result, idx) => (
+                              <div 
+                                key={idx}
+                                className={`p-2 rounded text-xs ${
+                                  result.type === 'GOOD' ? 'bg-green-50 border border-green-200' :
+                                  result.type === 'BAD' ? 'bg-red-50 border border-red-200' :
+                                  'bg-amber-50 border border-amber-200'
+                                }`}
+                              >
+                                <p className={`font-semibold ${
+                                  result.type === 'GOOD' ? 'text-green-800' :
+                                  result.type === 'BAD' ? 'text-red-800' :
+                                  'text-amber-800'
+                                }`}>
+                                  {result.plantA} + {result.plantB}: {
+                                    result.type === 'GOOD' ? '✓ Good Companions' :
+                                    result.type === 'BAD' ? '✗ Bad Companions' :
+                                    '⚠ Conditional'
+                                  }
+                                </p>
+                                {result.notes && (
+                                  <p className="text-gray-600 mt-1">{result.notes}</p>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
                   </div>
                   </DialogContent>
                   </Dialog>

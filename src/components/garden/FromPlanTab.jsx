@@ -117,9 +117,32 @@ export default function FromPlanTab({ activeSeason, garden, bedId, onSelectPlan 
         return (
           <button
             key={plan.id}
-            onClick={() => {
-              onSelectPlan(plan);
-              setTimeout(() => reloadCounts(), 500);
+            onClick={async () => {
+              // Build plant data from plan
+              const profile = profiles[plan.plant_profile_id];
+              const plantType = plantTypes[plan.plant_type_id];
+              
+              if (profile || plantType) {
+                const variety = await base44.entities.Variety.filter({
+                  plant_type_id: plan.plant_type_id,
+                  variety_name: profile?.variety_name
+                });
+                
+                const spacing = { cols: 2, rows: 2 }; // Default
+                
+                const plantData = {
+                  variety_id: variety[0]?.id || null,
+                  variety_name: profile?.variety_name || plan.label,
+                  plant_type_id: plan.plant_type_id,
+                  plant_type_name: plantType?.common_name || profile?.common_name,
+                  plant_family: plantType?.plant_family_id || profile?.plant_family,
+                  spacing_cols: spacing.cols,
+                  spacing_rows: spacing.rows
+                };
+                
+                onSelectPlan(plantData);
+                setTimeout(() => reloadCounts(), 500);
+              }
             }}
             className={cn(
               "w-full p-3 rounded-lg border-2 text-left transition-colors",
