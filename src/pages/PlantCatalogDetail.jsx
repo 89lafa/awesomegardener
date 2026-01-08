@@ -71,7 +71,9 @@ export default function PlantCatalogDetail() {
     species: [],
     containerFriendly: null,
     trellisRequired: null,
-    hasImage: null
+    hasImage: null,
+    seedTypes: [],
+    organicOnly: false
   });
   const [currentPage, setCurrentPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
@@ -231,6 +233,12 @@ export default function PlantCatalogDetail() {
   };
 
   const getAvailableFilters = () => {
+    const seedTypeSet = new Set();
+    varieties.forEach(v => {
+      const seedType = v.traits?.seed_type || (v.popularity_tier === 'heirloom' ? 'heirloom' : null);
+      if (seedType) seedTypeSet.add(seedType);
+    });
+    
     const available = {
       daysToMaturity: varieties.some(v => v.days_to_maturity || v.days_to_maturity_seed),
       spacing: varieties.some(v => v.spacing_recommended || v.spacing_in_min),
@@ -238,10 +246,12 @@ export default function PlantCatalogDetail() {
       growthHabits: [...new Set(varieties.filter(v => v.growth_habit).map(v => v.growth_habit))],
       colors: [...new Set(varieties.filter(v => v.fruit_color || v.pod_color).map(v => v.fruit_color || v.pod_color))],
       species: [...new Set(varieties.filter(v => v.species).map(v => v.species))],
+      seedTypes: Array.from(seedTypeSet),
       booleans: {
         containerFriendly: varieties.some(v => v.container_friendly),
         trellisRequired: varieties.some(v => v.trellis_required),
-        hasImage: varieties.some(v => v.images?.length > 0 || v.image_url)
+        hasImage: varieties.some(v => v.images?.length > 0 || v.image_url),
+        organic: varieties.some(v => v.traits?.organic_seed === true)
       }
     };
     return available;
@@ -327,6 +337,19 @@ export default function PlantCatalogDetail() {
       );
     }
 
+    // Seed type filter
+    if (filters.seedTypes.length > 0) {
+      filtered = filtered.filter(v => {
+        const seedType = v.traits?.seed_type || (v.popularity_tier === 'heirloom' ? 'heirloom' : null);
+        return seedType && filters.seedTypes.includes(seedType);
+      });
+    }
+
+    // Organic filter
+    if (filters.organicOnly) {
+      filtered = filtered.filter(v => v.traits?.organic_seed === true);
+    }
+
     // Boolean filters
     if (filters.containerFriendly === true) {
       filtered = filtered.filter(v => v.container_friendly === true);
@@ -387,7 +410,9 @@ export default function PlantCatalogDetail() {
       species: [],
       containerFriendly: null,
       trellisRequired: null,
-      hasImage: null
+      hasImage: null,
+      seedTypes: [],
+      organicOnly: false
     });
     setSortBy('name_asc');
     setCurrentPage(1);
@@ -406,6 +431,8 @@ export default function PlantCatalogDetail() {
     if (filters.containerFriendly) count++;
     if (filters.trellisRequired) count++;
     if (filters.hasImage) count++;
+    if (filters.seedTypes.length > 0) count++;
+    if (filters.organicOnly) count++;
     return count;
   };
 
@@ -905,6 +932,17 @@ export default function PlantCatalogDetail() {
                          )}
                          {variety.container_friendly && (
                            <Badge className="bg-blue-100 text-blue-800 text-xs">Container</Badge>
+                         )}
+                         {(() => {
+                           const seedType = variety.traits?.seed_type || (variety.popularity_tier === 'heirloom' ? 'heirloom' : null);
+                           if (!seedType) return null;
+                           const label = seedType === 'open_pollinated' ? 'OP' : 
+                                        seedType === 'hybrid_f1' ? 'Hybrid' : 
+                                        seedType === 'heirloom' ? 'Heirloom' : seedType;
+                           return <Badge variant="outline" className="text-xs">{label}</Badge>;
+                         })()}
+                         {variety.traits?.organic_seed && (
+                           <Badge className="bg-purple-100 text-purple-800 text-xs">Organic</Badge>
                          )}
                         </div>
                         {(variety.grower_notes || variety.notes_public) && (
