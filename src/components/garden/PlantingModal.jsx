@@ -442,10 +442,13 @@ export default function PlantingModal({ open, onOpenChange, item, garden, onPlan
 
           if (!plantA.plant_type_id || !plantB.plant_type_id) continue;
 
-          // Check adjacency - are they next to each other?
-          const isAdjacent = Math.abs(plantA.cell_col - plantB.cell_col) <= 1 && 
-                            Math.abs(plantA.cell_row - plantB.cell_row) <= 1 &&
-                            !(plantA.cell_col === plantB.cell_col && plantA.cell_row === plantB.cell_row);
+          // Check adjacency - for slots (greenhouse), always consider adjacent
+          // For grid-based, check grid proximity
+          const isAdjacent = isSlotBased ? true : (
+            Math.abs(plantA.cell_col - plantB.cell_col) <= 1 && 
+            Math.abs((plantA.cell_row || 0) - (plantB.cell_row || 0)) <= 1 &&
+            !(plantA.cell_col === plantB.cell_col && (plantA.cell_row || 0) === (plantB.cell_row || 0))
+          );
 
           // Look for companion rule (bidirectional)
           const rule = companionRules.find(r =>
@@ -459,14 +462,14 @@ export default function PlantingModal({ open, onOpenChange, item, garden, onPlan
               plantB: plantB.display_name,
               type: rule.companion_type,
               notes: rule.notes,
-              cellA: { col: plantA.cell_col, row: plantA.cell_row },
-              cellB: { col: plantB.cell_col, row: plantB.cell_row }
+              cellA: { col: plantA.cell_col, row: plantA.cell_row || 0 },
+              cellB: { col: plantB.cell_col, row: plantB.cell_row || 0 }
             });
           }
         }
       }
 
-      console.log('[PlantingModal] Companion analysis found', results.length, 'adjacent pairs');
+      console.log('[PlantingModal] Companion analysis found', results.length, 'adjacent pairs in bed', item.id);
       setCompanionResults(results);
     } catch (error) {
       console.error('Error analyzing companions:', error);

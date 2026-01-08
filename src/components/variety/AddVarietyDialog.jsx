@@ -26,7 +26,8 @@ import { toast } from 'sonner';
 export default function AddVarietyDialog({ plantType, open, onOpenChange, onSuccess, userRole }) {
   const [formData, setFormData] = useState({
     variety_name: '',
-    plant_subcategory_id: '',
+    plant_subcategory_ids: [],
+    description: '',
     synonyms: '',
     days_to_maturity: '',
     spacing_recommended: '',
@@ -38,12 +39,14 @@ export default function AddVarietyDialog({ plantType, open, onOpenChange, onSucc
     source_url: '',
     submitter_notes: '',
     heat_scoville_min: '',
-    heat_scoville_max: ''
+    heat_scoville_max: '',
+    images: []
   });
   const [duplicateWarning, setDuplicateWarning] = useState(null);
   const [checking, setChecking] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [subCategories, setSubCategories] = useState([]);
+  const [uploadingImage, setUploadingImage] = useState(false);
 
   const isAdminOrEditor = userRole === 'admin' || userRole === 'editor';
 
@@ -123,11 +126,16 @@ export default function AddVarietyDialog({ plantType, open, onOpenChange, onSucc
     try {
       if (isAdminOrEditor) {
         // Direct creation
+        const primarySubcatId = formData.plant_subcategory_ids.length > 0 ? formData.plant_subcategory_ids[0] : null;
+        
         const newVariety = await base44.entities.Variety.create({
           plant_type_id: plantType.id,
           plant_type_name: plantType.common_name,
           variety_name: formData.variety_name,
+          description: formData.description || null,
           synonyms: formData.synonyms ? formData.synonyms.split(',').map(s => s.trim()) : [],
+          plant_subcategory_id: primarySubcatId,
+          plant_subcategory_ids: formData.plant_subcategory_ids,
           days_to_maturity: formData.days_to_maturity ? parseInt(formData.days_to_maturity) : null,
           spacing_recommended: formData.spacing_recommended ? parseInt(formData.spacing_recommended) : null,
           plant_height_typical: formData.plant_height_typical || null,
@@ -138,17 +146,10 @@ export default function AddVarietyDialog({ plantType, open, onOpenChange, onSucc
           source_attribution: formData.source_url || 'User Submitted',
           heat_scoville_min: formData.heat_scoville_min ? parseInt(formData.heat_scoville_min) : null,
           heat_scoville_max: formData.heat_scoville_max ? parseInt(formData.heat_scoville_max) : null,
+          images: formData.images,
           status: 'active',
           is_custom: true
         });
-        
-        // Create subcategory mapping if selected
-        if (formData.plant_subcategory_id) {
-          await base44.entities.VarietySubCategoryMap.create({
-            variety_id: newVariety.id,
-            plant_subcategory_id: formData.plant_subcategory_id
-          });
-        }
         
         toast.success('Variety added!');
       } else {
@@ -216,6 +217,18 @@ export default function AddVarietyDialog({ plantType, open, onOpenChange, onSucc
           </div>
 
           <div>
+            <Label htmlFor="description">Description</Label>
+            <Textarea
+              id="description"
+              placeholder="Brief description of this variety..."
+              value={formData.description}
+              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+              className="mt-2"
+              rows={3}
+            />
+          </div>
+
+          <div>
             <Label htmlFor="synonyms">Synonyms (comma-separated)</Label>
             <Input
               id="synonyms"
@@ -228,26 +241,106 @@ export default function AddVarietyDialog({ plantType, open, onOpenChange, onSucc
 
           {subCategories.length > 0 && (
             <div>
-              <Label htmlFor="subcategory">Type/Subcategory</Label>
-              <Select 
-                value={formData.plant_subcategory_id || ''} 
-                onValueChange={(v) => setFormData({ ...formData, plant_subcategory_id: v })}
-              >
-                <SelectTrigger className="mt-2">
-                  <SelectValue placeholder="Select type..." />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value={null}>None</SelectItem>
-                  {subCategories.map((subcat) => (
-                    <SelectItem key={subcat.id} value={subcat.id}>
-                      {subcat.icon && <span className="mr-2">{subcat.icon}</span>}
-                      {subcat.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <Label>Sub-Categories (multi-select)</Label>
+              <div className="mt-2 p-3 border rounded-lg max-h-48 overflow-y-auto space-y-3">
+                {(() => {
+                  const grouped = {};
+                  subCategories.forEach(s => {
+                    const dim = s.dimension || 'Other';
+                    if (!grouped[dim]) grouped[dim] = [];
+                    grouped[dim].push(s);
+                  });
+                  
+                  return Object.entries(grouped).map(([dimension, subcats]) => (
+                    <div key={dimension} className="space-y-2">
+                      <p className="text-xs font-semibold text-gray-500 uppercase">{dimension}</p>
+                      <div className="flex flex-wrap gap-2">
+                        {subcats.map(subcat => {
+                          const isSelected = (formData.plant_subcategory_ids || []).includes(subcat.id);
+                          return (
+                            <Button
+                              key={subcat.id}
+                              type="button"
+                              size="sm"
+                              variant={isSelected ? 'default' : 'outline'}
+                              onClick={() => {
+                                const currentIds = formData.plant_subcategory_ids || [];
+                                const newIds = isSelected 
+                                  ? currentIds.filter(id => id !== subcat.id)
+                                  : [...currentIds, subcat.id];
+                                setFormData({ ...formData, plant_subcategory_ids: newIds });
+                              }}
+                              className={isSelected ? 'bg-emerald-600 hover:bg-emerald-700' : ''}
+                            >
+                              {subcat.icon && <span className="mr-1">{subcat.icon}</span>}
+                              {subcat.name}
+                            </Button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  ));
+                })()}
+              </div>
             </div>
           )}
+
+          <div>
+            <Label>Images</Label>
+            <div className="mt-2 space-y-2">
+              {formData.images.length > 0 && (
+                <div className="flex flex-wrap gap-2">
+                  {formData.images.map((url, idx) => (
+                    <div key={idx} className="relative w-20 h-20">
+                      <img src={url} alt={`Image ${idx + 1}`} className="w-full h-full object-cover rounded border" />
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="destructive"
+                        className="absolute -top-2 -right-2 h-6 w-6 p-0 rounded-full"
+                        onClick={() => {
+                          const newImages = formData.images.filter((_, i) => i !== idx);
+                          setFormData({ ...formData, images: newImages });
+                        }}
+                      >
+                        ×
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              )}
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                disabled={uploadingImage}
+                onClick={() => document.getElementById('variety-image-upload').click()}
+              >
+                {uploadingImage ? 'Uploading...' : '+ Add Image'}
+              </Button>
+              <input
+                id="variety-image-upload"
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={async (e) => {
+                  const file = e.target.files?.[0];
+                  if (!file) return;
+                  setUploadingImage(true);
+                  try {
+                    const { file_url } = await base44.integrations.Core.UploadFile({ file });
+                    setFormData({ ...formData, images: [...formData.images, file_url] });
+                    toast.success('Image uploaded');
+                  } catch (error) {
+                    console.error('Error uploading image:', error);
+                    toast.error('Failed to upload image');
+                  } finally {
+                    setUploadingImage(false);
+                  }
+                }}
+              />
+            </div>
+          </div>
 
           <div className="grid grid-cols-2 gap-4">
             <div>
