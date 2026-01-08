@@ -832,15 +832,26 @@ export default function PlantCatalogDetail() {
                           <h4 className="font-semibold text-gray-900">{variety.variety_name}</h4>
                           <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>
                             {user?.role === 'admin' && (
-                              <Link to={createPageUrl('ViewVariety') + `?id=${variety.id}`}>
-                                <Button 
-                                  size="sm"
-                                  variant="ghost"
-                                  title="View as User"
-                                >
-                                  <span className="text-xs">View</span>
-                                </Button>
-                              </Link>
+                              <>
+                                <Link to={createPageUrl('ViewVariety') + `?id=${variety.id}`}>
+                                  <Button 
+                                    size="sm"
+                                    variant="ghost"
+                                    title="View as User"
+                                  >
+                                    <span className="text-xs">View</span>
+                                  </Button>
+                                </Link>
+                                <Link to={createPageUrl('EditVariety') + `?id=${variety.id}`}>
+                                  <Button 
+                                    size="sm"
+                                    variant="ghost"
+                                    title="Edit"
+                                  >
+                                    <span className="text-xs">Edit</span>
+                                  </Button>
+                                </Link>
+                              </>
                             )}
                             <Button 
                               size="sm"
