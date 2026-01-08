@@ -239,6 +239,38 @@ export default function AdvancedFiltersPanel({
                   <span className="text-sm">Has Image</span>
                 </label>
               )}
+              {availableFilters.booleans.organic && (
+                <label className="flex items-center gap-2">
+                  <Checkbox
+                    checked={filters.organicOnly === true}
+                    onCheckedChange={() => handleBooleanToggle('organicOnly')}
+                  />
+                  <span className="text-sm">Organic Seeds Only</span>
+                </label>
+              )}
+            </div>
+          )}
+
+          {/* Seed Type Filters */}
+          {availableFilters.seedTypes?.length > 0 && (
+            <div className="space-y-2 border-t pt-4">
+              <Label className="font-semibold">Seed Type</Label>
+              <div className="space-y-2">
+                {['heirloom', 'open_pollinated', 'hybrid_f1'].filter(st => availableFilters.seedTypes.includes(st)).map((seedType) => {
+                  const label = seedType === 'open_pollinated' ? 'Open-Pollinated' : 
+                               seedType === 'hybrid_f1' ? 'Hybrid (F1)' : 
+                               'Heirloom';
+                  return (
+                    <label key={seedType} className="flex items-center gap-2">
+                      <Checkbox
+                        checked={(filters.seedTypes || []).includes(seedType)}
+                        onCheckedChange={(checked) => handleMultiSelect('seedTypes', seedType, checked)}
+                      />
+                      <span className="text-sm">{label}</span>
+                    </label>
+                  );
+                })}
+              </div>
             </div>
           )}
 
