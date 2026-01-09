@@ -38,17 +38,25 @@ import { cn } from '@/lib/utils';
 
 const ITEM_TYPES = [
   { value: 'RAISED_BED', label: 'Raised Bed', color: '#8B7355', defaultDims: '4x8', defaultUnit: 'ft', usesGrid: true, plantable: true },
+  { value: 'RAISED_PLANTER', label: 'Raised Planter/Garden Bed', color: '#A0826D', usesPredefinedSizes: true, usesGrid: true, plantable: true },
   { value: 'IN_GROUND_BED', label: 'In-Ground Bed', color: '#A0826D', defaultDims: '4x20', defaultUnit: 'ft', usesRows: true, plantable: true },
   { value: 'GREENHOUSE', label: 'Greenhouse', color: '#80CBC4', defaultDims: '10x12', defaultUnit: 'ft', usesGrid: true, plantable: true },
   { value: 'OPEN_PLOT', label: 'Open Plot', color: '#D7CCC8', defaultDims: '50x100', defaultUnit: 'ft', usesRows: true, plantable: true },
   { value: 'GROW_BAG', label: 'Grow Bag', color: '#424242', usesGallons: true, plantable: true },
-  { value: 'CONTAINER', label: 'Container', color: '#D84315', usesSize: true, plantable: true },
+  { value: 'CONTAINER', label: 'Plastic/Ceramic Container', color: '#D84315', usesGallons: true, plantable: true },
   { value: 'FENCE', label: 'Fence', color: '#5D4037', defaultDims: '10x0.5', defaultUnit: 'ft', plantable: false },
   { value: 'BUILDING', label: 'Building/Shed', color: '#795548', defaultDims: '8x10', defaultUnit: 'ft', plantable: false },
   { value: 'TREE', label: 'Tree', color: '#4CAF50', defaultDims: '3x3', defaultUnit: 'ft', plantable: false },
   { value: 'PATH', label: 'Path/Walkway', color: '#9E9E9E', defaultDims: '3x20', defaultUnit: 'ft', plantable: false },
   { value: 'COMPOST', label: 'Compost Bin', color: '#6D4C41', defaultDims: '3x3', defaultUnit: 'ft', plantable: false },
   { value: 'WATER_SOURCE', label: 'Water Source', color: '#2196F3', defaultDims: '2x2', defaultUnit: 'ft', plantable: false },
+];
+
+const RAISED_PLANTER_SIZES = [
+  { label: '2ft x 4ft', width: 24, height: 48 },
+  { label: '2ft x 8ft', width: 24, height: 96 },
+  { label: '4ft x 4ft', width: 48, height: 48 },
+  { label: '4ft x 8ft', width: 48, height: 96 }
 ];
 
 const GALLON_SIZES = [
@@ -94,6 +102,7 @@ export default function PlotCanvas({ garden, plot, activeSeason, onPlotUpdate, o
     unit: 'ft',
     useSquareFootGrid: true,
     gallonSize: 5,
+    planterSize: '4ft x 8ft',
     rowSpacing: 18,
     rowCount: null,
     createMultiple: false,
@@ -265,8 +274,22 @@ export default function PlotCanvas({ garden, plot, activeSeason, onPlotUpdate, o
   };
 
   const calculateLayoutSchema = (itemType, width, height, metadata) => {
+    // CONTAINER and GROW_BAG: Flexible slot (any plant size fits)
+    if (itemType.usesGallons) {
+      return { type: 'slots', slots: 1, flexible: true };
+    }
+    
     if (itemType.usesGrid && metadata.gridEnabled) {
       const gridSize = metadata.gridSize || 12;
+      return {
+        type: 'grid',
+        grid_size: gridSize,
+        columns: Math.floor(width / gridSize),
+        rows: Math.floor(height / gridSize)
+      };
+    }
+    if (itemType.usesPredefinedSizes) {
+      const gridSize = 12;
       return {
         type: 'grid',
         grid_size: gridSize,
@@ -280,9 +303,6 @@ export default function PlotCanvas({ garden, plot, activeSeason, onPlotUpdate, o
         rows: metadata.rowCount || Math.floor(width / (metadata.rowSpacing || 18)),
         row_spacing: metadata.rowSpacing || 18
       };
-    }
-    if (itemType.usesGallons || itemType.usesSize) {
-      return { type: 'slots', slots: 1 };
     }
     return { type: 'slots', slots: 10 };
   };
@@ -308,8 +328,14 @@ export default function PlotCanvas({ garden, plot, activeSeason, onPlotUpdate, o
     if (itemType.usesGallons) {
       const gallonInfo = GALLON_SIZES.find(g => g.value === newItem.gallonSize);
       width = height = gallonInfo.footprint;
-    } else if (itemType.usesSize) {
-      width = height = 18; // Default container footprint
+    } else if (itemType.usesPredefinedSizes) {
+      const planterSize = RAISED_PLANTER_SIZES.find(p => p.label === newItem.planterSize);
+      if (!planterSize) {
+        toast.error('Please select a planter size');
+        return;
+      }
+      width = planterSize.width;
+      height = planterSize.height;
     } else {
       const parsed = parseDimensions(newItem.dimensions);
       if (!parsed) {
@@ -406,6 +432,7 @@ export default function PlotCanvas({ garden, plot, activeSeason, onPlotUpdate, o
       unit: 'ft',
       useSquareFootGrid: true,
       gallonSize: 5,
+      planterSize: '4ft x 8ft',
       rowSpacing: 18,
       rowCount: null,
       createMultiple: false,
@@ -425,6 +452,7 @@ export default function PlotCanvas({ garden, plot, activeSeason, onPlotUpdate, o
       unit: itemType.defaultUnit || 'ft',
       useSquareFootGrid: itemType.usesGrid || false,
       gallonSize: 5,
+      planterSize: '4ft x 8ft',
       rowSpacing: 18,
       rowCount: null
     });
@@ -1152,7 +1180,26 @@ export default function PlotCanvas({ garden, plot, activeSeason, onPlotUpdate, o
             </div>
 
             {/* Type-specific fields */}
-            {ITEM_TYPES.find(t => t.value === newItem.item_type)?.usesGallons ? (
+            {ITEM_TYPES.find(t => t.value === newItem.item_type)?.usesPredefinedSizes ? (
+              <div>
+                <Label>Planter Size</Label>
+                <Select 
+                  value={newItem.planterSize} 
+                  onValueChange={(v) => setNewItem({ ...newItem, planterSize: v })}
+                >
+                  <SelectTrigger className="mt-2">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {RAISED_PLANTER_SIZES.map((size) => (
+                      <SelectItem key={size.label} value={size.label}>
+                        {size.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            ) : ITEM_TYPES.find(t => t.value === newItem.item_type)?.usesGallons ? (
               <div>
                 <Label>Size (Gallons)</Label>
                 <Select 
@@ -1170,20 +1217,7 @@ export default function PlotCanvas({ garden, plot, activeSeason, onPlotUpdate, o
                     ))}
                   </SelectContent>
                 </Select>
-              </div>
-            ) : ITEM_TYPES.find(t => t.value === newItem.item_type)?.usesSize ? (
-              <div>
-                <Label>Container Type</Label>
-                <Select defaultValue="medium">
-                  <SelectTrigger className="mt-2">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="small">Small (12" footprint)</SelectItem>
-                    <SelectItem value="medium">Medium (18" footprint)</SelectItem>
-                    <SelectItem value="large">Large (24" footprint)</SelectItem>
-                  </SelectContent>
-                </Select>
+                <p className="text-xs text-gray-500 mt-1">Fits any plant size (flexible layout)</p>
               </div>
             ) : (
               <>
