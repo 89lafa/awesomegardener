@@ -72,8 +72,9 @@ export default function Sidebar({ collapsed, onToggle, currentPage, user, isMobi
 
   return (
     <aside className={cn(
-      "fixed left-0 top-0 h-full bg-[#1a2e12] text-white transition-all duration-300 z-50 flex flex-col",
-      effectiveCollapsed ? "w-16" : "w-64"
+      "h-full bg-[#1a2e12] text-white flex flex-col",
+      isMobile ? "w-64" : (effectiveCollapsed ? "w-16" : "w-64"),
+      !isMobile && "fixed left-0 top-0 z-50"
     )}>
       {/* Logo */}
       <div className="p-4 border-b border-white/10 flex items-center gap-3">

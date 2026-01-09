@@ -95,6 +95,18 @@ export default function Layout({ children, currentPageName }) {
     return null;
   }
 
+  // Lock body scroll when mobile menu is open
+  useEffect(() => {
+    if (mobileMenuOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [mobileMenuOpen]);
+
   return (
     <div className="min-h-screen bg-[#FDFBF7]">
       {/* Desktop Sidebar */}
@@ -108,29 +120,28 @@ export default function Layout({ children, currentPageName }) {
         />
       </div>
 
-      {/* Mobile Backdrop Overlay */}
+      {/* Mobile Menu - Backdrop + Sidebar */}
       {mobileMenuOpen && (
-        <div 
-          className="fixed inset-0 bg-black/50 z-30 lg:hidden"
-          onClick={closeMobileMenu}
-        />
+        <>
+          {/* Backdrop */}
+          <div 
+            className="fixed inset-0 bg-black/50 z-[100] lg:hidden"
+            onClick={closeMobileMenu}
+            onTouchEnd={closeMobileMenu}
+          />
+          
+          {/* Sidebar */}
+          <div className="fixed inset-y-0 left-0 w-64 z-[101] lg:hidden">
+            <Sidebar 
+              collapsed={false} 
+              onToggle={closeMobileMenu}
+              currentPage={currentPageName}
+              user={user}
+              isMobile={true}
+            />
+          </div>
+        </>
       )}
-
-      {/* Mobile Sidebar */}
-      <div 
-        className={cn(
-          "fixed inset-y-0 left-0 w-64 z-40 lg:hidden transition-transform duration-300 ease-in-out",
-          mobileMenuOpen ? "translate-x-0" : "-translate-x-full"
-        )}
-      >
-        <Sidebar 
-          collapsed={false} 
-          onToggle={closeMobileMenu}
-          currentPage={currentPageName}
-          user={user}
-          isMobile={true}
-        />
-      </div>
 
       {/* Main Content */}
       <div className={cn(
