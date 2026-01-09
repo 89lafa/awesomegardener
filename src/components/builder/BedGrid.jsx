@@ -50,19 +50,8 @@ export default function BedGrid({
 
   const getCellColor = (plant) => {
     if (!plant) return 'bg-amber-50';
-    // Use a hash of the plant type to generate consistent colors
-    const colors = [
-      'bg-red-100 border-red-300',
-      'bg-green-100 border-green-300',
-      'bg-blue-100 border-blue-300',
-      'bg-yellow-100 border-yellow-300',
-      'bg-purple-100 border-purple-300',
-      'bg-pink-100 border-pink-300',
-      'bg-orange-100 border-orange-300',
-      'bg-teal-100 border-teal-300',
-    ];
-    const hash = plant.plant_type_id?.split('').reduce((a, b) => a + b.charCodeAt(0), 0) || 0;
-    return colors[hash % colors.length];
+    // All plants get same green background
+    return 'bg-emerald-500 border-emerald-600';
   };
 
   const handleCellClick = (row, col) => {
@@ -94,13 +83,15 @@ export default function BedGrid({
                     onMouseEnter={() => setHoveredCell({ row, col })}
                     onMouseLeave={() => setHoveredCell(null)}
                     className={cn(
-                      "w-10 h-10 lg:w-12 lg:h-12 rounded-md border-2 transition-all relative",
-                      plant ? getCellColor(plant) : 'bg-amber-50 border-amber-100',
-                      isSelected && 'ring-2 ring-emerald-500 ring-offset-1',
+                      "w-10 h-10 lg:w-12 lg:h-12 rounded-md transition-all relative",
+                      plant ? (
+                        companionStatus === 'bad' ? 'bg-emerald-500 border-4 border-red-600' :
+                        companionStatus === 'good' ? 'bg-emerald-500 border-4 border-blue-500' :
+                        'bg-emerald-500 border-2 border-emerald-600'
+                      ) : 'bg-amber-50 border-2 border-amber-100',
+                      isSelected && !companionStatus && 'ring-2 ring-emerald-500 ring-offset-1',
                       isHovered && !isSelected && 'ring-2 ring-gray-300',
-                      paintMode && 'cursor-crosshair',
-                      companionStatus === 'bad' && 'ring-4 ring-red-600',
-                      companionStatus === 'good' && 'ring-4 ring-blue-500'
+                      paintMode && 'cursor-crosshair'
                     )}
                   >
                     {plant && (
