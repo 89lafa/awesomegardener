@@ -7,7 +7,6 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Checkbox } from '@/components/ui/checkbox';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   Select,
@@ -398,20 +397,9 @@ export default function EditVariety() {
               </div>
             </div>
 
-            <div>
-              <Label htmlFor="grower_notes">Grower Notes</Label>
-              <Textarea
-                id="grower_notes"
-                value={formData.grower_notes || ''}
-                onChange={(e) => setFormData({ ...formData, grower_notes: e.target.value })}
-                rows={4}
-                className="mt-1"
-              />
-            </div>
-
             <div className="grid md:grid-cols-2 gap-4">
               <div>
-                <Label htmlFor="species">Species</Label>
+                <Label htmlFor="species">Species (botanical)</Label>
                 <Select 
                   value={formData.species || ''} 
                   onValueChange={(v) => setFormData({ ...formData, species: v })}
@@ -420,7 +408,7 @@ export default function EditVariety() {
                     <SelectValue placeholder="Select..." />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value={null}>None</SelectItem>
+                    <SelectItem value={null}>Not specified</SelectItem>
                     <SelectItem value="annuum">Annuum</SelectItem>
                     <SelectItem value="chinense">Chinense</SelectItem>
                     <SelectItem value="baccatum">Baccatum</SelectItem>
@@ -440,7 +428,7 @@ export default function EditVariety() {
                     <SelectValue placeholder="Select..." />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value={null}>None</SelectItem>
+                    <SelectItem value={null}>Not specified</SelectItem>
                     <SelectItem value="heirloom">Heirloom</SelectItem>
                     <SelectItem value="hybrid">Hybrid</SelectItem>
                     <SelectItem value="open_pollinated">Open-Pollinated</SelectItem>
@@ -461,7 +449,7 @@ export default function EditVariety() {
                     <SelectValue placeholder="Select..." />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value={null}>None</SelectItem>
+                    <SelectItem value={null}>Not specified</SelectItem>
                     <SelectItem value="early">Early</SelectItem>
                     <SelectItem value="mid">Mid</SelectItem>
                     <SelectItem value="late">Late</SelectItem>
@@ -469,24 +457,50 @@ export default function EditVariety() {
                   </SelectContent>
                 </Select>
               </div>
-              <div className="flex items-end gap-4">
-                <div className="flex items-center gap-2">
-                  <Checkbox
-                    id="is_ornamental"
-                    checked={formData.is_ornamental || false}
-                    onCheckedChange={(checked) => setFormData({ ...formData, is_ornamental: checked })}
-                  />
-                  <Label htmlFor="is_ornamental" className="font-normal">Ornamental</Label>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Checkbox
-                    id="is_organic"
-                    checked={formData.is_organic || false}
-                    onCheckedChange={(checked) => setFormData({ ...formData, is_organic: checked })}
-                  />
-                  <Label htmlFor="is_organic" className="font-normal">Certified Organic</Label>
-                </div>
+              <div>
+                <Label htmlFor="is_ornamental">Ornamental?</Label>
+                <Select 
+                  value={formData.is_ornamental ? 'yes' : 'no'} 
+                  onValueChange={(v) => setFormData({ ...formData, is_ornamental: v === 'yes' })}
+                >
+                  <SelectTrigger className="mt-1">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="no">No</SelectItem>
+                    <SelectItem value="yes">Yes</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
+            </div>
+
+            <div className="grid md:grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="is_organic">Certified Organic Seeds?</Label>
+                <Select 
+                  value={formData.is_organic ? 'yes' : 'no'} 
+                  onValueChange={(v) => setFormData({ ...formData, is_organic: v === 'yes' })}
+                >
+                  <SelectTrigger className="mt-1">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="no">No</SelectItem>
+                    <SelectItem value="yes">Yes</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <div>
+              <Label htmlFor="grower_notes">Grower Notes</Label>
+              <Textarea
+                id="grower_notes"
+                value={formData.grower_notes || ''}
+                onChange={(e) => setFormData({ ...formData, grower_notes: e.target.value })}
+                rows={4}
+                className="mt-1"
+              />
             </div>
 
             <div>

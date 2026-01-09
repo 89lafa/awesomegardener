@@ -105,26 +105,24 @@ export default function VarietyListView({
                 </td>
               )}
               {visibleColumns.includes('species') && (
-                <td className="p-3 text-sm text-gray-600">
-                  {variety.species ? (
-                    <span className="italic capitalize">{variety.species}</span>
-                  ) : '-'}
+                <td className="p-3 text-sm text-gray-600 italic capitalize">
+                  {variety.species || '-'}
                 </td>
               )}
               {visibleColumns.includes('seed_line') && (
                 <td className="p-3">
-                  {variety.seed_line_type ? (
+                  {variety.seed_line_type && (
                     <Badge variant="outline" className="text-xs capitalize">
                       {variety.seed_line_type === 'open_pollinated' ? 'OP' : variety.seed_line_type}
                     </Badge>
-                  ) : '-'}
+                  )}
                 </td>
               )}
               {visibleColumns.includes('season') && (
                 <td className="p-3">
-                  {variety.season_timing ? (
+                  {variety.season_timing && (
                     <Badge variant="outline" className="text-xs capitalize">{variety.season_timing}</Badge>
-                  ) : '-'}
+                  )}
                 </td>
               )}
               {visibleColumns.includes('traits') && (
@@ -154,7 +152,7 @@ export default function VarietyListView({
                 <td className="p-3">
                   <div className="flex gap-1 justify-end">
                     {user?.role === 'admin' ? (
-                      <div className="flex gap-1">
+                      <>
                         <Link to={createPageUrl('ViewVariety') + `?id=${variety.id}`}>
                           <Button size="sm" variant="ghost">
                             <span className="text-xs">View</span>
@@ -165,7 +163,7 @@ export default function VarietyListView({
                             <span className="text-xs">Edit</span>
                           </Button>
                         </Link>
-                      </div>
+                      </>
                     ) : (
                       <Link to={createPageUrl('ViewVariety') + `?id=${variety.id}`}>
                         <Button size="sm" variant="ghost">
