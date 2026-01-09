@@ -102,8 +102,8 @@ Deno.serve(async (req) => {
       let targetBucketCode;
       let reason = '';
 
-      // Determine target bucket
-      if (shuMax === null || shuMax === undefined) {
+      // Determine target bucket (FIXED: Missing SHU → Unknown, not Sweet)
+      if (shuMin === null && shuMax === null) {
         // NO SHU DATA - try to infer from name/existing category
         if (varietyNameLower.includes('superhot') || varietyNameLower.includes('reaper') || 
             varietyNameLower.includes('ghost') || varietyNameLower.includes('bhut') || 
@@ -145,26 +145,34 @@ Deno.serve(async (req) => {
           targetBucketCode = 'PSC_PEPPER_UNKNOWN';
           reason = 'No SHU, no confident inference';
         }
-      } else if (shuMax === 0) {
-        // SHU = 0 - only Sweet if strongly identified
-        const isSweet = varietyNameLower.includes('bell') || 
-                        varietyNameLower.includes('sweet') || 
-                        varietyNameLower.includes('pimento') ||
-                        existingSubcatName.includes('sweet') ||
-                        (v.species === 'annuum' && existingSubcatName.includes('bell'));
-        
-        if (isSweet) {
-          targetBucketCode = 'PSC_PEPPER_SWEET';
-          reason = 'SHU=0 + sweet indicators';
-          if (sweetWithZeroSamples.length < 5) {
-            sweetWithZeroSamples.push({ 
-              name: v.variety_name, 
-              reason: `bell=${varietyNameLower.includes('bell')} sweet=${varietyNameLower.includes('sweet')}`
-            });
-          }
+      } else if (shuMin === 0 && shuMax === 0) {
+        // Explicit 0 SHU = Sweet (confirmed)
+        targetBucketCode = 'PSC_PEPPER_SWEET';
+        reason = 'Explicit 0 SHU';
+        if (sweetWithZeroSamples.length < 5) {
+          sweetWithZeroSamples.push({ 
+            name: v.variety_name, 
+            reason: 'Explicit 0 SHU'
+          });
+        }
+      } else if ((shuMin === 0 || shuMin === null) && shuMax !== null && shuMax > 0) {
+        // Has some heat data, categorize by shuMax
+        const shu = shuMax;
+        if (shu <= 2500) {
+          targetBucketCode = 'PSC_PEPPER_MILD';
+          reason = `SHU max ${shu}`;
+        } else if (shu <= 30000) {
+          targetBucketCode = 'PSC_PEPPER_MEDIUM';
+          reason = `SHU max ${shu}`;
+        } else if (shu <= 100000) {
+          targetBucketCode = 'PSC_PEPPER_HOT';
+          reason = `SHU max ${shu}`;
+        } else if (shu <= 300000) {
+          targetBucketCode = 'PSC_PEPPER_EXTRAHOT';
+          reason = `SHU max ${shu}`;
         } else {
-          targetBucketCode = 'PSC_PEPPER_UNKNOWN';
-          reason = 'SHU=0 but no sweet indicators';
+          targetBucketCode = 'PSC_PEPPER_SUPERHOT';
+          reason = `SHU max ${shu}`;
         }
       } else {
         // SHU > 0 - assign by heat level
