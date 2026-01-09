@@ -156,62 +156,84 @@ Deno.serve(async (req) => {
     
     // Step 7: Load all Pepper varieties and normalize
     const allPepperVarieties = await base44.asServiceRole.entities.Variety.filter({
-      plant_type_id: pepperTypeId
-    });
+      plant_type_id: pepperTypeId,
+      status: 'active'
+    }, 'variety_name', 10000);
     
     console.log('[Pepper Cleanup] Found', allPepperVarieties.length, 'Pepper varieties to normalize');
     
     let updatedCount = 0;
+    let errorCount = 0;
     
     for (const variety of allPepperVarieties) {
-      // Determine correct heat level
-      const heatSubcatId = getHeatLevelSubcatId(variety.heat_scoville_min, variety.heat_scoville_max);
-      
-      // Get old subcategory name if exists (for traits derivation)
-      let oldSubcatName = null;
-      if (variety.plant_subcategory_id) {
-        const oldSubcat = allPepperSubcats.find(s => s.id === variety.plant_subcategory_id);
-        if (oldSubcat) oldSubcatName = oldSubcat.name;
-      }
-      
-      // Derive traits
-      let traits = variety.traits || {};
-      if (oldSubcatName) {
-        traits = deriveTraitsFromOldSubcat(oldSubcatName, traits);
-      }
-      
-      // Update variety
-      await base44.asServiceRole.entities.Variety.update(variety.id, {
-        plant_subcategory_id: heatSubcatId,
-        plant_subcategory_ids: [heatSubcatId],
-        traits: traits
-      });
-      
-      updatedCount++;
-      
-      if (updatedCount % 50 === 0) {
-        console.log('[Pepper Cleanup] Updated', updatedCount, '/', allPepperVarieties.length, 'varieties...');
+      try {
+        // Determine correct heat level
+        const heatSubcatId = getHeatLevelSubcatId(variety.heat_scoville_min, variety.heat_scoville_max);
+        
+        // Get old subcategory name if exists (for traits derivation)
+        let oldSubcatName = null;
+        if (variety.plant_subcategory_id) {
+          const oldSubcat = allPepperSubcats.find(s => s.id === variety.plant_subcategory_id);
+          if (oldSubcat) oldSubcatName = oldSubcat.name;
+        }
+        
+        // Derive traits (preserve existing, don't override)
+        let traits = variety.traits || {};
+        if (oldSubcatName) {
+          const derivedTraits = deriveTraitsFromOldSubcat(oldSubcatName, {});
+          // Only add derived traits if not already set
+          for (const [key, val] of Object.entries(derivedTraits)) {
+            if (!traits[key]) traits[key] = val;
+          }
+        }
+        
+        // Prepare update data
+        const updateData = {
+          plant_subcategory_id: heatSubcatId,
+          plant_subcategory_ids: [heatSubcatId]
+        };
+        
+        // Only include traits if we have some
+        if (Object.keys(traits).length > 0) {
+          updateData.traits = traits;
+        }
+        
+        // Migrate species from trait to field if needed
+        if (traits.species && !variety.species) {
+          updateData.species = traits.species;
+        }
+        
+        // Update variety
+        await base44.asServiceRole.entities.Variety.update(variety.id, updateData);
+        
+        updatedCount++;
+        
+        if (updatedCount % 50 === 0) {
+          console.log('[Pepper Cleanup] Updated', updatedCount, '/', allPepperVarieties.length, 'varieties...');
+        }
+      } catch (error) {
+        console.error('[Pepper Cleanup] Error updating variety', variety.id, ':', error);
+        errorCount++;
       }
     }
     
-    console.log('[Pepper Cleanup] Completed! Updated', updatedCount, 'varieties');
+    console.log('[Pepper Cleanup] Completed! Updated', updatedCount, 'varieties, errors:', errorCount);
     
     return Response.json({
       success: true,
       summary: {
         canonicalSubcatsCreated: Object.keys(heatSubcatMap).length,
         oldSubcatsDeactivated: deactivatedCount,
-        varietiesUpdated: updatedCount
+        varietiesUpdated: updatedCount,
+        errorsEncountered: errorCount
       }
     });
     
   } catch (error) {
     console.error('[Pepper Cleanup] Error:', error);
-    console.error('[Pepper Cleanup] Stack:', error.stack);
     return Response.json({ 
-      success: false,
       error: error.message,
-      details: error.stack 
-    }, { status: 200 });
+      stack: error.stack 
+    }, { status: 500 });
   }
 });

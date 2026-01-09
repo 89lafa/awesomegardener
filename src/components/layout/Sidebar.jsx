@@ -21,8 +21,7 @@ import {
   BookText,
   Bug,
   Apple,
-  Users,
-  FileText
+  Users
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -57,7 +56,7 @@ const getNavItems = (userRole, isEditor, user) => {
     items.push({ name: 'Users', icon: Users, page: 'Users' });
     items.push({ name: 'Data Import', icon: Database, page: 'AdminDataImport' });
     items.push({ name: 'Admin Maintenance', icon: Settings, page: 'AdminDataMaintenance' });
-    items.push({ name: 'Admin Log', icon: FileText, page: 'AdminLog' });
+    items.push({ name: 'Audit Log', icon: Shield, page: 'AdminAuditLog' });
   }
 
   items.push({ name: 'Settings', icon: Settings, page: 'Settings' });

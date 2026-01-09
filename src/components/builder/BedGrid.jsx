@@ -99,8 +99,8 @@ export default function BedGrid({
                       isSelected && 'ring-2 ring-emerald-500 ring-offset-1',
                       isHovered && !isSelected && 'ring-2 ring-gray-300',
                       paintMode && 'cursor-crosshair',
-                      companionStatus === 'bad' && 'ring-2 ring-red-500',
-                      companionStatus === 'good' && 'ring-2 ring-green-500'
+                      companionStatus === 'bad' && 'ring-4 ring-red-600',
+                      companionStatus === 'good' && 'ring-4 ring-blue-500'
                     )}
                   >
                     {plant && (

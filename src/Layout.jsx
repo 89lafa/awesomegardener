@@ -104,10 +104,7 @@ export default function Layout({ children, currentPageName }) {
       {!sidebarCollapsed && (
         <div 
           className="fixed inset-0 bg-black/50 z-40 lg:hidden"
-          onClick={() => {
-            setSidebarCollapsed(true);
-            localStorage.setItem('sidebar_collapsed', 'true');
-          }}
+          onClick={handleToggleSidebar}
         />
       )}
 

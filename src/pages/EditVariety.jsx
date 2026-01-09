@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useSearchParams, Link, useNavigate } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
 import { base44 } from '@/api/base44Client';
-import { ArrowLeft, Loader2, Save, Plus } from 'lucide-react';
+import { ArrowLeft, Loader2, Save } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -128,6 +128,7 @@ export default function EditVariety() {
         trellis_required: formData.trellis_required,
         container_friendly: formData.container_friendly,
         grower_notes: formData.grower_notes,
+        images: formData.images || [],
         heat_scoville_min: formData.heat_scoville_min ? parseFloat(formData.heat_scoville_min) : null,
         heat_scoville_max: formData.heat_scoville_max ? parseFloat(formData.heat_scoville_max) : null,
         affiliate_url: formData.affiliate_url || null,
@@ -135,9 +136,18 @@ export default function EditVariety() {
         seed_line_type: formData.seed_line_type || null,
         season_timing: formData.season_timing || null,
         is_ornamental: formData.is_ornamental || false,
-        is_organic: formData.is_organic || false,
-        images: formData.images || []
+        is_organic: formData.is_organic || false
       };
+
+      // Log the edit
+      await base44.entities.AuditLog.create({
+        action_type: 'variety_update',
+        entity_type: 'Variety',
+        entity_id: varietyId,
+        entity_name: formData.variety_name,
+        action_details: { fields_updated: Object.keys(updateData) },
+        user_role: user.role
+      });
 
       await base44.entities.Variety.update(varietyId, updateData);
 
@@ -500,8 +510,8 @@ export default function EditVariety() {
                 id="description"
                 value={formData.description || ''}
                 onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                placeholder="Detailed description of this variety..."
                 rows={3}
-                placeholder="Detailed variety description..."
                 className="mt-1"
               />
             </div>
@@ -512,50 +522,25 @@ export default function EditVariety() {
                 id="grower_notes"
                 value={formData.grower_notes || ''}
                 onChange={(e) => setFormData({ ...formData, grower_notes: e.target.value })}
+                placeholder="Community observations, tips, experiences..."
                 rows={4}
                 className="mt-1"
               />
             </div>
 
             <div>
-              <Label>Images</Label>
-              <div className="mt-2 space-y-2">
-                {(formData.images || []).map((url, idx) => (
-                  <div key={idx} className="flex items-center gap-2">
-                    <img src={url} alt="" className="w-16 h-16 object-cover rounded" />
-                    <Input value={url} readOnly className="flex-1" />
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="outline"
-                      onClick={() => {
-                        const newImages = formData.images.filter((_, i) => i !== idx);
-                        setFormData({ ...formData, images: newImages });
-                      }}
-                    >
-                      Remove
-                    </Button>
-                  </div>
-                ))}
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="outline"
-                  onClick={() => {
-                    const url = prompt('Enter image URL:');
-                    if (url) {
-                      setFormData({ 
-                        ...formData, 
-                        images: [...(formData.images || []), url] 
-                      });
-                    }
-                  }}
-                  className="gap-2"
-                >
-                  <Plus className="w-4 h-4" />
-                  Add Image URL
-                </Button>
-              </div>
+              <Label htmlFor="images">Image URLs (one per line)</Label>
+              <Textarea
+                id="images"
+                value={(formData.images || []).join('\n')}
+                onChange={(e) => {
+                  const urls = e.target.value.split('\n').map(u => u.trim()).filter(Boolean);
+                  setFormData({ ...formData, images: urls });
+                }}
+                placeholder="https://example.com/image1.jpg&#10;https://example.com/image2.jpg"
+                rows={4}
+                className="mt-1"
+              />
             </div>
 
             <div>

@@ -47,7 +47,7 @@ import Users from './pages/Users';
 import VarietyReviewQueue from './pages/VarietyReviewQueue';
 import ViewVariety from './pages/ViewVariety';
 import AdminDeduplicateVarieties from './pages/AdminDeduplicateVarieties';
-import AdminLog from './pages/AdminLog';
+import AdminAuditLog from './pages/AdminAuditLog';
 import __Layout from './Layout.jsx';
 
 
@@ -101,7 +101,7 @@ export const PAGES = {
     "VarietyReviewQueue": VarietyReviewQueue,
     "ViewVariety": ViewVariety,
     "AdminDeduplicateVarieties": AdminDeduplicateVarieties,
-    "AdminLog": AdminLog,
+    "AdminAuditLog": AdminAuditLog,
 }
 
 export const pagesConfig = {
