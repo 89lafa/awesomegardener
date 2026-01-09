@@ -552,8 +552,6 @@ function CalendarGridView({ tasks, crops, season, onTaskClick }) {
 
 // Timeline View - Horizontal bars
 function TimelineView({ tasks, crops, season, onTaskClick }) {
-  const [draggingTask, setDraggingTask] = useState(null);
-  
   if (!season) {
     return (
       <div className="p-8 text-center text-gray-500">
@@ -561,6 +559,8 @@ function TimelineView({ tasks, crops, season, onTaskClick }) {
       </div>
     );
   }
+  
+  const [draggingTask, setDraggingTask] = useState(null);
 
   const viewStart = startOfYear(new Date(season.year, 0, 1));
   const months = Array.from({ length: 12 }, (_, i) => addMonths(viewStart, i));
