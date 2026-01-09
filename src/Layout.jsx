@@ -114,7 +114,7 @@ export default function Layout({ children, currentPageName }) {
       {/* Sidebar - Mobile */}
       <div className={cn(
         "lg:hidden fixed inset-y-0 left-0 z-50 transform transition-transform duration-300",
-        !sidebarCollapsed ? "translate-x-0" : "-translate-x-full"
+        sidebarCollapsed ? "-translate-x-full" : "translate-x-0"
       )}>
         <Sidebar 
           collapsed={false} 

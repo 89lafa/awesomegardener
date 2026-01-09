@@ -207,9 +207,11 @@ Deno.serve(async (req) => {
     
   } catch (error) {
     console.error('[Pepper Cleanup] Error:', error);
+    console.error('[Pepper Cleanup] Stack:', error.stack);
     return Response.json({ 
+      success: false,
       error: error.message,
-      stack: error.stack 
-    }, { status: 500 });
+      details: error.stack 
+    }, { status: 200 });
   }
 });

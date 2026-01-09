@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useSearchParams, Link, useNavigate } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
 import { base44 } from '@/api/base44Client';
-import { ArrowLeft, Loader2, Save } from 'lucide-react';
+import { ArrowLeft, Loader2, Save, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -117,6 +117,7 @@ export default function EditVariety() {
       
       const updateData = {
         variety_name: formData.variety_name,
+        description: formData.description || null,
         plant_subcategory_id: primaryId || null,
         plant_subcategory_ids: selectedIds,
         days_to_maturity: formData.days_to_maturity ? parseFloat(formData.days_to_maturity) : null,
@@ -134,7 +135,8 @@ export default function EditVariety() {
         seed_line_type: formData.seed_line_type || null,
         season_timing: formData.season_timing || null,
         is_ornamental: formData.is_ornamental || false,
-        is_organic: formData.is_organic || false
+        is_organic: formData.is_organic || false,
+        images: formData.images || []
       };
 
       await base44.entities.Variety.update(varietyId, updateData);
@@ -493,6 +495,18 @@ export default function EditVariety() {
             </div>
 
             <div>
+              <Label htmlFor="description">Description</Label>
+              <Textarea
+                id="description"
+                value={formData.description || ''}
+                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                rows={3}
+                placeholder="Detailed variety description..."
+                className="mt-1"
+              />
+            </div>
+
+            <div>
               <Label htmlFor="grower_notes">Grower Notes</Label>
               <Textarea
                 id="grower_notes"
@@ -501,6 +515,47 @@ export default function EditVariety() {
                 rows={4}
                 className="mt-1"
               />
+            </div>
+
+            <div>
+              <Label>Images</Label>
+              <div className="mt-2 space-y-2">
+                {(formData.images || []).map((url, idx) => (
+                  <div key={idx} className="flex items-center gap-2">
+                    <img src={url} alt="" className="w-16 h-16 object-cover rounded" />
+                    <Input value={url} readOnly className="flex-1" />
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      onClick={() => {
+                        const newImages = formData.images.filter((_, i) => i !== idx);
+                        setFormData({ ...formData, images: newImages });
+                      }}
+                    >
+                      Remove
+                    </Button>
+                  </div>
+                ))}
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={() => {
+                    const url = prompt('Enter image URL:');
+                    if (url) {
+                      setFormData({ 
+                        ...formData, 
+                        images: [...(formData.images || []), url] 
+                      });
+                    }
+                  }}
+                  className="gap-2"
+                >
+                  <Plus className="w-4 h-4" />
+                  Add Image URL
+                </Button>
+              </div>
             </div>
 
             <div>
