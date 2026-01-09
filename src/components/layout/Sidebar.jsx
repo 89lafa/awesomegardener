@@ -112,23 +112,14 @@ export default function Sidebar({ collapsed, onToggle, currentPage, user, isMobi
 
       {/* Collapse Toggle */}
       <div className="p-3 border-t border-white/10">
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={(e) => {
-            e.stopPropagation();
-            e.preventDefault();
-            onToggle();
-          }}
-          onPointerDown={(e) => {
-            e.stopPropagation();
-          }}
-          className="w-full justify-start gap-2 text-white/70 hover:text-white hover:bg-white/5"
-          style={{ pointerEvents: 'auto', zIndex: 100 }}
+        <button
+          type="button"
+          onClick={onToggle}
+          className="w-full flex items-center justify-start gap-2 px-3 py-2 rounded-lg text-white/70 hover:text-white hover:bg-white/5 transition-colors"
         >
           <ChevronLeft className="w-5 h-5" />
           <span className="text-sm">{isMobile ? 'Close' : 'Collapse'}</span>
-        </Button>
+        </button>
       </div>
 
       {/* PepperSeeds Attribution */}
