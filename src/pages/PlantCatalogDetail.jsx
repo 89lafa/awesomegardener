@@ -42,6 +42,10 @@ export default function PlantCatalogDetail() {
   const [searchParams] = useSearchParams();
   const plantTypeId = searchParams.get('id');
   
+  const SQUASH_UMBRELLA_ID = '69594ee83e086041528f2b15';
+  const SQUASH_CANONICAL_IDS = ['69594a9f1243f13d1245edfd', '69594a9f1243f13d1245edfe', '69594a9f1243f13d1245edff', '69575e5ecdbb16ee56fa7508'];
+  const isSquashUmbrella = plantTypeId === SQUASH_UMBRELLA_ID;
+  
   const [plantType, setPlantType] = useState(null);
   const [varieties, setVarieties] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -122,10 +126,17 @@ export default function PlantCatalogDetail() {
     }
     
     try {
-      let vars = await base44.entities.Variety.filter({ 
-        plant_type_id: plantTypeId,
-        status: 'active'
-      }, 'variety_name', 1000);
+      // For Squash umbrella, load from canonical types
+      let vars;
+      if (isSquashUmbrella) {
+        vars = await base44.entities.Variety.filter({ status: 'active' }, 'variety_name', 1000);
+        vars = vars.filter(v => SQUASH_CANONICAL_IDS.includes(v.plant_type_id));
+      } else {
+        vars = await base44.entities.Variety.filter({ 
+          plant_type_id: plantTypeId,
+          status: 'active'
+        }, 'variety_name', 1000);
+      }
       
       // Load subcategory mappings
       const varietyIds = vars.map(v => v.id);
@@ -174,11 +185,18 @@ export default function PlantCatalogDetail() {
       console.log('Loaded plant type:', type);
       setPlantType(type);
 
-      // Load ACTIVE subcategories for this plant type
-      const subcats = await base44.entities.PlantSubCategory.filter({ 
-        plant_type_id: plantTypeId,
-        is_active: true 
-      }, 'sort_order');
+      // Load ACTIVE subcategories
+      let subcats;
+      if (isSquashUmbrella) {
+        // Load subcategories for all canonical squash types
+        const allSubcats = await base44.entities.PlantSubCategory.filter({ is_active: true }, 'sort_order');
+        subcats = allSubcats.filter(sc => SQUASH_CANONICAL_IDS.includes(sc.plant_type_id));
+      } else {
+        subcats = await base44.entities.PlantSubCategory.filter({ 
+          plant_type_id: plantTypeId,
+          is_active: true 
+        }, 'sort_order');
+      }
       console.log('[SUBCATEGORY] Found active subcategories:', subcats.length);
       
       // Deduplicate subcategories by name (in case of duplicates)
@@ -192,13 +210,20 @@ export default function PlantCatalogDetail() {
       }
       setSubCategories(uniqueSubcats);
 
-      // Load varieties - try Variety table first (primary source), then PlantProfile
+      // Load varieties
       console.log('[VARIETY DEBUG] Attempting to load varieties for plant_type_id:', plantTypeId);
       
-      let vars = await base44.entities.Variety.filter({ 
-        plant_type_id: plantTypeId,
-        status: 'active'
-      }, 'variety_name');
+      let vars;
+      if (isSquashUmbrella) {
+        // Load all varieties, then filter client-side
+        const allVars = await base44.entities.Variety.filter({ status: 'active' }, 'variety_name', 1000);
+        vars = allVars.filter(v => SQUASH_CANONICAL_IDS.includes(v.plant_type_id));
+      } else {
+        vars = await base44.entities.Variety.filter({ 
+          plant_type_id: plantTypeId,
+          status: 'active'
+        }, 'variety_name');
+      }
       
       console.log('[VARIETY DEBUG] Found Variety records:', vars.length);
       
@@ -582,13 +607,6 @@ export default function PlantCatalogDetail() {
                     <List className="w-4 h-4" />
                   </Button>
                 </div>
-                <Button 
-                  onClick={() => setShowAddVariety(true)}
-                  className="bg-emerald-600 hover:bg-emerald-700 gap-2"
-                >
-                  <Plus className="w-4 h-4" />
-                  {user?.role === 'admin' || user?.role === 'editor' ? 'Add Variety' : 'Suggest Variety'}
-                </Button>
               </div>
             </div>
           </div>
