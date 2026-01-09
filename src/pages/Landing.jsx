@@ -64,14 +64,9 @@ export default function Landing() {
               </div>
               <span className="font-bold text-xl text-gray-900">AwesomeGardener</span>
             </div>
-            <div className="flex items-center gap-4">
-              <Link to={createPageUrl('Community')}>
-                <Button variant="ghost" className="text-gray-600">Browse Gardens</Button>
-              </Link>
-              <Button onClick={handleLogin} className="bg-emerald-600 hover:bg-emerald-700">
-                Sign In
-              </Button>
-            </div>
+            <Button onClick={handleLogin} className="bg-emerald-600 hover:bg-emerald-700">
+              Sign In
+            </Button>
           </div>
         </div>
       </header>

@@ -14,8 +14,7 @@ import {
   Settings,
   Menu,
   PanelLeftClose,
-  PanelLeft,
-  Sprout
+  PanelLeft
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -114,13 +113,7 @@ export default function TopBar({ user, onMobileMenuToggle, onSidebarToggle, side
             <DropdownMenuItem asChild>
               <Link to={createPageUrl('Calendar') + '?action=new'} className="flex items-center gap-2">
                 <Calendar className="w-4 h-4" />
-                Add to Calendar
-              </Link>
-            </DropdownMenuItem>
-            <DropdownMenuItem asChild>
-              <Link to={createPageUrl('PlantCatalog')} className="flex items-center gap-2">
-                <Sprout className="w-4 h-4" />
-                Browse Catalog
+                Add to Calendar Planner
               </Link>
             </DropdownMenuItem>
           </DropdownMenuContent>

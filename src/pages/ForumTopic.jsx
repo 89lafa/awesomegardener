@@ -21,6 +21,7 @@ import { toast } from 'sonner';
 import { format, formatDistanceToNow } from 'date-fns';
 import { cn } from '@/lib/utils';
 import ReactMarkdown from 'react-markdown';
+import PostCard from '@/components/forum/PostCard';
 
 export default function ForumTopic() {
   const [searchParams] = useSearchParams();
@@ -239,57 +240,30 @@ export default function ForumTopic() {
           {posts.length} {posts.length === 1 ? 'Reply' : 'Replies'}
         </h2>
         
-        {posts.map((post) => {
-          const userVote = getUserVote('post', post.id);
-          const postComments = comments.filter(c => c.post_id === post.id && !c.parent_comment_id);
-          
-          return (
-            <Card key={post.id}>
-              <CardContent className="p-6">
-                <div className="flex gap-4">
-                  <div className="flex flex-col items-center gap-1">
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => handleVote('post', post.id, 1)}
-                      className={cn(userVote === 1 && "text-emerald-600")}
-                    >
-                      <ThumbsUp className="w-4 h-4" />
-                    </Button>
-                    <span className="text-sm font-medium">{post.like_count || 0}</span>
-                  </div>
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-3 text-sm text-gray-500">
-                      <span className="font-medium text-gray-900">{post.created_by}</span>
-                      <span>•</span>
-                      <span>{formatDistanceToNow(new Date(post.created_date), { addSuffix: true })}</span>
-                    </div>
-                    <div className="prose prose-sm max-w-none">
-                      <ReactMarkdown>{post.body}</ReactMarkdown>
-                    </div>
-                    {post.images && post.images.length > 0 && (
-                      <div className="grid grid-cols-2 gap-2 mt-4">
-                        {post.images.map((url, idx) => (
-                          <img key={idx} src={url} alt="Post attachment" className="rounded-lg" />
-                        ))}
-                      </div>
-                    )}
-                    <div className="flex items-center gap-2 mt-4">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => setReplyingTo(post.id)}
-                      >
-                        <MessageCircle className="w-4 h-4 mr-2" />
-                        Reply
-                      </Button>
-                    </div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          );
-        })}
+        {posts.map((post) => (
+          <PostCard
+            key={post.id}
+            post={post}
+            user={user}
+            userVote={getUserVote('post', post.id)}
+            onVote={(value) => handleVote('post', post.id, value)}
+            onDelete={async (postId) => {
+              await base44.entities.ForumPost.update(postId, { deleted_at: new Date().toISOString() });
+              setPosts(posts.filter(p => p.id !== postId));
+              
+              // Log the deletion
+              await base44.entities.AuditLog.create({
+                action_type: 'comment_delete',
+                entity_type: 'ForumPost',
+                entity_id: postId,
+                entity_name: `Post in ${topic.title}`,
+                user_role: user.role
+              });
+              
+              toast.success('Post deleted');
+            }}
+          />
+        ))}
       </div>
 
       {/* New Post Form */}

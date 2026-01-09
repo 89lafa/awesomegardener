@@ -10,7 +10,8 @@ import {
   Download,
   Upload,
   Users,
-  Wrench
+  Wrench,
+  Sprout
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
@@ -47,7 +48,9 @@ export default function Settings() {
     first_frost_date: '',
     first_frost_override: '',
     units: 'imperial',
-    week_start: 'sunday'
+    week_start: 'sunday',
+    community_bio: '',
+    community_interests: ''
   });
 
   useEffect(() => {
@@ -71,7 +74,9 @@ export default function Settings() {
         first_frost_date: userData.first_frost_date || '',
         first_frost_override: userData.first_frost_override || '',
         units: userData.units || 'imperial',
-        week_start: userData.week_start || 'sunday'
+        week_start: userData.week_start || 'sunday',
+        community_bio: userData.community_bio || '',
+        community_interests: userData.community_interests || ''
       });
     } catch (error) {
       console.error('Error loading user:', error);
@@ -95,7 +100,9 @@ export default function Settings() {
         first_frost_date: formData.first_frost_date,
         first_frost_override: formData.first_frost_override,
         units: formData.units,
-        week_start: formData.week_start
+        week_start: formData.week_start,
+        community_bio: formData.community_bio,
+        community_interests: formData.community_interests
       });
       toast.success('Settings saved!');
     } catch (error) {
@@ -166,6 +173,10 @@ export default function Settings() {
           <TabsTrigger value="preferences" className="gap-2">
             <SettingsIcon className="w-4 h-4" />
             Preferences
+          </TabsTrigger>
+          <TabsTrigger value="community" className="gap-2">
+            <User className="w-4 h-4" />
+            Community
           </TabsTrigger>
           <TabsTrigger value="data" className="gap-2">
             <Download className="w-4 h-4" />
@@ -296,6 +307,64 @@ export default function Settings() {
                       className="mt-2"
                     />
                   </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="community" className="mt-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>Community Board Preferences</CardTitle>
+              <CardDescription>Customize your community profile and signature</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div>
+                <Label htmlFor="community_bio">Bio</Label>
+                <Input
+                  id="community_bio"
+                  placeholder="Tell the community about yourself..."
+                  value={formData.community_bio || ''}
+                  onChange={(e) => setFormData({ ...formData, community_bio: e.target.value })}
+                  className="mt-2"
+                  maxLength={100}
+                />
+                <p className="text-xs text-gray-500 mt-1">Shows in your forum signature</p>
+              </div>
+              <div>
+                <Label htmlFor="community_interests">Gardening Interests</Label>
+                <Input
+                  id="community_interests"
+                  placeholder="e.g., Hot peppers, Heirloom tomatoes, Vertical gardening"
+                  value={formData.community_interests || ''}
+                  onChange={(e) => setFormData({ ...formData, community_interests: e.target.value })}
+                  className="mt-2"
+                  maxLength={80}
+                />
+                <p className="text-xs text-gray-500 mt-1">Displayed in your posts</p>
+              </div>
+              <div className="p-4 bg-gray-50 rounded-lg border">
+                <p className="text-sm font-medium text-gray-700 mb-2">Preview Signature:</p>
+                <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-gray-600">
+                  {formData.usda_zone && (
+                    <div className="flex items-center gap-1">
+                      <MapPin className="w-3 h-3" />
+                      <span>Zone {formData.usda_zone}</span>
+                    </div>
+                  )}
+                  {formData.location_city && formData.location_state && (
+                    <div className="flex items-center gap-1">
+                      <MapPin className="w-3 h-3" />
+                      <span>{formData.location_city}, {formData.location_state}</span>
+                    </div>
+                  )}
+                  {formData.community_interests && (
+                    <div className="flex items-center gap-1">
+                      <Sprout className="w-3 h-3" />
+                      <span className="italic">{formData.community_interests}</span>
+                    </div>
+                  )}
                 </div>
               </div>
             </CardContent>
