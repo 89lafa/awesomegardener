@@ -101,17 +101,23 @@ export default function AddCropModal({ open, onOpenChange, seasonId, onSuccess }
     const variety = varieties.find(v => v.id === varietyId);
     if (!variety) return;
     
-    // Get default timing from variety
-    const startIndoorsWeeks = variety.start_indoors_weeks || 6;
-    const transplantWeeks = variety.transplant_weeks_after_last_frost_min || 2;
+    // Get default timing from variety (support ranges)
+    const startIndoorsWeeksMin = variety.start_indoors_weeks_min || variety.start_indoors_weeks || 6;
+    const startIndoorsWeeksMax = variety.start_indoors_weeks_max || variety.start_indoors_weeks || startIndoorsWeeksMin;
+    const transplantWeeksMin = variety.transplant_weeks_after_last_frost_min || 2;
+    const transplantWeeksMax = variety.transplant_weeks_after_last_frost_max || transplantWeeksMin;
+    
+    // Use midpoint for defaults
+    const startIndoorsWeeks = Math.round((startIndoorsWeeksMin + startIndoorsWeeksMax) / 2);
+    const transplantWeeks = Math.round((transplantWeeksMin + transplantWeeksMax) / 2);
     
     setFormData({ 
       ...formData, 
       variety_id: varietyId,
-      dtm_days: variety.days_to_maturity || 75,
+      dtm_days: variety.days_to_maturity || variety.days_to_maturity_min || 75,
       label: variety.variety_name,
-      seed_offset_days: -(startIndoorsWeeks * 7), // Convert weeks to days, negative = before frost
-      transplant_offset_days: transplantWeeks * 7 // Positive = after frost
+      seed_offset_days: -(startIndoorsWeeks * 7),
+      transplant_offset_days: transplantWeeks * 7
     });
   };
   
@@ -159,28 +165,32 @@ export default function AddCropModal({ open, onOpenChange, seasonId, onSuccess }
     const color = cropPlan.color_hex;
     
     if (cropPlan.planting_method === 'transplant') {
-      // Seeding (indoors) - X weeks BEFORE last frost
-      const seedDate = addDays(lastFrostDate, cropPlan.seed_offset_days);
+      // Seeding (indoors) - Show as range (default ±7 days)
+      const seedDateMid = addDays(lastFrostDate, cropPlan.seed_offset_days);
+      const seedStart = addDays(seedDateMid, -7);
+      const seedEnd = addDays(seedDateMid, 7);
       tasks.push({
         garden_season_id: seasonId,
         crop_plan_id: cropPlan.id,
         task_type: 'seed',
         title: `Start Seeds ${cropPlan.label}`,
-        start_date: seedDate.toISOString().split('T')[0],
-        end_date: seedDate.toISOString().split('T')[0],
+        start_date: seedStart.toISOString().split('T')[0],
+        end_date: seedEnd.toISOString().split('T')[0],
         color_hex: color,
         how_to_content: '# Indoor Seeding\n\nStart seeds indoors:\n- Use seed starting mix\n- Keep warm and moist\n- Provide light once germinated'
       });
       
-      // Transplant - X days AFTER last frost
-      const transplantDate = addDays(lastFrostDate, cropPlan.transplant_offset_days);
+      // Transplant - Show as range (default ±7 days)
+      const transplantDateMid = addDays(lastFrostDate, cropPlan.transplant_offset_days);
+      const transplantStart = addDays(transplantDateMid, -7);
+      const transplantEnd = addDays(transplantDateMid, 7);
       tasks.push({
         garden_season_id: seasonId,
         crop_plan_id: cropPlan.id,
         task_type: 'transplant',
         title: `Transplant ${cropPlan.label}`,
-        start_date: transplantDate.toISOString().split('T')[0],
-        end_date: transplantDate.toISOString().split('T')[0],
+        start_date: transplantStart.toISOString().split('T')[0],
+        end_date: transplantEnd.toISOString().split('T')[0],
         color_hex: color,
         how_to_content: '# Transplanting\n\nTransplant seedlings:\n- Harden off for 7-10 days\n- Plant on overcast day\n- Water well after planting'
       });
@@ -199,16 +209,18 @@ export default function AddCropModal({ open, onOpenChange, seasonId, onSuccess }
         how_to_content: '# Harvesting\n\nHarvest when ready:\n- Check maturity indicators\n- Harvest in morning\n- Handle gently'
       });
     } else {
-      // Direct Seed
-      const directSeedDate = addDays(lastFrostDate, cropPlan.direct_seed_offset_days);
+      // Direct Seed - Show as range (default ±7 days)
+      const directSeedDateMid = addDays(lastFrostDate, cropPlan.direct_seed_offset_days);
+      const directSeedStart = addDays(directSeedDateMid, -7);
+      const directSeedEnd = addDays(directSeedDateMid, 7);
       
       tasks.push({
         garden_season_id: seasonId,
         crop_plan_id: cropPlan.id,
         task_type: 'direct_seed',
         title: `Direct Seed ${cropPlan.label}`,
-        start_date: directSeedDate.toISOString().split('T')[0],
-        end_date: directSeedDate.toISOString().split('T')[0],
+        start_date: directSeedStart.toISOString().split('T')[0],
+        end_date: directSeedEnd.toISOString().split('T')[0],
         color_hex: color,
         how_to_content: '# Direct Seeding\n\nSow seeds directly:\n- Check soil temperature\n- Follow spacing guidelines\n- Water gently'
       });
