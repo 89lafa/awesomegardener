@@ -73,7 +73,12 @@ export default function PlantCatalogDetail() {
     trellisRequired: null,
     hasImage: null,
     seedTypes: [],
-    organicOnly: false
+    organicOnly: false,
+    speciesFilter: [],
+    ornamentalOnly: false,
+    seedLineTypes: [],
+    organicSeedsOnly: false,
+    seasonTimings: []
   });
   const [currentPage, setCurrentPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
@@ -247,11 +252,16 @@ export default function PlantCatalogDetail() {
       colors: [...new Set(varieties.filter(v => v.fruit_color || v.pod_color).map(v => v.fruit_color || v.pod_color))],
       species: [...new Set(varieties.filter(v => v.species).map(v => v.species))],
       seedTypes: Array.from(seedTypeSet),
+      speciesOptions: [...new Set(varieties.filter(v => v.species).map(v => v.species))],
+      seedLineTypes: [...new Set(varieties.filter(v => v.seed_line_type).map(v => v.seed_line_type))],
+      seasonTimings: [...new Set(varieties.filter(v => v.season_timing).map(v => v.season_timing))],
       booleans: {
         containerFriendly: varieties.some(v => v.container_friendly),
         trellisRequired: varieties.some(v => v.trellis_required),
         hasImage: varieties.some(v => v.images?.length > 0 || v.image_url),
-        organic: varieties.some(v => v.traits?.organic_seed === true)
+        organic: varieties.some(v => v.traits?.organic_seed === true),
+        ornamental: varieties.some(v => v.is_ornamental === true),
+        organicSeeds: varieties.some(v => v.is_organic === true)
       }
     };
     return available;
@@ -271,14 +281,17 @@ export default function PlantCatalogDetail() {
       );
     }
 
-    // Sub-category filter (supports multi-subcategory)
+    // Sub-category filter (supports both plant_subcategory_ids array and single plant_subcategory_id)
     if (selectedSubCategories.length > 0) {
       filtered = filtered.filter(v => {
         if (selectedSubCategories.includes('uncategorized') && !v.plant_subcategory_id && (!v.plant_subcategory_ids || v.plant_subcategory_ids.length === 0)) {
           return true;
         }
-        const allSubcats = v.plant_subcategory_ids || (v.plant_subcategory_id ? [v.plant_subcategory_id] : []);
-        return selectedSubCategories.some(selectedId => allSubcats.includes(selectedId));
+        // Check both plant_subcategory_ids array AND plant_subcategory_id for backwards compatibility
+        const subcatIds = v.plant_subcategory_ids || [];
+        const hasInArray = selectedSubCategories.some(selectedId => subcatIds.includes(selectedId));
+        const hasAsSingle = v.plant_subcategory_id && selectedSubCategories.includes(v.plant_subcategory_id);
+        return hasInArray || hasAsSingle;
       });
     }
 
@@ -350,6 +363,31 @@ export default function PlantCatalogDetail() {
       filtered = filtered.filter(v => v.traits?.organic_seed === true);
     }
 
+    // Species filter
+    if (filters.speciesFilter.length > 0) {
+      filtered = filtered.filter(v => v.species && filters.speciesFilter.includes(v.species));
+    }
+
+    // Ornamental filter
+    if (filters.ornamentalOnly) {
+      filtered = filtered.filter(v => v.is_ornamental === true);
+    }
+
+    // Seed line type filter
+    if (filters.seedLineTypes.length > 0) {
+      filtered = filtered.filter(v => v.seed_line_type && filters.seedLineTypes.includes(v.seed_line_type));
+    }
+
+    // Organic seeds filter
+    if (filters.organicSeedsOnly) {
+      filtered = filtered.filter(v => v.is_organic === true);
+    }
+
+    // Season timing filter
+    if (filters.seasonTimings.length > 0) {
+      filtered = filtered.filter(v => v.season_timing && filters.seasonTimings.includes(v.season_timing));
+    }
+
     // Boolean filters
     if (filters.containerFriendly === true) {
       filtered = filtered.filter(v => v.container_friendly === true);
@@ -386,6 +424,14 @@ export default function PlantCatalogDetail() {
         case 'heat_desc':
           return (b.heat_scoville_min || b.heat_scoville_max || 0) - 
                  (a.heat_scoville_min || a.heat_scoville_max || 0);
+        case 'species_asc':
+          return (a.species || 'zzz').localeCompare(b.species || 'zzz');
+        case 'species_desc':
+          return (b.species || '').localeCompare(a.species || '');
+        case 'seed_line_asc':
+          return (a.seed_line_type || 'zzz').localeCompare(b.seed_line_type || 'zzz');
+        case 'seed_line_desc':
+          return (b.seed_line_type || '').localeCompare(a.seed_line_type || '');
         default:
           return 0;
       }
@@ -412,7 +458,12 @@ export default function PlantCatalogDetail() {
       trellisRequired: null,
       hasImage: null,
       seedTypes: [],
-      organicOnly: false
+      organicOnly: false,
+      speciesFilter: [],
+      ornamentalOnly: false,
+      seedLineTypes: [],
+      organicSeedsOnly: false,
+      seasonTimings: []
     });
     setSortBy('name_asc');
     setCurrentPage(1);
@@ -433,6 +484,11 @@ export default function PlantCatalogDetail() {
     if (filters.hasImage) count++;
     if (filters.seedTypes.length > 0) count++;
     if (filters.organicOnly) count++;
+    if (filters.speciesFilter.length > 0) count++;
+    if (filters.ornamentalOnly) count++;
+    if (filters.seedLineTypes.length > 0) count++;
+    if (filters.organicSeedsOnly) count++;
+    if (filters.seasonTimings.length > 0) count++;
     return count;
   };
 
@@ -602,9 +658,11 @@ export default function PlantCatalogDetail() {
                 <SelectContent>
                   <SelectItem value={null}>All ({varieties.length})</SelectItem>
                   {subCategories.map((subcat) => {
+                    // Count varieties that have this subcategory in either plant_subcategory_ids OR plant_subcategory_id
                     const count = varieties.filter(v => {
-                      const allSubcats = v.plant_subcategory_ids || (v.plant_subcategory_id ? [v.plant_subcategory_id] : []);
-                      return allSubcats.includes(subcat.id);
+                      const hasInArray = v.plant_subcategory_ids && v.plant_subcategory_ids.includes(subcat.id);
+                      const hasAsSingle = v.plant_subcategory_id === subcat.id;
+                      return hasInArray || hasAsSingle;
                     }).length;
                     return (
                       <SelectItem key={subcat.id} value={subcat.id}>
@@ -641,7 +699,11 @@ export default function PlantCatalogDetail() {
                       <SelectItem value="heat_desc">Heat: High → Low</SelectItem>
                     </>
                   )}
-                </SelectContent>
+                  <SelectItem value="species_asc">Species: A → Z</SelectItem>
+                  <SelectItem value="species_desc">Species: Z → A</SelectItem>
+                  <SelectItem value="seed_line_asc">Seed Line: A → Z</SelectItem>
+                  <SelectItem value="seed_line_desc">Seed Line: Z → A</SelectItem>
+                  </SelectContent>
               </Select>
               <Button
                 variant="outline"
@@ -690,6 +752,9 @@ export default function PlantCatalogDetail() {
                     { id: 'sun', label: 'Sun' },
                     { id: 'water', label: 'Water' },
                     { id: 'color', label: 'Color' },
+                    { id: 'species', label: 'Species' },
+                    { id: 'seed_line', label: 'Seed Line' },
+                    { id: 'season', label: 'Season' },
                     { id: 'traits', label: 'Traits' },
                     { id: 'actions', label: 'Actions' }
                   ].map(col => (

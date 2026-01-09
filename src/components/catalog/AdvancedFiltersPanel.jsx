@@ -248,6 +248,24 @@ export default function AdvancedFiltersPanel({
                   <span className="text-sm">Organic Seeds Only</span>
                 </label>
               )}
+              {availableFilters.booleans.ornamental && (
+                <label className="flex items-center gap-2">
+                  <Checkbox
+                    checked={filters.ornamentalOnly === true}
+                    onCheckedChange={() => handleBooleanToggle('ornamentalOnly')}
+                  />
+                  <span className="text-sm">Ornamental Only</span>
+                </label>
+              )}
+              {availableFilters.booleans.organicSeeds && (
+                <label className="flex items-center gap-2">
+                  <Checkbox
+                    checked={filters.organicSeedsOnly === true}
+                    onCheckedChange={() => handleBooleanToggle('organicSeedsOnly')}
+                  />
+                  <span className="text-sm">Certified Organic Seeds</span>
+                </label>
+              )}
             </div>
           )}
 
@@ -270,6 +288,60 @@ export default function AdvancedFiltersPanel({
                     </label>
                   );
                 })}
+              </div>
+            </div>
+          )}
+
+          {/* Species Filter */}
+          {availableFilters.speciesOptions?.length > 0 && (
+            <div className="space-y-2 border-t pt-4">
+              <Label className="font-semibold">Species</Label>
+              <div className="space-y-2">
+                {availableFilters.speciesOptions.map((species) => (
+                  <label key={species} className="flex items-center gap-2">
+                    <Checkbox
+                      checked={(filters.speciesFilter || []).includes(species)}
+                      onCheckedChange={(checked) => handleMultiSelect('speciesFilter', species, checked)}
+                    />
+                    <span className="text-sm capitalize italic">{species}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Seed Line Type Filter */}
+          {availableFilters.seedLineTypes?.length > 0 && (
+            <div className="space-y-2 border-t pt-4">
+              <Label className="font-semibold">Seed Line Type</Label>
+              <div className="space-y-2">
+                {availableFilters.seedLineTypes.map((type) => (
+                  <label key={type} className="flex items-center gap-2">
+                    <Checkbox
+                      checked={(filters.seedLineTypes || []).includes(type)}
+                      onCheckedChange={(checked) => handleMultiSelect('seedLineTypes', type, checked)}
+                    />
+                    <span className="text-sm capitalize">{type.replace(/_/g, ' ')}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Season Timing Filter */}
+          {availableFilters.seasonTimings?.length > 0 && (
+            <div className="space-y-2 border-t pt-4">
+              <Label className="font-semibold">Season Timing</Label>
+              <div className="space-y-2">
+                {availableFilters.seasonTimings.map((timing) => (
+                  <label key={timing} className="flex items-center gap-2">
+                    <Checkbox
+                      checked={(filters.seasonTimings || []).includes(timing)}
+                      onCheckedChange={(checked) => handleMultiSelect('seasonTimings', timing, checked)}
+                    />
+                    <span className="text-sm capitalize">{timing}</span>
+                  </label>
+                ))}
               </div>
             </div>
           )}
