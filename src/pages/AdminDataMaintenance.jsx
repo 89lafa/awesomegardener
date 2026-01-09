@@ -304,6 +304,12 @@ export default function AdminDataMaintenance() {
               Deduplicate Varieties
             </Button>
           </Link>
+          <Link to={createPageUrl('AdminDataCleanup')}>
+            <Button variant="outline" className="w-full justify-start gap-2">
+              <AlertCircle className="w-4 h-4" />
+              Data Cleanup
+            </Button>
+          </Link>
         </CardContent>
       </Card>
 

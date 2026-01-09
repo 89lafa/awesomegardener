@@ -8,8 +8,12 @@ import {
   Save,
   Loader2,
   Download,
-  Upload
+  Upload,
+  Users,
+  Wrench
 } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { createPageUrl } from '@/utils';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -358,6 +362,35 @@ export default function Settings() {
               </div>
             </CardContent>
           </Card>
+          
+          {user?.role === 'admin' && (
+            <Card className="mt-6">
+              <CardHeader>
+                <CardTitle>Admin Tools</CardTitle>
+                <CardDescription>Administrative functions</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <Link to={createPageUrl('AdminDataImport')}>
+                  <Button variant="outline" className="w-full justify-start gap-2">
+                    <Upload className="w-4 h-4" />
+                    Data Import
+                  </Button>
+                </Link>
+                <Link to={createPageUrl('AdminDataMaintenance')}>
+                  <Button variant="outline" className="w-full justify-start gap-2">
+                    <Wrench className="w-4 h-4" />
+                    Admin Maintenance
+                  </Button>
+                </Link>
+                <Link to={createPageUrl('Users')}>
+                  <Button variant="outline" className="w-full justify-start gap-2">
+                    <Users className="w-4 h-4" />
+                    Manage Users
+                  </Button>
+                </Link>
+              </CardContent>
+            </Card>
+          )}
         </TabsContent>
       </Tabs>
 
