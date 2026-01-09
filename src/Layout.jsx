@@ -120,28 +120,32 @@ export default function Layout({ children, currentPageName }) {
         />
       </div>
 
-      {/* Mobile Menu - Backdrop + Sidebar */}
+      {/* Mobile Backdrop Overlay - CRITICAL: Must be BELOW sidebar in z-index */}
       {mobileMenuOpen && (
-        <>
-          {/* Backdrop */}
-          <div 
-            className="fixed inset-0 bg-black/50 z-[100] lg:hidden"
-            onClick={closeMobileMenu}
-            onTouchEnd={closeMobileMenu}
-          />
-          
-          {/* Sidebar */}
-          <div className="fixed inset-y-0 left-0 w-64 z-[101] lg:hidden">
-            <Sidebar 
-              collapsed={false} 
-              onToggle={closeMobileMenu}
-              currentPage={currentPageName}
-              user={user}
-              isMobile={true}
-            />
-          </div>
-        </>
+        <div 
+          className="fixed inset-0 bg-black/50 lg:hidden"
+          style={{ zIndex: 45 }}
+          onClick={closeMobileMenu}
+          onTouchEnd={closeMobileMenu}
+        />
       )}
+
+      {/* Mobile Sidebar - CRITICAL: Must be ABOVE overlay */}
+      <div 
+        className={cn(
+          "fixed inset-y-0 left-0 w-64 lg:hidden transition-transform duration-300 ease-in-out",
+          mobileMenuOpen ? "translate-x-0" : "-translate-x-full"
+        )}
+        style={{ zIndex: 50 }}
+      >
+        <Sidebar 
+          collapsed={false} 
+          onToggle={closeMobileMenu}
+          currentPage={currentPageName}
+          user={user}
+          isMobile={true}
+        />
+      </div>
 
       {/* Main Content */}
       <div className={cn(

@@ -73,8 +73,8 @@ export default function Sidebar({ collapsed, onToggle, currentPage, user, isMobi
   return (
     <aside className={cn(
       "h-full bg-[#1a2e12] text-white flex flex-col",
-      isMobile ? "w-64" : (effectiveCollapsed ? "w-16" : "w-64"),
-      !isMobile && "fixed left-0 top-0 z-50"
+      effectiveCollapsed ? "w-16" : "w-64",
+      isMobile ? "w-64" : "fixed left-0 top-0"
     )}>
       {/* Logo */}
       <div className="p-4 border-b border-white/10 flex items-center gap-3">
@@ -115,11 +115,18 @@ export default function Sidebar({ collapsed, onToggle, currentPage, user, isMobi
       <div className="p-3 border-t border-white/10">
         <button
           type="button"
-          onClick={onToggle}
-          className="w-full flex items-center justify-start gap-2 px-3 py-2 rounded-lg text-white/70 hover:text-white hover:bg-white/5 transition-colors"
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            onToggle();
+          }}
+          onTouchStart={(e) => {
+            e.stopPropagation();
+          }}
+          className="w-full flex items-center justify-start gap-2 px-3 py-2 rounded-lg text-white/70 hover:text-white hover:bg-white/5 transition-colors touch-manipulation"
         >
           <ChevronLeft className="w-5 h-5" />
-          <span className="text-sm">{isMobile ? 'Close' : 'Collapse'}</span>
+          <span className="text-sm font-medium">{isMobile ? 'Close Menu' : 'Collapse'}</span>
         </button>
       </div>
 
