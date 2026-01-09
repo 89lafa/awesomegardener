@@ -281,25 +281,24 @@ export default function PlantCatalogDetail() {
       );
     }
 
-    // Sub-category filter (supports both plant_subcategory_ids array and single plant_subcategory_id)
+    // Sub-category filter - FIXED to support multi-subcategory correctly
     if (selectedSubCategories.length > 0) {
       filtered = filtered.filter(v => {
-        // Handle Uncategorized
-        if (selectedSubCategories.includes('uncategorized')) {
-          const hasNoSubcat = !v.plant_subcategory_id && (!v.plant_subcategory_ids || v.plant_subcategory_ids.length === 0);
-          // Also check if assigned subcats are all inactive
-          if (hasNoSubcat) return true;
+        // Get effective subcategory IDs (union of both fields)
+        let effectiveIds = [];
+        if (v.plant_subcategory_id) effectiveIds.push(v.plant_subcategory_id);
+        if (Array.isArray(v.plant_subcategory_ids)) {
+          effectiveIds = effectiveIds.concat(v.plant_subcategory_ids);
+        }
+        effectiveIds = [...new Set(effectiveIds.filter(id => id && typeof id === 'string' && id.trim() !== ''))];
 
-          const assignedIds = v.plant_subcategory_ids || (v.plant_subcategory_id ? [v.plant_subcategory_id] : []);
-          const allInactive = assignedIds.every(id => !subCategories.some(s => s.id === id && s.is_active));
-          if (allInactive) return true;
+        // Handle Uncategorized - only if NO valid subcategories
+        if (selectedSubCategories.includes('uncategorized')) {
+          return effectiveIds.length === 0;
         }
 
-        // Check both plant_subcategory_ids array AND plant_subcategory_id for backwards compatibility
-        const subcatIds = v.plant_subcategory_ids || [];
-        const hasInArray = selectedSubCategories.some(selectedId => selectedId !== 'uncategorized' && subcatIds.includes(selectedId));
-        const hasAsSingle = v.plant_subcategory_id && selectedSubCategories.includes(v.plant_subcategory_id);
-        return hasInArray || hasAsSingle;
+        // Match if variety has ANY of the selected subcategories
+        return selectedSubCategories.some(selectedId => effectiveIds.includes(selectedId));
       });
     }
 
@@ -666,11 +665,15 @@ export default function PlantCatalogDetail() {
                 <SelectContent>
                   <SelectItem value={null}>All ({varieties.length})</SelectItem>
                   {subCategories.map((subcat) => {
-                    // Count varieties that have this subcategory in either plant_subcategory_ids OR plant_subcategory_id
+                    // FIXED: Count using effective subcategory IDs
                     const count = varieties.filter(v => {
-                      const hasInArray = v.plant_subcategory_ids && v.plant_subcategory_ids.includes(subcat.id);
-                      const hasAsSingle = v.plant_subcategory_id === subcat.id;
-                      return hasInArray || hasAsSingle;
+                      let effectiveIds = [];
+                      if (v.plant_subcategory_id) effectiveIds.push(v.plant_subcategory_id);
+                      if (Array.isArray(v.plant_subcategory_ids)) {
+                        effectiveIds = effectiveIds.concat(v.plant_subcategory_ids);
+                      }
+                      effectiveIds = [...new Set(effectiveIds.filter(id => id && typeof id === 'string' && id.trim() !== ''))];
+                      return effectiveIds.includes(subcat.id);
                     }).length;
                     return (
                       <SelectItem key={subcat.id} value={subcat.id}>
@@ -680,14 +683,15 @@ export default function PlantCatalogDetail() {
                     );
                   })}
                   {(() => {
-                    // Count uncategorized: no subcats OR all assigned subcats are inactive
+                    // FIXED: Count uncategorized - ONLY if NO subcategories in either field
                     const uncategorizedCount = varieties.filter(v => {
-                      const hasNoSubcat = !v.plant_subcategory_id && (!v.plant_subcategory_ids || v.plant_subcategory_ids.length === 0);
-                      if (hasNoSubcat) return true;
-
-                      const assignedIds = v.plant_subcategory_ids || (v.plant_subcategory_id ? [v.plant_subcategory_id] : []);
-                      const allInactive = assignedIds.every(id => !subCategories.some(s => s.id === id && s.is_active));
-                      return allInactive;
+                      let effectiveIds = [];
+                      if (v.plant_subcategory_id) effectiveIds.push(v.plant_subcategory_id);
+                      if (Array.isArray(v.plant_subcategory_ids)) {
+                        effectiveIds = effectiveIds.concat(v.plant_subcategory_ids);
+                      }
+                      effectiveIds = [...new Set(effectiveIds.filter(id => id && typeof id === 'string' && id.trim() !== ''))];
+                      return effectiveIds.length === 0;
                     }).length;
 
                     return uncategorizedCount > 0 && (

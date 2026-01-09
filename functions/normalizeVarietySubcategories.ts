@@ -12,10 +12,8 @@ Deno.serve(async (req) => {
     console.log('[NormalizeSubcats] Starting normalization...');
 
     // Load all varieties and subcategories
-    const [varieties, allSubcats] = await Promise.all([
-      base44.asServiceRole.entities.Variety.list('variety_name', 20000),
-      base44.asServiceRole.entities.PlantSubCategory.list()
-    ]);
+    const varieties = await base44.asServiceRole.entities.Variety.list('variety_name', 20000);
+    const allSubcats = await base44.asServiceRole.entities.PlantSubCategory.list();
 
     const validSubcatIds = new Set(allSubcats.map(s => s.id));
 
@@ -29,9 +27,8 @@ Deno.serve(async (req) => {
       let newSubcatId = v.plant_subcategory_id;
       let newSubcatIds = v.plant_subcategory_ids;
 
-      // Step 1: Sanitize plant_subcategory_ids array
+      // Sanitize plant_subcategory_ids array
       if (newSubcatIds) {
-        // Handle stringified JSON
         if (typeof newSubcatIds === 'string') {
           try {
             newSubcatIds = JSON.parse(newSubcatIds);
@@ -40,41 +37,40 @@ Deno.serve(async (req) => {
           }
         }
         
-        // Ensure it's an array
         if (!Array.isArray(newSubcatIds)) {
           newSubcatIds = [];
         }
 
-        // Remove nulls, empty strings, whitespace, invalid IDs
+        // Remove invalid entries
+        const originalLength = newSubcatIds.length;
         const cleanedIds = newSubcatIds
           .filter(id => id && typeof id === 'string' && id.trim() !== '')
           .filter(id => validSubcatIds.has(id));
 
-        // Deduplicate
         const uniqueIds = [...new Set(cleanedIds)];
 
         if (JSON.stringify(uniqueIds) !== JSON.stringify(newSubcatIds)) {
           newSubcatIds = uniqueIds;
-          invalidIdsRemoved += (newSubcatIds?.length || 0) - uniqueIds.length;
+          invalidIdsRemoved += (originalLength - uniqueIds.length);
           needsUpdate = true;
         }
       } else {
         newSubcatIds = [];
       }
 
-      // Step 2: If plant_subcategory_id is empty but ids array has values, set primary
+      // If plant_subcategory_id is empty but ids array has values, set primary
       if ((!newSubcatId || !validSubcatIds.has(newSubcatId)) && newSubcatIds.length > 0) {
         newSubcatId = newSubcatIds[0];
         needsUpdate = true;
       }
 
-      // Step 3: If plant_subcategory_id is set but not in ids array, add it
+      // If plant_subcategory_id is set but not in ids array, add it
       if (newSubcatId && validSubcatIds.has(newSubcatId) && !newSubcatIds.includes(newSubcatId)) {
         newSubcatIds = [newSubcatId, ...newSubcatIds];
         needsUpdate = true;
       }
 
-      // Step 4: Validate primary ID exists
+      // Validate primary ID exists
       if (newSubcatId && !validSubcatIds.has(newSubcatId)) {
         newSubcatId = newSubcatIds.length > 0 ? newSubcatIds[0] : null;
         invalidIdsRemoved++;

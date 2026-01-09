@@ -20,7 +20,7 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { AlertCircle } from 'lucide-react';
+import { AlertCircle, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 
 export default function AddVarietyDialog({ plantType, open, onOpenChange, onSuccess, userRole }) {
@@ -47,6 +47,7 @@ export default function AddVarietyDialog({ plantType, open, onOpenChange, onSucc
   const [submitting, setSubmitting] = useState(false);
   const [subCategories, setSubCategories] = useState([]);
   const [uploadingImage, setUploadingImage] = useState(false);
+  const [imageOwnership, setImageOwnership] = useState(false);
 
   const isAdminOrEditor = userRole === 'admin' || userRole === 'editor';
 
@@ -314,7 +315,7 @@ export default function AddVarietyDialog({ plantType, open, onOpenChange, onSucc
               {formData.images.length > 0 && (
                 <div className="flex flex-wrap gap-2">
                   {formData.images.map((url, idx) => (
-                    <div key={idx} className="relative w-20 h-20">
+                    <div key={idx} className="relative w-24 h-24">
                       <img src={url} alt={`Image ${idx + 1}`} className="w-full h-full object-cover rounded border" />
                       <Button
                         type="button"
@@ -332,23 +333,43 @@ export default function AddVarietyDialog({ plantType, open, onOpenChange, onSucc
                   ))}
                 </div>
               )}
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                disabled={uploadingImage}
-                onClick={() => document.getElementById('variety-image-upload').click()}
-              >
-                {uploadingImage ? 'Uploading...' : '+ Add Image'}
-              </Button>
+              <div>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  disabled={uploadingImage || !imageOwnership}
+                  onClick={() => document.getElementById('variety-image-upload-add').click()}
+                  className="w-full"
+                >
+                  {uploadingImage ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+                  {uploadingImage ? 'Uploading...' : '+ Upload Image'}
+                </Button>
+                <div className="flex items-center gap-2 mt-2">
+                  <input
+                    type="checkbox"
+                    id="image-ownership"
+                    checked={imageOwnership}
+                    onChange={(e) => setImageOwnership(e.target.checked)}
+                    className="w-4 h-4 rounded border-gray-300"
+                  />
+                  <Label htmlFor="image-ownership" className="text-xs font-normal cursor-pointer">
+                    I own this image or have rights to share it
+                  </Label>
+                </div>
+              </div>
               <input
-                id="variety-image-upload"
+                id="variety-image-upload-add"
                 type="file"
                 accept="image/*"
                 className="hidden"
                 onChange={async (e) => {
                   const file = e.target.files?.[0];
                   if (!file) return;
+                  if (!imageOwnership) {
+                    toast.error('Please confirm image ownership first');
+                    return;
+                  }
                   setUploadingImage(true);
                   try {
                     const { file_url } = await base44.integrations.Core.UploadFile({ file });
