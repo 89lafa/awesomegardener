@@ -62,6 +62,14 @@ export default function ViewVariety() {
 
       const v = varietyData[0];
       console.log('[ViewVariety] Loaded variety:', v);
+      
+      // Check if this variety was merged into another
+      if (v.status === 'removed' && v.extended_data?.merged_into_variety_id) {
+        console.log('[ViewVariety] Variety was merged, redirecting to:', v.extended_data.merged_into_variety_id);
+        window.location.href = createPageUrl('ViewVariety') + `?id=${v.extended_data.merged_into_variety_id}`;
+        return;
+      }
+      
       setVariety(v);
 
       if (v.plant_type_id) {

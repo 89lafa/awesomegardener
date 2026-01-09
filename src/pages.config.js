@@ -1,5 +1,6 @@
 import AdminDataCleanup from './pages/AdminDataCleanup';
 import AdminDataImport from './pages/AdminDataImport';
+import AdminDataMaintenance from './pages/AdminDataMaintenance';
 import BrowseGardens from './pages/BrowseGardens';
 import Calendar from './pages/Calendar';
 import CalendarPlanner from './pages/CalendarPlanner';
@@ -45,13 +46,14 @@ import SubcategoryMapping from './pages/SubcategoryMapping';
 import Users from './pages/Users';
 import VarietyReviewQueue from './pages/VarietyReviewQueue';
 import ViewVariety from './pages/ViewVariety';
-import AdminDataMaintenance from './pages/AdminDataMaintenance';
+import AdminDeduplicateVarieties from './pages/AdminDeduplicateVarieties';
 import __Layout from './Layout.jsx';
 
 
 export const PAGES = {
     "AdminDataCleanup": AdminDataCleanup,
     "AdminDataImport": AdminDataImport,
+    "AdminDataMaintenance": AdminDataMaintenance,
     "BrowseGardens": BrowseGardens,
     "Calendar": Calendar,
     "CalendarPlanner": CalendarPlanner,
@@ -97,7 +99,7 @@ export const PAGES = {
     "Users": Users,
     "VarietyReviewQueue": VarietyReviewQueue,
     "ViewVariety": ViewVariety,
-    "AdminDataMaintenance": AdminDataMaintenance,
+    "AdminDeduplicateVarieties": AdminDeduplicateVarieties,
 }
 
 export const pagesConfig = {

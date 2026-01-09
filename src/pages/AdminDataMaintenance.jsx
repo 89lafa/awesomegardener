@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { 
   Play,
@@ -6,7 +6,8 @@ import {
   CheckCircle2,
   AlertCircle,
   ArrowLeft,
-  RefreshCw
+  RefreshCw,
+  Settings
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -278,6 +279,34 @@ export default function AdminDataMaintenance() {
         </CardContent>
       </Card>
 
+      {/* Pepper Diagnostics */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <span className="text-2xl">📊</span>
+            Pepper Subcategory Health
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <PepperDiagnostics />
+        </CardContent>
+      </Card>
+
+      {/* Other Tools */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Other Tools</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <Link to={createPageUrl('AdminDeduplicateVarieties')}>
+            <Button variant="outline" className="w-full justify-start gap-2">
+              <RefreshCw className="w-4 h-4" />
+              Deduplicate Varieties
+            </Button>
+          </Link>
+        </CardContent>
+      </Card>
+
       {/* Info Card */}
       <Card className="border-amber-200 bg-amber-50">
         <CardContent className="p-4">
@@ -295,6 +324,148 @@ export default function AdminDataMaintenance() {
           </div>
         </CardContent>
       </Card>
+    </div>
+  );
+}
+
+function PepperDiagnostics() {
+  const [diagnostics, setDiagnostics] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    loadDiagnostics();
+  }, []);
+
+  const loadDiagnostics = async () => {
+    try {
+      // Find Pepper plant type
+      const pepperTypes = await base44.entities.PlantType.filter({ common_name: 'Pepper' });
+      if (pepperTypes.length === 0) {
+        setDiagnostics({ error: 'Pepper plant type not found' });
+        return;
+      }
+      
+      const pepperTypeId = pepperTypes[0].id;
+      
+      // Load subcategories and varieties
+      const [allSubcats, activeSubcats, varieties] = await Promise.all([
+        base44.entities.PlantSubCategory.filter({ plant_type_id: pepperTypeId }),
+        base44.entities.PlantSubCategory.filter({ plant_type_id: pepperTypeId, is_active: true }),
+        base44.entities.Variety.filter({ plant_type_id: pepperTypeId })
+      ]);
+      
+      // Count variety assignments
+      const canonicalIds = activeSubcats.map(s => s.id);
+      const inactiveIds = allSubcats.filter(s => !s.is_active).map(s => s.id);
+      
+      let assignedToCanonical = 0;
+      let assignedToInactive = 0;
+      let uncategorized = 0;
+      
+      for (const v of varieties) {
+        const subcatIds = v.plant_subcategory_ids || (v.plant_subcategory_id ? [v.plant_subcategory_id] : []);
+        
+        if (subcatIds.length === 0) {
+          uncategorized++;
+        } else if (subcatIds.some(id => canonicalIds.includes(id))) {
+          assignedToCanonical++;
+        } else if (subcatIds.some(id => inactiveIds.includes(id))) {
+          assignedToInactive++;
+        }
+      }
+      
+      setDiagnostics({
+        totalSubcats: allSubcats.length,
+        activeSubcats: activeSubcats.length,
+        inactiveSubcats: allSubcats.length - activeSubcats.length,
+        totalVarieties: varieties.length,
+        assignedToCanonical,
+        assignedToInactive,
+        uncategorized,
+        canonicalBuckets: activeSubcats.map(s => ({
+          id: s.id,
+          name: s.name,
+          subcat_code: s.subcat_code,
+          sort_order: s.sort_order
+        }))
+      });
+    } catch (error) {
+      console.error('Error loading diagnostics:', error);
+      setDiagnostics({ error: error.message });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (loading) {
+    return <div className="flex items-center gap-2 text-gray-600"><Loader2 className="w-4 h-4 animate-spin" /> Loading...</div>;
+  }
+
+  if (diagnostics?.error) {
+    return <div className="text-red-600">Error: {diagnostics.error}</div>;
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="p-3 bg-gray-50 rounded-lg">
+          <div className="text-sm text-gray-600">Total Subcategories</div>
+          <div className="text-2xl font-bold">{diagnostics.totalSubcats}</div>
+        </div>
+        <div className="p-3 bg-green-50 rounded-lg">
+          <div className="text-sm text-green-600">Active</div>
+          <div className="text-2xl font-bold text-green-700">{diagnostics.activeSubcats}</div>
+        </div>
+        <div className="p-3 bg-red-50 rounded-lg">
+          <div className="text-sm text-red-600">Inactive</div>
+          <div className="text-2xl font-bold text-red-700">{diagnostics.inactiveSubcats}</div>
+        </div>
+        <div className="p-3 bg-blue-50 rounded-lg">
+          <div className="text-sm text-blue-600">Total Varieties</div>
+          <div className="text-2xl font-bold text-blue-700">{diagnostics.totalVarieties}</div>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-3 gap-4">
+        <div className="p-3 bg-emerald-50 rounded-lg border border-emerald-200">
+          <div className="text-sm text-emerald-600">Assigned to Canonical</div>
+          <div className="text-xl font-bold text-emerald-700">{diagnostics.assignedToCanonical}</div>
+        </div>
+        <div className="p-3 bg-orange-50 rounded-lg border border-orange-200">
+          <div className="text-sm text-orange-600">Assigned to Inactive</div>
+          <div className="text-xl font-bold text-orange-700">{diagnostics.assignedToInactive}</div>
+        </div>
+        <div className="p-3 bg-gray-50 rounded-lg border border-gray-200">
+          <div className="text-sm text-gray-600">Uncategorized</div>
+          <div className="text-xl font-bold text-gray-700">{diagnostics.uncategorized}</div>
+        </div>
+      </div>
+
+      {diagnostics.canonicalBuckets.length > 0 && (
+        <div>
+          <h4 className="font-semibold text-gray-900 mb-2">Active Canonical Buckets:</h4>
+          <div className="space-y-2">
+            {diagnostics.canonicalBuckets.map(bucket => (
+              <div key={bucket.id} className="flex items-center gap-2 text-sm p-2 bg-white rounded border">
+                <Badge variant="outline">{bucket.sort_order}</Badge>
+                <span className="font-medium">{bucket.name}</span>
+                <span className="text-xs text-gray-500 font-mono">{bucket.subcat_code}</span>
+                <span className="text-xs text-gray-400 ml-auto">{bucket.id}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      <Button
+        onClick={loadDiagnostics}
+        variant="outline"
+        size="sm"
+        className="gap-2"
+      >
+        <RefreshCw className="w-4 h-4" />
+        Refresh Diagnostics
+      </Button>
     </div>
   );
 }

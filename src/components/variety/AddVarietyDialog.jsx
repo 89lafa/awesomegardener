@@ -68,6 +68,17 @@ export default function AddVarietyDialog({ plantType, open, onOpenChange, onSucc
     }
   };
 
+  const normalizeVarietyName = (name) => {
+    if (!name) return '';
+    return name
+      .trim()
+      .toLowerCase()
+      .replace(/\s+/g, ' ')
+      .replace(/['']/g, "'")
+      .replace(/[""]/g, '"')
+      .replace(/\.$/, '');
+  };
+
   const checkForDuplicates = async (name) => {
     if (!name || name.length < 3) {
       setDuplicateWarning(null);
@@ -76,28 +87,22 @@ export default function AddVarietyDialog({ plantType, open, onOpenChange, onSucc
 
     setChecking(true);
     try {
-      const existing = await base44.entities.Variety.filter({ 
+      const allVarieties = await base44.entities.Variety.filter({ 
         plant_type_id: plantType.id,
-        variety_name: name 
+        status: 'active'
       });
-
-      if (existing.length > 0) {
-        setDuplicateWarning({ type: 'exact', name: existing[0].variety_name });
+      
+      const normalized = normalizeVarietyName(name);
+      
+      // Check for exact normalized match
+      const exactMatch = allVarieties.find(v => 
+        normalizeVarietyName(v.variety_name) === normalized
+      );
+      
+      if (exactMatch) {
+        setDuplicateWarning({ type: 'exact', name: exactMatch.variety_name, id: exactMatch.id });
       } else {
-        // Check for close matches (simple normalization)
-        const allVarieties = await base44.entities.Variety.filter({ 
-          plant_type_id: plantType.id 
-        });
-        const normalized = name.toLowerCase().replace(/[^a-z0-9]/g, '');
-        const closeMatch = allVarieties.find(v => 
-          v.variety_name.toLowerCase().replace(/[^a-z0-9]/g, '') === normalized
-        );
-        
-        if (closeMatch) {
-          setDuplicateWarning({ type: 'close', name: closeMatch.variety_name });
-        } else {
-          setDuplicateWarning(null);
-        }
+        setDuplicateWarning(null);
       }
     } catch (error) {
       console.error('Error checking duplicates:', error);
