@@ -28,10 +28,20 @@ export default function VarietyListView({
     }
   };
 
-  const getSubCategoryName = (subcatId) => {
-    if (!subcatId) return 'Uncategorized';
-    const subcat = subCategories.find(s => s.id === subcatId);
-    return subcat?.name || 'Uncategorized';
+  const getSubCategoryName = (variety) => {
+    // Get effective subcategory IDs
+    let effectiveIds = [];
+    if (variety.plant_subcategory_id) effectiveIds.push(variety.plant_subcategory_id);
+    if (Array.isArray(variety.plant_subcategory_ids)) {
+      effectiveIds = effectiveIds.concat(variety.plant_subcategory_ids);
+    }
+    effectiveIds = [...new Set(effectiveIds.filter(id => id && typeof id === 'string' && id.trim() !== ''))];
+    
+    if (effectiveIds.length === 0) return 'Uncategorized';
+    
+    const subcat = subCategories.find(s => s.id === effectiveIds[0]);
+    const displayName = subcat?.name || 'Unknown';
+    return effectiveIds.length > 1 ? `${displayName} +${effectiveIds.length - 1}` : displayName;
   };
 
   return (
@@ -69,7 +79,7 @@ export default function VarietyListView({
               )}
               {visibleColumns.includes('subcategory') && (
                 <td className="p-3 text-sm text-gray-600">
-                  {getSubCategoryName(variety.plant_subcategory_id)}
+                  {getSubCategoryName(variety)}
                 </td>
               )}
               {visibleColumns.includes('days') && (
