@@ -7,7 +7,8 @@ import {
   AlertCircle,
   ArrowLeft,
   RefreshCw,
-  Settings
+  Settings,
+  Download
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -22,8 +23,13 @@ export default function AdminDataMaintenance() {
   const [loading, setLoading] = useState(true);
   const [backfillRunning, setBackfillRunning] = useState(false);
   const [pepperCleanupRunning, setPepperCleanupRunning] = useState(false);
+  const [tomatoDedupRunning, setTomatoDedupRunning] = useState(false);
+  const [tomatoMergeRunning, setTomatoMergeRunning] = useState(false);
+  const [exportingSHU, setExportingSHU] = useState(false);
   const [backfillResult, setBackfillResult] = useState(null);
   const [pepperCleanupResult, setPepperCleanupResult] = useState(null);
+  const [tomatoDedupResult, setTomatoDedupResult] = useState(null);
+  const [tomatoMergeResult, setTomatoMergeResult] = useState(null);
 
   React.useEffect(() => {
     checkAdmin();
@@ -91,6 +97,7 @@ export default function AdminDataMaintenance() {
         setPepperCleanupResult({
           success: true,
           ...response.data.summary,
+          diagnostics: response.data.diagnostics,
           timestamp: new Date().toISOString(),
           runBy: user.email
         });
@@ -109,6 +116,86 @@ export default function AdminDataMaintenance() {
       toast.error('Cleanup failed: ' + error.message);
     } finally {
       setPepperCleanupRunning(false);
+    }
+  };
+
+  const exportPeppersMissingSHU = async () => {
+    setExportingSHU(true);
+    try {
+      const response = await base44.functions.invoke('exportPeppersMissingSHU', {});
+      const blob = new Blob([response.data], { type: 'text/csv' });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'peppers_missing_shu.csv';
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      a.remove();
+      toast.success('CSV exported successfully');
+    } catch (error) {
+      console.error('Export error:', error);
+      toast.error('Export failed: ' + error.message);
+    } finally {
+      setExportingSHU(false);
+    }
+  };
+
+  const runTomatoDedup = async () => {
+    setTomatoDedupRunning(true);
+    setTomatoDedupResult(null);
+    
+    try {
+      const response = await base44.functions.invoke('tomatoDedupDryRun', {});
+      
+      if (response.data.success) {
+        setTomatoDedupResult(response.data);
+        toast.success('Dry run completed - review results below');
+      } else {
+        throw new Error(response.data.error || 'Dry run failed');
+      }
+    } catch (error) {
+      console.error('Tomato dedup error:', error);
+      toast.error('Dry run failed: ' + error.message);
+    } finally {
+      setTomatoDedupRunning(false);
+    }
+  };
+
+  const runTomatoMerge = async () => {
+    if (!confirm('This will MERGE duplicate Tomato varieties. This cannot be easily undone. Continue?')) {
+      return;
+    }
+
+    setTomatoMergeRunning(true);
+    setTomatoMergeResult(null);
+    
+    try {
+      const response = await base44.functions.invoke('mergeTomatoDuplicates', {});
+      
+      if (response.data.success) {
+        setTomatoMergeResult({
+          success: true,
+          ...response.data.summary,
+          mergeLog: response.data.mergeLog,
+          timestamp: new Date().toISOString(),
+          runBy: user.email
+        });
+        toast.success('Tomato merge completed successfully!');
+      } else {
+        throw new Error(response.data.error || 'Merge failed');
+      }
+    } catch (error) {
+      console.error('Tomato merge error:', error);
+      setTomatoMergeResult({
+        success: false,
+        error: error.message,
+        timestamp: new Date().toISOString(),
+        runBy: user.email
+      });
+      toast.error('Merge failed: ' + error.message);
+    } finally {
+      setTomatoMergeRunning(false);
     }
   };
 
@@ -262,13 +349,38 @@ export default function AdminDataMaintenance() {
                 <div className="space-y-2">
                   <div className="font-semibold">Results:</div>
                   {pepperCleanupResult.success ? (
-                    <ul className="text-sm space-y-1">
-                      <li>• Canonical subcategories created/updated: {pepperCleanupResult.canonicalSubcatsCreated}</li>
-                      <li>• Old subcategories deactivated: {pepperCleanupResult.oldSubcatsDeactivated}</li>
-                      <li>• Pepper varieties updated: {pepperCleanupResult.varietiesUpdated}</li>
-                      <li>• Run at: {new Date(pepperCleanupResult.timestamp).toLocaleString()}</li>
-                      <li>• Run by: {pepperCleanupResult.runBy}</li>
-                    </ul>
+                    <>
+                      <ul className="text-sm space-y-1">
+                        <li>• Canonical subcategories created/updated: {pepperCleanupResult.canonicalSubcatsCreated}</li>
+                        <li>• Old subcategories deactivated: {pepperCleanupResult.oldSubcatsDeactivated}</li>
+                        <li>• Pepper varieties updated: {pepperCleanupResult.varietiesUpdated}</li>
+                        <li>• Run at: {new Date(pepperCleanupResult.timestamp).toLocaleString()}</li>
+                        <li>• Run by: {pepperCleanupResult.runBy}</li>
+                      </ul>
+                      {pepperCleanupResult.diagnostics && (
+                        <div className="mt-3 pt-3 border-t border-green-300">
+                          <p className="font-semibold text-sm mb-2">Bucket Distribution:</p>
+                          <div className="grid grid-cols-2 gap-2 text-xs">
+                            {Object.entries(pepperCleanupResult.diagnostics.bucketCounts).map(([code, count]) => (
+                              <div key={code} className="flex justify-between">
+                                <span className="font-mono">{code.replace('PSC_PEPPER_HEAT_', '')}:</span>
+                                <span className="font-bold">{count}</span>
+                              </div>
+                            ))}
+                          </div>
+                          {pepperCleanupResult.diagnostics.sweetWith0SHU?.length > 0 && (
+                            <div className="mt-2">
+                              <p className="font-semibold text-xs mb-1">Sample Sweet (0 SHU) assignments:</p>
+                              <ul className="text-xs space-y-0.5">
+                                {pepperCleanupResult.diagnostics.sweetWith0SHU.slice(0, 5).map((item, i) => (
+                                  <li key={i}>• {item.name} - {item.reason}</li>
+                                ))}
+                              </ul>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </>
                   ) : (
                     <div className="text-sm">{pepperCleanupResult.error}</div>
                   )}
@@ -276,6 +388,37 @@ export default function AdminDataMaintenance() {
               </AlertDescription>
             </Alert>
           )}
+          
+          <div className="flex gap-3">
+            <Button
+              onClick={exportPeppersMissingSHU}
+              disabled={exportingSHU}
+              variant="outline"
+              className="gap-2"
+            >
+              {exportingSHU ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Exporting...
+                </>
+              ) : (
+                <>
+                  <Download className="w-4 h-4" />
+                  Export Peppers Missing SHU
+                </>
+              )}
+            </Button>
+          </div>
+          
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-xs text-blue-800">
+            <div className="font-semibold mb-1">To backfill SHU data:</div>
+            <ol className="space-y-1 list-decimal ml-4">
+              <li>Export peppers missing SHU using the button above</li>
+              <li>Fill in scoville_min and scoville_max columns in Excel/Sheets</li>
+              <li>Go to Data Imports → Upload the CSV with UPSERT mode</li>
+              <li>Re-run Pepper Cleanup to reassign buckets</li>
+            </ol>
+          </div>
         </CardContent>
       </Card>
 
@@ -292,6 +435,139 @@ export default function AdminDataMaintenance() {
         </CardContent>
       </Card>
 
+      {/* Tomato Cleanup */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <span className="text-2xl">🍅</span>
+            Tomato Data Cleanup
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="space-y-2">
+            <p className="text-sm text-gray-600">
+              Identifies and merges duplicate Tomato varieties based on variety_code and normalized names.
+            </p>
+            <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-sm">
+              <div className="font-semibold text-amber-900 mb-1">This will:</div>
+              <ul className="text-amber-800 space-y-1">
+                <li>• Find duplicates by variety_code or normalized name</li>
+                <li>• Merge data from duplicates into the most complete record</li>
+                <li>• Update all references (seed stash, plantings, etc.)</li>
+                <li>• Mark duplicates as removed</li>
+              </ul>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-3 flex-wrap">
+            <Button
+              onClick={runTomatoDedup}
+              disabled={tomatoDedupRunning}
+              variant="outline"
+              className="gap-2"
+            >
+              {tomatoDedupRunning ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Running...
+                </>
+              ) : (
+                <>
+                  <Play className="w-4 h-4" />
+                  Tomato Dedup Dry Run
+                </>
+              )}
+            </Button>
+            
+            <Button
+              onClick={runTomatoMerge}
+              disabled={tomatoMergeRunning}
+              className="bg-red-600 hover:bg-red-700 gap-2"
+            >
+              {tomatoMergeRunning ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Merging...
+                </>
+              ) : (
+                <>
+                  <RefreshCw className="w-4 h-4" />
+                  Merge Tomato Duplicates
+                </>
+              )}
+            </Button>
+          </div>
+
+          {tomatoDedupResult && (
+            <Alert className="border-blue-200 bg-blue-50">
+              <AlertDescription className="text-blue-800">
+                <div className="space-y-2">
+                  <div className="font-semibold">Dry Run Results:</div>
+                  <ul className="text-sm space-y-1">
+                    <li>• Total varieties: {tomatoDedupResult.summary.totalVarieties}</li>
+                    <li>• Duplicate groups found: {tomatoDedupResult.summary.duplicateGroupsFound}</li>
+                    <li>• Total duplicates to remove: {tomatoDedupResult.summary.totalDuplicates}</li>
+                  </ul>
+                  {tomatoDedupResult.duplicateGroups?.length > 0 && (
+                    <details className="mt-2">
+                      <summary className="cursor-pointer text-sm font-semibold">View duplicate groups (first 10)</summary>
+                      <div className="mt-2 space-y-2 max-h-64 overflow-auto">
+                        {tomatoDedupResult.duplicateGroups.slice(0, 10).map((group, i) => (
+                          <div key={i} className="p-2 bg-white rounded border text-xs">
+                            <div className="font-semibold">{group.type}: {group.value}</div>
+                            <div className="mt-1 space-y-1">
+                              {group.varieties.map((v, j) => (
+                                <div key={j} className="ml-2">
+                                  • {v.variety_name} (score: {v.completeness}, id: {v.id.slice(0, 8)}...)
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </details>
+                  )}
+                </div>
+              </AlertDescription>
+            </Alert>
+          )}
+
+          {tomatoMergeResult && (
+            <Alert className={tomatoMergeResult.success ? 'border-green-200 bg-green-50' : 'border-red-200 bg-red-50'}>
+              <AlertDescription className={tomatoMergeResult.success ? 'text-green-800' : 'text-red-800'}>
+                <div className="space-y-2">
+                  <div className="font-semibold">Merge Results:</div>
+                  {tomatoMergeResult.success ? (
+                    <>
+                      <ul className="text-sm space-y-1">
+                        <li>• Groups merged: {tomatoMergeResult.groupsMerged}</li>
+                        <li>• Varieties removed: {tomatoMergeResult.varietiesRemoved}</li>
+                        <li>• Primary varieties preserved: {tomatoMergeResult.primaryVarietiesPreserved}</li>
+                        <li>• Run at: {new Date(tomatoMergeResult.timestamp).toLocaleString()}</li>
+                      </ul>
+                      {tomatoMergeResult.mergeLog?.length > 0 && (
+                        <details className="mt-2">
+                          <summary className="cursor-pointer text-sm font-semibold">View merge log (first 10)</summary>
+                          <div className="mt-2 space-y-1 max-h-48 overflow-auto text-xs">
+                            {tomatoMergeResult.mergeLog.slice(0, 10).map((log, i) => (
+                              <div key={i}>
+                                • {log.primaryName} (kept) ← merged {log.mergedCount} duplicates
+                              </div>
+                            ))}
+                          </div>
+                        </details>
+                      )}
+                    </>
+                  ) : (
+                    <div className="text-sm">{tomatoMergeResult.error}</div>
+                  )}
+                </div>
+              </AlertDescription>
+            </Alert>
+          )}
+        </CardContent>
+      </Card>
+
       {/* Other Tools */}
       <Card>
         <CardHeader>
@@ -301,7 +577,7 @@ export default function AdminDataMaintenance() {
           <Link to={createPageUrl('AdminDeduplicateVarieties')}>
             <Button variant="outline" className="w-full justify-start gap-2">
               <RefreshCw className="w-4 h-4" />
-              Deduplicate Varieties
+              Deduplicate Varieties (Other Types)
             </Button>
           </Link>
           <Link to={createPageUrl('AdminDataCleanup')}>

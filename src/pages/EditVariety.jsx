@@ -139,6 +139,9 @@ export default function EditVariety() {
         is_organic: formData.is_organic || false
       };
 
+      // Get current user for audit log
+      const currentUser = await base44.auth.me();
+      
       // Log the edit
       await base44.entities.AuditLog.create({
         action_type: 'variety_update',
@@ -146,7 +149,7 @@ export default function EditVariety() {
         entity_id: varietyId,
         entity_name: formData.variety_name,
         action_details: { fields_updated: Object.keys(updateData) },
-        user_role: user.role
+        user_role: currentUser.role
       });
 
       await base44.entities.Variety.update(varietyId, updateData);
