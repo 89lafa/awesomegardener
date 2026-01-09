@@ -32,10 +32,18 @@ export default function AdminDataMaintenance() {
   const [tomatoDedupResult, setTomatoDedupResult] = useState(null);
   const [tomatoMergeResult, setTomatoMergeResult] = useState(null);
   const [normalizeResult, setNormalizeResult] = useState(null);
+  const [diagnostics, setDiagnostics] = useState(null);
+  const [loadingDiagnostics, setLoadingDiagnostics] = useState(false);
 
   React.useEffect(() => {
     checkAdmin();
   }, []);
+
+  React.useEffect(() => {
+    if (user) {
+      loadDiagnostics();
+    }
+  }, [user]);
 
   const checkAdmin = async () => {
     try {
@@ -200,6 +208,20 @@ export default function AdminDataMaintenance() {
     }
   };
 
+  const loadDiagnostics = async () => {
+    setLoadingDiagnostics(true);
+    try {
+      const response = await base44.functions.invoke('getDiagnostics', {});
+      if (response.data.success) {
+        setDiagnostics(response.data.diagnostics);
+      }
+    } catch (error) {
+      console.error('Error loading diagnostics:', error);
+    } finally {
+      setLoadingDiagnostics(false);
+    }
+  };
+
   const runNormalizeSubcats = async () => {
     setNormalizingSubcats(true);
     setNormalizeResult(null);
@@ -214,6 +236,7 @@ export default function AdminDataMaintenance() {
           timestamp: new Date().toISOString()
         });
         toast.success('Subcategory normalization completed!');
+        await loadDiagnostics(); // Refresh diagnostics
       } else {
         throw new Error(response.data.error || 'Normalization failed');
       }
@@ -250,6 +273,98 @@ export default function AdminDataMaintenance() {
           <p className="text-gray-600 mt-1">Run cleanup and normalization tasks</p>
         </div>
       </div>
+
+      {/* Data Health Diagnostics */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <CardTitle className="flex items-center gap-2">
+              <span className="text-2xl">📊</span>
+              Data Health Overview
+            </CardTitle>
+            <Button
+              onClick={loadDiagnostics}
+              variant="outline"
+              size="sm"
+              disabled={loadingDiagnostics}
+              className="gap-2"
+            >
+              {loadingDiagnostics ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <RefreshCw className="w-4 h-4" />
+              )}
+              Refresh
+            </Button>
+          </div>
+        </CardHeader>
+        <CardContent>
+          {loadingDiagnostics ? (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="w-6 h-6 animate-spin text-emerald-600" />
+            </div>
+          ) : diagnostics ? (
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                <div className="p-3 bg-gray-50 rounded-lg">
+                  <div className="text-xs text-gray-600">Total Varieties</div>
+                  <div className="text-xl font-bold">{diagnostics.total_varieties}</div>
+                </div>
+                <div className={`p-3 rounded-lg ${diagnostics.duplicate_groups_by_code > 0 ? 'bg-red-50' : 'bg-green-50'}`}>
+                  <div className={`text-xs ${diagnostics.duplicate_groups_by_code > 0 ? 'text-red-600' : 'text-green-600'}`}>
+                    Duplicates (by code)
+                  </div>
+                  <div className={`text-xl font-bold ${diagnostics.duplicate_groups_by_code > 0 ? 'text-red-700' : 'text-green-700'}`}>
+                    {diagnostics.duplicate_groups_by_code} groups
+                  </div>
+                </div>
+                <div className={`p-3 rounded-lg ${diagnostics.duplicate_groups_by_name > 0 ? 'bg-yellow-50' : 'bg-green-50'}`}>
+                  <div className={`text-xs ${diagnostics.duplicate_groups_by_name > 0 ? 'text-yellow-600' : 'text-green-600'}`}>
+                    Duplicates (by name)
+                  </div>
+                  <div className={`text-xl font-bold ${diagnostics.duplicate_groups_by_name > 0 ? 'text-yellow-700' : 'text-green-700'}`}>
+                    {diagnostics.duplicate_groups_by_name} groups
+                  </div>
+                </div>
+                <div className={`p-3 rounded-lg ${diagnostics.varieties_with_invalid_subcats > 0 ? 'bg-red-50' : 'bg-green-50'}`}>
+                  <div className={`text-xs ${diagnostics.varieties_with_invalid_subcats > 0 ? 'text-red-600' : 'text-green-600'}`}>
+                    Invalid Subcats
+                  </div>
+                  <div className={`text-xl font-bold ${diagnostics.varieties_with_invalid_subcats > 0 ? 'text-red-700' : 'text-green-700'}`}>
+                    {diagnostics.varieties_with_invalid_subcats}
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="p-3 bg-blue-50 rounded-lg">
+                  <div className="text-xs text-blue-600">Inactive Subcats</div>
+                  <div className="text-lg font-bold text-blue-700">{diagnostics.varieties_with_inactive_subcats}</div>
+                </div>
+                <div className="p-3 bg-gray-50 rounded-lg">
+                  <div className="text-xs text-gray-600">True Uncategorized</div>
+                  <div className="text-lg font-bold">{diagnostics.true_uncategorized}</div>
+                </div>
+              </div>
+
+              {diagnostics.sample_duplicates_by_code?.length > 0 && (
+                <details className="text-xs">
+                  <summary className="cursor-pointer font-semibold text-gray-700">Sample duplicates by code</summary>
+                  <div className="mt-2 space-y-1">
+                    {diagnostics.sample_duplicates_by_code.map((g, i) => (
+                      <div key={i} className="p-2 bg-white border rounded">
+                        <span className="font-mono text-blue-600">{g.code}</span> - {g.count} copies: {g.names}
+                      </div>
+                    ))}
+                  </div>
+                </details>
+              )}
+            </div>
+          ) : (
+            <p className="text-gray-500 text-sm">Click Refresh to load diagnostics</p>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Normalize Subcategories */}
       <Card>
@@ -582,18 +697,33 @@ export default function AdminDataMaintenance() {
         </CardContent>
       </Card>
 
+      {/* Generic Deduplication Tool */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <RefreshCw className="w-5 h-5 text-blue-600" />
+            Generic Variety Deduplication
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <p className="text-sm text-gray-600">
+            Works for ANY plant type. Finds duplicates by variety_code or normalized name, merges data, and updates all references.
+          </p>
+          <Link to={createPageUrl('AdminDeduplicateVarieties')}>
+            <Button variant="outline" className="w-full justify-start gap-2">
+              <RefreshCw className="w-4 h-4" />
+              Open Deduplication Tool
+            </Button>
+          </Link>
+        </CardContent>
+      </Card>
+
       {/* Other Tools */}
       <Card>
         <CardHeader>
           <CardTitle>Other Tools</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
-          <Link to={createPageUrl('AdminDeduplicateVarieties')}>
-            <Button variant="outline" className="w-full justify-start gap-2">
-              <RefreshCw className="w-4 h-4" />
-              Deduplicate Varieties (Other Types)
-            </Button>
-          </Link>
           <Link to={createPageUrl('AdminDataCleanup')}>
             <Button variant="outline" className="w-full justify-start gap-2">
               <AlertCircle className="w-4 h-4" />
