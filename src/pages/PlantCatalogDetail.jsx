@@ -607,12 +607,32 @@ export default function PlantCatalogDetail() {
                     <List className="w-4 h-4" />
                   </Button>
                 </div>
-              </div>
-            </div>
-          </div>
-        </div>
+                {!isSquashUmbrella ? (
+                 <Button 
+                   onClick={() => setShowAddVariety(true)}
+                   className="bg-emerald-600 hover:bg-emerald-700 gap-2"
+                 >
+                   <Plus className="w-4 h-4" />
+                   {user?.role === 'admin' || user?.role === 'editor' ? 'Add Variety' : 'Suggest Variety'}
+                 </Button>
+                ) : (
+                 <div className="px-3 py-2 bg-amber-50 border border-amber-200 rounded-lg text-xs text-amber-800 max-w-xs">
+                   ℹ️ Browse-only: Add to Summer/Winter Squash, Zucchini, or Pumpkin
+                 </div>
+                )}
+                </div>
+                </div>
+                </div>
+                </div>
 
-        {/* Overview - Compact */}
+                {/* Squash Umbrella Notice */}
+                {isSquashUmbrella && (
+                <div className="px-4 py-3 bg-amber-50 border border-amber-300 rounded-lg text-sm text-amber-900">
+                <strong>ℹ️ Squash Browse View:</strong> This shows varieties from Summer Squash, Winter Squash, Zucchini, and Pumpkin. To add new varieties, navigate to the specific plant type.
+                </div>
+                )}
+
+                {/* Overview - Compact */}
         <Card>
           <CardContent className="p-4">
             <div className="flex flex-wrap items-center gap-4">
@@ -911,17 +931,21 @@ export default function PlantCatalogDetail() {
                 ) : (
                   <>
                     <p className="text-sm text-gray-500 mb-4">
-                      {user?.role === 'admin' 
-                        ? 'Import varieties or add them manually' 
-                        : 'Be the first to suggest a variety!'}
+                      {isSquashUmbrella 
+                        ? 'Navigate to Summer Squash, Winter Squash, Zucchini, or Pumpkin to add varieties'
+                        : user?.role === 'admin' 
+                          ? 'Import varieties or add them manually' 
+                          : 'Be the first to suggest a variety!'}
                     </p>
-                    <Button 
-                      onClick={() => setShowAddVariety(true)}
-                      className="bg-emerald-600 hover:bg-emerald-700 gap-2"
-                    >
-                      <Plus className="w-4 h-4" />
-                      {user?.role === 'admin' || user?.role === 'editor' ? 'Add First Variety' : 'Suggest Variety'}
-                    </Button>
+                    {!isSquashUmbrella && (
+                      <Button 
+                        onClick={() => setShowAddVariety(true)}
+                        className="bg-emerald-600 hover:bg-emerald-700 gap-2"
+                      >
+                        <Plus className="w-4 h-4" />
+                        {user?.role === 'admin' || user?.role === 'editor' ? 'Add First Variety' : 'Suggest Variety'}
+                      </Button>
+                    )}
                   </>
                 )}
               </div>
