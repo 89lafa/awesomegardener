@@ -123,7 +123,8 @@ export default function PlantCatalogDetail() {
     
     try {
       let vars = await base44.entities.Variety.filter({ 
-        plant_type_id: plantTypeId
+        plant_type_id: plantTypeId,
+        status: 'active'
       }, 'variety_name', 1000);
       
       // Load subcategory mappings
@@ -195,7 +196,8 @@ export default function PlantCatalogDetail() {
       console.log('[VARIETY DEBUG] Attempting to load varieties for plant_type_id:', plantTypeId);
       
       let vars = await base44.entities.Variety.filter({ 
-        plant_type_id: plantTypeId
+        plant_type_id: plantTypeId,
+        status: 'active'
       }, 'variety_name');
       
       console.log('[VARIETY DEBUG] Found Variety records:', vars.length);
