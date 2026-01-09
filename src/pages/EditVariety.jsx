@@ -65,8 +65,8 @@ export default function EditVariety() {
           const [typeData, subcats, subcatMaps] = await Promise.all([
             base44.entities.PlantType.filter({ id: v.plant_type_id }),
             base44.entities.PlantSubCategory.filter({ 
-              plant_type_id: v.plant_type_id,
-              is_active: true 
+              plant_type_id: v.plant_type_id
+              // Admins can see all subcategories including inactive ones
             }, 'sort_order'),
             base44.entities.VarietySubCategoryMap.filter({ variety_id: varietyId })
           ]);

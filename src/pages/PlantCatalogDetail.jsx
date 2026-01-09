@@ -173,12 +173,12 @@ export default function PlantCatalogDetail() {
       console.log('Loaded plant type:', type);
       setPlantType(type);
 
-      // Load subcategories for this plant type
+      // Load ACTIVE subcategories for this plant type
       const subcats = await base44.entities.PlantSubCategory.filter({ 
         plant_type_id: plantTypeId,
         is_active: true 
       }, 'sort_order');
-      console.log('[SUBCATEGORY] Found subcategories:', subcats.length);
+      console.log('[SUBCATEGORY] Found active subcategories:', subcats.length);
       
       // Deduplicate subcategories by name (in case of duplicates)
       const uniqueSubcats = [];
@@ -284,12 +284,20 @@ export default function PlantCatalogDetail() {
     // Sub-category filter (supports both plant_subcategory_ids array and single plant_subcategory_id)
     if (selectedSubCategories.length > 0) {
       filtered = filtered.filter(v => {
-        if (selectedSubCategories.includes('uncategorized') && !v.plant_subcategory_id && (!v.plant_subcategory_ids || v.plant_subcategory_ids.length === 0)) {
-          return true;
+        // Handle Uncategorized
+        if (selectedSubCategories.includes('uncategorized')) {
+          const hasNoSubcat = !v.plant_subcategory_id && (!v.plant_subcategory_ids || v.plant_subcategory_ids.length === 0);
+          // Also check if assigned subcats are all inactive
+          if (hasNoSubcat) return true;
+
+          const assignedIds = v.plant_subcategory_ids || (v.plant_subcategory_id ? [v.plant_subcategory_id] : []);
+          const allInactive = assignedIds.every(id => !subCategories.some(s => s.id === id && s.is_active));
+          if (allInactive) return true;
         }
+
         // Check both plant_subcategory_ids array AND plant_subcategory_id for backwards compatibility
         const subcatIds = v.plant_subcategory_ids || [];
-        const hasInArray = selectedSubCategories.some(selectedId => subcatIds.includes(selectedId));
+        const hasInArray = selectedSubCategories.some(selectedId => selectedId !== 'uncategorized' && subcatIds.includes(selectedId));
         const hasAsSingle = v.plant_subcategory_id && selectedSubCategories.includes(v.plant_subcategory_id);
         return hasInArray || hasAsSingle;
       });
@@ -671,11 +679,23 @@ export default function PlantCatalogDetail() {
                       </SelectItem>
                     );
                   })}
-                  {varieties.filter(v => !v.plant_subcategory_id && (!v.plant_subcategory_ids || v.plant_subcategory_ids.length === 0)).length > 0 && (
-                    <SelectItem value="uncategorized">
-                      Uncategorized ({varieties.filter(v => !v.plant_subcategory_id && (!v.plant_subcategory_ids || v.plant_subcategory_ids.length === 0)).length})
-                    </SelectItem>
-                  )}
+                  {(() => {
+                    // Count uncategorized: no subcats OR all assigned subcats are inactive
+                    const uncategorizedCount = varieties.filter(v => {
+                      const hasNoSubcat = !v.plant_subcategory_id && (!v.plant_subcategory_ids || v.plant_subcategory_ids.length === 0);
+                      if (hasNoSubcat) return true;
+
+                      const assignedIds = v.plant_subcategory_ids || (v.plant_subcategory_id ? [v.plant_subcategory_id] : []);
+                      const allInactive = assignedIds.every(id => !subCategories.some(s => s.id === id && s.is_active));
+                      return allInactive;
+                    }).length;
+
+                    return uncategorizedCount > 0 && (
+                      <SelectItem value="uncategorized">
+                        Uncategorized ({uncategorizedCount})
+                      </SelectItem>
+                    );
+                  })()}
                 </SelectContent>
               </Select>
 

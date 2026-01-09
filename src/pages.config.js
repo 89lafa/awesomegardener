@@ -45,6 +45,7 @@ import SubcategoryMapping from './pages/SubcategoryMapping';
 import Users from './pages/Users';
 import VarietyReviewQueue from './pages/VarietyReviewQueue';
 import ViewVariety from './pages/ViewVariety';
+import AdminDataMaintenance from './pages/AdminDataMaintenance';
 import __Layout from './Layout.jsx';
 
 
@@ -96,6 +97,7 @@ export const PAGES = {
     "Users": Users,
     "VarietyReviewQueue": VarietyReviewQueue,
     "ViewVariety": ViewVariety,
+    "AdminDataMaintenance": AdminDataMaintenance,
 }
 
 export const pagesConfig = {
