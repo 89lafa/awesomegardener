@@ -226,15 +226,13 @@ Deno.serve(async (req) => {
     return Response.json({
       success: true,
       summary: {
-        total_varieties: allVarieties.length,
-        updated,
-        skipped,
-        bucket_counts: Object.entries(bucketCounts).map(([code, count]) => ({
-          bucket: canonicalBuckets.find(b => b.code === code)?.name || code,
-          count
-        })),
-        varieties_on_inactive: varietiesOnInactive,
-        sweet_samples: sweetWithZeroSamples
+        canonicalSubcatsCreated: 7,
+        oldSubcatsDeactivated: nonCanonicalHeat.length,
+        varietiesUpdated: updated
+      },
+      diagnostics: {
+        bucketCounts,
+        sweetWith0SHU: sweetWithZeroSamples
       }
     });
   } catch (error) {
