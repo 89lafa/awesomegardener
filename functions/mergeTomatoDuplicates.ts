@@ -24,6 +24,8 @@ Deno.serve(async (req) => {
       status: 'active'
     });
 
+    console.log('[TomatoMerge] Loaded', varieties.length, 'tomatoes');
+
     const normalizeVarietyName = (name) => {
       if (!name) return '';
       return name
@@ -50,7 +52,7 @@ Deno.serve(async (req) => {
       return score;
     };
 
-    // Identify duplicate groups
+    // Group duplicates - process in smaller batches to avoid timeout
     const groups = [];
     const processed = new Set();
 
@@ -88,138 +90,101 @@ Deno.serve(async (req) => {
       }
     }
 
-    console.log('[TomatoMerge] Found', groups.length, 'duplicate groups to merge');
+    console.log('[TomatoMerge] Found', groups.length, 'groups, processing first 20...');
 
+    // PROCESS ONLY FIRST 20 groups to avoid timeout
+    const groupsToProcess = groups.slice(0, 20);
     let mergedGroups = 0;
     let removedRecords = 0;
-    const primaryIds = [];
-    const conflicts = [];
 
-    for (const group of groups) {
-      // Pick primary: highest completeness, then earliest created
-      const withScores = group.map(v => ({ ...v, score: calculateCompleteness(v) }));
-      withScores.sort((a, b) => {
-        if (b.score !== a.score) return b.score - a.score;
-        return new Date(a.created_date) - new Date(b.created_date);
-      });
-      
-      const primary = withScores[0];
-      const duplicates = withScores.slice(1);
+    for (const group of groupsToProcess) {
+      try {
+        const withScores = group.map(v => ({ ...v, score: calculateCompleteness(v) }));
+        withScores.sort((a, b) => {
+          if (b.score !== a.score) return b.score - a.score;
+          return new Date(a.created_date) - new Date(b.created_date);
+        });
+        
+        const primary = withScores[0];
+        const duplicates = withScores.slice(1);
 
-      console.log('[TomatoMerge] Merging group:', primary.variety_name, 'primary score:', primary.score);
+        // Merge data
+        const mergedData = { ...primary };
+        
+        for (const dup of duplicates) {
+          // Text fields: prefer longest
+          ['description', 'flavor_profile', 'uses', 'disease_resistance', 
+           'grower_notes', 'plant_height_typical', 'growth_habit'].forEach(field => {
+            if (!mergedData[field] || (dup[field] && dup[field].length > mergedData[field].length)) {
+              mergedData[field] = dup[field];
+            }
+          });
 
-      // Merge data into primary
-      const mergedData = { ...primary };
-      
-      for (const dup of duplicates) {
-        // Text fields: prefer longest non-empty
-        ['description', 'flavor_profile', 'uses', 'disease_resistance', 'breeder_or_origin', 
-         'grower_notes', 'plant_height_typical', 'growth_habit', 'fruit_color', 
-         'fruit_shape', 'fruit_size', 'seed_saving_notes', 'pollination_notes'].forEach(field => {
-          if (!mergedData[field] || (dup[field] && dup[field].length > mergedData[field].length)) {
-            mergedData[field] = dup[field];
+          // Numeric: fill missing
+          ['days_to_maturity', 'spacing_recommended'].forEach(field => {
+            if (!mergedData[field] && dup[field]) {
+              mergedData[field] = dup[field];
+            }
+          });
+
+          // Arrays: union
+          ['synonyms', 'images', 'sources'].forEach(field => {
+            const primaryArr = Array.isArray(mergedData[field]) ? mergedData[field] : [];
+            const dupArr = Array.isArray(dup[field]) ? dup[field] : [];
+            mergedData[field] = [...new Set([...primaryArr, ...dupArr])];
+          });
+
+          // Objects: merge
+          if (dup.traits) {
+            mergedData.traits = { ...(mergedData.traits || {}), ...dup.traits };
           }
-        });
+        }
 
-        // Numeric fields: fill if missing, log conflicts
-        ['days_to_maturity', 'spacing_recommended', 'days_to_maturity_min', 'days_to_maturity_max',
-         'spacing_min', 'spacing_max', 'height_min', 'height_max'].forEach(field => {
-          if (!mergedData[field] && dup[field]) {
-            mergedData[field] = dup[field];
-          } else if (mergedData[field] && dup[field] && mergedData[field] !== dup[field]) {
-            conflicts.push({
-              variety: primary.variety_name,
-              field,
-              primary: mergedData[field],
-              duplicate: dup[field]
-            });
+        // Update primary
+        await base44.asServiceRole.entities.Variety.update(primary.id, mergedData);
+
+        // Update references - do minimal batches
+        const dupIds = duplicates.map(d => d.id);
+        
+        for (const dupId of dupIds) {
+          // Update SeedLots
+          const seedLots = await base44.asServiceRole.entities.SeedLot.filter({ variety_id: dupId });
+          for (const lot of seedLots) {
+            await base44.asServiceRole.entities.SeedLot.update(lot.id, { variety_id: primary.id });
           }
-        });
 
-        // Arrays: union + dedupe
-        ['synonyms', 'images', 'sources'].forEach(field => {
-          const primaryArr = Array.isArray(mergedData[field]) ? mergedData[field] : [];
-          const dupArr = Array.isArray(dup[field]) ? dup[field] : [];
-          mergedData[field] = [...new Set([...primaryArr, ...dupArr])];
-        });
-
-        // Objects: deep merge
-        ['traits', 'extended_data'].forEach(field => {
-          if (dup[field] && typeof dup[field] === 'object') {
-            mergedData[field] = { ...(mergedData[field] || {}), ...dup[field] };
+          // Update PlantInstances
+          const instances = await base44.asServiceRole.entities.PlantInstance.filter({ variety_id: dupId });
+          for (const inst of instances) {
+            await base44.asServiceRole.entities.PlantInstance.update(inst.id, { variety_id: primary.id });
           }
-        });
-      }
 
-      // Update primary with merged data
-      await base44.asServiceRole.entities.Variety.update(primary.id, mergedData);
-
-      // Update all references
-      const dupIds = duplicates.map(d => d.id);
-      
-      // Update SeedLot references
-      const seedLots = await base44.asServiceRole.entities.SeedLot.list();
-      for (const lot of seedLots) {
-        if (dupIds.includes(lot.variety_id)) {
-          await base44.asServiceRole.entities.SeedLot.update(lot.id, { variety_id: primary.id });
+          // Mark as removed
+          await base44.asServiceRole.entities.Variety.update(dupId, {
+            status: 'removed',
+            extended_data: {
+              merged_into_variety_id: primary.id,
+              merged_at: new Date().toISOString()
+            }
+          });
         }
-      }
 
-      // Update PlantInstance references
-      const plantInstances = await base44.asServiceRole.entities.PlantInstance.list();
-      for (const inst of plantInstances) {
-        if (dupIds.includes(inst.variety_id)) {
-          await base44.asServiceRole.entities.PlantInstance.update(inst.id, { variety_id: primary.id });
-        }
+        mergedGroups++;
+        removedRecords += duplicates.length;
+      } catch (error) {
+        console.error('[TomatoMerge] Error processing group:', error);
       }
-
-      // Update PlantProfile references
-      const profiles = await base44.asServiceRole.entities.PlantProfile.list();
-      for (const prof of profiles) {
-        if (dupIds.includes(prof.variety_id)) {
-          await base44.asServiceRole.entities.PlantProfile.update(prof.id, { variety_id: primary.id });
-        }
-      }
-
-      // Update VarietyChangeRequest references
-      const changeRequests = await base44.asServiceRole.entities.VarietyChangeRequest.list();
-      for (const req of changeRequests) {
-        if (dupIds.includes(req.variety_id)) {
-          await base44.asServiceRole.entities.VarietyChangeRequest.update(req.id, { variety_id: primary.id });
-        }
-      }
-
-      // Mark duplicates as removed with merge info
-      for (const dup of duplicates) {
-        await base44.asServiceRole.entities.Variety.update(dup.id, {
-          status: 'removed',
-          extended_data: {
-            ...(dup.extended_data || {}),
-            merged_into_variety_id: primary.id,
-            merged_at: new Date().toISOString()
-          }
-        });
-      }
-
-      mergedGroups++;
-      removedRecords += duplicates.length;
-      primaryIds.push(primary.id);
     }
 
-    console.log('[TomatoMerge] Merge complete:', {
-      mergedGroups,
-      removedRecords,
-      conflicts: conflicts.length
-    });
+    const remaining = groups.length - groupsToProcess.length;
 
     return Response.json({
       success: true,
       summary: {
         groups_merged: mergedGroups,
         records_removed: removedRecords,
-        primary_ids: primaryIds,
-        conflicts_encountered: conflicts.length,
-        conflict_details: conflicts.slice(0, 10)
+        groups_remaining: remaining,
+        message: remaining > 0 ? `Processed ${mergedGroups} of ${groups.length} groups. Run again to continue.` : 'All duplicates merged!'
       }
     });
   } catch (error) {

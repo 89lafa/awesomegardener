@@ -12,14 +12,18 @@ const publicPages = ['Landing', 'PublicGarden', 'PublicPlant', 'Community'];
 export default function Layout({ children, currentPageName }) {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [desktopSidebarCollapsed, setDesktopSidebarCollapsed] = useState(() => {
     return localStorage.getItem('sidebar_collapsed') === 'true';
   });
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
-  const handleToggleSidebar = () => {
-    const newCollapsed = !sidebarCollapsed;
-    setSidebarCollapsed(newCollapsed);
+  const handleMobileMenuToggle = () => {
+    setSidebarOpen(!sidebarOpen);
+  };
+
+  const handleDesktopToggle = () => {
+    const newCollapsed = !desktopSidebarCollapsed;
+    setDesktopSidebarCollapsed(newCollapsed);
     localStorage.setItem('sidebar_collapsed', String(newCollapsed));
   };
 
@@ -89,33 +93,34 @@ export default function Layout({ children, currentPageName }) {
 
   return (
     <div className="min-h-screen bg-[#FDFBF7]">
-      {/* Sidebar - Desktop */}
-      <div className={cn(sidebarCollapsed ? 'hidden' : 'hidden lg:block')}>
+      {/* Desktop Sidebar */}
+      <div className={cn(desktopSidebarCollapsed ? 'hidden' : 'hidden lg:block')}>
         <Sidebar 
           collapsed={false} 
-          onToggle={handleToggleSidebar}
+          onToggle={handleDesktopToggle}
           currentPage={currentPageName}
           user={user}
           isMobile={false}
         />
       </div>
 
-      {/* Mobile Sidebar Overlay */}
-      {!sidebarCollapsed && (
+      {/* Mobile Sidebar Overlay - BEHIND sidebar */}
+      {sidebarOpen && (
         <div 
           className="fixed inset-0 bg-black/50 z-40 lg:hidden"
-          onClick={handleToggleSidebar}
+          onClick={handleMobileMenuToggle}
+          style={{ pointerEvents: 'auto' }}
         />
       )}
 
-      {/* Sidebar - Mobile */}
+      {/* Mobile Sidebar - ABOVE overlay */}
       <div className={cn(
         "lg:hidden fixed inset-y-0 left-0 z-50 transform transition-transform duration-300",
-        sidebarCollapsed ? "-translate-x-full" : "translate-x-0"
+        sidebarOpen ? "translate-x-0" : "-translate-x-full"
       )}>
         <Sidebar 
           collapsed={false} 
-          onToggle={handleToggleSidebar}
+          onToggle={handleMobileMenuToggle}
           currentPage={currentPageName}
           user={user}
           isMobile={true}
@@ -125,16 +130,13 @@ export default function Layout({ children, currentPageName }) {
       {/* Main Content */}
       <div className={cn(
         "transition-all duration-300",
-        sidebarCollapsed ? "ml-0" : "lg:ml-64"
+        desktopSidebarCollapsed ? "ml-0" : "lg:ml-64"
       )}>
         <TopBar 
           user={user} 
-          onMobileMenuToggle={() => {
-            setSidebarCollapsed(false);
-            localStorage.setItem('sidebar_collapsed', 'false');
-          }}
-          onSidebarToggle={handleToggleSidebar}
-          sidebarCollapsed={sidebarCollapsed}
+          onMobileMenuToggle={handleMobileMenuToggle}
+          onSidebarToggle={handleDesktopToggle}
+          sidebarCollapsed={desktopSidebarCollapsed}
         />
         <main className="p-4 lg:p-6">
           {children}

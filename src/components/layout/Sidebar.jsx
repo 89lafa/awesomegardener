@@ -115,8 +115,16 @@ export default function Sidebar({ collapsed, onToggle, currentPage, user, isMobi
         <Button
           variant="ghost"
           size="sm"
-          onClick={onToggle}
+          onClick={(e) => {
+            e.stopPropagation();
+            e.preventDefault();
+            onToggle();
+          }}
+          onPointerDown={(e) => {
+            e.stopPropagation();
+          }}
           className="w-full justify-start gap-2 text-white/70 hover:text-white hover:bg-white/5"
+          style={{ pointerEvents: 'auto', zIndex: 100 }}
         >
           <ChevronLeft className="w-5 h-5" />
           <span className="text-sm">{isMobile ? 'Close' : 'Collapse'}</span>

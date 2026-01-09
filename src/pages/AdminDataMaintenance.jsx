@@ -26,10 +26,12 @@ export default function AdminDataMaintenance() {
   const [tomatoDedupRunning, setTomatoDedupRunning] = useState(false);
   const [tomatoMergeRunning, setTomatoMergeRunning] = useState(false);
   const [exportingSHU, setExportingSHU] = useState(false);
+  const [normalizingSubcats, setNormalizingSubcats] = useState(false);
   const [backfillResult, setBackfillResult] = useState(null);
   const [pepperCleanupResult, setPepperCleanupResult] = useState(null);
   const [tomatoDedupResult, setTomatoDedupResult] = useState(null);
   const [tomatoMergeResult, setTomatoMergeResult] = useState(null);
+  const [normalizeResult, setNormalizeResult] = useState(null);
 
   React.useEffect(() => {
     checkAdmin();
@@ -163,7 +165,7 @@ export default function AdminDataMaintenance() {
   };
 
   const runTomatoMerge = async () => {
-    if (!confirm('This will MERGE duplicate Tomato varieties. This cannot be easily undone. Continue?')) {
+    if (!confirm('This will MERGE duplicate Tomato varieties (20 groups per run). This cannot be easily undone. Continue?')) {
       return;
     }
 
@@ -177,11 +179,10 @@ export default function AdminDataMaintenance() {
         setTomatoMergeResult({
           success: true,
           ...response.data.summary,
-          mergeLog: response.data.mergeLog,
           timestamp: new Date().toISOString(),
           runBy: user.email
         });
-        toast.success('Tomato merge completed successfully!');
+        toast.success(response.data.summary.message || 'Tomato merge completed!');
       } else {
         throw new Error(response.data.error || 'Merge failed');
       }
@@ -196,6 +197,35 @@ export default function AdminDataMaintenance() {
       toast.error('Merge failed: ' + error.message);
     } finally {
       setTomatoMergeRunning(false);
+    }
+  };
+
+  const runNormalizeSubcats = async () => {
+    setNormalizingSubcats(true);
+    setNormalizeResult(null);
+    
+    try {
+      const response = await base44.functions.invoke('normalizeVarietySubcategories', {});
+      
+      if (response.data.success) {
+        setNormalizeResult({
+          success: true,
+          ...response.data.summary,
+          timestamp: new Date().toISOString()
+        });
+        toast.success('Subcategory normalization completed!');
+      } else {
+        throw new Error(response.data.error || 'Normalization failed');
+      }
+    } catch (error) {
+      console.error('Normalize error:', error);
+      setNormalizeResult({
+        success: false,
+        error: error.message
+      });
+      toast.error('Normalization failed: ' + error.message);
+    } finally {
+      setNormalizingSubcats(false);
     }
   };
 
@@ -221,65 +251,64 @@ export default function AdminDataMaintenance() {
         </div>
       </div>
 
-      {/* Backfill Subcategories */}
+      {/* Normalize Subcategories */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <RefreshCw className="w-5 h-5 text-blue-600" />
-            Backfill Variety Subcategories
+            <RefreshCw className="w-5 h-5 text-purple-600" />
+            Normalize Variety Subcategories
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <p className="text-sm text-gray-600">
-            Ensures all varieties have both <code className="bg-gray-100 px-1 rounded">plant_subcategory_id</code> and <code className="bg-gray-100 px-1 rounded">plant_subcategory_ids</code> populated for backwards compatibility.
+            Sanitizes and normalizes subcategory fields for all varieties. Removes invalid IDs, ensures consistency between single and array fields.
           </p>
 
           <div className="flex items-center gap-3">
             <Button
-              onClick={runBackfill}
-              disabled={backfillRunning}
-              className="bg-blue-600 hover:bg-blue-700 gap-2"
+              onClick={runNormalizeSubcats}
+              disabled={normalizingSubcats}
+              className="bg-purple-600 hover:bg-purple-700 gap-2"
             >
-              {backfillRunning ? (
+              {normalizingSubcats ? (
                 <>
                   <Loader2 className="w-4 h-4 animate-spin" />
-                  Running...
+                  Normalizing...
                 </>
               ) : (
                 <>
                   <Play className="w-4 h-4" />
-                  Run Backfill
+                  Normalize Subcategories
                 </>
               )}
             </Button>
 
-            {backfillResult && (
-              <Badge variant={backfillResult.success ? "default" : "destructive"} className="gap-1">
-                {backfillResult.success ? (
+            {normalizeResult && (
+              <Badge variant={normalizeResult.success ? "default" : "destructive"} className="gap-1">
+                {normalizeResult.success ? (
                   <CheckCircle2 className="w-3 h-3" />
                 ) : (
                   <AlertCircle className="w-3 h-3" />
                 )}
-                {backfillResult.success ? 'Success' : 'Failed'}
+                {normalizeResult.success ? 'Success' : 'Failed'}
               </Badge>
             )}
           </div>
 
-          {backfillResult && (
-            <Alert className={backfillResult.success ? 'border-green-200 bg-green-50' : 'border-red-200 bg-red-50'}>
-              <AlertDescription className={backfillResult.success ? 'text-green-800' : 'text-red-800'}>
+          {normalizeResult && (
+            <Alert className={normalizeResult.success ? 'border-green-200 bg-green-50' : 'border-red-200 bg-red-50'}>
+              <AlertDescription className={normalizeResult.success ? 'text-green-800' : 'text-red-800'}>
                 <div className="space-y-2">
                   <div className="font-semibold">Results:</div>
-                  {backfillResult.success ? (
+                  {normalizeResult.success ? (
                     <ul className="text-sm space-y-1">
-                      <li>• Total varieties: {backfillResult.totalVarieties}</li>
-                      <li>• Updated: {backfillResult.updated}</li>
-                      <li>• Skipped (already OK): {backfillResult.skipped}</li>
-                      <li>• Run at: {new Date(backfillResult.timestamp).toLocaleString()}</li>
-                      <li>• Run by: {backfillResult.runBy}</li>
+                      <li>• Varieties scanned: {normalizeResult.varieties_scanned}</li>
+                      <li>• Varieties updated: {normalizeResult.varieties_updated}</li>
+                      <li>• Invalid IDs removed: {normalizeResult.invalid_ids_removed}</li>
+                      <li>• Run at: {new Date(normalizeResult.timestamp).toLocaleString()}</li>
                     </ul>
                   ) : (
-                    <div className="text-sm">{backfillResult.error}</div>
+                    <div className="text-sm">{normalizeResult.error}</div>
                   )}
                 </div>
               </AlertDescription>
@@ -504,24 +533,16 @@ export default function AdminDataMaintenance() {
                 <div className="space-y-2">
                   <div className="font-semibold">Dry Run Results:</div>
                   <ul className="text-sm space-y-1">
-                    <li>• Total varieties: {tomatoDedupResult.summary.totalVarieties}</li>
-                    <li>• Duplicate groups found: {tomatoDedupResult.summary.duplicateGroupsFound}</li>
-                    <li>• Total duplicates to remove: {tomatoDedupResult.summary.totalDuplicates}</li>
+                    <li>• Duplicate groups found: {tomatoDedupResult.duplicate_groups}</li>
+                    <li>• Total duplicates to remove: {tomatoDedupResult.total_duplicates}</li>
                   </ul>
-                  {tomatoDedupResult.duplicateGroups?.length > 0 && (
+                  {tomatoDedupResult.groups?.length > 0 && (
                     <details className="mt-2">
-                      <summary className="cursor-pointer text-sm font-semibold">View duplicate groups (first 10)</summary>
+                      <summary className="cursor-pointer text-sm font-semibold">View duplicate groups (sample)</summary>
                       <div className="mt-2 space-y-2 max-h-64 overflow-auto">
-                        {tomatoDedupResult.duplicateGroups.slice(0, 10).map((group, i) => (
+                        {tomatoDedupResult.groups.slice(0, 10).map((group, i) => (
                           <div key={i} className="p-2 bg-white rounded border text-xs">
-                            <div className="font-semibold">{group.type}: {group.value}</div>
-                            <div className="mt-1 space-y-1">
-                              {group.varieties.map((v, j) => (
-                                <div key={j} className="ml-2">
-                                  • {v.variety_name} (score: {v.completeness}, id: {v.id.slice(0, 8)}...)
-                                </div>
-                              ))}
-                            </div>
+                            <div className="font-semibold">{group.sample} ({group.count} duplicates)</div>
                           </div>
                         ))}
                       </div>
@@ -538,28 +559,21 @@ export default function AdminDataMaintenance() {
                 <div className="space-y-2">
                   <div className="font-semibold">Merge Results:</div>
                   {tomatoMergeResult.success ? (
-                    <>
-                      <ul className="text-sm space-y-1">
-                        <li>• Groups merged: {tomatoMergeResult.groupsMerged}</li>
-                        <li>• Varieties removed: {tomatoMergeResult.varietiesRemoved}</li>
-                        <li>• Primary varieties preserved: {tomatoMergeResult.primaryVarietiesPreserved}</li>
-                        <li>• Run at: {new Date(tomatoMergeResult.timestamp).toLocaleString()}</li>
-                      </ul>
-                      {tomatoMergeResult.mergeLog?.length > 0 && (
-                        <details className="mt-2">
-                          <summary className="cursor-pointer text-sm font-semibold">View merge log (first 10)</summary>
-                          <div className="mt-2 space-y-1 max-h-48 overflow-auto text-xs">
-                            {tomatoMergeResult.mergeLog.slice(0, 10).map((log, i) => (
-                              <div key={i}>
-                                • {log.primaryName} (kept) ← merged {log.mergedCount} duplicates
-                              </div>
-                            ))}
-                          </div>
-                        </details>
-                      )}
-                    </>
+                   <>
+                     <ul className="text-sm space-y-1">
+                       <li>• Groups merged: {tomatoMergeResult.groups_merged}</li>
+                       <li>• Records removed: {tomatoMergeResult.records_removed}</li>
+                       <li>• {tomatoMergeResult.message}</li>
+                       <li>• Run at: {new Date(tomatoMergeResult.timestamp).toLocaleString()}</li>
+                     </ul>
+                     {tomatoMergeResult.groups_remaining > 0 && (
+                       <div className="mt-2 p-2 bg-white rounded text-amber-700 text-xs">
+                         ⚠️ {tomatoMergeResult.groups_remaining} groups remaining. Click "Merge" again to continue.
+                       </div>
+                     )}
+                   </>
                   ) : (
-                    <div className="text-sm">{tomatoMergeResult.error}</div>
+                   <div className="text-sm">{tomatoMergeResult.error}</div>
                   )}
                 </div>
               </AlertDescription>
