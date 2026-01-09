@@ -38,6 +38,18 @@ export default function Layout({ children, currentPageName }) {
     loadUser();
   }, []);
 
+  // Lock body scroll when mobile menu is open
+  useEffect(() => {
+    if (mobileMenuOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [mobileMenuOpen]);
+
   const loadUser = async () => {
     try {
       const isAuth = await base44.auth.isAuthenticated();
@@ -94,18 +106,6 @@ export default function Layout({ children, currentPageName }) {
     window.location.href = createPageUrl('Onboarding');
     return null;
   }
-
-  // Lock body scroll when mobile menu is open
-  useEffect(() => {
-    if (mobileMenuOpen) {
-      document.body.style.overflow = 'hidden';
-    } else {
-      document.body.style.overflow = '';
-    }
-    return () => {
-      document.body.style.overflow = '';
-    };
-  }, [mobileMenuOpen]);
 
   return (
     <div className="min-h-screen bg-[#FDFBF7]">
