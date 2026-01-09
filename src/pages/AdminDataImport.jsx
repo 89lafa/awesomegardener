@@ -385,23 +385,17 @@ export default function AdminDataImport() {
                   }
                 }
 
-                // UPSERT logic: Check for existing by ID, variety_code, OR normalized name
+                // UPSERT logic: Check for existing by variety_code OR normalized name
                 let existing = [];
                 
-                // Priority 1: ID match
-                if (row.id) {
-                  existing = await base44.entities.Variety.filter({ id: row.id });
-                }
-                
-                // Priority 2: variety_code match
-                if (existing.length === 0 && row.variety_code) {
+                if (row.variety_code) {
                   existing = await base44.entities.Variety.filter({ 
                     variety_code: row.variety_code 
                   });
                 }
                 
-                // Priority 3: normalized name matching
                 if (existing.length === 0) {
+                  // Fallback to normalized name matching
                   const allVarieties = await base44.entities.Variety.filter({ 
                     plant_type_id: resolvedTypeId 
                   });
@@ -442,6 +436,10 @@ export default function AdminDataImport() {
                 if (resolvedSubcategoryId) {
                   subcatIds = [resolvedSubcategoryId];
                 }
+
+                // Parse SHU fields (support both old and new)
+                const scovilleMin = row.scoville_min || row.heat_scoville_min || null;
+                const scovilleMax = row.scoville_max || row.heat_scoville_max || null;
 
                 const varietyData = {
                   plant_type_id: resolvedTypeId,
@@ -487,10 +485,10 @@ export default function AdminDataImport() {
                   affiliate_url: row.affiliate_url || null,
                   popularity_tier: row.popularity_tier || null,
                   grower_notes: row.grower_notes || null,
-                  scoville_min: row.scoville_min ? parseFloat(row.scoville_min) : null,
-                  scoville_max: row.scoville_max ? parseFloat(row.scoville_max) : null,
-                  heat_scoville_min: row.heat_scoville_min ? parseFloat(row.heat_scoville_min) : null,
-                  heat_scoville_max: row.heat_scoville_max ? parseFloat(row.heat_scoville_max) : null,
+                  scoville_min: scovilleMin ? parseInt(scovilleMin) : null,
+                  scoville_max: scovilleMax ? parseInt(scovilleMax) : null,
+                  heat_scoville_min: scovilleMin ? parseInt(scovilleMin) : null,
+                  heat_scoville_max: scovilleMax ? parseInt(scovilleMax) : null,
                   source_attribution: row.source_attribution || 'CSV Import',
                   status: 'active',
                   is_custom: false
