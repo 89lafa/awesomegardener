@@ -1036,6 +1036,12 @@ function GenericDedupeTool({ dedupPlantType, setDedupPlantType, dedupRunning, de
         )}
       </CardContent>
     </Card>
+  );
+}
+
+function PepperDiagnostics() {
+  const [diagnostics, setDiagnostics] = useState(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     loadDiagnostics();
