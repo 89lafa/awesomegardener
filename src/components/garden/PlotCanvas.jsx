@@ -38,7 +38,7 @@ import { cn } from '@/lib/utils';
 
 const ITEM_TYPES = [
   { value: 'RAISED_BED', label: 'Raised Bed', color: '#8B7355', defaultDims: '4x8', defaultUnit: 'ft', usesGrid: true, plantable: true },
-  { value: 'RAISED_PLANTER', label: 'Raised Planter/Garden Bed', color: '#A0826D', usesPredefinedSizes: true, usesGrid: true, plantable: true },
+  { value: 'RAISED_PLANTER', label: 'Raised Planter/Garden Bed', color: '#5DADE2', usesPredefinedSizes: true, usesGrid: true, plantable: true },
   { value: 'IN_GROUND_BED', label: 'In-Ground Bed', color: '#A0826D', defaultDims: '4x20', defaultUnit: 'ft', usesRows: true, plantable: true },
   { value: 'GREENHOUSE', label: 'Greenhouse', color: '#80CBC4', defaultDims: '10x12', defaultUnit: 'ft', usesGrid: true, plantable: true },
   { value: 'OPEN_PLOT', label: 'Open Plot', color: '#D7CCC8', defaultDims: '50x100', defaultUnit: 'ft', usesRows: true, plantable: true },
@@ -46,7 +46,7 @@ const ITEM_TYPES = [
   { value: 'CONTAINER', label: 'Plastic/Ceramic Container', color: '#D84315', usesGallons: true, plantable: true },
   { value: 'FENCE', label: 'Fence', color: '#5D4037', defaultDims: '10x0.5', defaultUnit: 'ft', plantable: false },
   { value: 'BUILDING', label: 'Building/Shed', color: '#795548', defaultDims: '8x10', defaultUnit: 'ft', plantable: false },
-  { value: 'TREE', label: 'Tree', color: '#4CAF50', defaultDims: '3x3', defaultUnit: 'ft', plantable: false },
+  { value: 'TREE', label: 'Tree', color: '#4CAF50', defaultDims: '3x3', defaultUnit: 'ft', plantable: true },
   { value: 'PATH', label: 'Path/Walkway', color: '#9E9E9E', defaultDims: '3x20', defaultUnit: 'ft', plantable: false },
   { value: 'COMPOST', label: 'Compost Bin', color: '#6D4C41', defaultDims: '3x3', defaultUnit: 'ft', plantable: false },
   { value: 'WATER_SOURCE', label: 'Water Source', color: '#2196F3', defaultDims: '2x2', defaultUnit: 'ft', plantable: false },
@@ -89,6 +89,7 @@ export default function PlotCanvas({ garden, plot, activeSeason, onPlotUpdate, o
     dimensions: '',
     unit: 'ft',
     color: '',
+    customColor: '',
     gallonSize: 5,
     rowSpacing: 18,
     rowCount: null,
@@ -106,7 +107,8 @@ export default function PlotCanvas({ garden, plot, activeSeason, onPlotUpdate, o
     rowSpacing: 18,
     rowCount: null,
     createMultiple: false,
-    count: 1
+    count: 1,
+    color: null
   });
 
   const [bulkAdd, setBulkAdd] = useState({
@@ -272,6 +274,11 @@ export default function PlotCanvas({ garden, plot, activeSeason, onPlotUpdate, o
       return { type: 'slots', slots: 1, flexible: true };
     }
     
+    // TREE: 1 slot plantable
+    if (itemType.value === 'TREE') {
+      return { type: 'slots', slots: 1, flexible: true };
+    }
+    
     if (itemType.usesGrid && metadata.gridEnabled) {
       const gridSize = metadata.gridSize || 12;
       return {
@@ -389,7 +396,8 @@ export default function PlotCanvas({ garden, plot, activeSeason, onPlotUpdate, o
           y,
           rotation: 0,
           z_index: items.length + i,
-          metadata
+          metadata,
+          custom_color: newItem.color || null
         });
 
         // Auto-create PlantingSpace only if plantable
@@ -435,7 +443,8 @@ export default function PlotCanvas({ garden, plot, activeSeason, onPlotUpdate, o
       rowSpacing: 18,
       rowCount: null,
       createMultiple: false,
-      count: 1
+      count: 1,
+      color: null
     });
   };
 
@@ -454,7 +463,8 @@ export default function PlotCanvas({ garden, plot, activeSeason, onPlotUpdate, o
       gallonSize: 5,
       planterSize: '4ft x 8ft',
       rowSpacing: 18,
-      rowCount: null
+      rowCount: null,
+      color: itemType.color
     });
   };
 
@@ -758,7 +768,8 @@ export default function PlotCanvas({ garden, plot, activeSeason, onPlotUpdate, o
       label: item.label,
       dimensions: `${widthFt}x${heightFt}`,
       unit: 'ft',
-      color: getItemColor(item.item_type),
+      color: getItemColor(item),
+      customColor: item.custom_color || '',
       gallonSize: item.metadata?.gallonSize || 5,
       rowSpacing: item.metadata?.rowSpacing || 18,
       rowCount: item.metadata?.rowCount || null,
@@ -806,7 +817,8 @@ export default function PlotCanvas({ garden, plot, activeSeason, onPlotUpdate, o
         label: editItemData.label,
         width,
         height,
-        metadata
+        metadata,
+        custom_color: editItemData.customColor || null
       });
 
       // Update PlantingSpace if it exists
@@ -845,7 +857,8 @@ export default function PlotCanvas({ garden, plot, activeSeason, onPlotUpdate, o
         label: editItemData.label,
         width,
         height,
-        metadata
+        metadata,
+        custom_color: editItemData.customColor || null
       };
       
       setItems(items.map(i => i.id === selectedItem.id ? updatedItem : i));
@@ -860,8 +873,12 @@ export default function PlotCanvas({ garden, plot, activeSeason, onPlotUpdate, o
     }
   };
 
-  const getItemColor = (type) => {
-    return ITEM_TYPES.find(t => t.value === type)?.color || '#8B7355';
+  const getItemColor = (item) => {
+    // Use custom color if set, otherwise default type color
+    if (typeof item === 'string') {
+      return ITEM_TYPES.find(t => t.value === item)?.color || '#8B7355';
+    }
+    return item.custom_color || ITEM_TYPES.find(t => t.value === item.item_type)?.color || '#8B7355';
   };
 
   if (loading) {
@@ -1067,6 +1084,9 @@ export default function PlotCanvas({ garden, plot, activeSeason, onPlotUpdate, o
             const status = itemType?.plantable ? getPlantingStatus(item.id) : null;
             const counts = itemsPlantingCounts[item.id];
 
+            const isGrowBagOrContainer = itemType?.usesGallons;
+            const isFull = status?.status === 'full';
+
             return (
             <div
               key={item.id}
@@ -1076,14 +1096,15 @@ export default function PlotCanvas({ garden, plot, activeSeason, onPlotUpdate, o
                 !status && "border-gray-400",
                 status?.status === 'empty' && "border-gray-400",
                 status?.status === 'partial' && "border-amber-500 bg-amber-500/5",
-                status?.status === 'full' && "border-emerald-600 bg-emerald-500/5"
+                status?.status === 'full' && "border-emerald-600 bg-emerald-500/5",
+                isGrowBagOrContainer && isFull && "!bg-emerald-600"
               )}
               style={{
                 left: item.x * zoom,
                 top: item.y * zoom,
                 width: item.width * zoom,
                 height: item.height * zoom,
-                backgroundColor: getItemColor(item.item_type),
+                backgroundColor: isGrowBagOrContainer && isFull ? '#10b981' : getItemColor(item),
                 cursor: isDragging && draggingItem?.id === item.id ? 'grabbing' : 'grab'
               }}
             >
@@ -1190,6 +1211,27 @@ export default function PlotCanvas({ garden, plot, activeSeason, onPlotUpdate, o
                 onChange={(e) => setNewItem({ ...newItem, label: e.target.value })}
                 className="mt-2"
               />
+            </div>
+
+            {/* Color Picker */}
+            <div>
+              <Label>Item Color</Label>
+              <div className="flex gap-2 mt-2">
+                <input
+                  type="color"
+                  value={newItem.color || ITEM_TYPES.find(t => t.value === newItem.item_type)?.color || '#8B7355'}
+                  onChange={(e) => setNewItem({ ...newItem, color: e.target.value })}
+                  className="w-12 h-10 rounded border cursor-pointer"
+                />
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setNewItem({ ...newItem, color: ITEM_TYPES.find(t => t.value === newItem.item_type)?.color })}
+                  className="flex-1"
+                >
+                  Reset to Default
+                </Button>
+              </div>
             </div>
 
             {/* Type-specific fields */}
@@ -1376,6 +1418,27 @@ export default function PlotCanvas({ garden, plot, activeSeason, onPlotUpdate, o
                   onChange={(e) => setEditItemData({ ...editItemData, label: e.target.value })}
                   className="mt-2"
                 />
+              </div>
+
+              {/* Color Picker */}
+              <div>
+                <Label>Item Color</Label>
+                <div className="flex gap-2 mt-2">
+                  <input
+                    type="color"
+                    value={editItemData.customColor || editItemData.color}
+                    onChange={(e) => setEditItemData({ ...editItemData, customColor: e.target.value })}
+                    className="w-12 h-10 rounded border cursor-pointer"
+                  />
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setEditItemData({ ...editItemData, customColor: '' })}
+                    className="flex-1"
+                  >
+                    Reset to Default
+                  </Button>
+                </div>
               </div>
 
               {ITEM_TYPES.find(t => t.value === selectedItem.item_type)?.usesGallons ? (

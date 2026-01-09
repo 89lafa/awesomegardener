@@ -104,10 +104,15 @@ export default function Calendar() {
         setSeasons(seasonsData);
         
         if (seasonsData.length > 0) {
+          // Find current year season if possible
+          const currentYear = new Date().getFullYear();
+          const currentSeason = seasonsData.find(s => s.year === currentYear);
+          
           const season = savedSeasonId 
-            ? seasonsData.find(s => s.id === savedSeasonId) || seasonsData[0]
-            : seasonsData[0];
+            ? seasonsData.find(s => s.id === savedSeasonId) || (currentSeason || seasonsData[0])
+            : (currentSeason || seasonsData[0]);
           setActiveSeasonId(season.id);
+          localStorage.setItem('calendar_active_season', season.id);
         }
       }
     } catch (error) {
