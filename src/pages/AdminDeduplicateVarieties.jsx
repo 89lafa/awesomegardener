@@ -22,8 +22,7 @@ export default function AdminDeduplicateVarieties() {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [plantTypes, setPlantTypes] = useState([]);
-  const [selectedPlantType, setSelectedPlantType] = useState('all');
-  const [matchingMode, setMatchingMode] = useState('code_first');
+  const [selectedPlantType, setSelectedPlantType] = useState('');
   const [dryRunning, setDryRunning] = useState(false);
   const [merging, setMerging] = useState(false);
   const [dryRunResult, setDryRunResult] = useState(null);
@@ -63,13 +62,19 @@ export default function AdminDeduplicateVarieties() {
   };
 
   const runDryRun = async () => {
+    if (!selectedPlantType || selectedPlantType === 'all') {
+      toast.error('Please select a specific plant type');
+      return;
+    }
+
     setDryRunning(true);
     setDryRunResult(null);
     
     try {
-      const response = await base44.functions.invoke('deduplicateVarietiesDryRun', {
-        plant_type_id: selectedPlantType === 'all' ? null : selectedPlantType,
-        matching_mode: matchingMode
+      const response = await base44.functions.invoke('deduplicateVarietiesGeneric', {
+        plant_type_id: selectedPlantType,
+        dry_run: true,
+        max_groups: 50
       });
       
       if (response.data.success) {
@@ -87,12 +92,18 @@ export default function AdminDeduplicateVarieties() {
   };
 
   const runMerge = async () => {
-    if (!dryRunResult || dryRunResult.duplicateGroups.length === 0) {
+    if (!selectedPlantType || selectedPlantType === 'all') {
+      toast.error('Please select a specific plant type');
+      return;
+    }
+
+    if (!dryRunResult || !dryRunResult.summary || dryRunResult.summary.duplicate_groups === 0) {
       toast.error('Run dry-run first to see what will be merged');
       return;
     }
 
-    if (!confirm(`Merge ${dryRunResult.duplicateGroups.length} duplicate groups? This will update references and mark duplicates as removed.`)) {
+    const plantTypeName = plantTypes.find(p => p.id === selectedPlantType)?.common_name;
+    if (!confirm(`Merge duplicates for ${plantTypeName}? This will process up to 20 groups and update all references. Continue?`)) {
       return;
     }
 
@@ -100,16 +111,17 @@ export default function AdminDeduplicateVarieties() {
     setMergeResult(null);
     
     try {
-      const response = await base44.functions.invoke('mergeVarietyDuplicates', {
-        plant_type_id: selectedPlantType === 'all' ? null : selectedPlantType,
-        matching_mode: matchingMode
+      const response = await base44.functions.invoke('deduplicateVarietiesGeneric', {
+        plant_type_id: selectedPlantType,
+        dry_run: false,
+        max_groups: 20
       });
       
       if (response.data.success) {
         setMergeResult(response.data);
         toast.success('Merge completed successfully!');
-        // Clear dry run so user runs it again to see results
-        setDryRunResult(null);
+        // Refresh dry run to show remaining
+        setTimeout(() => runDryRun(), 1000);
       } else {
         throw new Error(response.data.error || 'Merge failed');
       }
@@ -154,27 +166,20 @@ export default function AdminDeduplicateVarieties() {
               <Label>Plant Type</Label>
               <Select value={selectedPlantType} onValueChange={setSelectedPlantType}>
                 <SelectTrigger className="mt-1">
-                  <SelectValue />
+                  <SelectValue placeholder="Select a plant type..." />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All Plant Types</SelectItem>
                   {plantTypes.map(pt => (
-                    <SelectItem key={pt.id} value={pt.id}>{pt.common_name}</SelectItem>
+                    <SelectItem key={pt.id} value={pt.id}>
+                      {pt.icon && <span className="mr-2">{pt.icon}</span>}
+                      {pt.common_name}
+                    </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
-            </div>
-            <div>
-              <Label>Matching Mode</Label>
-              <Select value={matchingMode} onValueChange={setMatchingMode}>
-                <SelectTrigger className="mt-1">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="code_first">Variety Code (primary), Name (fallback)</SelectItem>
-                  <SelectItem value="name_only">Normalized Name Only</SelectItem>
-                </SelectContent>
-              </Select>
+              <p className="text-xs text-gray-500 mt-1">
+                Finds duplicates by variety_code or normalized name, works for any plant type
+              </p>
             </div>
           </div>
 
@@ -201,18 +206,18 @@ export default function AdminDeduplicateVarieties() {
       </Card>
 
       {/* Dry Run Results */}
-      {dryRunResult && (
+      {dryRunResult && dryRunResult.dry_run && (
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               Dry-Run Results
-              <Badge variant={dryRunResult.duplicateGroups.length > 0 ? 'destructive' : 'default'}>
-                {dryRunResult.duplicateGroups.length} duplicate groups
+              <Badge variant={dryRunResult.summary?.duplicate_groups > 0 ? 'destructive' : 'default'}>
+                {dryRunResult.summary?.duplicate_groups || 0} duplicate groups
               </Badge>
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            {dryRunResult.duplicateGroups.length === 0 ? (
+            {dryRunResult.summary?.duplicate_groups === 0 ? (
               <Alert className="border-green-200 bg-green-50">
                 <CheckCircle2 className="w-4 h-4 text-green-600" />
                 <AlertDescription className="text-green-800">
@@ -224,58 +229,55 @@ export default function AdminDeduplicateVarieties() {
                 <Alert className="border-yellow-200 bg-yellow-50">
                   <AlertTriangle className="w-4 h-4 text-yellow-600" />
                   <AlertDescription className="text-yellow-800">
-                    Found {dryRunResult.duplicateGroups.length} duplicate groups affecting {dryRunResult.totalDuplicates} varieties
+                    Found {dryRunResult.summary.duplicate_groups} duplicate groups affecting {dryRunResult.summary.total_duplicates} varieties
                   </AlertDescription>
                 </Alert>
 
                 <div className="space-y-3 max-h-96 overflow-y-auto">
-                  {dryRunResult.duplicateGroups.slice(0, 10).map((group, idx) => (
+                  {dryRunResult.groups?.map((group, idx) => (
                     <div key={idx} className="border rounded-lg p-4 bg-gray-50">
-                      <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center justify-between mb-3">
                         <h4 className="font-semibold text-gray-900">
-                          {group.variety_name}
-                          <span className="text-sm text-gray-500 ml-2">({group.plant_type_name})</span>
+                          {group.canonical.name}
                         </h4>
-                        <Badge variant="outline">{group.duplicates.length} records</Badge>
+                        <Badge variant="outline">{group.count} records</Badge>
                       </div>
-                      <div className="space-y-2 text-sm">
-                        {group.duplicates.map((dup, dupIdx) => (
-                          <div 
-                            key={dup.id}
-                            className={`p-2 rounded ${dup.isCanonical ? 'bg-green-100 border border-green-300' : 'bg-white border'}`}
-                          >
+                      
+                      {/* Canonical */}
+                      <div className="p-2 rounded bg-green-100 border border-green-300 mb-2">
+                        <div className="flex items-center gap-2">
+                          <Badge className="bg-green-600">KEEP</Badge>
+                          <span className="font-mono text-xs text-gray-700">{group.canonical.id}</span>
+                          {group.canonical.code && (
+                            <Badge variant="outline" className="text-xs">Code: {group.canonical.code}</Badge>
+                          )}
+                        </div>
+                        <div className="mt-1 text-xs text-gray-600">
+                          Created: {new Date(group.canonical.created).toLocaleDateString()} • 
+                          Completeness Score: {group.canonical.score}
+                        </div>
+                      </div>
+
+                      {/* Duplicates */}
+                      <div className="space-y-1">
+                        {group.duplicates.map((dup, i) => (
+                          <div key={i} className="p-2 rounded bg-red-50 border border-red-200">
                             <div className="flex items-center gap-2">
-                              {dup.isCanonical && <Badge className="bg-green-600">CANONICAL</Badge>}
-                              <span className="font-mono text-xs text-gray-500">{dup.id}</span>
-                              {dup.variety_code && (
-                                <Badge variant="outline" className="text-xs">Code: {dup.variety_code}</Badge>
+                              <Badge className="bg-red-600">REMOVE</Badge>
+                              <span className="font-mono text-xs text-gray-700">{dup.id}</span>
+                              {dup.code && (
+                                <Badge variant="outline" className="text-xs">Code: {dup.code}</Badge>
                               )}
                             </div>
                             <div className="mt-1 text-xs text-gray-600">
-                              Created: {new Date(dup.created_date).toLocaleDateString()} • 
-                              Fields: {dup.fieldCount} • 
-                              Images: {dup.imageCount}
+                              Created: {new Date(dup.created).toLocaleDateString()} • 
+                              Score: {dup.score}
                             </div>
                           </div>
                         ))}
                       </div>
-                      {group.mergePreview && (
-                        <div className="mt-2 p-2 bg-blue-50 rounded text-xs">
-                          <div className="font-semibold text-blue-900">After merge:</div>
-                          <div className="text-blue-800 mt-1">
-                            Images: {group.mergePreview.images?.length || 0} | 
-                            Synonyms: {group.mergePreview.synonyms?.length || 0} | 
-                            Subcategories: {group.mergePreview.plant_subcategory_ids?.length || 0}
-                          </div>
-                        </div>
-                      )}
                     </div>
                   ))}
-                  {dryRunResult.duplicateGroups.length > 10 && (
-                    <p className="text-sm text-gray-500 text-center">
-                      ... and {dryRunResult.duplicateGroups.length - 10} more groups
-                    </p>
-                  )}
                 </div>
 
                 <Button
@@ -291,7 +293,7 @@ export default function AdminDeduplicateVarieties() {
                   ) : (
                     <>
                       <MergeIcon className="w-4 h-4" />
-                      Apply Merge ({dryRunResult.duplicateGroups.length} groups)
+                      Apply Merge (20 groups per run)
                     </>
                   )}
                 </Button>
@@ -302,7 +304,7 @@ export default function AdminDeduplicateVarieties() {
       )}
 
       {/* Merge Results */}
-      {mergeResult && (
+      {mergeResult && mergeResult.success && (
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -314,13 +316,15 @@ export default function AdminDeduplicateVarieties() {
             <Alert className="border-green-200 bg-green-50">
               <AlertDescription className="text-green-800">
                 <div className="space-y-2">
-                  <div className="font-semibold">Results:</div>
+                  <div className="font-semibold">{mergeResult.summary?.message || 'Merge completed!'}</div>
                   <ul className="text-sm space-y-1">
-                    <li>• Groups merged: {mergeResult.summary.groupsMerged}</li>
-                    <li>• Records merged into canonical: {mergeResult.summary.recordsMerged}</li>
-                    <li>• References updated: {mergeResult.summary.referencesUpdated}</li>
-                    <li>• Remaining duplicates: {mergeResult.summary.remainingDuplicates}</li>
-                    <li>• Completed at: {new Date(mergeResult.timestamp).toLocaleString()}</li>
+                    <li>• Groups merged: {mergeResult.summary?.groups_merged || 0}</li>
+                    <li>• Records removed: {mergeResult.summary?.records_removed || 0}</li>
+                    {mergeResult.summary?.groups_remaining > 0 && (
+                      <li className="text-amber-700 font-semibold">
+                        ⚠️ {mergeResult.summary.groups_remaining} groups remaining - run merge again
+                      </li>
+                    )}
                   </ul>
                 </div>
               </AlertDescription>
