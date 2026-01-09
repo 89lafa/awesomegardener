@@ -55,6 +55,7 @@ const getNavItems = (userRole, isEditor, user) => {
   if (userRole === 'admin') {
     items.push({ name: 'Users', icon: Users, page: 'Users' });
     items.push({ name: 'Data Import', icon: Database, page: 'AdminDataImport' });
+    items.push({ name: 'Admin Maintenance', icon: Settings, page: 'AdminDataMaintenance' });
   }
 
   items.push({ name: 'Settings', icon: Settings, page: 'Settings' });
