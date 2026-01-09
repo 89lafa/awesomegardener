@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   Select,
@@ -129,7 +130,12 @@ export default function EditVariety() {
         grower_notes: formData.grower_notes,
         heat_scoville_min: formData.heat_scoville_min ? parseFloat(formData.heat_scoville_min) : null,
         heat_scoville_max: formData.heat_scoville_max ? parseFloat(formData.heat_scoville_max) : null,
-        affiliate_url: formData.affiliate_url || null
+        affiliate_url: formData.affiliate_url || null,
+        species: formData.species || null,
+        seed_line_type: formData.seed_line_type || null,
+        season_timing: formData.season_timing || null,
+        is_ornamental: formData.is_ornamental || false,
+        is_organic: formData.is_organic || false
       };
 
       await base44.entities.Variety.update(varietyId, updateData);
@@ -401,6 +407,86 @@ export default function EditVariety() {
                 rows={4}
                 className="mt-1"
               />
+            </div>
+
+            <div className="grid md:grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="species">Species</Label>
+                <Select 
+                  value={formData.species || ''} 
+                  onValueChange={(v) => setFormData({ ...formData, species: v })}
+                >
+                  <SelectTrigger className="mt-1">
+                    <SelectValue placeholder="Select..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={null}>None</SelectItem>
+                    <SelectItem value="annuum">Annuum</SelectItem>
+                    <SelectItem value="chinense">Chinense</SelectItem>
+                    <SelectItem value="baccatum">Baccatum</SelectItem>
+                    <SelectItem value="frutescens">Frutescens</SelectItem>
+                    <SelectItem value="pubescens">Pubescens</SelectItem>
+                    <SelectItem value="unknown">Unknown</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label htmlFor="seed_line_type">Seed Line Type</Label>
+                <Select 
+                  value={formData.seed_line_type || ''} 
+                  onValueChange={(v) => setFormData({ ...formData, seed_line_type: v })}
+                >
+                  <SelectTrigger className="mt-1">
+                    <SelectValue placeholder="Select..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={null}>None</SelectItem>
+                    <SelectItem value="heirloom">Heirloom</SelectItem>
+                    <SelectItem value="hybrid">Hybrid</SelectItem>
+                    <SelectItem value="open_pollinated">Open-Pollinated</SelectItem>
+                    <SelectItem value="unknown">Unknown</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <div className="grid md:grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="season_timing">Season Timing</Label>
+                <Select 
+                  value={formData.season_timing || ''} 
+                  onValueChange={(v) => setFormData({ ...formData, season_timing: v })}
+                >
+                  <SelectTrigger className="mt-1">
+                    <SelectValue placeholder="Select..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={null}>None</SelectItem>
+                    <SelectItem value="early">Early</SelectItem>
+                    <SelectItem value="mid">Mid</SelectItem>
+                    <SelectItem value="late">Late</SelectItem>
+                    <SelectItem value="unknown">Unknown</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="flex items-end gap-4">
+                <div className="flex items-center gap-2">
+                  <Checkbox
+                    id="is_ornamental"
+                    checked={formData.is_ornamental || false}
+                    onCheckedChange={(checked) => setFormData({ ...formData, is_ornamental: checked })}
+                  />
+                  <Label htmlFor="is_ornamental" className="font-normal">Ornamental</Label>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Checkbox
+                    id="is_organic"
+                    checked={formData.is_organic || false}
+                    onCheckedChange={(checked) => setFormData({ ...formData, is_organic: checked })}
+                  />
+                  <Label htmlFor="is_organic" className="font-normal">Certified Organic</Label>
+                </div>
+              </div>
             </div>
 
             <div>

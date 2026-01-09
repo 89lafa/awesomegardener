@@ -85,7 +85,7 @@ export default function PlantCatalogDetail() {
   const itemsPerPage = 50;
   const [visibleColumns, setVisibleColumns] = useState(() => {
     const saved = localStorage.getItem('variety_columns');
-    return saved ? JSON.parse(saved) : ['name', 'subcategory', 'days', 'spacing', 'traits', 'actions'];
+    return saved ? JSON.parse(saved) : ['name', 'subcategory', 'days', 'spacing', 'species', 'seed_line', 'traits', 'actions'];
   });
   const [showColumnSelector, setShowColumnSelector] = useState(false);
 
@@ -744,9 +744,9 @@ export default function PlantCatalogDetail() {
                 <p className="text-sm font-semibold mb-2">Select Columns</p>
                 <div className="flex flex-wrap gap-2">
                   {[
-                    { id: 'name', label: 'Variety Name' },
+                    { id: 'name', label: 'Name' },
                     { id: 'subcategory', label: 'Sub-Category' },
-                    { id: 'days', label: 'Days to Maturity' },
+                    { id: 'days', label: 'Days' },
                     { id: 'spacing', label: 'Spacing' },
                     { id: 'height', label: 'Height' },
                     { id: 'sun', label: 'Sun' },
@@ -755,7 +755,7 @@ export default function PlantCatalogDetail() {
                     { id: 'species', label: 'Species' },
                     { id: 'seed_line', label: 'Seed Line' },
                     { id: 'season', label: 'Season' },
-                    { id: 'traits', label: 'Traits' },
+                    { id: 'traits', label: 'Flags' },
                     { id: 'actions', label: 'Actions' }
                   ].map(col => (
                     <Button

@@ -47,6 +47,9 @@ export default function VarietyListView({
             {visibleColumns.includes('sun') && <th className="text-left p-3 text-sm font-semibold">Sun</th>}
             {visibleColumns.includes('water') && <th className="text-left p-3 text-sm font-semibold">Water</th>}
             {visibleColumns.includes('color') && <th className="text-left p-3 text-sm font-semibold">Color</th>}
+            {visibleColumns.includes('species') && <th className="text-left p-3 text-sm font-semibold">Species</th>}
+            {visibleColumns.includes('seed_line') && <th className="text-left p-3 text-sm font-semibold">Seed Line</th>}
+            {visibleColumns.includes('season') && <th className="text-left p-3 text-sm font-semibold">Season</th>}
             {visibleColumns.includes('traits') && <th className="text-left p-3 text-sm font-semibold">Traits</th>}
             {visibleColumns.includes('actions') && <th className="text-right p-3 text-sm font-semibold">Actions</th>}
           </tr>
@@ -101,6 +104,29 @@ export default function VarietyListView({
                   {variety.fruit_color || variety.pod_color || '-'}
                 </td>
               )}
+              {visibleColumns.includes('species') && (
+                <td className="p-3 text-sm text-gray-600">
+                  {variety.species ? (
+                    <span className="italic capitalize">{variety.species}</span>
+                  ) : '-'}
+                </td>
+              )}
+              {visibleColumns.includes('seed_line') && (
+                <td className="p-3">
+                  {variety.seed_line_type ? (
+                    <Badge variant="outline" className="text-xs capitalize">
+                      {variety.seed_line_type === 'open_pollinated' ? 'OP' : variety.seed_line_type}
+                    </Badge>
+                  ) : '-'}
+                </td>
+              )}
+              {visibleColumns.includes('season') && (
+                <td className="p-3">
+                  {variety.season_timing ? (
+                    <Badge variant="outline" className="text-xs capitalize">{variety.season_timing}</Badge>
+                  ) : '-'}
+                </td>
+              )}
               {visibleColumns.includes('traits') && (
                 <td className="p-3">
                   <div className="flex flex-wrap gap-1">
@@ -109,6 +135,12 @@ export default function VarietyListView({
                     )}
                     {variety.container_friendly && (
                       <Badge variant="outline" className="text-xs">Container</Badge>
+                    )}
+                    {variety.is_ornamental && (
+                      <Badge className="bg-pink-100 text-pink-800 text-xs">Ornamental</Badge>
+                    )}
+                    {variety.is_organic && (
+                      <Badge className="bg-green-100 text-green-800 text-xs">Organic</Badge>
                     )}
                     {variety.growth_habit && (
                       <Badge variant="outline" className="text-xs capitalize">
@@ -122,11 +154,18 @@ export default function VarietyListView({
                 <td className="p-3">
                   <div className="flex gap-1 justify-end">
                     {user?.role === 'admin' ? (
-                      <Link to={createPageUrl('EditVariety') + `?id=${variety.id}`}>
-                        <Button size="sm" variant="ghost">
-                          <span className="text-xs">Edit</span>
-                        </Button>
-                      </Link>
+                      <div className="flex gap-1">
+                        <Link to={createPageUrl('ViewVariety') + `?id=${variety.id}`}>
+                          <Button size="sm" variant="ghost">
+                            <span className="text-xs">View</span>
+                          </Button>
+                        </Link>
+                        <Link to={createPageUrl('EditVariety') + `?id=${variety.id}`}>
+                          <Button size="sm" variant="ghost">
+                            <span className="text-xs">Edit</span>
+                          </Button>
+                        </Link>
+                      </div>
                     ) : (
                       <Link to={createPageUrl('ViewVariety') + `?id=${variety.id}`}>
                         <Button size="sm" variant="ghost">

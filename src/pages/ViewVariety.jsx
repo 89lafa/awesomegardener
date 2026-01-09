@@ -358,14 +358,38 @@ export default function ViewVariety() {
             )}
           </div>
 
+          <div className="flex flex-wrap gap-2 mt-4">
+            {variety?.species && (
+              <Badge variant="outline" className="capitalize">
+                Species: <span className="italic ml-1">{variety.species}</span>
+              </Badge>
+            )}
+            {variety?.seed_line_type && (
+              <Badge variant="outline" className="capitalize">
+                {variety.seed_line_type === 'open_pollinated' ? 'Open-Pollinated' : variety.seed_line_type}
+              </Badge>
+            )}
+            {variety?.season_timing && (
+              <Badge variant="outline" className="capitalize">
+                {variety.season_timing} Season
+              </Badge>
+            )}
+            {variety?.is_ornamental && (
+              <Badge className="bg-pink-100 text-pink-800">Ornamental</Badge>
+            )}
+            {variety?.is_organic && (
+              <Badge className="bg-green-100 text-green-800">Certified Organic</Badge>
+            )}
+          </div>
+
           {(variety?.grower_notes || variety?.notes_public) && (
-            <div>
+            <div className="mt-4">
               <Label className="text-gray-600">Grower Notes</Label>
               <p className="mt-1 text-gray-900">{variety.grower_notes || variety.notes_public}</p>
             </div>
           )}
-        </CardContent>
-      </Card>
+          </CardContent>
+          </Card>
 
       <Dialog open={showRequestChange} onOpenChange={setShowRequestChange}>
         <DialogContent>
