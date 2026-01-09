@@ -239,35 +239,28 @@ export default function PlotCanvas({ garden, plot, activeSeason, onPlotUpdate, o
   };
 
   const getNextName = (baseLabel) => {
-    // Find all items with this base label pattern (e.g., "Raised Bed 1", "Raised Bed 2")
+    // FIXED: Check for duplicate names and auto-increment
+    const exactMatch = items.find(i => i.label === baseLabel);
+    if (!exactMatch) {
+      return baseLabel;
+    }
+
+    // Find all items with this base label pattern
     const escapedBase = baseLabel.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    const pattern = new RegExp(`^${escapedBase} (\\d+)$`);
+    const pattern = new RegExp(`^${escapedBase}( \\d+)?$`);
     const matchingItems = items.filter(i => pattern.test(i.label));
     
     console.log('[Naming] Base:', baseLabel, 'Matching:', matchingItems.map(i => i.label));
     
-    if (matchingItems.length === 0) {
-      return `${baseLabel} 1`;
-    }
-    
     // Extract numbers from existing items
     const numbers = matchingItems.map(i => {
       const match = i.label.match(/(\d+)$/);
-      return match ? parseInt(match[1]) : 0;
+      return match ? parseInt(match[1]) : 1; // Base name without number = 1
     });
     
-    // Find next available number sequentially
-    const sortedNums = numbers.sort((a, b) => a - b);
-    let nextNum = 1;
-    
-    // Find first gap in sequence or go to max+1
-    for (const num of sortedNums) {
-      if (num === nextNum) {
-        nextNum++;
-      } else if (num > nextNum) {
-        break;
-      }
-    }
+    // Find next available number
+    const maxNum = Math.max(...numbers, 0);
+    const nextNum = maxNum + 1;
     
     console.log('[Naming] Next number:', nextNum);
     return `${baseLabel} ${nextNum}`;
@@ -363,7 +356,13 @@ export default function PlotCanvas({ garden, plot, activeSeason, onPlotUpdate, o
         const x = 50 + col * (width + spacing);
         const y = 50 + row * (height + spacing);
 
-        const label = `${itemType.label} ${baseNum + i}`;
+        // FIXED: Check for duplicate name before creating
+        let label = `${itemType.label} ${baseNum + i}`;
+        let attempt = 0;
+        while (items.some(existing => existing.label === label) && attempt < 1000) {
+          label = `${itemType.label} ${baseNum + i + attempt}`;
+          attempt++;
+        }
         console.log('[Add Multiple] Creating:', label, 'at', x, y);
 
         const metadata = {};
@@ -442,6 +441,7 @@ export default function PlotCanvas({ garden, plot, activeSeason, onPlotUpdate, o
 
   const handleTypeChange = (newType) => {
     const itemType = ITEM_TYPES.find(t => t.value === newType);
+    // Always start with base label, getNextName will auto-increment if needed
     const nextName = getNextName(itemType.label);
     console.log('[Type Change] New type:', newType, 'Next name:', nextName);
     setNewItem({
@@ -485,7 +485,13 @@ export default function PlotCanvas({ garden, plot, activeSeason, onPlotUpdate, o
         const x = 50 + col * (width + spacing);
         const y = 50 + row * (height + spacing);
         
-        const label = `${bulkAdd.base_name} ${baseNum + i}`;
+        // FIXED: Check for duplicate name
+        let label = `${bulkAdd.base_name} ${baseNum + i}`;
+        let attempt = 0;
+        while (items.some(existing => existing.label === label) && attempt < 1000) {
+          label = `${bulkAdd.base_name} ${baseNum + i + attempt}`;
+          attempt++;
+        }
         console.log('[Bulk Add] Creating:', label);
 
         const metadata = {};
@@ -767,6 +773,13 @@ export default function PlotCanvas({ garden, plot, activeSeason, onPlotUpdate, o
     const itemType = ITEM_TYPES.find(t => t.value === selectedItem.item_type);
     let width = selectedItem.width;
     let height = selectedItem.height;
+
+    // FIXED: Check for duplicate name before saving
+    const duplicateName = items.find(i => i.id !== selectedItem.id && i.label === editItemData.label);
+    if (duplicateName) {
+      toast.error(`An item named "${editItemData.label}" already exists`);
+      return;
+    }
 
     // Recalculate dimensions if changed
     if (!itemType.usesGallons && !itemType.usesSize) {
