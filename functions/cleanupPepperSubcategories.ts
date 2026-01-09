@@ -4,325 +4,243 @@ Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
     const user = await base44.auth.me();
-    
+
     if (user?.role !== 'admin') {
       return Response.json({ error: 'Forbidden: Admin access required' }, { status: 403 });
     }
 
-    console.log('[Pepper Cleanup] Starting cleanup process...');
-    
-    // Step 1: Find Pepper PlantType
-    const pepperTypes = await base44.asServiceRole.entities.PlantType.filter({ 
-      common_name: 'Pepper' 
-    });
-    
-    if (pepperTypes.length === 0) {
+    console.log('[PepperCleanup] Starting pepper subcategory cleanup');
+
+    // Find Pepper plant type
+    const plantTypes = await base44.asServiceRole.entities.PlantType.list();
+    const pepperType = plantTypes.find(pt => 
+      pt.common_name?.toLowerCase() === 'pepper' || 
+      pt.common_name?.toLowerCase() === 'peppers'
+    );
+
+    if (!pepperType) {
       return Response.json({ error: 'Pepper plant type not found' }, { status: 404 });
     }
-    
-    const pepperTypeId = pepperTypes[0].id;
-    console.log('[Pepper Cleanup] Found Pepper plant type:', pepperTypeId);
-    
-    // Step 2: Define canonical heat subcategories
-    const canonicalHeatSubcats = [
-      { subcat_code: 'PSC_PEPPER_HEAT_SWEET', name: 'Sweet (0 SHU)', min: 0, max: 0, sort_order: 1 },
-      { subcat_code: 'PSC_PEPPER_HEAT_MILD', name: 'Mild (1–2,500 SHU)', min: 1, max: 2500, sort_order: 2 },
-      { subcat_code: 'PSC_PEPPER_HEAT_MEDIUM', name: 'Medium (2,501–30,000 SHU)', min: 2501, max: 30000, sort_order: 3 },
-      { subcat_code: 'PSC_PEPPER_HEAT_HOT', name: 'Hot (30,001–100,000 SHU)', min: 30001, max: 100000, sort_order: 4 },
-      { subcat_code: 'PSC_PEPPER_HEAT_EXTRA_HOT', name: 'Extra Hot (100,001–300,000 SHU)', min: 100001, max: 300000, sort_order: 5 },
-      { subcat_code: 'PSC_PEPPER_HEAT_SUPERHOT', name: 'Superhot (300,001+ SHU)', min: 300001, max: 999999999, sort_order: 6 },
-      { subcat_code: 'PSC_PEPPER_HEAT_UNKNOWN', name: 'Unknown / Varies', min: null, max: null, sort_order: 7 }
+
+    console.log('[PepperCleanup] Found Pepper plant type:', pepperType.id);
+
+    // Define canonical heat level subcategories
+    const canonicalBuckets = [
+      { code: 'PSC_PEPPER_SWEET', name: 'Sweet (0 SHU)', shuMin: 0, shuMax: 0 },
+      { code: 'PSC_PEPPER_MILD', name: 'Mild (1-2,500 SHU)', shuMin: 1, shuMax: 2500 },
+      { code: 'PSC_PEPPER_MEDIUM', name: 'Medium (2,501-30,000 SHU)', shuMin: 2501, shuMax: 30000 },
+      { code: 'PSC_PEPPER_HOT', name: 'Hot (30,001-100,000 SHU)', shuMin: 30001, shuMax: 100000 },
+      { code: 'PSC_PEPPER_EXTRAHOT', name: 'Extra Hot (100,001-300,000 SHU)', shuMin: 100001, shuMax: 300000 },
+      { code: 'PSC_PEPPER_SUPERHOT', name: 'Superhot (300,001+ SHU)', shuMin: 300001, shuMax: 9999999 },
+      { code: 'PSC_PEPPER_UNKNOWN', name: 'Unknown / Varies', shuMin: null, shuMax: null }
     ];
-    
-    // Step 3: Create or update canonical subcategories
-    const heatSubcatMap = {};
-    for (const heatDef of canonicalHeatSubcats) {
-      const existing = await base44.asServiceRole.entities.PlantSubCategory.filter({
-        plant_type_id: pepperTypeId,
-        subcat_code: heatDef.subcat_code
-      });
+
+    // Ensure all canonical buckets exist and are active
+    const existingSubcats = await base44.asServiceRole.entities.PlantSubCategory.filter({
+      plant_type_id: pepperType.id
+    });
+
+    const canonicalIds = {};
+    for (const bucket of canonicalBuckets) {
+      let subcat = existingSubcats.find(s => s.subcat_code === bucket.code);
       
-      if (existing.length > 0) {
-        await base44.asServiceRole.entities.PlantSubCategory.update(existing[0].id, {
-          name: heatDef.name,
-          is_active: true,
-          sort_order: heatDef.sort_order,
-          dimension: 'HeatLevel'
-        });
-        heatSubcatMap[heatDef.subcat_code] = existing[0].id;
-        console.log('[Pepper Cleanup] Updated heat subcat:', heatDef.name);
-      } else {
-        const newSubcat = await base44.asServiceRole.entities.PlantSubCategory.create({
-          plant_type_id: pepperTypeId,
-          subcat_code: heatDef.subcat_code,
-          name: heatDef.name,
+      if (!subcat) {
+        // Create missing canonical bucket
+        console.log('[PepperCleanup] Creating canonical bucket:', bucket.name);
+        subcat = await base44.asServiceRole.entities.PlantSubCategory.create({
+          subcat_code: bucket.code,
+          plant_type_id: pepperType.id,
+          name: bucket.name,
           dimension: 'HeatLevel',
-          icon: '🌶️',
           is_active: true,
-          sort_order: heatDef.sort_order
+          sort_order: canonicalBuckets.indexOf(bucket)
         });
-        heatSubcatMap[heatDef.subcat_code] = newSubcat.id;
-        console.log('[Pepper Cleanup] Created heat subcat:', heatDef.name);
+      } else if (!subcat.is_active) {
+        // Reactivate if needed
+        console.log('[PepperCleanup] Reactivating canonical bucket:', bucket.name);
+        await base44.asServiceRole.entities.PlantSubCategory.update(subcat.id, { is_active: true });
       }
+      
+      canonicalIds[bucket.code] = subcat.id;
     }
-    
-    // Step 4: Load all subcategories for name matching
-    const allPepperSubcats = await base44.asServiceRole.entities.PlantSubCategory.filter({
-      plant_type_id: pepperTypeId
-    });
-    
-    // Deactivate non-canonical subcategories
-    const canonicalIds = Object.values(heatSubcatMap);
-    let deactivatedCount = 0;
-    
-    for (const subcat of allPepperSubcats) {
-      if (!canonicalIds.includes(subcat.id) && subcat.is_active !== false) {
-        await base44.asServiceRole.entities.PlantSubCategory.update(subcat.id, {
-          is_active: false
-        });
-        deactivatedCount++;
-        console.log('[Pepper Cleanup] Deactivated old subcat:', subcat.name);
-      }
+
+    // Deactivate non-canonical HeatLevel subcategories
+    const nonCanonicalHeat = existingSubcats.filter(s => 
+      s.dimension === 'HeatLevel' && 
+      !canonicalBuckets.some(b => b.subcat_code === s.subcat_code) &&
+      s.is_active
+    );
+
+    for (const oldSubcat of nonCanonicalHeat) {
+      console.log('[PepperCleanup] Deactivating old subcategory:', oldSubcat.name);
+      await base44.asServiceRole.entities.PlantSubCategory.update(oldSubcat.id, { is_active: false });
     }
-    
-    console.log('[Pepper Cleanup] Deactivated', deactivatedCount, 'old subcategories');
-    
-    // Step 5: Helper to check if variety is confidently sweet
-    const isConfidentlySweet = (variety, oldSubcatName) => {
-      const nameLower = (variety.variety_name || '').toLowerCase();
-      const subcatLower = (oldSubcatName || '').toLowerCase();
-      
-      // Check name patterns
-      if (nameLower.includes('bell') || 
-          nameLower.includes('sweet') || 
-          nameLower.includes('pimento') ||
-          nameLower.includes('pimiento')) {
-        return true;
-      }
-      
-      // Check old subcategory
-      if (subcatLower.includes('sweet') || subcatLower.includes('bell')) {
-        return true;
-      }
-      
-      // Check species - annuum sweet bells
-      if (variety.species === 'annuum' && (nameLower.includes('bell') || subcatLower.includes('bell'))) {
-        return true;
-      }
-      
-      return false;
-    };
-    
-    // Step 6: Infer heat level from keywords when SHU missing
-    const inferHeatFromKeywords = (variety, oldSubcatName) => {
-      const nameLower = (variety.variety_name || '').toLowerCase();
-      const subcatLower = (oldSubcatName || '').toLowerCase();
-      const combined = nameLower + ' ' + subcatLower;
-      
-      // Superhot patterns
-      if (combined.match(/superhot|reaper|ghost|bhut|7 pot|scorpion|primotalii|moruga|douglah/)) {
-        return heatSubcatMap.PSC_PEPPER_HEAT_SUPERHOT;
-      }
-      
-      // Extra Hot patterns
-      if (combined.match(/habanero|scotch bonnet|fatalii|trinidad|naga/)) {
-        return heatSubcatMap.PSC_PEPPER_HEAT_EXTRA_HOT;
-      }
-      
-      // Hot patterns
-      if (combined.match(/thai|cayenne|tabasco|pequin|arbol|chipotle/)) {
-        return heatSubcatMap.PSC_PEPPER_HEAT_HOT;
-      }
-      
-      // Medium patterns
-      if (combined.match(/jalape|serrano|chipotle/)) {
-        return heatSubcatMap.PSC_PEPPER_HEAT_MEDIUM;
-      }
-      
-      // Mild patterns
-      if (combined.match(/anaheim|poblano|pasilla|wax|banana|cubanelle|pepperoncini/)) {
-        return heatSubcatMap.PSC_PEPPER_HEAT_MILD;
-      }
-      
-      // Sweet patterns
-      if (combined.match(/bell|sweet|pimento|pimiento/)) {
-        return heatSubcatMap.PSC_PEPPER_HEAT_SWEET;
-      }
-      
-      return null; // No confident match
-    };
-    
-    // Step 7: Determine heat level from SHU or inference
-    const getHeatLevelSubcatId = (variety, oldSubcatName, existingSubcatId) => {
-      // Prefer scoville_max/min, fallback to heat_scoville_max/min
-      const scovilleMax = variety.scoville_max ?? variety.heat_scoville_max;
-      const scovilleMin = variety.scoville_min ?? variety.heat_scoville_min;
-      
-      // Case 1: SHU is missing entirely
-      if (scovilleMax == null && scovilleMin == null) {
-        // Try keyword inference
-        const inferred = inferHeatFromKeywords(variety, oldSubcatName);
-        if (inferred) {
-          console.log('[Pepper Cleanup] Inferred heat for', variety.variety_name, '→', 
-                      Object.keys(heatSubcatMap).find(k => heatSubcatMap[k] === inferred));
-          return inferred;
-        }
-        
-        // If already assigned to a canonical heat bucket, keep it
-        if (existingSubcatId && canonicalIds.includes(existingSubcatId)) {
-          console.log('[Pepper Cleanup] Keeping existing canonical bucket for', variety.variety_name);
-          return existingSubcatId;
-        }
-        
-        // Default to Unknown
-        console.log('[Pepper Cleanup] No SHU, no inference →', variety.variety_name, '→ Unknown');
-        return heatSubcatMap.PSC_PEPPER_HEAT_UNKNOWN;
-      }
-      
-      // Case 2: SHU is 0 - check if confidently sweet
-      const maxSHU = scovilleMax ?? scovilleMin ?? 0;
-      if (maxSHU === 0) {
-        if (isConfidentlySweet(variety, oldSubcatName)) {
-          console.log('[Pepper Cleanup] SHU=0 + sweet patterns →', variety.variety_name, '→ Sweet');
-          return heatSubcatMap.PSC_PEPPER_HEAT_SWEET;
-        } else {
-          console.log('[Pepper Cleanup] SHU=0 but not confident sweet →', variety.variety_name, '→ Unknown');
-          return heatSubcatMap.PSC_PEPPER_HEAT_UNKNOWN;
-        }
-      }
-      
-      // Case 3: SHU is present and > 0 - use standard bucketing
-      if (maxSHU <= 2500) return heatSubcatMap.PSC_PEPPER_HEAT_MILD;
-      if (maxSHU <= 30000) return heatSubcatMap.PSC_PEPPER_HEAT_MEDIUM;
-      if (maxSHU <= 100000) return heatSubcatMap.PSC_PEPPER_HEAT_HOT;
-      if (maxSHU <= 300000) return heatSubcatMap.PSC_PEPPER_HEAT_EXTRA_HOT;
-      if (maxSHU > 300000) return heatSubcatMap.PSC_PEPPER_HEAT_SUPERHOT;
-      
-      return heatSubcatMap.PSC_PEPPER_HEAT_UNKNOWN;
-    };
-    
-    // Step 8: Load all active Pepper varieties and normalize
-    const allPepperVarieties = await base44.asServiceRole.entities.Variety.filter({
-      plant_type_id: pepperTypeId,
+
+    // Load all active pepper varieties
+    const allVarieties = await base44.asServiceRole.entities.Variety.filter({
+      plant_type_id: pepperType.id,
       status: 'active'
-    }, 'variety_name', 10000);
-    
-    console.log('[Pepper Cleanup] Found', allPepperVarieties.length, 'active Pepper varieties to normalize');
-    
-    let updatedCount = 0;
-    let errorCount = 0;
-    const bucketCounts = {};
-    const sweetWith0SHU = [];
-    
-    // Initialize bucket counts
-    Object.keys(heatSubcatMap).forEach(code => {
-      bucketCounts[code] = 0;
     });
-    
-    for (const variety of allPepperVarieties) {
+
+    console.log('[PepperCleanup] Processing', allVarieties.length, 'pepper varieties');
+
+    let updated = 0;
+    let skipped = 0;
+    const bucketCounts = {};
+    const sweetWithZeroSamples = [];
+
+    for (const v of allVarieties) {
+      // Get SHU from both old and new fields
+      const shuMin = v.scoville_min ?? v.heat_scoville_min ?? v.traits?.scoville_min ?? null;
+      const shuMax = v.scoville_max ?? v.heat_scoville_max ?? v.traits?.scoville_max ?? null;
+
+      // Get existing subcategory for reference
+      const existingSubcat = existingSubcats.find(s => s.id === v.plant_subcategory_id);
+      const existingSubcatName = existingSubcat?.name?.toLowerCase() || '';
+      const varietyNameLower = (v.variety_name || '').toLowerCase();
+
+      let targetBucketCode;
+      let reason = '';
+
+      // Determine target bucket
+      if (shuMax === null || shuMax === undefined) {
+        // NO SHU DATA - try to infer from name/existing category
+        if (varietyNameLower.includes('superhot') || varietyNameLower.includes('reaper') || 
+            varietyNameLower.includes('ghost') || varietyNameLower.includes('bhut') || 
+            varietyNameLower.includes('7 pot') || varietyNameLower.includes('scorpion') ||
+            varietyNameLower.includes('primotalii') || existingSubcatName.includes('superhot')) {
+          targetBucketCode = 'PSC_PEPPER_SUPERHOT';
+          reason = 'Inferred from name/category (no SHU)';
+        } else if (varietyNameLower.includes('habanero') || varietyNameLower.includes('scotch bonnet') ||
+                   existingSubcatName.includes('extra hot')) {
+          targetBucketCode = 'PSC_PEPPER_EXTRAHOT';
+          reason = 'Inferred from name/category (no SHU)';
+        } else if (varietyNameLower.includes('thai') || varietyNameLower.includes('cayenne') ||
+                   varietyNameLower.includes('tabasco') || existingSubcatName.includes('hot')) {
+          targetBucketCode = 'PSC_PEPPER_HOT';
+          reason = 'Inferred from name/category (no SHU)';
+        } else if (varietyNameLower.includes('jalape') || varietyNameLower.includes('serrano') ||
+                   existingSubcatName.includes('medium')) {
+          targetBucketCode = 'PSC_PEPPER_MEDIUM';
+          reason = 'Inferred from name/category (no SHU)';
+        } else if (varietyNameLower.includes('anaheim') || varietyNameLower.includes('poblano') ||
+                   varietyNameLower.includes('pasilla') || varietyNameLower.includes('wax') ||
+                   varietyNameLower.includes('banana') || existingSubcatName.includes('mild')) {
+          targetBucketCode = 'PSC_PEPPER_MILD';
+          reason = 'Inferred from name/category (no SHU)';
+        } else if (varietyNameLower.includes('bell') || varietyNameLower.includes('sweet') ||
+                   varietyNameLower.includes('pimento') || existingSubcatName.includes('sweet')) {
+          targetBucketCode = 'PSC_PEPPER_SWEET';
+          reason = 'Inferred from name/category (no SHU)';
+        } else {
+          // Keep existing if already canonical, otherwise Unknown
+          const isAlreadyCanonical = canonicalBuckets.some(b => 
+            canonicalIds[b.code] === v.plant_subcategory_id
+          );
+          if (isAlreadyCanonical && v.plant_subcategory_id !== canonicalIds['PSC_PEPPER_SWEET']) {
+            // Keep existing canonical assignment
+            skipped++;
+            continue;
+          }
+          targetBucketCode = 'PSC_PEPPER_UNKNOWN';
+          reason = 'No SHU, no confident inference';
+        }
+      } else if (shuMax === 0) {
+        // SHU = 0 - only Sweet if strongly identified
+        const isSweet = varietyNameLower.includes('bell') || 
+                        varietyNameLower.includes('sweet') || 
+                        varietyNameLower.includes('pimento') ||
+                        existingSubcatName.includes('sweet') ||
+                        (v.species === 'annuum' && existingSubcatName.includes('bell'));
+        
+        if (isSweet) {
+          targetBucketCode = 'PSC_PEPPER_SWEET';
+          reason = 'SHU=0 + sweet indicators';
+          if (sweetWithZeroSamples.length < 5) {
+            sweetWithZeroSamples.push({ 
+              name: v.variety_name, 
+              reason: `bell=${varietyNameLower.includes('bell')} sweet=${varietyNameLower.includes('sweet')}`
+            });
+          }
+        } else {
+          targetBucketCode = 'PSC_PEPPER_UNKNOWN';
+          reason = 'SHU=0 but no sweet indicators';
+        }
+      } else {
+        // SHU > 0 - assign by heat level
+        if (shuMax <= 0) {
+          targetBucketCode = 'PSC_PEPPER_SWEET';
+          reason = 'SHU <= 0';
+        } else if (shuMax <= 2500) {
+          targetBucketCode = 'PSC_PEPPER_MILD';
+          reason = `SHU ${shuMax}`;
+        } else if (shuMax <= 30000) {
+          targetBucketCode = 'PSC_PEPPER_MEDIUM';
+          reason = `SHU ${shuMax}`;
+        } else if (shuMax <= 100000) {
+          targetBucketCode = 'PSC_PEPPER_HOT';
+          reason = `SHU ${shuMax}`;
+        } else if (shuMax <= 300000) {
+          targetBucketCode = 'PSC_PEPPER_EXTRAHOT';
+          reason = `SHU ${shuMax}`;
+        } else {
+          targetBucketCode = 'PSC_PEPPER_SUPERHOT';
+          reason = `SHU ${shuMax}`;
+        }
+      }
+
+      const targetId = canonicalIds[targetBucketCode];
+      bucketCounts[targetBucketCode] = (bucketCounts[targetBucketCode] || 0) + 1;
+
+      // Update both subcategory fields
+      let subcatIds = Array.isArray(v.plant_subcategory_ids) ? v.plant_subcategory_ids : [];
+      if (!subcatIds.includes(targetId)) {
+        subcatIds = [targetId, ...subcatIds.filter(id => id !== targetId)];
+      }
+
       try {
-        // Get old subcategory name if exists
-        let oldSubcatName = null;
-        if (variety.plant_subcategory_id) {
-          const oldSubcat = allPepperSubcats.find(s => s.id === variety.plant_subcategory_id);
-          if (oldSubcat) oldSubcatName = oldSubcat.name;
-        }
-        
-        // Determine correct heat level
-        const heatSubcatId = getHeatLevelSubcatId(variety, oldSubcatName, variety.plant_subcategory_id);
-        
-        // Track bucket assignment
-        const assignedCode = Object.keys(heatSubcatMap).find(k => heatSubcatMap[k] === heatSubcatId);
-        if (assignedCode) {
-          bucketCounts[assignedCode]++;
-          
-          // Track Sweet with 0 SHU for diagnostics
-          if (assignedCode === 'PSC_PEPPER_HEAT_SWEET') {
-            const maxSHU = variety.scoville_max ?? variety.heat_scoville_max;
-            if (maxSHU === 0 || maxSHU == null) {
-              sweetWith0SHU.push({
-                name: variety.variety_name,
-                shu: maxSHU,
-                reason: isConfidentlySweet(variety, oldSubcatName) ? 'Name/species pattern match' : 'Default'
-              });
-            }
-          }
-        }
-        
-        // Prepare subcategory IDs array
-        let subcatIds = variety.plant_subcategory_ids || [];
-        if (typeof subcatIds === 'string') {
-          try {
-            subcatIds = JSON.parse(subcatIds);
-          } catch {
-            subcatIds = [];
-          }
-        }
-        if (!Array.isArray(subcatIds)) {
-          subcatIds = [];
-        }
-        
-        // Ensure heat subcategory is in the array
-        if (!subcatIds.includes(heatSubcatId)) {
-          subcatIds = [heatSubcatId, ...subcatIds.filter(id => id !== heatSubcatId)];
-        }
-        
-        // Preserve existing traits
-        const traits = variety.traits || {};
-        
-        // Update variety with valid schema fields only
-        const updateData = {
-          plant_subcategory_id: heatSubcatId,
+        await base44.asServiceRole.entities.Variety.update(v.id, {
+          plant_subcategory_id: targetId,
           plant_subcategory_ids: subcatIds
-        };
-        
-        // Only add traits if non-empty
-        if (Object.keys(traits).length > 0) {
-          updateData.traits = traits;
-        }
-        
-        // Migrate species from trait to field if available
-        if (traits.species && !variety.species) {
-          const validSpecies = ['annuum', 'chinense', 'baccatum', 'frutescens', 'pubescens', 'unknown'];
-          if (validSpecies.includes(traits.species)) {
-            updateData.species = traits.species;
-          }
-        }
-        
-        await base44.asServiceRole.entities.Variety.update(variety.id, updateData);
-        
-        updatedCount++;
-        
-        if (updatedCount % 50 === 0) {
-          console.log('[Pepper Cleanup] Updated', updatedCount, '/', allPepperVarieties.length, 'varieties...');
-        }
+        });
+        updated++;
       } catch (error) {
-        console.error('[Pepper Cleanup] Error updating variety', variety.id, ':', error);
-        errorCount++;
+        console.error('[PepperCleanup] Error updating variety:', v.variety_name, error);
       }
     }
-    
-    console.log('[Pepper Cleanup] Completed! Updated', updatedCount, 'varieties, errors:', errorCount);
-    console.log('[Pepper Cleanup] Bucket distribution:', bucketCounts);
-    
+
+    // Count varieties still on inactive subcats
+    const varietiesOnInactive = allVarieties.filter(v => {
+      const subcat = existingSubcats.find(s => s.id === v.plant_subcategory_id);
+      return subcat && !subcat.is_active;
+    }).length;
+
+    console.log('[PepperCleanup] Cleanup complete:', {
+      total: allVarieties.length,
+      updated,
+      skipped,
+      bucketCounts,
+      varietiesOnInactive
+    });
+
     return Response.json({
       success: true,
       summary: {
-        canonicalSubcatsCreated: Object.keys(heatSubcatMap).length,
-        oldSubcatsDeactivated: deactivatedCount,
-        varietiesUpdated: updatedCount,
-        errorsEncountered: errorCount
-      },
-      diagnostics: {
-        bucketCounts,
-        sweetWith0SHU: sweetWith0SHU.slice(0, 10), // First 10 examples
-        totalSweet: bucketCounts.PSC_PEPPER_HEAT_SWEET || 0
+        total_varieties: allVarieties.length,
+        updated,
+        skipped,
+        bucket_counts: Object.entries(bucketCounts).map(([code, count]) => ({
+          bucket: canonicalBuckets.find(b => b.code === code)?.name || code,
+          count
+        })),
+        varieties_on_inactive: varietiesOnInactive,
+        sweet_samples: sweetWithZeroSamples
       }
     });
-    
   } catch (error) {
-    console.error('[Pepper Cleanup] Error:', error);
+    console.error('[PepperCleanup] Error:', error);
     return Response.json({ 
+      success: false, 
       error: error.message,
       stack: error.stack 
     }, { status: 500 });

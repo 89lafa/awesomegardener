@@ -23,6 +23,7 @@ export default function EditVariety() {
   const navigate = useNavigate();
   
   const [variety, setVariety] = useState(null);
+  const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [formData, setFormData] = useState({});
@@ -36,6 +37,7 @@ export default function EditVariety() {
   const checkAccess = async () => {
     try {
       const userData = await base44.auth.me();
+      setUser(userData);
       if (userData.role !== 'admin') {
         // Non-admin cannot edit - redirect to view
         window.location.href = createPageUrl('ViewVariety') + `?id=${varietyId}`;
@@ -115,6 +117,9 @@ export default function EditVariety() {
         primaryId = selectedIds[0];
       }
       
+      const scovilleMin = formData.scoville_min || formData.heat_scoville_min;
+      const scovilleMax = formData.scoville_max || formData.heat_scoville_max;
+
       const updateData = {
         variety_name: formData.variety_name,
         description: formData.description || null,
@@ -129,8 +134,10 @@ export default function EditVariety() {
         container_friendly: formData.container_friendly,
         grower_notes: formData.grower_notes,
         images: formData.images || [],
-        heat_scoville_min: formData.heat_scoville_min ? parseFloat(formData.heat_scoville_min) : null,
-        heat_scoville_max: formData.heat_scoville_max ? parseFloat(formData.heat_scoville_max) : null,
+        scoville_min: scovilleMin ? parseFloat(scovilleMin) : null,
+        scoville_max: scovilleMax ? parseFloat(scovilleMax) : null,
+        heat_scoville_min: scovilleMin ? parseFloat(scovilleMin) : null,
+        heat_scoville_max: scovilleMax ? parseFloat(scovilleMax) : null,
         affiliate_url: formData.affiliate_url || null,
         species: formData.species || null,
         seed_line_type: formData.seed_line_type || null,
@@ -139,9 +146,6 @@ export default function EditVariety() {
         is_organic: formData.is_organic || false
       };
 
-      // Get current user for audit log
-      const currentUser = await base44.auth.me();
-      
       // Log the edit
       await base44.entities.AuditLog.create({
         action_type: 'variety_update',
@@ -149,7 +153,7 @@ export default function EditVariety() {
         entity_id: varietyId,
         entity_name: formData.variety_name,
         action_details: { fields_updated: Object.keys(updateData) },
-        user_role: currentUser.role
+        user_role: user.role
       });
 
       await base44.entities.Variety.update(varietyId, updateData);
@@ -313,8 +317,8 @@ export default function EditVariety() {
                 <Input
                   id="scoville_min"
                   type="number"
-                  value={formData.heat_scoville_min || ''}
-                  onChange={(e) => setFormData({ ...formData, heat_scoville_min: e.target.value })}
+                  value={formData.scoville_min || formData.heat_scoville_min || ''}
+                  onChange={(e) => setFormData({ ...formData, scoville_min: e.target.value, heat_scoville_min: e.target.value })}
                   placeholder="e.g., 1000"
                   className="mt-1"
                 />
@@ -324,8 +328,8 @@ export default function EditVariety() {
                 <Input
                   id="scoville_max"
                   type="number"
-                  value={formData.heat_scoville_max || ''}
-                  onChange={(e) => setFormData({ ...formData, heat_scoville_max: e.target.value })}
+                  value={formData.scoville_max || formData.heat_scoville_max || ''}
+                  onChange={(e) => setFormData({ ...formData, scoville_max: e.target.value, heat_scoville_max: e.target.value })}
                   placeholder="e.g., 5000"
                   className="mt-1"
                 />

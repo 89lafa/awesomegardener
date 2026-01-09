@@ -79,7 +79,7 @@ export default function AddVarietyDialog({ plantType, open, onOpenChange, onSucc
       .replace(/\.$/, '');
   };
 
-  const checkForDuplicates = async (name) => {
+  const checkForDuplicates = async (name, varietyCode) => {
     if (!name || name.length < 3) {
       setDuplicateWarning(null);
       return;
@@ -92,6 +92,16 @@ export default function AddVarietyDialog({ plantType, open, onOpenChange, onSucc
         status: 'active'
       });
       
+      // Check by variety_code first (highest priority)
+      if (varietyCode) {
+        const codeMatch = allVarieties.find(v => v.variety_code === varietyCode);
+        if (codeMatch) {
+          setDuplicateWarning({ type: 'exact', name: codeMatch.variety_name, id: codeMatch.id, reason: 'variety_code match' });
+          setChecking(false);
+          return;
+        }
+      }
+      
       const normalized = normalizeVarietyName(name);
       
       // Check for exact normalized match
@@ -100,7 +110,7 @@ export default function AddVarietyDialog({ plantType, open, onOpenChange, onSucc
       );
       
       if (exactMatch) {
-        setDuplicateWarning({ type: 'exact', name: exactMatch.variety_name, id: exactMatch.id });
+        setDuplicateWarning({ type: 'exact', name: exactMatch.variety_name, id: exactMatch.id, reason: 'normalized name match' });
       } else {
         setDuplicateWarning(null);
       }
@@ -113,7 +123,7 @@ export default function AddVarietyDialog({ plantType, open, onOpenChange, onSucc
 
   const handleNameChange = (value) => {
     setFormData({ ...formData, variety_name: value });
-    checkForDuplicates(value);
+    checkForDuplicates(value, formData.variety_code);
   };
 
   const handleSubmit = async () => {
@@ -122,9 +132,15 @@ export default function AddVarietyDialog({ plantType, open, onOpenChange, onSucc
       return;
     }
 
-    if (duplicateWarning?.type === 'exact') {
+    if (duplicateWarning?.type === 'exact' && !isAdminOrEditor) {
       toast.error('This variety already exists');
       return;
+    }
+
+    if (duplicateWarning?.type === 'exact' && isAdminOrEditor) {
+      if (!confirm(`This variety already exists (${duplicateWarning.reason}). Create anyway?`)) {
+        return;
+      }
     }
 
     setSubmitting(true);
@@ -149,6 +165,8 @@ export default function AddVarietyDialog({ plantType, open, onOpenChange, onSucc
           trellis_required: formData.trellis_required,
           grower_notes: formData.grower_notes || null,
           source_attribution: formData.source_url || 'User Submitted',
+          scoville_min: formData.heat_scoville_min ? parseInt(formData.heat_scoville_min) : null,
+          scoville_max: formData.heat_scoville_max ? parseInt(formData.heat_scoville_max) : null,
           heat_scoville_min: formData.heat_scoville_min ? parseInt(formData.heat_scoville_min) : null,
           heat_scoville_max: formData.heat_scoville_max ? parseInt(formData.heat_scoville_max) : null,
           images: formData.images,

@@ -4,45 +4,45 @@ Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
     const user = await base44.auth.me();
-    
+
     if (user?.role !== 'admin') {
       return Response.json({ error: 'Forbidden: Admin access required' }, { status: 403 });
     }
 
-    console.log('[Export Peppers Missing SHU] Starting export...');
-    
-    // Find Pepper PlantType
-    const pepperTypes = await base44.asServiceRole.entities.PlantType.filter({ 
-      common_name: 'Pepper' 
-    });
-    
-    if (pepperTypes.length === 0) {
+    // Find Pepper plant type
+    const plantTypes = await base44.asServiceRole.entities.PlantType.list();
+    const pepperType = plantTypes.find(pt => 
+      pt.common_name?.toLowerCase() === 'pepper' || 
+      pt.common_name?.toLowerCase() === 'peppers'
+    );
+
+    if (!pepperType) {
       return Response.json({ error: 'Pepper plant type not found' }, { status: 404 });
     }
-    
-    const pepperTypeId = pepperTypes[0].id;
-    
-    // Load all active Pepper varieties with missing or 0 SHU
-    const allPeppers = await base44.asServiceRole.entities.Variety.filter({
-      plant_type_id: pepperTypeId,
+
+    // Load all active pepper varieties
+    const varieties = await base44.asServiceRole.entities.Variety.filter({
+      plant_type_id: pepperType.id,
       status: 'active'
-    }, 'variety_name', 10000);
-    
-    // Filter for missing SHU
-    const missingSHU = allPeppers.filter(v => {
-      const scovilleMax = v.scoville_max ?? v.heat_scoville_max;
-      const scovilleMin = v.scoville_min ?? v.heat_scoville_min;
+    }, 'variety_name');
+
+    // Filter varieties missing SHU or with SHU=0 (and not confidently sweet)
+    const missing = varieties.filter(v => {
+      const shuMax = v.scoville_max ?? v.heat_scoville_max ?? v.traits?.scoville_max ?? null;
       
-      // Include if both are null/undefined OR both are 0 and name doesn't suggest sweet
-      const isMissing = (scovilleMax == null && scovilleMin == null);
-      const is0AndNotSweet = (scovilleMax === 0 || scovilleMin === 0) && 
-                             !v.variety_name?.toLowerCase().match(/bell|sweet|pimento/);
+      if (shuMax === null || shuMax === undefined) return true;
       
-      return isMissing || is0AndNotSweet;
+      if (shuMax === 0) {
+        const nameLower = (v.variety_name || '').toLowerCase();
+        const isSweet = nameLower.includes('bell') || 
+                        nameLower.includes('sweet') || 
+                        nameLower.includes('pimento');
+        return !isSweet; // Include if NOT confidently sweet
+      }
+      
+      return false;
     });
-    
-    console.log('[Export] Found', missingSHU.length, 'peppers with missing/uncertain SHU');
-    
+
     // Generate CSV
     const headers = [
       'id',
@@ -54,43 +54,43 @@ Deno.serve(async (req) => {
       'scoville_min',
       'scoville_max',
       'species',
-      'seed_line_type',
-      'description'
+      'seed_line_type'
     ];
-    
-    const rows = [headers.join(',')];
-    
-    for (const v of missingSHU) {
-      const row = [
-        v.id || '',
-        v.variety_code || '',
-        `"${(v.variety_name || '').replace(/"/g, '""')}"`,
-        v.plant_type_id || '',
-        v.plant_subcategory_id || '',
-        `"${JSON.stringify(v.plant_subcategory_ids || [])}"`,
-        v.scoville_min ?? v.heat_scoville_min ?? '',
-        v.scoville_max ?? v.heat_scoville_max ?? '',
-        v.species || '',
-        v.seed_line_type || '',
-        `"${(v.description || '').replace(/"/g, '""')}"`
-      ];
-      rows.push(row.join(','));
-    }
-    
-    const csv = rows.join('\n');
-    
-    return new Response(csv, {
+
+    const rows = missing.map(v => [
+      v.id || '',
+      v.variety_code || '',
+      v.variety_name || '',
+      v.plant_type_id || '',
+      v.plant_subcategory_id || '',
+      Array.isArray(v.plant_subcategory_ids) ? v.plant_subcategory_ids.join(';') : '',
+      v.scoville_min ?? v.heat_scoville_min ?? '',
+      v.scoville_max ?? v.heat_scoville_max ?? '',
+      v.species || '',
+      v.seed_line_type || ''
+    ]);
+
+    const csvContent = [
+      headers.join(','),
+      ...rows.map(row => row.map(cell => {
+        // Escape cells containing commas or quotes
+        const str = String(cell);
+        if (str.includes(',') || str.includes('"') || str.includes('\n')) {
+          return `"${str.replace(/"/g, '""')}"`;
+        }
+        return str;
+      }).join(','))
+    ].join('\n');
+
+    return new Response(csvContent, {
       status: 200,
       headers: {
         'Content-Type': 'text/csv',
-        'Content-Disposition': 'attachment; filename=peppers_missing_shu.csv'
+        'Content-Disposition': `attachment; filename=peppers_missing_shu_${new Date().toISOString().split('T')[0]}.csv`
       }
     });
-    
   } catch (error) {
-    console.error('[Export Peppers Missing SHU] Error:', error);
-    return Response.json({ 
-      error: error.message 
-    }, { status: 500 });
+    console.error('[ExportPeppersSHU] Error:', error);
+    return Response.json({ error: error.message }, { status: 500 });
   }
 });
