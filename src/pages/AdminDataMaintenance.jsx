@@ -32,18 +32,15 @@ export default function AdminDataMaintenance() {
   const [tomatoDedupResult, setTomatoDedupResult] = useState(null);
   const [tomatoMergeResult, setTomatoMergeResult] = useState(null);
   const [normalizeResult, setNormalizeResult] = useState(null);
-  const [diagnostics, setDiagnostics] = useState(null);
-  const [loadingDiagnostics, setLoadingDiagnostics] = useState(false);
+  const [dedupPlantType, setDedupPlantType] = useState(null);
+  const [dedupRunning, setDedupRunning] = useState(false);
+  const [dedupResult, setDedupResult] = useState(null);
+  const [normalizeSpacesRunning, setNormalizeSpacesRunning] = useState(false);
+  const [normalizeSpacesResult, setNormalizeSpacesResult] = useState(null);
 
   React.useEffect(() => {
     checkAdmin();
   }, []);
-
-  React.useEffect(() => {
-    if (user) {
-      loadDiagnostics();
-    }
-  }, [user]);
 
   const checkAdmin = async () => {
     try {
@@ -208,20 +205,6 @@ export default function AdminDataMaintenance() {
     }
   };
 
-  const loadDiagnostics = async () => {
-    setLoadingDiagnostics(true);
-    try {
-      const response = await base44.functions.invoke('getDiagnostics', {});
-      if (response.data.success) {
-        setDiagnostics(response.data.diagnostics);
-      }
-    } catch (error) {
-      console.error('Error loading diagnostics:', error);
-    } finally {
-      setLoadingDiagnostics(false);
-    }
-  };
-
   const runNormalizeSubcats = async () => {
     setNormalizingSubcats(true);
     setNormalizeResult(null);
@@ -236,7 +219,6 @@ export default function AdminDataMaintenance() {
           timestamp: new Date().toISOString()
         });
         toast.success('Subcategory normalization completed!');
-        await loadDiagnostics(); // Refresh diagnostics
       } else {
         throw new Error(response.data.error || 'Normalization failed');
       }
@@ -260,6 +242,64 @@ export default function AdminDataMaintenance() {
     );
   }
 
+  const runGenericDedup = async (dryRun = true) => {
+    if (!dedupPlantType) {
+      toast.error('Please select a plant type');
+      return;
+    }
+
+    if (!dryRun && !confirm('This will merge duplicate varieties. This cannot be easily undone. Continue?')) {
+      return;
+    }
+
+    setDedupRunning(true);
+    setDedupResult(null);
+    
+    try {
+      const response = await base44.functions.invoke('deduplicateVarietiesDryRun', {
+        plant_type_id: dedupPlantType,
+        execute_merge: !dryRun
+      });
+      
+      if (response.data.success) {
+        setDedupResult(response.data);
+        toast.success(dryRun ? 'Dry run completed' : 'Merge completed');
+      } else {
+        throw new Error(response.data.error || 'Operation failed');
+      }
+    } catch (error) {
+      console.error('Dedupe error:', error);
+      toast.error('Operation failed: ' + error.message);
+    } finally {
+      setDedupRunning(false);
+    }
+  };
+
+  const runNormalizeSpaces = async () => {
+    if (!confirm('This will rename duplicate garden spaces. Continue?')) {
+      return;
+    }
+
+    setNormalizeSpacesRunning(true);
+    setNormalizeSpacesResult(null);
+    
+    try {
+      const response = await base44.functions.invoke('normalizeGardenSpaces', {});
+      
+      if (response.data.success) {
+        setNormalizeSpacesResult(response.data);
+        toast.success('Spaces normalized');
+      } else {
+        throw new Error(response.data.error || 'Operation failed');
+      }
+    } catch (error) {
+      console.error('Normalize spaces error:', error);
+      toast.error('Operation failed: ' + error.message);
+    } finally {
+      setNormalizeSpacesRunning(false);
+    }
+  };
+
   return (
     <div className="space-y-6 max-w-5xl">
       <div className="flex items-center gap-3">
@@ -274,95 +314,15 @@ export default function AdminDataMaintenance() {
         </div>
       </div>
 
-      {/* Data Health Diagnostics */}
+      {/* Diagnostics */}
       <Card>
         <CardHeader>
-          <div className="flex items-center justify-between">
-            <CardTitle className="flex items-center gap-2">
-              <span className="text-2xl">📊</span>
-              Data Health Overview
-            </CardTitle>
-            <Button
-              onClick={loadDiagnostics}
-              variant="outline"
-              size="sm"
-              disabled={loadingDiagnostics}
-              className="gap-2"
-            >
-              {loadingDiagnostics ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
-              ) : (
-                <RefreshCw className="w-4 h-4" />
-              )}
-              Refresh
-            </Button>
-          </div>
+          <CardTitle className="flex items-center gap-2">
+            📊 Data Diagnostics
+          </CardTitle>
         </CardHeader>
         <CardContent>
-          {loadingDiagnostics ? (
-            <div className="flex items-center justify-center py-8">
-              <Loader2 className="w-6 h-6 animate-spin text-emerald-600" />
-            </div>
-          ) : diagnostics ? (
-            <div className="space-y-4">
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                <div className="p-3 bg-gray-50 rounded-lg">
-                  <div className="text-xs text-gray-600">Total Varieties</div>
-                  <div className="text-xl font-bold">{diagnostics.total_varieties}</div>
-                </div>
-                <div className={`p-3 rounded-lg ${diagnostics.duplicate_groups_by_code > 0 ? 'bg-red-50' : 'bg-green-50'}`}>
-                  <div className={`text-xs ${diagnostics.duplicate_groups_by_code > 0 ? 'text-red-600' : 'text-green-600'}`}>
-                    Duplicates (by code)
-                  </div>
-                  <div className={`text-xl font-bold ${diagnostics.duplicate_groups_by_code > 0 ? 'text-red-700' : 'text-green-700'}`}>
-                    {diagnostics.duplicate_groups_by_code} groups
-                  </div>
-                </div>
-                <div className={`p-3 rounded-lg ${diagnostics.duplicate_groups_by_name > 0 ? 'bg-yellow-50' : 'bg-green-50'}`}>
-                  <div className={`text-xs ${diagnostics.duplicate_groups_by_name > 0 ? 'text-yellow-600' : 'text-green-600'}`}>
-                    Duplicates (by name)
-                  </div>
-                  <div className={`text-xl font-bold ${diagnostics.duplicate_groups_by_name > 0 ? 'text-yellow-700' : 'text-green-700'}`}>
-                    {diagnostics.duplicate_groups_by_name} groups
-                  </div>
-                </div>
-                <div className={`p-3 rounded-lg ${diagnostics.varieties_with_invalid_subcats > 0 ? 'bg-red-50' : 'bg-green-50'}`}>
-                  <div className={`text-xs ${diagnostics.varieties_with_invalid_subcats > 0 ? 'text-red-600' : 'text-green-600'}`}>
-                    Invalid Subcats
-                  </div>
-                  <div className={`text-xl font-bold ${diagnostics.varieties_with_invalid_subcats > 0 ? 'text-red-700' : 'text-green-700'}`}>
-                    {diagnostics.varieties_with_invalid_subcats}
-                  </div>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div className="p-3 bg-blue-50 rounded-lg">
-                  <div className="text-xs text-blue-600">Inactive Subcats</div>
-                  <div className="text-lg font-bold text-blue-700">{diagnostics.varieties_with_inactive_subcats}</div>
-                </div>
-                <div className="p-3 bg-gray-50 rounded-lg">
-                  <div className="text-xs text-gray-600">True Uncategorized</div>
-                  <div className="text-lg font-bold">{diagnostics.true_uncategorized}</div>
-                </div>
-              </div>
-
-              {diagnostics.sample_duplicates_by_code?.length > 0 && (
-                <details className="text-xs">
-                  <summary className="cursor-pointer font-semibold text-gray-700">Sample duplicates by code</summary>
-                  <div className="mt-2 space-y-1">
-                    {diagnostics.sample_duplicates_by_code.map((g, i) => (
-                      <div key={i} className="p-2 bg-white border rounded">
-                        <span className="font-mono text-blue-600">{g.code}</span> - {g.count} copies: {g.names}
-                      </div>
-                    ))}
-                  </div>
-                </details>
-              )}
-            </div>
-          ) : (
-            <p className="text-gray-500 text-sm">Click Refresh to load diagnostics</p>
-          )}
+          <GlobalDiagnostics />
         </CardContent>
       </Card>
 
@@ -697,24 +657,53 @@ export default function AdminDataMaintenance() {
         </CardContent>
       </Card>
 
-      {/* Generic Deduplication Tool */}
+      {/* Generic Dedupe Tool */}
+      <GenericDedupeTool 
+        dedupPlantType={dedupPlantType}
+        setDedupPlantType={setDedupPlantType}
+        dedupRunning={dedupRunning}
+        dedupResult={dedupResult}
+        runGenericDedup={runGenericDedup}
+      />
+
+      {/* Normalize Garden Spaces */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <RefreshCw className="w-5 h-5 text-blue-600" />
-            Generic Variety Deduplication
+            🏡 Normalize Garden Spaces
           </CardTitle>
         </CardHeader>
-        <CardContent className="space-y-3">
+        <CardContent className="space-y-4">
           <p className="text-sm text-gray-600">
-            Works for ANY plant type. Finds duplicates by variety_code or normalized name, merges data, and updates all references.
+            Detects and renames duplicate space names within gardens
           </p>
-          <Link to={createPageUrl('AdminDeduplicateVarieties')}>
-            <Button variant="outline" className="w-full justify-start gap-2">
-              <RefreshCw className="w-4 h-4" />
-              Open Deduplication Tool
+          <div className="flex items-center gap-3">
+            <Button
+              onClick={runNormalizeSpaces}
+              disabled={normalizeSpacesRunning}
+              className="bg-blue-600 hover:bg-blue-700 gap-2"
+            >
+              {normalizeSpacesRunning ? (
+                <><Loader2 className="w-4 h-4 animate-spin" />Normalizing...</>
+              ) : (
+                <><Play className="w-4 h-4" />Normalize Spaces</>
+              )}
             </Button>
-          </Link>
+          </div>
+          {normalizeSpacesResult && (
+            <Alert className={normalizeSpacesResult.success ? 'border-green-200 bg-green-50' : 'border-red-200 bg-red-50'}>
+              <AlertDescription className={normalizeSpacesResult.success ? 'text-green-800' : 'text-red-800'}>
+                {normalizeSpacesResult.success ? (
+                  <ul className="text-sm space-y-1">
+                    <li>• Spaces renamed: {normalizeSpacesResult.summary?.spaces_renamed || 0}</li>
+                    <li>• Duplicates found: {normalizeSpacesResult.summary?.duplicates_found || 0}</li>
+                  </ul>
+                ) : (
+                  <div className="text-sm">{normalizeSpacesResult.error}</div>
+                )}
+              </AlertDescription>
+            </Alert>
+          )}
         </CardContent>
       </Card>
 
@@ -754,9 +743,291 @@ export default function AdminDataMaintenance() {
   );
 }
 
-function PepperDiagnostics() {
+function GlobalDiagnostics() {
   const [diagnostics, setDiagnostics] = useState(null);
   const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    loadDiagnostics();
+  }, []);
+
+  const loadDiagnostics = async () => {
+    try {
+      const [allVarieties, allSubcats] = await Promise.all([
+        base44.entities.Variety.list(),
+        base44.entities.PlantSubCategory.list()
+      ]);
+
+      const validSubcatIds = new Set(allSubcats.map(s => s.id));
+      const activeSubcatIds = new Set(allSubcats.filter(s => s.is_active).map(s => s.id));
+
+      // Normalize variety name
+      const normalizeVarietyName = (name) => {
+        if (!name) return '';
+        return name
+          .trim()
+          .toLowerCase()
+          .replace(/\s+/g, ' ')
+          .replace(/['']/g, "'")
+          .replace(/[""]/g, '"')
+          .replace(/\.$/, '');
+      };
+
+      // Group by normalized name + plant_type_id
+      const nameGroups = {};
+      const codeGroups = {};
+      
+      for (const v of allVarieties) {
+        if (v.status !== 'active') continue;
+        
+        // Group by name
+        const key = `${v.plant_type_id}__${normalizeVarietyName(v.variety_name)}`;
+        if (!nameGroups[key]) nameGroups[key] = [];
+        nameGroups[key].push(v);
+        
+        // Group by variety_code
+        if (v.variety_code) {
+          if (!codeGroups[v.variety_code]) codeGroups[v.variety_code] = [];
+          codeGroups[v.variety_code].push(v);
+        }
+      }
+
+      const duplicatesByName = Object.entries(nameGroups)
+        .filter(([_, varieties]) => varieties.length > 1)
+        .map(([key, varieties]) => ({
+          key,
+          count: varieties.length,
+          sample: varieties[0].variety_name,
+          plant_type: varieties[0].plant_type_name
+        }));
+
+      const duplicatesByCode = Object.entries(codeGroups)
+        .filter(([_, varieties]) => varieties.length > 1)
+        .map(([code, varieties]) => ({
+          code,
+          count: varieties.length,
+          sample: varieties[0].variety_name
+        }));
+
+      // Count invalid subcategories
+      let invalidSubcatCount = 0;
+      let emptySubcatCount = 0;
+
+      for (const v of allVarieties) {
+        if (v.status !== 'active') continue;
+        
+        // Get effective IDs
+        let effectiveIds = [];
+        if (v.plant_subcategory_id) effectiveIds.push(v.plant_subcategory_id);
+        if (Array.isArray(v.plant_subcategory_ids)) {
+          effectiveIds = effectiveIds.concat(v.plant_subcategory_ids);
+        }
+        effectiveIds = [...new Set(effectiveIds.filter(id => id && typeof id === 'string' && id.trim() !== ''))];
+
+        // Check if has invalid/inactive subcats
+        const hasInvalid = effectiveIds.some(id => !validSubcatIds.has(id) || !activeSubcatIds.has(id));
+        if (hasInvalid) invalidSubcatCount++;
+
+        // Check if truly empty
+        if (effectiveIds.length === 0 || !effectiveIds.some(id => validSubcatIds.has(id))) {
+          emptySubcatCount++;
+        }
+      }
+
+      setDiagnostics({
+        totalVarieties: allVarieties.filter(v => v.status === 'active').length,
+        duplicatesByName: duplicatesByName.length,
+        duplicatesByCode: duplicatesByCode.length,
+        duplicateNameGroups: duplicatesByName.slice(0, 10),
+        duplicateCodeGroups: duplicatesByCode.slice(0, 10),
+        invalidSubcatCount,
+        emptySubcatCount
+      });
+    } catch (error) {
+      console.error('Error loading diagnostics:', error);
+      setDiagnostics({ error: error.message });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (loading) {
+    return <div className="flex items-center gap-2 text-gray-600"><Loader2 className="w-4 h-4 animate-spin" /> Loading...</div>;
+  }
+
+  if (diagnostics?.error) {
+    return <div className="text-red-600">Error: {diagnostics.error}</div>;
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+        <div className="p-3 bg-blue-50 rounded-lg">
+          <div className="text-sm text-blue-600">Total Varieties</div>
+          <div className="text-2xl font-bold text-blue-700">{diagnostics.totalVarieties}</div>
+        </div>
+        <div className="p-3 bg-amber-50 rounded-lg">
+          <div className="text-sm text-amber-600">Duplicate Groups (Name)</div>
+          <div className="text-2xl font-bold text-amber-700">{diagnostics.duplicatesByName}</div>
+        </div>
+        <div className="p-3 bg-orange-50 rounded-lg">
+          <div className="text-sm text-orange-600">Duplicate Groups (Code)</div>
+          <div className="text-2xl font-bold text-orange-700">{diagnostics.duplicatesByCode}</div>
+        </div>
+        <div className="p-3 bg-red-50 rounded-lg">
+          <div className="text-sm text-red-600">Invalid/Inactive Subcats</div>
+          <div className="text-2xl font-bold text-red-700">{diagnostics.invalidSubcatCount}</div>
+        </div>
+        <div className="p-3 bg-gray-50 rounded-lg">
+          <div className="text-sm text-gray-600">True Uncategorized</div>
+          <div className="text-2xl font-bold text-gray-700">{diagnostics.emptySubcatCount}</div>
+        </div>
+      </div>
+
+      {diagnostics.duplicateNameGroups.length > 0 && (
+        <details>
+          <summary className="cursor-pointer text-sm font-semibold">Sample Duplicate Groups (by name)</summary>
+          <div className="mt-2 space-y-1 max-h-48 overflow-auto">
+            {diagnostics.duplicateNameGroups.map((group, i) => (
+              <div key={i} className="p-2 bg-gray-50 rounded text-xs">
+                {group.sample} ({group.plant_type}) - {group.count} duplicates
+              </div>
+            ))}
+          </div>
+        </details>
+      )}
+
+      {diagnostics.duplicateCodeGroups.length > 0 && (
+        <details>
+          <summary className="cursor-pointer text-sm font-semibold">Sample Duplicate Groups (by code)</summary>
+          <div className="mt-2 space-y-1 max-h-48 overflow-auto">
+            {diagnostics.duplicateCodeGroups.map((group, i) => (
+              <div key={i} className="p-2 bg-gray-50 rounded text-xs">
+                {group.code} - {group.sample} - {group.count} duplicates
+              </div>
+            ))}
+          </div>
+        </details>
+      )}
+
+      <Button onClick={loadDiagnostics} variant="outline" size="sm" className="gap-2">
+        <RefreshCw className="w-4 h-4" />
+        Refresh Diagnostics
+      </Button>
+    </div>
+  );
+}
+
+function GenericDedupeTool({ dedupPlantType, setDedupPlantType, dedupRunning, dedupResult, runGenericDedup }) {
+  const [plantTypes, setPlantTypes] = useState([]);
+
+  useEffect(() => {
+    loadPlantTypes();
+  }, []);
+
+  const loadPlantTypes = async () => {
+    try {
+      const types = await base44.entities.PlantType.list('common_name');
+      setPlantTypes(types);
+    } catch (error) {
+      console.error('Error loading plant types:', error);
+    }
+  };
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <RefreshCw className="w-5 h-5 text-indigo-600" />
+          Generic Variety Deduplication
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <p className="text-sm text-gray-600">
+          Find and merge duplicate varieties for ANY plant type
+        </p>
+        
+        <div>
+          <Label>Select Plant Type</Label>
+          <Select value={dedupPlantType || ''} onValueChange={setDedupPlantType}>
+            <SelectTrigger className="mt-2">
+              <SelectValue placeholder="Choose plant type..." />
+            </SelectTrigger>
+            <SelectContent>
+              {plantTypes.map(pt => (
+                <SelectItem key={pt.id} value={pt.id}>
+                  {pt.icon && <span className="mr-2">{pt.icon}</span>}
+                  {pt.common_name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div className="flex items-center gap-3 flex-wrap">
+          <Button
+            onClick={() => runGenericDedup(true)}
+            disabled={dedupRunning || !dedupPlantType}
+            variant="outline"
+            className="gap-2"
+          >
+            {dedupRunning ? (
+              <><Loader2 className="w-4 h-4 animate-spin" />Running...</>
+            ) : (
+              <><Play className="w-4 h-4" />Dry Run</>
+            )}
+          </Button>
+          
+          <Button
+            onClick={() => runGenericDedup(false)}
+            disabled={dedupRunning || !dedupPlantType}
+            className="bg-red-600 hover:bg-red-700 gap-2"
+          >
+            {dedupRunning ? (
+              <><Loader2 className="w-4 h-4 animate-spin" />Merging...</>
+            ) : (
+              <><RefreshCw className="w-4 h-4" />Execute Merge</>
+            )}
+          </Button>
+        </div>
+
+        {dedupResult && (
+          <Alert className={dedupResult.success ? 'border-green-200 bg-green-50' : 'border-red-200 bg-red-50'}>
+            <AlertDescription className={dedupResult.success ? 'text-green-800' : 'text-red-800'}>
+              <div className="space-y-2">
+                <div className="font-semibold">
+                  {dedupResult.dry_run ? 'Dry Run Results:' : 'Merge Results:'}
+                </div>
+                {dedupResult.success ? (
+                  <>
+                    <ul className="text-sm space-y-1">
+                      <li>• Duplicate groups: {dedupResult.summary?.duplicate_groups || 0}</li>
+                      <li>• Records to merge/merged: {dedupResult.summary?.records_to_merge || dedupResult.summary?.records_merged || 0}</li>
+                      <li>• References updated: {dedupResult.summary?.references_updated || 0}</li>
+                    </ul>
+                    {dedupResult.groups && dedupResult.groups.length > 0 && (
+                      <details className="mt-2">
+                        <summary className="cursor-pointer text-sm font-semibold">View groups (sample)</summary>
+                        <div className="mt-2 space-y-2 max-h-64 overflow-auto">
+                          {dedupResult.groups.slice(0, 10).map((group, i) => (
+                            <div key={i} className="p-2 bg-white rounded border text-xs">
+                              <div className="font-semibold">{group.canonical_name}</div>
+                              <div className="text-gray-600">{group.duplicates} duplicates, completeness: {group.completeness_score}%</div>
+                            </div>
+                          ))}
+                        </div>
+                      </details>
+                    )}
+                  </>
+                ) : (
+                  <div className="text-sm">{dedupResult.error}</div>
+                )}
+              </div>
+            </AlertDescription>
+          </Alert>
+        )}
+      </CardContent>
+    </Card>
 
   useEffect(() => {
     loadDiagnostics();

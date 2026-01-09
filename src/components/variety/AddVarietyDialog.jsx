@@ -133,13 +133,14 @@ export default function AddVarietyDialog({ plantType, open, onOpenChange, onSucc
       return;
     }
 
-    if (duplicateWarning?.type === 'exact' && !isAdminOrEditor) {
-      toast.error('This variety already exists');
-      return;
-    }
-
-    if (duplicateWarning?.type === 'exact' && isAdminOrEditor) {
-      if (!confirm(`This variety already exists (${duplicateWarning.reason}). Create anyway?`)) {
+    // HARD BLOCK duplicates even for admins (unless force override)
+    if (duplicateWarning?.type === 'exact') {
+      if (!isAdminOrEditor) {
+        toast.error('This variety already exists');
+        return;
+      }
+      
+      if (!confirm(`⚠️ DUPLICATE DETECTED: This variety already exists (${duplicateWarning.reason}).\n\nCreating a duplicate will cause data integrity issues.\n\nAre you SURE you want to create a duplicate?`)) {
         return;
       }
     }
@@ -147,8 +148,14 @@ export default function AddVarietyDialog({ plantType, open, onOpenChange, onSucc
     setSubmitting(true);
     try {
       if (isAdminOrEditor) {
-        // Direct creation
-        const primarySubcatId = formData.plant_subcategory_ids.length > 0 ? formData.plant_subcategory_ids[0] : null;
+        // Direct creation - ensure consistency between primary and array
+        let subcatIds = formData.plant_subcategory_ids || [];
+        let primarySubcatId = subcatIds.length > 0 ? subcatIds[0] : null;
+        
+        // If primary not in array, add it
+        if (primarySubcatId && !subcatIds.includes(primarySubcatId)) {
+          subcatIds = [primarySubcatId];
+        }
         
         const newVariety = await base44.entities.Variety.create({
           plant_type_id: plantType.id,
@@ -157,7 +164,7 @@ export default function AddVarietyDialog({ plantType, open, onOpenChange, onSucc
           description: formData.description || null,
           synonyms: formData.synonyms ? formData.synonyms.split(',').map(s => s.trim()) : [],
           plant_subcategory_id: primarySubcatId,
-          plant_subcategory_ids: formData.plant_subcategory_ids,
+          plant_subcategory_ids: subcatIds,
           days_to_maturity: formData.days_to_maturity ? parseInt(formData.days_to_maturity) : null,
           spacing_recommended: formData.spacing_recommended ? parseInt(formData.spacing_recommended) : null,
           plant_height_typical: formData.plant_height_typical || null,

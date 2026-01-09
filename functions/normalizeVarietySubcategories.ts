@@ -27,7 +27,10 @@ Deno.serve(async (req) => {
       let newSubcatId = v.plant_subcategory_id;
       let newSubcatIds = v.plant_subcategory_ids;
 
-      // Sanitize plant_subcategory_ids array
+      // Determine effective IDs (CANONICAL LOGIC)
+      let effectiveIds = [];
+
+      // Step 1: Sanitize plant_subcategory_ids array
       if (newSubcatIds) {
         if (typeof newSubcatIds === 'string') {
           try {
@@ -41,39 +44,41 @@ Deno.serve(async (req) => {
           newSubcatIds = [];
         }
 
-        // Remove invalid entries
-        const originalLength = newSubcatIds.length;
+        // Remove invalid/inactive IDs
         const cleanedIds = newSubcatIds
           .filter(id => id && typeof id === 'string' && id.trim() !== '')
           .filter(id => validSubcatIds.has(id));
 
-        const uniqueIds = [...new Set(cleanedIds)];
-
-        if (JSON.stringify(uniqueIds) !== JSON.stringify(newSubcatIds)) {
-          newSubcatIds = uniqueIds;
-          invalidIdsRemoved += (originalLength - uniqueIds.length);
-          needsUpdate = true;
-        }
+        effectiveIds = [...new Set(cleanedIds)];
       } else {
-        newSubcatIds = [];
+        effectiveIds = [];
       }
 
-      // If plant_subcategory_id is empty but ids array has values, set primary
-      if ((!newSubcatId || !validSubcatIds.has(newSubcatId)) && newSubcatIds.length > 0) {
-        newSubcatId = newSubcatIds[0];
-        needsUpdate = true;
-      }
-
-      // If plant_subcategory_id is set but not in ids array, add it
-      if (newSubcatId && validSubcatIds.has(newSubcatId) && !newSubcatIds.includes(newSubcatId)) {
-        newSubcatIds = [newSubcatId, ...newSubcatIds];
-        needsUpdate = true;
-      }
-
-      // Validate primary ID exists
-      if (newSubcatId && !validSubcatIds.has(newSubcatId)) {
-        newSubcatId = newSubcatIds.length > 0 ? newSubcatIds[0] : null;
+      // Step 2: If primary ID is valid and not in array, add it to effectiveIds
+      if (newSubcatId && validSubcatIds.has(newSubcatId)) {
+        if (!effectiveIds.includes(newSubcatId)) {
+          effectiveIds = [newSubcatId, ...effectiveIds];
+        }
+      } else if (newSubcatId && !validSubcatIds.has(newSubcatId)) {
+        // Primary is invalid, clear it
+        newSubcatId = null;
         invalidIdsRemoved++;
+        needsUpdate = true;
+      }
+
+      // Step 3: If no valid primary but effectiveIds has values, set primary
+      if (!newSubcatId && effectiveIds.length > 0) {
+        newSubcatId = effectiveIds[0];
+        needsUpdate = true;
+      }
+
+      // Step 4: Write back canonical values
+      if (JSON.stringify(effectiveIds) !== JSON.stringify(newSubcatIds)) {
+        newSubcatIds = effectiveIds;
+        needsUpdate = true;
+      }
+
+      if (newSubcatId !== v.plant_subcategory_id) {
         needsUpdate = true;
       }
 

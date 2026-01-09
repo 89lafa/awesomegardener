@@ -498,6 +498,10 @@ export default function AdminDataImport() {
                   await base44.entities.Variety.update(existing[0].id, varietyData);
                   updated++;
                 } else {
+                  // Before inserting, normalize subcategory_ids based on imported data
+                  if (varietyData.plant_subcategory_id && !varietyData.plant_subcategory_ids.includes(varietyData.plant_subcategory_id)) {
+                    varietyData.plant_subcategory_ids = [varietyData.plant_subcategory_id];
+                  }
                   await base44.entities.Variety.create(varietyData);
                   inserted++;
                 }
