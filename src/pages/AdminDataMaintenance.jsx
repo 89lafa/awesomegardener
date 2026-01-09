@@ -45,6 +45,8 @@ export default function AdminDataMaintenance() {
   const [dedupResult, setDedupResult] = useState(null);
   const [normalizeSpacesRunning, setNormalizeSpacesRunning] = useState(false);
   const [normalizeSpacesResult, setNormalizeSpacesResult] = useState(null);
+  const [squashMigrationRunning, setSquashMigrationRunning] = useState(false);
+  const [squashMigrationResult, setSquashMigrationResult] = useState(null);
 
   React.useEffect(() => {
     checkAdmin();
@@ -305,6 +307,31 @@ export default function AdminDataMaintenance() {
       toast.error('Operation failed: ' + error.message);
     } finally {
       setNormalizeSpacesRunning(false);
+    }
+  };
+
+  const runSquashMigration = async (dryRun = true) => {
+    if (!dryRun && !confirm('This will migrate ALL Squash varieties to canonical types (Summer/Winter/Zucchini/Pumpkin). Continue?')) {
+      return;
+    }
+
+    setSquashMigrationRunning(true);
+    setSquashMigrationResult(null);
+    
+    try {
+      const response = await base44.functions.invoke('migrateSquashUmbrellaVarieties', { dry_run: dryRun });
+      
+      if (response.data.success) {
+        setSquashMigrationResult(response.data);
+        toast.success(dryRun ? 'Dry run completed' : 'Migration completed');
+      } else {
+        throw new Error(response.data.error || 'Operation failed');
+      }
+    } catch (error) {
+      console.error('Squash migration error:', error);
+      toast.error('Operation failed: ' + error.message);
+    } finally {
+      setSquashMigrationRunning(false);
     }
   };
 
@@ -673,6 +700,90 @@ export default function AdminDataMaintenance() {
         dedupResult={dedupResult}
         runGenericDedup={runGenericDedup}
       />
+
+      {/* Squash Umbrella Migration */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            🎃 Squash Umbrella Migration
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-sm">
+            <div className="font-semibold text-blue-900 mb-1">This will:</div>
+            <ul className="text-blue-800 space-y-1">
+              <li>• Migrate all "Squash" varieties to canonical types</li>
+              <li>• Zucchini varieties → Zucchini type</li>
+              <li>• Pumpkin varieties → Pumpkin type</li>
+              <li>• Winter varieties → Winter Squash type</li>
+              <li>• Ambiguous varieties → Summer Squash (default)</li>
+              <li>• Preserve all subcategory assignments</li>
+              <li>• Run normalization after migration</li>
+            </ul>
+          </div>
+          <div className="flex items-center gap-3 flex-wrap">
+            <Button
+              onClick={() => runSquashMigration(true)}
+              disabled={squashMigrationRunning}
+              variant="outline"
+              className="gap-2"
+            >
+              {squashMigrationRunning ? (
+                <><Loader2 className="w-4 h-4 animate-spin" />Running...</>
+              ) : (
+                <><Play className="w-4 h-4" />Dry Run Preview</>
+              )}
+            </Button>
+            <Button
+              onClick={() => runSquashMigration(false)}
+              disabled={squashMigrationRunning}
+              className="bg-orange-600 hover:bg-orange-700 gap-2"
+            >
+              {squashMigrationRunning ? (
+                <><Loader2 className="w-4 h-4 animate-spin" />Migrating...</>
+              ) : (
+                <><RefreshCw className="w-4 h-4" />Execute Migration</>
+              )}
+            </Button>
+          </div>
+          {squashMigrationResult && (
+            <Alert className={squashMigrationResult.success ? 'border-green-200 bg-green-50' : 'border-red-200 bg-red-50'}>
+              <AlertDescription className={squashMigrationResult.success ? 'text-green-800' : 'text-red-800'}>
+                <div className="space-y-2">
+                  <div className="font-semibold">{squashMigrationResult.dry_run ? 'Dry Run Results:' : 'Migration Results:'}</div>
+                  {squashMigrationResult.success ? (
+                    <>
+                      <ul className="text-sm space-y-1">
+                        <li>• Total varieties: {squashMigrationResult.summary?.total || 0}</li>
+                        <li>• Zucchini: {squashMigrationResult.summary?.zucchini || 0}</li>
+                        <li>• Pumpkin: {squashMigrationResult.summary?.pumpkin || 0}</li>
+                        <li>• Winter Squash: {squashMigrationResult.summary?.winter || 0}</li>
+                        <li>• Summer Squash (default): {squashMigrationResult.summary?.summer || 0}</li>
+                      </ul>
+                      {squashMigrationResult.migrations?.summer?.length > 0 && (
+                        <details className="mt-2">
+                          <summary className="cursor-pointer text-sm font-semibold">
+                            Varieties defaulted to Summer Squash ({squashMigrationResult.migrations.summer.length})
+                          </summary>
+                          <div className="mt-2 space-y-1 max-h-48 overflow-auto">
+                            {squashMigrationResult.migrations.summer.slice(0, 20).map((item, i) => (
+                              <div key={i} className="p-2 bg-white rounded border text-xs">
+                                {item.name} - {item.reason}
+                              </div>
+                            ))}
+                          </div>
+                        </details>
+                      )}
+                    </>
+                  ) : (
+                    <div className="text-sm">{squashMigrationResult.error}</div>
+                  )}
+                </div>
+              </AlertDescription>
+            </Alert>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Normalize Garden Spaces */}
       <Card>

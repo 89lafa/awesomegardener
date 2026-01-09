@@ -33,6 +33,7 @@ const IMPORT_ORDER = [
   { key: 'PlantGroup', label: 'Plant Groups', file: 'AG_PlantGroup.csv' },
   { key: 'PlantFamily', label: 'Plant Families', file: 'AG_PlantFamily.csv' },
   { key: 'PlantType', label: 'Plant Types', file: 'AG_PlantType.csv' },
+  { key: 'PlantSubCategory', label: 'Plant Subcategories', file: 'AG_PlantSubCategory.csv' },
   { key: 'Variety', label: 'Plant Varieties', file: 'AG_Variety_Starter_350.csv or AG_Variety_Extended_583.csv' },
   { key: 'FacetGroup', label: 'Facet Groups', file: 'AG_FacetGroup.csv' },
   { key: 'Facet', label: 'Facets', file: 'AG_Facet.csv' },
@@ -213,6 +214,51 @@ export default function AdminDataImport() {
 
           for (const row of data) {
             try {
+              // Process PlantSubCategory-specific data
+              if (item.key === 'PlantSubCategory') {
+                if (!row.subcat_code || !row.plant_type_id || !row.name) {
+                  rejected++;
+                  skipReasons.push({ row, reason: 'Missing subcat_code, plant_type_id, or name' });
+                  continue;
+                }
+
+                // Convert boolean fields
+                if (row.is_active !== undefined) {
+                  row.is_active = row.is_active === 'true' || row.is_active === '1' || row.is_active === true;
+                } else {
+                  row.is_active = true;
+                }
+
+                // Convert numeric fields
+                if (row.sort_order) row.sort_order = parseInt(row.sort_order);
+
+                // Check for existing by subcat_code
+                const existing = await base44.entities.PlantSubCategory.filter({ subcat_code: row.subcat_code });
+
+                const subcatData = {
+                  subcat_code: row.subcat_code,
+                  plant_type_id: row.plant_type_id,
+                  name: row.name,
+                  dimension: row.dimension || null,
+                  scientific_name: row.scientific_name || null,
+                  synonyms: row.synonyms ? row.synonyms.split('|').map(s => s.trim()).filter(Boolean) : [],
+                  description: row.description || null,
+                  icon: row.icon || null,
+                  color: row.color || null,
+                  sort_order: row.sort_order || 0,
+                  is_active: row.is_active
+                };
+
+                if (existing.length > 0) {
+                  await base44.entities.PlantSubCategory.update(existing[0].id, subcatData);
+                  updated++;
+                } else {
+                  await base44.entities.PlantSubCategory.create(subcatData);
+                  inserted++;
+                }
+                continue;
+              }
+
               // Process PlantType-specific data
               if (item.key === 'PlantType') {
                 if (!row.common_name || row.common_name.trim().length < 2) {
@@ -248,6 +294,17 @@ export default function AdminDataImport() {
                 if (!row.variety_name || !row.plant_type_id) {
                   rejected++;
                   skipReasons.push({ row, reason: 'Missing variety_name or plant_type_id' });
+                  continue;
+                }
+
+                // BLOCK Squash umbrella
+                const SQUASH_UMBRELLA_ID = '69594ee83e086041528f2b15';
+                if (row.plant_type_id === SQUASH_UMBRELLA_ID) {
+                  rejected++;
+                  skipReasons.push({ 
+                    row, 
+                    reason: 'Cannot import to Squash umbrella - use Summer Squash, Winter Squash, Zucchini, or Pumpkin' 
+                  });
                   continue;
                 }
 

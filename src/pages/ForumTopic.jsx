@@ -194,10 +194,10 @@ export default function ForumTopic() {
   const isLocked = topic.status === 'locked';
 
   return (
-    <div className="space-y-6 max-w-4xl">
+    <div className="space-y-6 max-w-4xl mx-auto">
       {/* Header */}
       <div className="flex items-center gap-3">
-        <Link to={createPageUrl('ForumCategory') + `?id=${topic.category_id}`}>
+        <Link to={createPageUrl('CommunityBoard')}>
           <Button variant="ghost" size="icon">
             <ArrowLeft className="w-5 h-5" />
           </Button>

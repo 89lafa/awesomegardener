@@ -50,6 +50,8 @@ export default function AddVarietyDialog({ plantType, open, onOpenChange, onSucc
   const [imageOwnership, setImageOwnership] = useState(false);
 
   const isAdminOrEditor = userRole === 'admin' || userRole === 'editor';
+  const SQUASH_UMBRELLA_ID = '69594ee83e086041528f2b15';
+  const isSquashUmbrella = plantType?.id === SQUASH_UMBRELLA_ID;
 
   useEffect(() => {
     if (open && plantType) {
@@ -130,6 +132,12 @@ export default function AddVarietyDialog({ plantType, open, onOpenChange, onSucc
   const handleSubmit = async () => {
     if (!formData.variety_name.trim()) {
       toast.error('Variety name is required');
+      return;
+    }
+
+    // BLOCK Squash umbrella
+    if (isSquashUmbrella) {
+      toast.error('Squash is a browse-only category. Please select Summer Squash, Winter Squash, Zucchini, or Pumpkin.');
       return;
     }
 
