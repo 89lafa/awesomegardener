@@ -285,6 +285,18 @@ export default function AdminDataImport() {
 
                 const resolvedTypeId = plantType.id;
                 const plantTypeName = plantType.common_name;
+                
+                // Normalize variety name for duplicate checking
+                const normalizeVarietyName = (name) => {
+                  if (!name) return '';
+                  return name
+                    .trim()
+                    .toLowerCase()
+                    .replace(/\s+/g, ' ')
+                    .replace(/['']/g, "'")
+                    .replace(/[""]/g, '"')
+                    .replace(/\.$/, '');
+                };
 
                 // Resolve plant_subcategory_id using multiple strategies
                 let resolvedSubcategoryId = null;
@@ -373,16 +385,63 @@ export default function AdminDataImport() {
                   }
                 }
 
-                // Check for duplicate
-                const existing = await base44.entities.Variety.filter({ 
-                  plant_type_id: resolvedTypeId,
-                  variety_name: row.variety_name 
-                });
+                // UPSERT logic: Check for existing by variety_code OR normalized name
+                let existing = [];
+                
+                if (row.variety_code) {
+                  existing = await base44.entities.Variety.filter({ 
+                    variety_code: row.variety_code 
+                  });
+                }
+                
+                if (existing.length === 0) {
+                  // Fallback to normalized name matching
+                  const allVarieties = await base44.entities.Variety.filter({ 
+                    plant_type_id: resolvedTypeId 
+                  });
+                  const normalized = normalizeVarietyName(row.variety_name);
+                  const nameMatch = allVarieties.find(v => 
+                    normalizeVarietyName(v.variety_name) === normalized
+                  );
+                  if (nameMatch) {
+                    existing = [nameMatch];
+                  }
+                }
+                
+                // Validate and normalize enum fields
+                const validSpecies = ['annuum', 'chinense', 'baccatum', 'frutescens', 'pubescens', 'unknown'];
+                const validSeedLineTypes = ['heirloom', 'hybrid', 'open_pollinated', 'unknown'];
+                const validSeasonTimings = ['early', 'mid', 'late', 'unknown'];
+                
+                let species = row.species || null;
+                if (species && !validSpecies.includes(species)) {
+                  console.log(`[Variety Import] Invalid species "${species}", setting to "unknown"`);
+                  species = 'unknown';
+                }
+                
+                let seedLineType = row.seed_line_type || null;
+                if (seedLineType && !validSeedLineTypes.includes(seedLineType)) {
+                  console.log(`[Variety Import] Invalid seed_line_type "${seedLineType}", setting to "unknown"`);
+                  seedLineType = 'unknown';
+                }
+                
+                let seasonTiming = row.season_timing || null;
+                if (seasonTiming && !validSeasonTimings.includes(seasonTiming)) {
+                  console.log(`[Variety Import] Invalid season_timing "${seasonTiming}", setting to "unknown"`);
+                  seasonTiming = 'unknown';
+                }
+                
+                // Build subcategory ids array
+                let subcatIds = [];
+                if (resolvedSubcategoryId) {
+                  subcatIds = [resolvedSubcategoryId];
+                }
 
                 const varietyData = {
                   plant_type_id: resolvedTypeId,
                   plant_type_name: plantTypeName,
                   plant_subcategory_id: resolvedSubcategoryId,
+                  plant_subcategory_ids: subcatIds,
                   variety_code: row.variety_code || null,
                   variety_name: row.variety_name,
                   description: row.description || null,
@@ -401,6 +460,11 @@ export default function AdminDataImport() {
                   trellis_required: row.trellis_required === 'true' || row.trellis_required === '1',
                   container_friendly: row.container_friendly === 'true' || row.container_friendly === '1',
                   growth_habit: row.growth_habit || null,
+                  species: species,
+                  is_ornamental: row.is_ornamental === 'true' || row.is_ornamental === '1',
+                  seed_line_type: seedLineType,
+                  is_organic: row.is_organic === 'true' || row.is_organic === '1',
+                  season_timing: seasonTiming,
                   flavor_profile: row.flavor_profile || null,
                   uses: row.uses || null,
                   fruit_color: row.fruit_color || null,
