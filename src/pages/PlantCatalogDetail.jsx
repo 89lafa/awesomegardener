@@ -308,21 +308,26 @@ export default function PlantCatalogDetail() {
       );
     }
 
-    // Sub-category filter - FIXED to support multi-subcategory correctly
+    // Sub-category filter - CRITICAL: Uncategorized = NO category at all
     if (selectedSubCategories.length > 0) {
       filtered = filtered.filter(v => {
+        // Handle Uncategorized - only if BOTH fields are empty
+        if (selectedSubCategories.includes('uncategorized')) {
+          const hasPrimary = v.plant_subcategory_id && v.plant_subcategory_id.trim() !== '';
+          const hasArray = Array.isArray(v.plant_subcategory_ids) && 
+                          v.plant_subcategory_ids.filter(id => id && id.trim() !== '').length > 0;
+          return !hasPrimary && !hasArray;
+        }
+
         // Get effective subcategory IDs (union of both fields)
         let effectiveIds = [];
-        if (v.plant_subcategory_id) effectiveIds.push(v.plant_subcategory_id);
+        if (v.plant_subcategory_id && v.plant_subcategory_id.trim() !== '') {
+          effectiveIds.push(v.plant_subcategory_id);
+        }
         if (Array.isArray(v.plant_subcategory_ids)) {
-          effectiveIds = effectiveIds.concat(v.plant_subcategory_ids);
+          effectiveIds = effectiveIds.concat(v.plant_subcategory_ids.filter(id => id && id.trim() !== ''));
         }
-        effectiveIds = [...new Set(effectiveIds.filter(id => id && typeof id === 'string' && id.trim() !== ''))];
-
-        // Handle Uncategorized - only if NO valid subcategories
-        if (selectedSubCategories.includes('uncategorized')) {
-          return effectiveIds.length === 0;
-        }
+        effectiveIds = [...new Set(effectiveIds)];
 
         // Match if variety has ANY of the selected subcategories
         return selectedSubCategories.some(selectedId => effectiveIds.includes(selectedId));
@@ -705,15 +710,12 @@ export default function PlantCatalogDetail() {
                 <SelectContent>
                   <SelectItem value={null}>All ({varieties.length})</SelectItem>
                   {subCategories.map((subcat) => {
-                    // FIXED: Count using effective subcategory IDs
+                    // Count varieties with this subcategory in EITHER field
                     const count = varieties.filter(v => {
-                      let effectiveIds = [];
-                      if (v.plant_subcategory_id) effectiveIds.push(v.plant_subcategory_id);
-                      if (Array.isArray(v.plant_subcategory_ids)) {
-                        effectiveIds = effectiveIds.concat(v.plant_subcategory_ids);
-                      }
-                      effectiveIds = [...new Set(effectiveIds.filter(id => id && typeof id === 'string' && id.trim() !== ''))];
-                      return effectiveIds.includes(subcat.id);
+                      const inPrimary = v.plant_subcategory_id === subcat.id;
+                      const inArray = Array.isArray(v.plant_subcategory_ids) && 
+                                     v.plant_subcategory_ids.includes(subcat.id);
+                      return inPrimary || inArray;
                     }).length;
                     return (
                       <SelectItem key={subcat.id} value={subcat.id}>
@@ -723,15 +725,12 @@ export default function PlantCatalogDetail() {
                     );
                   })}
                   {(() => {
-                    // FIXED: Count uncategorized - ONLY if NO subcategories in either field
+                    // CRITICAL: Uncategorized = NO category in EITHER field
                     const uncategorizedCount = varieties.filter(v => {
-                      let effectiveIds = [];
-                      if (v.plant_subcategory_id) effectiveIds.push(v.plant_subcategory_id);
-                      if (Array.isArray(v.plant_subcategory_ids)) {
-                        effectiveIds = effectiveIds.concat(v.plant_subcategory_ids);
-                      }
-                      effectiveIds = [...new Set(effectiveIds.filter(id => id && typeof id === 'string' && id.trim() !== ''))];
-                      return effectiveIds.length === 0;
+                      const hasPrimary = v.plant_subcategory_id && v.plant_subcategory_id.trim() !== '';
+                      const hasArray = Array.isArray(v.plant_subcategory_ids) && 
+                                      v.plant_subcategory_ids.filter(id => id && id.trim() !== '').length > 0;
+                      return !hasPrimary && !hasArray;
                     }).length;
 
                     return uncategorizedCount > 0 && (

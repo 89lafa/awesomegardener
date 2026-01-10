@@ -5,59 +5,139 @@ Deno.serve(async (req) => {
     const base44 = createClientFromRequest(req);
     const user = await base44.auth.me();
     
-    if (user?.role !== 'admin') {
-      return Response.json({ error: 'Forbidden: Admin access required' }, { status: 403 });
+    if (!user || user.role !== 'admin') {
+      return Response.json({ error: 'Admin access required' }, { status: 403 });
     }
 
-    console.log('[Backfill] Starting subcategory backfill...');
+    const { plant_type_id } = await req.json();
     
-    // Load all varieties
-    const allVarieties = await base44.asServiceRole.entities.Variety.list('variety_name', 10000);
-    console.log('[Backfill] Found', allVarieties.length, 'varieties');
+    console.log('[Backfill] Starting subcategory backfill for plant_type_id:', plant_type_id);
     
-    let updatedCount = 0;
-    let skippedCount = 0;
+    // Load all subcategories for lookup
+    const allSubcats = plant_type_id 
+      ? await base44.asServiceRole.entities.PlantSubCategory.filter({ plant_type_id })
+      : await base44.asServiceRole.entities.PlantSubCategory.list();
     
-    for (const variety of allVarieties) {
-      // Check if needs backfill
-      const hasSubcatId = variety.plant_subcategory_id;
-      const hasSubcatIds = variety.plant_subcategory_ids && variety.plant_subcategory_ids.length > 0;
-      
-      if (hasSubcatId && !hasSubcatIds) {
-        // Backfill: set plant_subcategory_ids = [plant_subcategory_id]
-        await base44.asServiceRole.entities.Variety.update(variety.id, {
-          plant_subcategory_ids: [variety.plant_subcategory_id]
-        });
-        updatedCount++;
-        
-        if (updatedCount % 50 === 0) {
-          console.log('[Backfill] Updated', updatedCount, 'varieties...');
-        }
-      } else {
-        skippedCount++;
-      }
-    }
+    console.log('[Backfill] Loaded', allSubcats.length, 'subcategories');
     
-    console.log('[Backfill] Complete!');
-    console.log('[Backfill] Updated:', updatedCount);
-    console.log('[Backfill] Skipped:', skippedCount);
-    
-    return Response.json({
-      success: true,
-      summary: {
-        totalVarieties: allVarieties.length,
-        updated: updatedCount,
-        skipped: skippedCount
+    // Build lookup map: code -> subcat
+    const subcatLookup = {};
+    allSubcats.forEach(sc => {
+      if (sc.subcat_code) {
+        subcatLookup[sc.subcat_code] = sc;
+        // Also map by plant_type + code
+        subcatLookup[`${sc.plant_type_id}_${sc.subcat_code}`] = sc;
       }
     });
     
+    // Load varieties that need backfill
+    const filter = plant_type_id ? { plant_type_id } : {};
+    const allVarieties = await base44.asServiceRole.entities.Variety.filter(filter, 'variety_name', 2000);
+    
+    console.log('[Backfill] Loaded', allVarieties.length, 'varieties');
+    
+    // Find varieties with empty subcategory_ids
+    const needsBackfill = allVarieties.filter(v => {
+      const hasIds = Array.isArray(v.plant_subcategory_ids) && v.plant_subcategory_ids.length > 0;
+      const hasPrimary = v.plant_subcategory_id && v.plant_subcategory_id.trim() !== '';
+      return !hasIds && !hasPrimary;
+    });
+    
+    console.log('[Backfill] Found', needsBackfill.length, 'varieties needing backfill');
+    
+    let fixed = 0;
+    let failed = 0;
+    const failures = [];
+    
+    for (const variety of needsBackfill) {
+      try {
+        // Extract codes from extended_data (import metadata)
+        const importCode = variety.extended_data?.import_subcat_code || null;
+        const importCodes = variety.extended_data?.import_subcat_codes || null;
+        
+        let resolvedIds = [];
+        
+        // Try multi-code first
+        if (importCodes) {
+          const codes = importCodes.includes('|') 
+            ? importCodes.split('|').map(c => c.trim()).filter(Boolean)
+            : [importCodes.trim()];
+          
+          for (const code of codes) {
+            let normalizedCode = code;
+            if (!normalizedCode.startsWith('PSC_')) {
+              normalizedCode = 'PSC_' + normalizedCode;
+            }
+            
+            const subcat = subcatLookup[normalizedCode] || 
+                          subcatLookup[`${variety.plant_type_id}_${normalizedCode}`];
+            
+            if (subcat) {
+              resolvedIds.push(subcat.id);
+            }
+          }
+        }
+        // Try single code
+        else if (importCode) {
+          let normalizedCode = importCode;
+          if (!normalizedCode.startsWith('PSC_')) {
+            normalizedCode = 'PSC_' + normalizedCode;
+          }
+          
+          const subcat = subcatLookup[normalizedCode] || 
+                        subcatLookup[`${variety.plant_type_id}_${normalizedCode}`];
+          
+          if (subcat) {
+            resolvedIds.push(subcat.id);
+          }
+        }
+        
+        // Dedupe
+        resolvedIds = [...new Set(resolvedIds)];
+        
+        if (resolvedIds.length > 0) {
+          // Update variety with resolved IDs
+          await base44.asServiceRole.entities.Variety.update(variety.id, {
+            plant_subcategory_ids: resolvedIds,
+            plant_subcategory_id: resolvedIds[0]
+          });
+          fixed++;
+          console.log('[Backfill] Fixed:', variety.variety_name, '→', resolvedIds.length, 'categories');
+        } else {
+          failed++;
+          failures.push({
+            id: variety.id,
+            name: variety.variety_name,
+            reason: 'No code found in extended_data'
+          });
+        }
+      } catch (error) {
+        failed++;
+        failures.push({
+          id: variety.id,
+          name: variety.variety_name,
+          reason: error.message
+        });
+        console.error('[Backfill] Error processing variety:', variety.variety_name, error);
+      }
+    }
+    
+    return Response.json({
+      success: true,
+      message: 'Subcategory backfill completed',
+      stats: {
+        total: allVarieties.length,
+        needed_backfill: needsBackfill.length,
+        fixed,
+        failed,
+        failures: failures.slice(0, 20) // First 20 failures
+      }
+    });
   } catch (error) {
     console.error('[Backfill] Error:', error);
-    console.error('[Backfill] Stack:', error.stack);
     return Response.json({ 
-      success: false,
-      error: error.message,
-      details: error.stack 
-    }, { status: 200 });
+      success: false, 
+      error: error.message 
+    }, { status: 500 });
   }
 });

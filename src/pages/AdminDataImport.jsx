@@ -310,22 +310,22 @@ export default function AdminDataImport() {
 
                 // Resolve plant_type_id via multiple strategies
                 let plantType = null;
-                
+
                 // Strategy 1: Direct ID match
                 if (plantTypeLookup[row.plant_type_id]) {
                   plantType = plantTypeLookup[row.plant_type_id];
                 }
-                
+
                 // Strategy 2: plant_type_code match
                 if (!plantType && row.plant_type_code && plantTypeLookup[row.plant_type_code]) {
                   plantType = plantTypeLookup[row.plant_type_code];
                 }
-                
+
                 // Strategy 3: common_name match
                 if (!plantType && row.plant_type_common_name) {
                   plantType = plantTypeByName[row.plant_type_common_name.toLowerCase()];
                 }
-                
+
                 // Strategy 4: Treat plant_type_id as a code
                 if (!plantType) {
                   plantType = plantTypeLookup[row.plant_type_id];
@@ -342,6 +342,10 @@ export default function AdminDataImport() {
 
                 const resolvedTypeId = plantType.id;
                 const plantTypeName = plantType.common_name;
+
+                // Store original codes for backfill
+                const originalSubcatCode = row.plant_subcategory_code || row.subcat_code || null;
+                const originalSubcatCodes = row.plant_subcategory_codes || null;
                 
                 // Normalize variety name for duplicate checking
                 const normalizeVarietyName = (name) => {
@@ -355,92 +359,104 @@ export default function AdminDataImport() {
                     .replace(/\.$/, '');
                 };
 
-                // Resolve plant_subcategory_id using multiple strategies
-                let resolvedSubcategoryId = null;
-                
-                // Strategy 1: Direct ID provided
-                if (row.plant_subcategory_id) {
-                  const subcat = subCategoryLookup[row.plant_subcategory_id];
-                  if (subcat && subcat.plant_type_id === resolvedTypeId) {
-                    resolvedSubcategoryId = subcat.id;
-                  } else {
-                    rejected++;
-                    skipReasons.push({ 
-                      row, 
-                      reason: `Invalid plant_subcategory_id: ${row.plant_subcategory_id} (doesn't exist or wrong plant_type)` 
-                    });
-                    continue;
-                  }
-                }
-                // Strategy 2: Subcategory code provided (preferred for imports)
-                else if (row.plant_subcategory_code) {
-                  // Normalize code: TOMATO_CHERRY -> PSC_TOMATO_CHERRY
-                  let normalizedCode = row.plant_subcategory_code;
-                  if (!normalizedCode.startsWith('PSC_')) {
-                    normalizedCode = 'PSC_' + normalizedCode;
-                  }
-                  
-                  const lookupKey = `${resolvedTypeId}_${normalizedCode}`;
-                  let subcat = subCategoryLookup[lookupKey];
-                  
-                  if (!subcat) {
-                    // Try without plant_type_id prefix
-                    subcat = Object.values(subCategoryLookup).find(sc => 
+                // Resolve plant_subcategory_id(s) from CSV codes
+                let resolvedSubcategoryIds = [];
+                let subcatWarnings = [];
+
+                // Priority 1: plant_subcategory_code(s) - multi-code support
+                const codesInput = row.plant_subcategory_codes || row.plant_subcategory_code || row.subcat_code || null;
+
+                if (codesInput) {
+                  // Support pipe-separated multi-codes: A|B|C
+                  const codes = codesInput.includes('|') 
+                    ? codesInput.split('|').map(c => c.trim()).filter(Boolean)
+                    : [codesInput.trim()];
+
+                  for (const code of codes) {
+                    // Normalize: ZUCCHINI_BUSH -> PSC_ZUCCHINI_BUSH
+                    let normalizedCode = code;
+                    if (!normalizedCode.startsWith('PSC_')) {
+                      normalizedCode = 'PSC_' + normalizedCode;
+                    }
+
+                    // Lookup in pre-loaded subcategory index
+                    let subcat = Object.values(subCategoryLookup).find(sc => 
                       sc.subcat_code === normalizedCode && sc.plant_type_id === resolvedTypeId
                     );
-                  }
-                  
-                  if (subcat) {
-                    resolvedSubcategoryId = subcat.id;
-                  } else {
-                    // Create new subcategory
-                    const subcatName = row.plant_subcategory_name || 
-                                      normalizedCode.replace(/^PSC_/, '').replace(/_/g, ' ')
-                                        .split(' ')
-                                        .map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
-                                        .join(' ');
-                    
-                    const newSubcat = await base44.entities.PlantSubCategory.create({
-                      subcat_code: normalizedCode,
-                      plant_type_id: resolvedTypeId,
-                      name: subcatName,
-                      is_active: true,
-                      sort_order: 0
-                    });
-                    
-                    resolvedSubcategoryId = newSubcat.id;
-                    subCategoryLookup[lookupKey] = newSubcat;
-                    subCategoryLookup[normalizedCode] = newSubcat;
-                    console.log('[Variety Import] Created subcategory:', subcatName, normalizedCode);
+
+                    if (subcat) {
+                      resolvedSubcategoryIds.push(subcat.id);
+                    } else {
+                      // Auto-create if code is reasonable
+                      const subcatName = row.plant_subcategory_name || 
+                                        normalizedCode.replace(/^PSC_/, '').replace(/_/g, ' ')
+                                          .split(' ')
+                                          .map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
+                                          .join(' ');
+
+                      try {
+                        const newSubcat = await base44.entities.PlantSubCategory.create({
+                          subcat_code: normalizedCode,
+                          plant_type_id: resolvedTypeId,
+                          name: subcatName,
+                          is_active: true,
+                          sort_order: 0
+                        });
+
+                        resolvedSubcategoryIds.push(newSubcat.id);
+                        subCategoryLookup[normalizedCode] = newSubcat;
+                        console.log('[Variety Import] Created subcategory:', subcatName, normalizedCode);
+                      } catch (err) {
+                        subcatWarnings.push(`Code "${code}" failed: ${err.message}`);
+                      }
+                    }
                   }
                 }
-                // Strategy 3: Subcategory name only
+                // Priority 2: Direct ID provided (legacy support)
+                else if (row.plant_subcategory_id) {
+                  const subcat = subCategoryLookup[row.plant_subcategory_id];
+                  if (subcat && subcat.plant_type_id === resolvedTypeId) {
+                    resolvedSubcategoryIds.push(subcat.id);
+                  } else {
+                    subcatWarnings.push(`Invalid ID: ${row.plant_subcategory_id}`);
+                  }
+                }
+                // Priority 3: Name-based fallback (legacy)
                 else if (row.plant_subcategory_name) {
                   const subcat = Object.values(subCategoryLookup).find(sc => 
                     sc.plant_type_id === resolvedTypeId && 
                     sc.name?.toLowerCase() === row.plant_subcategory_name.toLowerCase()
                   );
-                  
+
                   if (subcat) {
-                    resolvedSubcategoryId = subcat.id;
+                    resolvedSubcategoryIds.push(subcat.id);
                   } else {
                     // Create with generated code
-                    const generatedCode = 'PSC_' + plantType.plant_type_code + '_' + 
+                    const generatedCode = 'PSC_' + (plantType.plant_type_code || 'UNKNOWN') + '_' + 
                                          row.plant_subcategory_name.toUpperCase().replace(/[^A-Z0-9]/g, '_');
-                    
-                    const newSubcat = await base44.entities.PlantSubCategory.create({
-                      subcat_code: generatedCode,
-                      plant_type_id: resolvedTypeId,
-                      name: row.plant_subcategory_name,
-                      is_active: true,
-                      sort_order: 0
-                    });
-                    
-                    resolvedSubcategoryId = newSubcat.id;
-                    subCategoryLookup[`${resolvedTypeId}_${generatedCode}`] = newSubcat;
-                    console.log('[Variety Import] Created subcategory from name:', row.plant_subcategory_name);
+
+                    try {
+                      const newSubcat = await base44.entities.PlantSubCategory.create({
+                        subcat_code: generatedCode,
+                        plant_type_id: resolvedTypeId,
+                        name: row.plant_subcategory_name,
+                        is_active: true,
+                        sort_order: 0
+                      });
+
+                      resolvedSubcategoryIds.push(newSubcat.id);
+                      subCategoryLookup[generatedCode] = newSubcat;
+                    } catch (err) {
+                      subcatWarnings.push(`Name "${row.plant_subcategory_name}" failed: ${err.message}`);
+                    }
                   }
                 }
+
+                // Dedupe resolved IDs
+                resolvedSubcategoryIds = [...new Set(resolvedSubcategoryIds)];
+
+                // Set primary = first resolved ID
+                const resolvedSubcategoryId = resolvedSubcategoryIds.length > 0 ? resolvedSubcategoryIds[0] : null;
 
                 // UPSERT logic: Check for existing by variety_code OR normalized name
                 let existing = [];
@@ -487,12 +503,9 @@ export default function AdminDataImport() {
                   console.log(`[Variety Import] Invalid season_timing "${seasonTiming}", setting to "unknown"`);
                   seasonTiming = 'unknown';
                 }
-                
-                // Build subcategory ids array
-                let subcatIds = [];
-                if (resolvedSubcategoryId) {
-                  subcatIds = [resolvedSubcategoryId];
-                }
+
+                // Build subcategory ids array - use ALL resolved IDs
+                const subcatIds = resolvedSubcategoryIds.length > 0 ? resolvedSubcategoryIds : [];
 
                 // Parse SHU fields (support both old and new)
                 const scovilleMin = row.scoville_min || row.heat_scoville_min || null;
@@ -504,6 +517,12 @@ export default function AdminDataImport() {
                   plant_subcategory_id: resolvedSubcategoryId,
                   plant_subcategory_ids: subcatIds,
                   variety_code: row.variety_code || null,
+                  extended_data: {
+                    ...(row.extended_data || {}),
+                    import_subcat_code: originalSubcatCode,
+                    import_subcat_codes: originalSubcatCodes,
+                    import_subcat_warnings: subcatWarnings.length > 0 ? subcatWarnings.join('; ') : null
+                  },
                   variety_name: row.variety_name,
                   description: row.description || null,
                   synonyms: row.synonyms ? row.synonyms.split('|') : [],
