@@ -1,113 +1,165 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.6';
 
+/**
+ * Normalizes variety subcategory fields using the single source of truth rule:
+ * 
+ * EffectiveSubcategoryIds(variety):
+ * 1. Start with empty list
+ * 2. If plant_subcategory_ids exists and is array, append values
+ * 3. If plant_subcategory_ids is string (JSON), parse and append
+ * 4. If plant_subcategory_id exists, append it
+ * 5. Dedupe and filter out invalid/inactive IDs
+ * 6. Set plant_subcategory_ids = effective list
+ * 7. Set plant_subcategory_id = effective[0] or null
+ */
+
+function getEffectiveSubcategoryIds(variety, validActiveIds) {
+  let ids = [];
+  
+  // Handle plant_subcategory_ids (array or string)
+  if (variety.plant_subcategory_ids) {
+    if (Array.isArray(variety.plant_subcategory_ids)) {
+      ids = ids.concat(variety.plant_subcategory_ids);
+    } else if (typeof variety.plant_subcategory_ids === 'string') {
+      // Might be a JSON string like '["id1","id2"]'
+      try {
+        const parsed = JSON.parse(variety.plant_subcategory_ids);
+        if (Array.isArray(parsed)) {
+          ids = ids.concat(parsed);
+        }
+      } catch (e) {
+        // Invalid JSON, treat as empty
+        console.log('[EffectiveIds] Failed to parse plant_subcategory_ids for', variety.variety_name);
+      }
+    }
+  }
+  
+  // Add plant_subcategory_id if exists
+  if (variety.plant_subcategory_id && variety.plant_subcategory_id.trim() !== '') {
+    ids.push(variety.plant_subcategory_id.trim());
+  }
+  
+  // Dedupe
+  ids = [...new Set(ids.filter(id => id && typeof id === 'string' && id.trim() !== ''))];
+  
+  // Filter to only valid, active IDs
+  const validIds = ids.filter(id => validActiveIds.has(id));
+  
+  return {
+    effective: validIds,
+    hadInvalid: ids.length > validIds.length,
+    hadStringArray: typeof variety.plant_subcategory_ids === 'string' && variety.plant_subcategory_ids.length > 0
+  };
+}
+
 Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
     const user = await base44.auth.me();
-
-    if (user?.role !== 'admin') {
-      return Response.json({ error: 'Forbidden: Admin access required' }, { status: 403 });
+    
+    if (!user || user.role !== 'admin') {
+      return Response.json({ error: 'Admin access required' }, { status: 403 });
     }
 
-    console.log('[NormalizeSubcats] Starting normalization...');
+    const body = await req.json().catch(() => ({}));
+    const { plant_type_id, dry_run } = body;
 
-    // Load all varieties and subcategories
-    const varieties = await base44.asServiceRole.entities.Variety.list('variety_name', 20000);
+    console.log('[Normalize] Starting subcategory normalization...', { plant_type_id, dry_run });
+    
+    // Load all active subcategories for validation
     const allSubcats = await base44.asServiceRole.entities.PlantSubCategory.list();
-
-    const validSubcatIds = new Set(allSubcats.map(s => s.id));
-
-    let scanned = 0;
-    let updated = 0;
-    let invalidIdsRemoved = 0;
-
-    for (const v of varieties) {
-      scanned++;
-      let needsUpdate = false;
-      let newSubcatId = v.plant_subcategory_id;
-      let newSubcatIds = v.plant_subcategory_ids;
-
-      // Determine effective IDs (CANONICAL LOGIC)
-      let effectiveIds = [];
-
-      // Step 1: Sanitize plant_subcategory_ids array
-      if (newSubcatIds) {
-        if (typeof newSubcatIds === 'string') {
+    console.log('[Normalize] Loaded', allSubcats.length, 'subcategories');
+    
+    const validActiveIds = new Set(
+      allSubcats.filter(s => s.is_active === true).map(s => s.id)
+    );
+    
+    // Load varieties (filtered by plant_type_id if provided)
+    const filter = plant_type_id ? { plant_type_id, status: 'active' } : { status: 'active' };
+    const allVarieties = await base44.asServiceRole.entities.Variety.filter(filter, 'variety_name', 2000);
+    console.log('[Normalize] Loaded', allVarieties.length, 'varieties');
+    
+    let varietiesScanned = 0;
+    let varietiesUpdated = 0;
+    let alreadyOk = 0;
+    let hadStringArrayFixed = 0;
+    let hadInactiveRemoved = 0;
+    let becameUncategorized = 0;
+    const changes = [];
+    
+    for (const variety of allVarieties) {
+      varietiesScanned++;
+      
+      const { effective, hadInvalid, hadStringArray } = getEffectiveSubcategoryIds(variety, validActiveIds);
+      
+      const currentIds = Array.isArray(variety.plant_subcategory_ids) ? variety.plant_subcategory_ids : [];
+      const currentPrimary = variety.plant_subcategory_id || null;
+      const newPrimary = effective.length > 0 ? effective[0] : null;
+      
+      // Determine if update needed
+      const needsUpdate = 
+        JSON.stringify(effective.sort()) !== JSON.stringify(currentIds.sort()) ||
+        newPrimary !== currentPrimary ||
+        hadStringArray;
+      
+      if (needsUpdate) {
+        if (hadStringArray) hadStringArrayFixed++;
+        if (hadInvalid) hadInactiveRemoved++;
+        if (effective.length === 0 && currentIds.length > 0) becameUncategorized++;
+        
+        changes.push({
+          id: variety.id,
+          name: variety.variety_name,
+          before: { ids: currentIds, primary: currentPrimary },
+          after: { ids: effective, primary: newPrimary },
+          hadStringArray,
+          hadInvalid
+        });
+        
+        if (!dry_run) {
           try {
-            newSubcatIds = JSON.parse(newSubcatIds);
-          } catch {
-            newSubcatIds = [];
+            await base44.asServiceRole.entities.Variety.update(variety.id, {
+              plant_subcategory_ids: effective,
+              plant_subcategory_id: newPrimary
+            });
+            varietiesUpdated++;
+            
+            if (varietiesUpdated % 100 === 0) {
+              console.log(`[Normalize] Progress: ${varietiesUpdated} updated...`);
+            }
+          } catch (error) {
+            console.error('[Normalize] Error updating variety:', variety.variety_name, error);
           }
         }
-        
-        if (!Array.isArray(newSubcatIds)) {
-          newSubcatIds = [];
-        }
-
-        // Remove invalid/inactive IDs
-        const cleanedIds = newSubcatIds
-          .filter(id => id && typeof id === 'string' && id.trim() !== '')
-          .filter(id => validSubcatIds.has(id));
-
-        effectiveIds = [...new Set(cleanedIds)];
       } else {
-        effectiveIds = [];
-      }
-
-      // Step 2: If primary ID is valid and not in array, add it to effectiveIds
-      if (newSubcatId && validSubcatIds.has(newSubcatId)) {
-        if (!effectiveIds.includes(newSubcatId)) {
-          effectiveIds = [newSubcatId, ...effectiveIds];
-        }
-      } else if (newSubcatId && !validSubcatIds.has(newSubcatId)) {
-        // Primary is invalid, clear it
-        newSubcatId = null;
-        invalidIdsRemoved++;
-        needsUpdate = true;
-      }
-
-      // Step 3: If no valid primary but effectiveIds has values, set primary
-      if (!newSubcatId && effectiveIds.length > 0) {
-        newSubcatId = effectiveIds[0];
-        needsUpdate = true;
-      }
-
-      // Step 4: Write back canonical values
-      if (JSON.stringify(effectiveIds) !== JSON.stringify(newSubcatIds)) {
-        newSubcatIds = effectiveIds;
-        needsUpdate = true;
-      }
-
-      if (newSubcatId !== v.plant_subcategory_id) {
-        needsUpdate = true;
-      }
-
-      // Update if needed
-      if (needsUpdate) {
-        await base44.asServiceRole.entities.Variety.update(v.id, {
-          plant_subcategory_id: newSubcatId,
-          plant_subcategory_ids: newSubcatIds
-        });
-        updated++;
-
-        if (updated % 100 === 0) {
-          console.log('[NormalizeSubcats] Progress:', updated, '/', scanned);
-        }
+        alreadyOk++;
       }
     }
-
-    console.log('[NormalizeSubcats] Complete:', { scanned, updated, invalidIdsRemoved });
-
+    
+    const summary = {
+      varieties_scanned: varietiesScanned,
+      varieties_updated: dry_run ? 0 : varietiesUpdated,
+      would_update: dry_run ? changes.length : varietiesUpdated,
+      already_ok: alreadyOk,
+      had_string_array_fixed: hadStringArrayFixed,
+      had_inactive_removed: hadInactiveRemoved,
+      became_uncategorized: becameUncategorized,
+      sample_changes: changes.slice(0, 20)
+    };
+    
+    console.log('[Normalize] Complete:', summary);
+    
     return Response.json({
       success: true,
-      summary: {
-        varieties_scanned: scanned,
-        varieties_updated: updated,
-        invalid_ids_removed: invalidIdsRemoved
-      }
+      message: dry_run ? 'Dry run completed' : 'Subcategory normalization completed',
+      summary,
+      dry_run
     });
   } catch (error) {
-    console.error('[NormalizeSubcats] Error:', error);
-    return Response.json({ error: error.message }, { status: 500 });
+    console.error('[Normalize] Error:', error);
+    return Response.json({ 
+      success: false, 
+      error: error.message 
+    }, { status: 500 });
   }
 });
