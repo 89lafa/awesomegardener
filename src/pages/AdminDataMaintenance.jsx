@@ -47,6 +47,9 @@ export default function AdminDataMaintenance() {
   const [normalizeSpacesResult, setNormalizeSpacesResult] = useState(null);
   const [squashMigrationRunning, setSquashMigrationRunning] = useState(false);
   const [squashMigrationResult, setSquashMigrationResult] = useState(null);
+  const [subcatBackfillRunning, setSubcatBackfillRunning] = useState(false);
+  const [subcatBackfillResult, setSubcatBackfillResult] = useState(null);
+  const [selectedBackfillType, setSelectedBackfillType] = useState('');
 
   React.useEffect(() => {
     checkAdmin();
@@ -332,6 +335,34 @@ export default function AdminDataMaintenance() {
       toast.error('Operation failed: ' + error.message);
     } finally {
       setSquashMigrationRunning(false);
+    }
+  };
+
+  const runSubcatBackfill = async () => {
+    if (!selectedBackfillType) {
+      toast.error('Please select a plant type');
+      return;
+    }
+
+    setSubcatBackfillRunning(true);
+    setSubcatBackfillResult(null);
+    
+    try {
+      const response = await base44.functions.invoke('backfillVarietySubcategories', { 
+        plant_type_id: selectedBackfillType === 'all' ? null : selectedBackfillType 
+      });
+      
+      if (response.data.success) {
+        setSubcatBackfillResult(response.data);
+        toast.success('Backfill completed');
+      } else {
+        throw new Error(response.data.error || 'Operation failed');
+      }
+    } catch (error) {
+      console.error('Backfill error:', error);
+      toast.error('Backfill failed: ' + error.message);
+    } finally {
+      setSubcatBackfillRunning(false);
     }
   };
 
@@ -684,6 +715,92 @@ export default function AdminDataMaintenance() {
                    </>
                   ) : (
                    <div className="text-sm">{tomatoMergeResult.error}</div>
+                  )}
+                </div>
+              </AlertDescription>
+            </Alert>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Subcategory Backfill from Codes */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            🔧 Backfill Subcategory IDs from Codes
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <p className="text-sm text-gray-600">
+            For varieties with empty subcategory_ids but with codes in extended_data (from previous imports), this resolves codes to actual IDs.
+          </p>
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-sm">
+            <div className="font-semibold text-blue-900 mb-1">This will:</div>
+            <ul className="text-blue-800 space-y-1">
+              <li>• Find varieties with empty plant_subcategory_ids</li>
+              <li>• Extract codes from extended_data (import metadata)</li>
+              <li>• Resolve codes to PlantSubCategory IDs</li>
+              <li>• Write both plant_subcategory_ids (array) and plant_subcategory_id (primary)</li>
+            </ul>
+          </div>
+          <div>
+            <Label>Select Plant Type</Label>
+            <Select value={selectedBackfillType} onValueChange={setSelectedBackfillType}>
+              <SelectTrigger className="mt-2">
+                <SelectValue placeholder="Choose plant type..." />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Plant Types</SelectItem>
+                <SelectItem value="69575e5ecdbb16ee56fa7508">Zucchini</SelectItem>
+                <SelectItem value="69594a9f1243f13d1245edfd">Summer Squash</SelectItem>
+                <SelectItem value="69594a9f1243f13d1245edfe">Winter Squash</SelectItem>
+                <SelectItem value="69594a9f1243f13d1245edff">Pumpkin</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="flex items-center gap-3">
+            <Button
+              onClick={runSubcatBackfill}
+              disabled={subcatBackfillRunning || !selectedBackfillType}
+              className="bg-indigo-600 hover:bg-indigo-700 gap-2"
+            >
+              {subcatBackfillRunning ? (
+                <><Loader2 className="w-4 h-4 animate-spin" />Backfilling...</>
+              ) : (
+                <><Play className="w-4 h-4" />Run Backfill</>
+              )}
+            </Button>
+          </div>
+          {subcatBackfillResult && (
+            <Alert className={subcatBackfillResult.success ? 'border-green-200 bg-green-50' : 'border-red-200 bg-red-50'}>
+              <AlertDescription className={subcatBackfillResult.success ? 'text-green-800' : 'text-red-800'}>
+                <div className="space-y-2">
+                  <div className="font-semibold">Backfill Results:</div>
+                  {subcatBackfillResult.success ? (
+                    <>
+                      <ul className="text-sm space-y-1">
+                        <li>• Total varieties: {subcatBackfillResult.stats?.total || 0}</li>
+                        <li>• Needed backfill: {subcatBackfillResult.stats?.needed_backfill || 0}</li>
+                        <li>• Fixed: {subcatBackfillResult.stats?.fixed || 0}</li>
+                        <li>• Failed: {subcatBackfillResult.stats?.failed || 0}</li>
+                      </ul>
+                      {subcatBackfillResult.stats?.failures?.length > 0 && (
+                        <details className="mt-2">
+                          <summary className="cursor-pointer text-sm font-semibold">
+                            View failures ({subcatBackfillResult.stats.failures.length})
+                          </summary>
+                          <div className="mt-2 space-y-1 max-h-48 overflow-auto">
+                            {subcatBackfillResult.stats.failures.map((item, i) => (
+                              <div key={i} className="p-2 bg-white rounded border text-xs">
+                                {item.name} - {item.reason}
+                              </div>
+                            ))}
+                          </div>
+                        </details>
+                      )}
+                    </>
+                  ) : (
+                    <div className="text-sm">{subcatBackfillResult.error}</div>
                   )}
                 </div>
               </AlertDescription>
