@@ -294,6 +294,40 @@ export default function PlantCatalogDetail() {
     return available;
   };
 
+  // UTILITY: Get effective subcategory IDs (single source of truth)
+  const getEffectiveSubcategoryIds = (variety) => {
+    let ids = [];
+    
+    // Handle plant_subcategory_ids (array or string)
+    if (variety.plant_subcategory_ids) {
+      if (Array.isArray(variety.plant_subcategory_ids)) {
+        ids = ids.concat(variety.plant_subcategory_ids);
+      } else if (typeof variety.plant_subcategory_ids === 'string') {
+        // Might be JSON string
+        try {
+          const parsed = JSON.parse(variety.plant_subcategory_ids);
+          if (Array.isArray(parsed)) {
+            ids = ids.concat(parsed);
+          }
+        } catch (e) {
+          // Not JSON, ignore
+        }
+      }
+    }
+    
+    // Add plant_subcategory_id if exists
+    if (variety.plant_subcategory_id && variety.plant_subcategory_id.trim() !== '') {
+      ids.push(variety.plant_subcategory_id.trim());
+    }
+    
+    // Dedupe and filter empty
+    ids = [...new Set(ids.filter(id => id && typeof id === 'string' && id.trim() !== ''))];
+    
+    // Filter out inactive subcategories
+    const activeSubcatIds = new Set(subCategories.map(s => s.id));
+    return ids.filter(id => activeSubcatIds.has(id));
+  };
+
   const applyFiltersAndSort = () => {
     let filtered = [...varieties];
 
@@ -308,28 +342,17 @@ export default function PlantCatalogDetail() {
       );
     }
 
-    // Sub-category filter - CRITICAL: Uncategorized = NO category at all
+    // Sub-category filter - using effective IDs
     if (selectedSubCategories.length > 0) {
       filtered = filtered.filter(v => {
-        // Handle Uncategorized - only if BOTH fields are empty
+        const effectiveIds = getEffectiveSubcategoryIds(v);
+        
+        // Handle Uncategorized - only if effective list is empty
         if (selectedSubCategories.includes('uncategorized')) {
-          const hasPrimary = v.plant_subcategory_id && v.plant_subcategory_id.trim() !== '';
-          const hasArray = Array.isArray(v.plant_subcategory_ids) && 
-                          v.plant_subcategory_ids.filter(id => id && id.trim() !== '').length > 0;
-          return !hasPrimary && !hasArray;
+          return effectiveIds.length === 0;
         }
 
-        // Get effective subcategory IDs (union of both fields)
-        let effectiveIds = [];
-        if (v.plant_subcategory_id && v.plant_subcategory_id.trim() !== '') {
-          effectiveIds.push(v.plant_subcategory_id);
-        }
-        if (Array.isArray(v.plant_subcategory_ids)) {
-          effectiveIds = effectiveIds.concat(v.plant_subcategory_ids.filter(id => id && id.trim() !== ''));
-        }
-        effectiveIds = [...new Set(effectiveIds)];
-
-        // Match if variety has ANY of the selected subcategories
+        // Match if variety has ANY of the selected subcategories in effective list
         return selectedSubCategories.some(selectedId => effectiveIds.includes(selectedId));
       });
     }
@@ -710,12 +733,10 @@ export default function PlantCatalogDetail() {
                 <SelectContent>
                   <SelectItem value={null}>All ({varieties.length})</SelectItem>
                   {subCategories.map((subcat) => {
-                    // Count varieties with this subcategory in EITHER field
+                    // Count varieties with this subcategory using effective IDs
                     const count = varieties.filter(v => {
-                      const inPrimary = v.plant_subcategory_id === subcat.id;
-                      const inArray = Array.isArray(v.plant_subcategory_ids) && 
-                                     v.plant_subcategory_ids.includes(subcat.id);
-                      return inPrimary || inArray;
+                      const effectiveIds = getEffectiveSubcategoryIds(v);
+                      return effectiveIds.includes(subcat.id);
                     }).length;
                     return (
                       <SelectItem key={subcat.id} value={subcat.id}>
@@ -725,12 +746,10 @@ export default function PlantCatalogDetail() {
                     );
                   })}
                   {(() => {
-                    // CRITICAL: Uncategorized = NO category in EITHER field
+                    // Uncategorized = effective list empty
                     const uncategorizedCount = varieties.filter(v => {
-                      const hasPrimary = v.plant_subcategory_id && v.plant_subcategory_id.trim() !== '';
-                      const hasArray = Array.isArray(v.plant_subcategory_ids) && 
-                                      v.plant_subcategory_ids.filter(id => id && id.trim() !== '').length > 0;
-                      return !hasPrimary && !hasArray;
+                      const effectiveIds = getEffectiveSubcategoryIds(v);
+                      return effectiveIds.length === 0;
                     }).length;
 
                     return uncategorizedCount > 0 && (
@@ -1038,15 +1057,26 @@ export default function PlantCatalogDetail() {
                         </div>
                         <div className="flex flex-wrap gap-2">
                          {(() => {
-                           const allSubcatIds = variety.plant_subcategory_ids || (variety.plant_subcategory_id ? [variety.plant_subcategory_id] : []);
-                           return allSubcatIds.map(subcatId => {
+                           const effectiveIds = getEffectiveSubcategoryIds(variety);
+                           if (effectiveIds.length === 0) {
+                             return (
+                               <Badge variant="outline" className="text-xs text-gray-500">
+                                 Uncategorized
+                               </Badge>
+                             );
+                           }
+                           return effectiveIds.map(subcatId => {
                              const subcat = subCategories.find(s => s.id === subcatId);
                              return subcat ? (
                                <Badge key={subcatId} variant="secondary" className="text-xs">
                                  {subcat.icon && <span className="mr-1">{subcat.icon}</span>}
                                  {subcat.name}
                                </Badge>
-                             ) : null;
+                             ) : (
+                               <Badge key={subcatId} variant="outline" className="text-xs text-gray-500">
+                                 Unknown
+                               </Badge>
+                             );
                            });
                          })()}
                          {(variety.days_to_maturity || variety.days_to_maturity_seed) && (

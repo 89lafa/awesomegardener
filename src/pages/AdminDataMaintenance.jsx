@@ -392,17 +392,17 @@ export default function AdminDataMaintenance() {
         </CardContent>
       </Card>
 
-      {/* Normalize Subcategories */}
+      {/* Normalize Subcategories - Global */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <RefreshCw className="w-5 h-5 text-purple-600" />
-            Normalize Variety Subcategories
+            Normalize Variety Subcategories (Global)
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <p className="text-sm text-gray-600">
-            Sanitizes and normalizes subcategory fields for all varieties. Removes invalid IDs, ensures consistency between single and array fields.
+            Sanitizes and normalizes subcategory fields for ALL varieties. Removes invalid IDs, ensures consistency between single and array fields.
           </p>
 
           <div className="flex items-center gap-3">
@@ -419,7 +419,7 @@ export default function AdminDataMaintenance() {
               ) : (
                 <>
                   <Play className="w-4 h-4" />
-                  Normalize Subcategories
+                  Normalize All
                 </>
               )}
             </Button>
@@ -442,12 +442,28 @@ export default function AdminDataMaintenance() {
                 <div className="space-y-2">
                   <div className="font-semibold">Results:</div>
                   {normalizeResult.success ? (
-                    <ul className="text-sm space-y-1">
-                      <li>• Varieties scanned: {normalizeResult.varieties_scanned}</li>
-                      <li>• Varieties updated: {normalizeResult.varieties_updated}</li>
-                      <li>• Invalid IDs removed: {normalizeResult.invalid_ids_removed}</li>
-                      <li>• Run at: {new Date(normalizeResult.timestamp).toLocaleString()}</li>
-                    </ul>
+                    <>
+                      <ul className="text-sm space-y-1">
+                        <li>• Varieties scanned: {normalizeResult.varieties_scanned}</li>
+                        <li>• Varieties updated: {normalizeResult.varieties_updated || normalizeResult.would_update}</li>
+                        <li>• Already OK: {normalizeResult.already_ok}</li>
+                        <li>• String arrays fixed: {normalizeResult.had_string_array_fixed}</li>
+                        <li>• Inactive removed: {normalizeResult.had_inactive_removed}</li>
+                        <li>• Became uncategorized: {normalizeResult.became_uncategorized}</li>
+                      </ul>
+                      {normalizeResult.sample_changes?.length > 0 && (
+                        <details className="mt-2">
+                          <summary className="cursor-pointer text-sm font-semibold">View sample changes</summary>
+                          <div className="mt-2 space-y-1 max-h-48 overflow-auto">
+                            {normalizeResult.sample_changes.map((change, i) => (
+                              <div key={i} className="p-2 bg-white rounded border text-xs">
+                                {change.name}: {change.before.ids.length} → {change.after.ids.length} subcats
+                              </div>
+                            ))}
+                          </div>
+                        </details>
+                      )}
+                    </>
                   ) : (
                     <div className="text-sm">{normalizeResult.error}</div>
                   )}
@@ -457,6 +473,9 @@ export default function AdminDataMaintenance() {
           )}
         </CardContent>
       </Card>
+
+      {/* Subcategory Health by Plant Type */}
+      <SubcategoryHealthByPlantType />
 
       {/* Pepper Cleanup */}
       <Card>
@@ -1261,6 +1280,276 @@ function GenericDedupeTool({ dedupPlantType, setDedupPlantType, dedupRunning, de
               </div>
             </AlertDescription>
           </Alert>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+function SubcategoryHealthByPlantType() {
+  const [selectedType, setSelectedType] = useState('');
+  const [plantTypes, setPlantTypes] = useState([]);
+  const [diagnostics, setDiagnostics] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [normalizing, setNormalizing] = useState(false);
+  const [dryRun, setDryRun] = useState(true);
+  const [normalizeResult, setNormalizeResult] = useState(null);
+
+  useEffect(() => {
+    loadPlantTypes();
+  }, []);
+
+  const loadPlantTypes = async () => {
+    try {
+      const types = await base44.entities.PlantType.list('common_name');
+      setPlantTypes(types);
+      // Auto-select Zucchini for testing
+      const zucchini = types.find(t => t.common_name === 'Zucchini');
+      if (zucchini) setSelectedType(zucchini.id);
+    } catch (error) {
+      console.error('Error loading plant types:', error);
+    }
+  };
+
+  const loadDiagnostics = async () => {
+    if (!selectedType) return;
+    
+    setLoading(true);
+    try {
+      const [allSubcats, activeSubcats, varieties] = await Promise.all([
+        base44.entities.PlantSubCategory.filter({ plant_type_id: selectedType }),
+        base44.entities.PlantSubCategory.filter({ plant_type_id: selectedType, is_active: true }),
+        base44.entities.Variety.filter({ plant_type_id: selectedType, status: 'active' })
+      ]);
+      
+      const activeIds = new Set(activeSubcats.map(s => s.id));
+      
+      let withEffective = 0;
+      let assignedToInactive = 0;
+      let uncategorized = 0;
+      
+      for (const v of varieties) {
+        // Get effective IDs
+        let ids = [];
+        if (Array.isArray(v.plant_subcategory_ids)) {
+          ids = ids.concat(v.plant_subcategory_ids);
+        }
+        if (v.plant_subcategory_id) {
+          ids.push(v.plant_subcategory_id);
+        }
+        ids = [...new Set(ids.filter(id => id && id.trim() !== ''))];
+        
+        const hasActive = ids.some(id => activeIds.has(id));
+        const hasInactive = ids.some(id => !activeIds.has(id));
+        
+        if (ids.length === 0) {
+          uncategorized++;
+        } else if (hasActive) {
+          withEffective++;
+        }
+        
+        if (hasInactive) {
+          assignedToInactive++;
+        }
+      }
+      
+      setDiagnostics({
+        totalSubcats: allSubcats.length,
+        activeSubcats: activeSubcats.length,
+        inactiveSubcats: allSubcats.length - activeSubcats.length,
+        totalVarieties: varieties.length,
+        withEffective,
+        assignedToInactive,
+        uncategorized,
+        activeList: activeSubcats
+      });
+    } catch (error) {
+      console.error('Error loading diagnostics:', error);
+      toast.error('Failed to load diagnostics');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const runNormalize = async () => {
+    if (!selectedType) return;
+    
+    setNormalizing(true);
+    setNormalizeResult(null);
+    
+    try {
+      const response = await base44.functions.invoke('normalizeVarietySubcategories', { 
+        plant_type_id: selectedType,
+        dry_run: dryRun
+      });
+      
+      if (response.data.success) {
+        setNormalizeResult(response.data);
+        toast.success(dryRun ? 'Dry run completed' : 'Normalization completed');
+        if (!dryRun) {
+          loadDiagnostics(); // Refresh
+        }
+      } else {
+        throw new Error(response.data.error);
+      }
+    } catch (error) {
+      console.error('Normalize error:', error);
+      toast.error('Normalization failed: ' + error.message);
+    } finally {
+      setNormalizing(false);
+    }
+  };
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          🔍 Subcategory Health (by Plant Type)
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div>
+          <Label>Select Plant Type</Label>
+          <Select value={selectedType} onValueChange={(v) => {
+            setSelectedType(v);
+            setDiagnostics(null);
+            setNormalizeResult(null);
+          }}>
+            <SelectTrigger className="mt-2">
+              <SelectValue placeholder="Choose plant type..." />
+            </SelectTrigger>
+            <SelectContent>
+              {plantTypes.map(pt => (
+                <SelectItem key={pt.id} value={pt.id}>
+                  {pt.icon && <span className="mr-2">{pt.icon}</span>}
+                  {pt.common_name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        <Button
+          onClick={loadDiagnostics}
+          disabled={loading || !selectedType}
+          variant="outline"
+          className="gap-2"
+        >
+          {loading ? (
+            <><Loader2 className="w-4 h-4 animate-spin" />Loading...</>
+          ) : (
+            <><RefreshCw className="w-4 h-4" />Load Diagnostics</>
+          )}
+        </Button>
+
+        {diagnostics && (
+          <>
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+              <div className="p-3 bg-gray-50 rounded-lg">
+                <div className="text-sm text-gray-600">Total Subcats</div>
+                <div className="text-2xl font-bold">{diagnostics.totalSubcats}</div>
+              </div>
+              <div className="p-3 bg-green-50 rounded-lg">
+                <div className="text-sm text-green-600">Active</div>
+                <div className="text-2xl font-bold text-green-700">{diagnostics.activeSubcats}</div>
+              </div>
+              <div className="p-3 bg-red-50 rounded-lg">
+                <div className="text-sm text-red-600">Inactive</div>
+                <div className="text-2xl font-bold text-red-700">{diagnostics.inactiveSubcats}</div>
+              </div>
+              <div className="p-3 bg-blue-50 rounded-lg">
+                <div className="text-sm text-blue-600">Total Varieties</div>
+                <div className="text-2xl font-bold text-blue-700">{diagnostics.totalVarieties}</div>
+              </div>
+              <div className="p-3 bg-emerald-50 rounded-lg">
+                <div className="text-sm text-emerald-600">With Subcategory</div>
+                <div className="text-2xl font-bold text-emerald-700">{diagnostics.withEffective}</div>
+              </div>
+              <div className="p-3 bg-orange-50 rounded-lg">
+                <div className="text-sm text-orange-600">Assigned to Inactive</div>
+                <div className="text-2xl font-bold text-orange-700">{diagnostics.assignedToInactive}</div>
+              </div>
+              <div className="p-3 bg-gray-50 rounded-lg">
+                <div className="text-sm text-gray-600">Uncategorized</div>
+                <div className="text-2xl font-bold text-gray-700">{diagnostics.uncategorized}</div>
+              </div>
+            </div>
+
+            {diagnostics.activeList?.length > 0 && (
+              <div>
+                <h4 className="font-semibold text-gray-900 mb-2">Active Subcategories:</h4>
+                <div className="space-y-1">
+                  {diagnostics.activeList.map(s => (
+                    <div key={s.id} className="text-sm p-2 bg-white rounded border flex items-center gap-2">
+                      {s.icon && <span>{s.icon}</span>}
+                      <span className="font-medium">{s.name}</span>
+                      <span className="text-xs text-gray-500 font-mono ml-auto">{s.subcat_code}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <div className="border-t pt-4">
+              <div className="flex items-center gap-3 mb-3">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={dryRun}
+                    onChange={(e) => setDryRun(e.target.checked)}
+                    className="w-4 h-4 rounded border-gray-300"
+                  />
+                  <span className="text-sm font-medium">Dry Run (preview only)</span>
+                </label>
+              </div>
+              <Button
+                onClick={runNormalize}
+                disabled={normalizing}
+                className="bg-purple-600 hover:bg-purple-700 gap-2"
+              >
+                {normalizing ? (
+                  <><Loader2 className="w-4 h-4 animate-spin" />Normalizing...</>
+                ) : (
+                  <><Play className="w-4 h-4" />Normalize Subcategories</>
+                )}
+              </Button>
+            </div>
+
+            {normalizeResult && (
+              <Alert className={normalizeResult.success ? 'border-green-200 bg-green-50' : 'border-red-200 bg-red-50'}>
+                <AlertDescription className={normalizeResult.success ? 'text-green-800' : 'text-red-800'}>
+                  <div className="space-y-2">
+                    <div className="font-semibold">{normalizeResult.dry_run ? 'Dry Run:' : 'Results:'}</div>
+                    {normalizeResult.success ? (
+                      <>
+                        <ul className="text-sm space-y-1">
+                          <li>• Would update: {normalizeResult.summary?.would_update || normalizeResult.summary?.varieties_updated}</li>
+                          <li>• Already OK: {normalizeResult.summary?.already_ok}</li>
+                          <li>• String arrays fixed: {normalizeResult.summary?.had_string_array_fixed}</li>
+                          <li>• Inactive removed: {normalizeResult.summary?.had_inactive_removed}</li>
+                          <li>• Became uncategorized: {normalizeResult.summary?.became_uncategorized}</li>
+                        </ul>
+                        {normalizeResult.summary?.sample_changes?.length > 0 && (
+                          <details className="mt-2">
+                            <summary className="cursor-pointer text-sm font-semibold">Sample changes</summary>
+                            <div className="mt-2 space-y-1 max-h-32 overflow-auto">
+                              {normalizeResult.summary.sample_changes.map((c, i) => (
+                                <div key={i} className="p-1 bg-white rounded text-xs">
+                                  {c.name}: {c.before.ids.length} → {c.after.ids.length} subcats
+                                </div>
+                              ))}
+                            </div>
+                          </details>
+                        )}
+                      </>
+                    ) : (
+                      <div className="text-sm">{normalizeResult.error}</div>
+                    )}
+                  </div>
+                </AlertDescription>
+              </Alert>
+            )}
+          </>
         )}
       </CardContent>
     </Card>

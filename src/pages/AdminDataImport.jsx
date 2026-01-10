@@ -615,10 +615,21 @@ export default function AdminDataImport() {
             rejected,
             skipReasons: skipReasons.slice(0, 20) // First 20 reasons
           };
-        }
-      }
 
-      setResults(importResults);
+          // Auto-normalize after Variety import
+          if (item.key === 'Variety' && !dryRun && (inserted > 0 || updated > 0)) {
+            console.log('[Import] Auto-running normalization after Variety import...');
+            try {
+              await base44.functions.invoke('normalizeVarietySubcategories', { dry_run: false });
+              console.log('[Import] Normalization completed');
+            } catch (error) {
+              console.error('[Import] Normalization failed:', error);
+            }
+          }
+          }
+          }
+
+          setResults(importResults);
       
       if (!dryRun) {
         toast.success('Import completed successfully!');
