@@ -264,16 +264,33 @@ export default function ViewVariety() {
         </CardHeader>
         <CardContent className="space-y-4">
           {/* Images */}
-          {variety?.images && variety.images.length > 0 && (
+          {variety?.images && variety.images.length > 0 ? (
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-4">
               {variety.images.map((url, idx) => (
                 <img 
                   key={idx}
                   src={url} 
                   alt={`${variety.variety_name} ${idx + 1}`}
-                  className="w-full h-32 object-cover rounded-lg"
+                  className="w-full h-32 object-cover rounded-lg border"
+                  onError={(e) => {
+                    e.target.style.display = 'none';
+                  }}
                 />
               ))}
+            </div>
+          ) : (
+            <div className="mb-4 p-4 bg-gray-50 rounded-lg text-center">
+              <ImageIcon className="w-8 h-8 text-gray-400 mx-auto mb-2" />
+              <p className="text-sm text-gray-500">No images yet</p>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => setShowAddImage(true)}
+                className="mt-2 gap-2"
+              >
+                <Plus className="w-3 h-3" />
+                Add First Image
+              </Button>
             </div>
           )}
 
