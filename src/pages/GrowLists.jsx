@@ -65,9 +65,11 @@ export default function GrowLists() {
   });
 
   const [newItem, setNewItem] = useState({
+    plant_type_id: '',
     plant_type_name: '',
+    variety_id: '',
     variety_name: '',
-    target_count: 1,
+    quantity: 1,
     seed_lot_id: '',
     notes: ''
   });
@@ -160,8 +162,14 @@ export default function GrowLists() {
 
     const item = {
       id: Date.now().toString(),
-      ...newItem,
-      placed_count: 0
+      plant_type_id: newItem.plant_type_id,
+      plant_type_name: newItem.plant_type_name,
+      variety_id: newItem.variety_id || null,
+      variety_name: newItem.variety_name,
+      quantity: newItem.quantity || 1,
+      seed_lot_id: newItem.seed_lot_id || null,
+      notes: newItem.notes || '',
+      added_date: new Date().toISOString()
     };
 
     try {
@@ -173,9 +181,11 @@ export default function GrowLists() {
       ));
       setShowAddItemDialog(false);
       setNewItem({
+        plant_type_id: '',
         plant_type_name: '',
+        variety_id: '',
         variety_name: '',
-        target_count: 1,
+        quantity: 1,
         seed_lot_id: '',
         notes: ''
       });
@@ -254,6 +264,15 @@ export default function GrowLists() {
             </p>
           </div>
           <div className="flex gap-2">
+            <Link to={createPageUrl('Calendar') + `?syncGrowList=${selectedList.id}`}>
+              <Button 
+                variant="outline"
+                className="gap-2"
+              >
+                <Calendar className="w-4 h-4" />
+                Push to Calendar
+              </Button>
+            </Link>
             <Button 
               variant="outline"
               onClick={() => handleUpdateStatus(selectedList, selectedList.status === 'active' ? 'archived' : 'active')}
@@ -311,10 +330,7 @@ export default function GrowLists() {
                           )}
                           <div className="flex items-center gap-2 mt-1">
                             <Badge variant="outline">
-                              Target: {item.target_count}
-                            </Badge>
-                            <Badge variant="outline" className="bg-emerald-50 text-emerald-700">
-                              Placed: {item.placed_count || 0}
+                              Quantity: {item.quantity || item.target_count || 1}
                             </Badge>
                           </div>
                         </div>
@@ -362,7 +378,9 @@ export default function GrowLists() {
                       setNewItem({
                         ...newItem,
                         seed_lot_id: v,
+                        plant_type_id: profile?.plant_type_id || '',
                         plant_type_name: profile?.common_name || '',
+                        variety_id: profile?.variety_id || '',
                         variety_name: profile?.variety_name || ''
                       });
                     }
@@ -393,8 +411,15 @@ export default function GrowLists() {
                 <div>
                   <Label>Plant Type</Label>
                   <Select 
-                    value={newItem.plant_type_name} 
-                    onValueChange={(v) => setNewItem({ ...newItem, plant_type_name: v })}
+                    value={newItem.plant_type_id} 
+                    onValueChange={(v) => {
+                      const type = plantTypes.find(t => t.id === v);
+                      setNewItem({ 
+                        ...newItem, 
+                        plant_type_id: v,
+                        plant_type_name: type?.common_name || ''
+                      });
+                    }}
                   >
                     <SelectTrigger className="mt-2">
                       <SelectValue placeholder="Select type" />
@@ -404,7 +429,7 @@ export default function GrowLists() {
                         <div className="p-2 text-sm text-gray-500">No plant types available</div>
                       ) : (
                         plantTypes.map((type) => (
-                          <SelectItem key={type.id} value={type.common_name}>
+                          <SelectItem key={type.id} value={type.id}>
                             {type.icon && <span className="mr-2">{type.icon}</span>}
                             {type.common_name}
                           </SelectItem>
@@ -425,13 +450,13 @@ export default function GrowLists() {
               </div>
 
               <div>
-                <Label htmlFor="targetCount">Target Count</Label>
+                <Label htmlFor="quantity">Quantity</Label>
                 <Input
-                  id="targetCount"
+                  id="quantity"
                   type="number"
                   min="1"
-                  value={newItem.target_count}
-                  onChange={(e) => setNewItem({ ...newItem, target_count: parseInt(e.target.value) || 1 })}
+                  value={newItem.quantity}
+                  onChange={(e) => setNewItem({ ...newItem, quantity: parseInt(e.target.value) || 1 })}
                   className="mt-2"
                 />
               </div>
@@ -451,7 +476,7 @@ export default function GrowLists() {
               <Button variant="outline" onClick={() => setShowAddItemDialog(false)}>Cancel</Button>
               <Button 
                 onClick={handleAddItem}
-                disabled={!newItem.plant_type_name}
+                disabled={!newItem.plant_type_id}
                 className="bg-emerald-600 hover:bg-emerald-700"
               >
                 Add Item

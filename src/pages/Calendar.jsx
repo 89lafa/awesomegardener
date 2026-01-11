@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { base44 } from '@/api/base44Client';
 import { 
   Plus, 
@@ -11,7 +12,8 @@ import {
   Edit,
   Copy,
   Trash2,
-  RefreshCw
+  RefreshCw,
+  Download
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -39,6 +41,7 @@ import CalendarGuide from '@/components/help/CalendarGuide';
 import { cn } from '@/lib/utils';
 
 export default function Calendar() {
+  const [searchParams] = useSearchParams();
   const [user, setUser] = useState(null);
   const [gardens, setGardens] = useState([]);
   const [activeGarden, setActiveGarden] = useState(null);
@@ -47,6 +50,7 @@ export default function Calendar() {
   const [cropPlans, setCropPlans] = useState([]);
   const [tasks, setTasks] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [syncing, setSyncing] = useState(false);
   const [showAddCrop, setShowAddCrop] = useState(false);
   const [showEditCrop, setShowEditCrop] = useState(false);
   const [showGuide, setShowGuide] = useState(false);
@@ -61,6 +65,13 @@ export default function Calendar() {
   useEffect(() => {
     loadData();
   }, []);
+
+  useEffect(() => {
+    const syncGrowListId = searchParams.get('syncGrowList');
+    if (syncGrowListId && activeSeasonId) {
+      handleSyncGrowList(syncGrowListId);
+    }
+  }, [searchParams, activeSeasonId]);
   
   useEffect(() => {
     if (activeSeasonId) {
@@ -161,6 +172,10 @@ export default function Calendar() {
         plant_profile_id: crop.plant_profile_id,
         variety_id: crop.variety_id,
         label: `${crop.label || 'Crop'} (Copy)`,
+        quantity_planned: crop.quantity_planned || 1,
+        quantity_scheduled: 0,
+        quantity_planted: 0,
+        status: 'planned',
         color_hex: crop.color_hex,
         planting_method: crop.planting_method,
         date_mode: crop.date_mode,
@@ -183,6 +198,8 @@ export default function Calendar() {
           start_date: task.start_date,
           end_date: task.end_date,
           color_hex: task.color_hex,
+          quantity_target: task.quantity_target || crop.quantity_planned || 1,
+          quantity_completed: 0,
           how_to_content: task.how_to_content
         });
       }
@@ -192,6 +209,44 @@ export default function Calendar() {
     } catch (error) {
       console.error('Error duplicating crop:', error);
       toast.error('Failed to duplicate crop');
+    }
+  };
+
+  const handleSyncGrowList = async (growListId) => {
+    if (!activeSeasonId) {
+      toast.error('Please select a season first');
+      return;
+    }
+
+    setSyncing(true);
+    try {
+      const response = await base44.functions.invoke('syncGrowListToCalendar', {
+        grow_list_id: growListId,
+        garden_season_id: activeSeasonId
+      });
+
+      if (response.data.success) {
+        await loadPlansAndTasks();
+        toast.success(`Synced ${response.data.created} new crops from grow list`);
+      } else {
+        toast.error('Sync failed');
+      }
+    } catch (error) {
+      console.error('Error syncing grow list:', error);
+      toast.error('Failed to sync grow list');
+    } finally {
+      setSyncing(false);
+    }
+  };
+
+  const handleGenerateTasks = async (crop) => {
+    try {
+      await base44.functions.invoke('generateTasksForCrop', { crop_plan_id: crop.id });
+      await loadPlansAndTasks();
+      toast.success('Tasks generated');
+    } catch (error) {
+      console.error('Error generating tasks:', error);
+      toast.error('Failed to generate tasks');
     }
   };
   
@@ -248,9 +303,19 @@ export default function Calendar() {
           <Button 
             onClick={() => setShowAddCrop(true)}
             className="w-full bg-emerald-600 hover:bg-emerald-700"
+            disabled={syncing}
           >
-            <Plus className="w-4 h-4 mr-2" />
-            Add Crop
+            {syncing ? (
+              <>
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                Syncing...
+              </>
+            ) : (
+              <>
+                <Plus className="w-4 h-4 mr-2" />
+                Add Crop
+              </>
+            )}
           </Button>
           <Button
             onClick={() => setShowGuide(true)}
@@ -282,6 +347,11 @@ export default function Calendar() {
                   />
                   <div className="flex-1 min-w-0">
                     <p className="font-medium text-sm truncate">{crop.label || 'Unnamed Crop'}</p>
+                    {crop.quantity_planned > 1 && (
+                      <p className="text-xs text-gray-500">
+                        Qty: {crop.quantity_scheduled || 0}/{crop.quantity_planned}
+                      </p>
+                    )}
                   </div>
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
@@ -296,6 +366,10 @@ export default function Calendar() {
                       }}>
                         <Edit className="w-4 h-4 mr-2" />
                         Edit
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => handleGenerateTasks(crop)}>
+                        <RefreshCw className="w-4 h-4 mr-2" />
+                        Generate Tasks
                       </DropdownMenuItem>
                       <DropdownMenuItem onClick={() => handleDuplicateCrop(crop)}>
                         <Copy className="w-4 h-4 mr-2" />
