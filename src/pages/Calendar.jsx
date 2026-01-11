@@ -325,25 +325,45 @@ export default function Calendar() {
           </Button>
           <Button
             onClick={async () => {
-              // Show grow list import dialog
+              if (!activeSeasonId) {
+                toast.error('Please select a season first');
+                return;
+              }
+              
+              // Load all user's grow lists
               const userLists = await base44.entities.GrowList.filter({ 
-                created_by: user.email,
-                garden_season_id: activeSeasonId
-              });
+                created_by: user.email
+              }, '-updated_date');
               
               if (userLists.length === 0) {
-                toast.error('No grow lists for this season. Create one first.');
+                toast.error('No grow lists found. Create one first!');
                 return;
               }
 
-              const listId = userLists.length === 1 ? userLists[0].id : prompt(
-                `Select grow list:\n${userLists.map((l, i) => `${i+1}. ${l.name}`).join('\n')}\n\nEnter number:`
+              // Filter to those matching current season OR unlinked
+              const matchingLists = userLists.filter(l => 
+                l.garden_season_id === activeSeasonId || !l.garden_season_id
               );
-              
-              if (listId) {
-                const list = userLists[parseInt(listId) - 1] || userLists.find(l => l.id === listId);
-                if (list) {
-                  handleSyncGrowList(list.id, activeSeasonId);
+
+              if (matchingLists.length === 0) {
+                toast.error(`No grow lists for this season. Available lists: ${userLists.map(l => l.name).join(', ')}`);
+                return;
+              }
+
+              if (matchingLists.length === 1) {
+                handleSyncGrowList(matchingLists[0].id, activeSeasonId);
+              } else {
+                const listNum = prompt(
+                  `Select grow list to import:\n\n${matchingLists.map((l, i) => 
+                    `${i+1}. ${l.name} (${l.items?.length || 0} items)`
+                  ).join('\n')}\n\nEnter number:`
+                );
+                
+                if (listNum) {
+                  const list = matchingLists[parseInt(listNum) - 1];
+                  if (list) {
+                    handleSyncGrowList(list.id, activeSeasonId);
+                  }
                 }
               }
             }}

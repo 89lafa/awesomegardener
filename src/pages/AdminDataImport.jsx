@@ -519,11 +519,22 @@ export default function AdminDataImport() {
                 const scovilleMin = row.scoville_min || row.heat_scoville_min || null;
                 const scovilleMax = row.scoville_max || row.heat_scoville_max || null;
 
+                // CRITICAL: Ensure primary is in array
+                let finalSubcatIds = [...subcatIds];
+                let finalPrimaryId = resolvedSubcategoryId;
+
+                if (finalPrimaryId && !finalSubcatIds.includes(finalPrimaryId)) {
+                  finalSubcatIds = [finalPrimaryId, ...finalSubcatIds];
+                }
+                if (!finalPrimaryId && finalSubcatIds.length > 0) {
+                  finalPrimaryId = finalSubcatIds[0];
+                }
+
                 const varietyData = {
                   plant_type_id: resolvedTypeId,
                   plant_type_name: plantTypeName,
-                  plant_subcategory_id: resolvedSubcategoryId,
-                  plant_subcategory_ids: subcatIds,
+                  plant_subcategory_id: finalPrimaryId,
+                  plant_subcategory_ids: finalSubcatIds,
                   variety_code: row.variety_code || null,
                   extended_data: {
                     ...(row.extended_data || {}),

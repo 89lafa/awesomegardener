@@ -505,6 +505,15 @@ export default function AdminDataMaintenance() {
               </Button>
             </div>
           </div>
+
+          <div className="mt-4 p-3 bg-gray-50 rounded-lg border">
+            <p className="text-xs text-gray-700 font-semibold mb-2">🔧 Quick Fix for Beets/Others:</p>
+            <ol className="text-xs text-gray-600 space-y-1 list-decimal ml-4">
+              <li>Click "Activate All Now" above</li>
+              <li>Click "Assign Batch (100)" to give uncategorized varieties their first active subcategory</li>
+              <li>Refresh Plant Catalog to see updated counts</li>
+            </ol>
+          </div>
         </CardContent>
       </Card>
 
