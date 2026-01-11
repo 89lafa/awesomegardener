@@ -536,18 +536,61 @@ export default function EditVariety() {
             </div>
 
             <div>
-              <Label htmlFor="images">Image URLs (one per line)</Label>
-              <Textarea
-                id="images"
-                value={(formData.images || []).join('\n')}
-                onChange={(e) => {
-                  const urls = e.target.value.split('\n').map(u => u.trim()).filter(Boolean);
-                  setFormData({ ...formData, images: urls });
-                }}
-                placeholder="https://example.com/image1.jpg&#10;https://example.com/image2.jpg"
-                rows={4}
-                className="mt-1"
-              />
+              <Label>Images</Label>
+              <div className="mt-2 space-y-2">
+                {formData.images && formData.images.length > 0 && (
+                  <div className="flex flex-wrap gap-2">
+                    {formData.images.map((url, idx) => (
+                      <div key={idx} className="relative w-24 h-24">
+                        <img src={url} alt={`Image ${idx + 1}`} className="w-full h-full object-cover rounded border" />
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="destructive"
+                          className="absolute -top-2 -right-2 h-6 w-6 p-0 rounded-full"
+                          onClick={() => {
+                            const newImages = formData.images.filter((_, i) => i !== idx);
+                            setFormData({ ...formData, images: newImages });
+                          }}
+                        >
+                          ×
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => document.getElementById('variety-image-upload').click()}
+                  className="w-full"
+                >
+                  + Upload Image
+                </Button>
+                <input
+                  id="variety-image-upload"
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  className="hidden"
+                  onChange={async (e) => {
+                    const files = Array.from(e.target.files || []);
+                    if (files.length === 0) return;
+                    
+                    for (const file of files) {
+                      try {
+                        const { file_url } = await base44.integrations.Core.UploadFile({ file });
+                        setFormData(prev => ({ ...prev, images: [...(prev.images || []), file_url] }));
+                        toast.success('Image uploaded');
+                      } catch (error) {
+                        console.error('Error uploading image:', error);
+                        toast.error('Failed to upload image');
+                      }
+                    }
+                  }}
+                />
+              </div>
             </div>
 
             <div>

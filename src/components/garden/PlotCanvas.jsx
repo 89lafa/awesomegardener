@@ -207,12 +207,14 @@ export default function PlotCanvas({ garden, plot, activeSeason, onPlotUpdate, o
             capacity = layoutSchema.columns * layoutSchema.rows;
           }
           
-          // Count cells occupied (not just number of plants)
-          const filled = itemPlantings.reduce((sum, p) => {
-            const cols = p.cell_span_cols || 1;
-            const rows = p.cell_span_rows || 1;
-            return sum + (cols * rows);
-          }, 0);
+          // Count cells occupied (for containers/bags, count = number of plantings, not cells)
+          const filled = layoutSchema?.flexible 
+            ? itemPlantings.length
+            : itemPlantings.reduce((sum, p) => {
+                const cols = p.cell_span_cols || 1;
+                const rows = p.cell_span_rows || 1;
+                return sum + (cols * rows);
+              }, 0);
           
           counts[item.id] = {
             filled: filled,
@@ -269,9 +271,9 @@ export default function PlotCanvas({ garden, plot, activeSeason, onPlotUpdate, o
   };
 
   const calculateLayoutSchema = (itemType, width, height, metadata) => {
-    // CONTAINER and GROW_BAG: Flexible slot (any plant size fits)
+    // CONTAINER and GROW_BAG: Flexible slot - capacity = 1 plant of any size
     if (itemType.usesGallons) {
-      return { type: 'slots', slots: 1, flexible: true };
+      return { type: 'slots', slots: 1, flexible: true, capacity: 1 };
     }
     
     // TREE: 1 slot plantable
@@ -315,7 +317,8 @@ export default function PlotCanvas({ garden, plot, activeSeason, onPlotUpdate, o
       return layoutSchema.rows;
     }
     if (layoutSchema.type === 'slots') {
-      return layoutSchema.slots || 1;
+      // For flexible slots (containers/bags), capacity = 1 regardless of plant grid size
+      return layoutSchema.capacity || 1;
     }
     return 0;
   };
@@ -902,9 +905,6 @@ export default function PlotCanvas({ garden, plot, activeSeason, onPlotUpdate, o
 
   return (
     <div className="flex-1 flex gap-4 mt-4 min-h-0">
-      <div className="absolute top-2 left-2 text-xs text-gray-400 bg-white px-2 py-1 rounded shadow-sm z-10">
-        PlotCanvas.js
-      </div>
       {/* Left Toolbar */}
         <Card className="w-64 flex-shrink-0 h-fit">
           <CardContent className="p-4 space-y-2">
