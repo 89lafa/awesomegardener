@@ -126,8 +126,8 @@ Deno.serve(async (req) => {
         const newPlan = await base44.asServiceRole.entities.CropPlan.create(cropData);
         created++;
         
-        // Auto-generate tasks if requested
-        if (auto_generate_tasks && lastFrostDate) {
+        // ALWAYS auto-generate tasks if frost date exists
+        if (lastFrostDate) {
           try {
             await base44.asServiceRole.functions.invoke('generateTasksForCrop', { 
               crop_plan_id: newPlan.id 
