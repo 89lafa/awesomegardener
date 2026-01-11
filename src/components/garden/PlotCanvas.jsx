@@ -1398,6 +1398,7 @@ export default function PlotCanvas({ garden, plot, activeSeason, onPlotUpdate, o
           item={selectedItem}
           garden={garden}
           activeSeason={activeSeason}
+          seasonId={activeSeason?.split('-')[1] ? null : activeSeason}
           onPlantingUpdate={loadItems}
         />
       )}
