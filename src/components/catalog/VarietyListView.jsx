@@ -11,7 +11,9 @@ export default function VarietyListView({
   subCategories,
   onAddToStash,
   onAddToGrowList,
-  visibleColumns = ['name', 'subcategory', 'days', 'spacing', 'traits', 'actions']
+  visibleColumns = ['name', 'subcategory', 'days', 'spacing', 'traits', 'actions'],
+  sortBy,
+  onSortChange
 }) {
   const [user, setUser] = useState(null);
 
@@ -26,6 +28,29 @@ export default function VarietyListView({
     } catch (error) {
       console.error('Error loading user:', error);
     }
+  };
+
+  const handleHeaderClick = (column) => {
+    if (!onSortChange) return;
+    
+    // Determine new sort direction
+    const currentCol = sortBy?.split('_')[0];
+    const currentDir = sortBy?.split('_')[1];
+    
+    if (currentCol === column) {
+      // Toggle direction
+      onSortChange(currentDir === 'asc' ? `${column}_desc` : `${column}_asc`);
+    } else {
+      // New column, default asc
+      onSortChange(`${column}_asc`);
+    }
+  };
+
+  const getSortIcon = (column) => {
+    if (!sortBy) return null;
+    const [currentCol, dir] = sortBy.split('_');
+    if (currentCol !== column) return '⇅';
+    return dir === 'asc' ? '↑' : '↓';
   };
 
   const getSubCategoryName = (variety) => {
@@ -49,16 +74,51 @@ export default function VarietyListView({
       <table className="w-full">
         <thead className="bg-gray-50 border-b">
           <tr>
-            {visibleColumns.includes('name') && <th className="text-left p-3 text-sm font-semibold">Variety Name</th>}
+            {visibleColumns.includes('name') && (
+              <th 
+                className="text-left p-3 text-sm font-semibold cursor-pointer hover:bg-gray-100 select-none"
+                onClick={() => handleHeaderClick('name')}
+              >
+                Variety Name {getSortIcon('name')}
+              </th>
+            )}
             {visibleColumns.includes('subcategory') && <th className="text-left p-3 text-sm font-semibold">Sub-Category</th>}
-            {visibleColumns.includes('days') && <th className="text-left p-3 text-sm font-semibold">Days to Maturity</th>}
-            {visibleColumns.includes('spacing') && <th className="text-left p-3 text-sm font-semibold">Spacing</th>}
+            {visibleColumns.includes('days') && (
+              <th 
+                className="text-left p-3 text-sm font-semibold cursor-pointer hover:bg-gray-100 select-none"
+                onClick={() => handleHeaderClick('days')}
+              >
+                Days to Maturity {getSortIcon('days')}
+              </th>
+            )}
+            {visibleColumns.includes('spacing') && (
+              <th 
+                className="text-left p-3 text-sm font-semibold cursor-pointer hover:bg-gray-100 select-none"
+                onClick={() => handleHeaderClick('spacing')}
+              >
+                Spacing {getSortIcon('spacing')}
+              </th>
+            )}
             {visibleColumns.includes('height') && <th className="text-left p-3 text-sm font-semibold">Height</th>}
             {visibleColumns.includes('sun') && <th className="text-left p-3 text-sm font-semibold">Sun</th>}
             {visibleColumns.includes('water') && <th className="text-left p-3 text-sm font-semibold">Water</th>}
             {visibleColumns.includes('color') && <th className="text-left p-3 text-sm font-semibold">Color</th>}
-            {visibleColumns.includes('species') && <th className="text-left p-3 text-sm font-semibold">Species</th>}
-            {visibleColumns.includes('seed_line') && <th className="text-left p-3 text-sm font-semibold">Seed Line</th>}
+            {visibleColumns.includes('species') && (
+              <th 
+                className="text-left p-3 text-sm font-semibold cursor-pointer hover:bg-gray-100 select-none"
+                onClick={() => handleHeaderClick('species')}
+              >
+                Species {getSortIcon('species')}
+              </th>
+            )}
+            {visibleColumns.includes('seed_line') && (
+              <th 
+                className="text-left p-3 text-sm font-semibold cursor-pointer hover:bg-gray-100 select-none"
+                onClick={() => handleHeaderClick('seed_line')}
+              >
+                Seed Line {getSortIcon('seed_line')}
+              </th>
+            )}
             {visibleColumns.includes('season') && <th className="text-left p-3 text-sm font-semibold">Season</th>}
             {visibleColumns.includes('traits') && <th className="text-left p-3 text-sm font-semibold">Traits</th>}
             {visibleColumns.includes('actions') && <th className="text-right p-3 text-sm font-semibold">Actions</th>}

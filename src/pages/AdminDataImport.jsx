@@ -232,8 +232,11 @@ export default function AdminDataImport() {
                 // Convert numeric fields
                 if (row.sort_order) row.sort_order = parseInt(row.sort_order);
 
-                // Check for existing by subcat_code
-                const existing = await base44.entities.PlantSubCategory.filter({ subcat_code: row.subcat_code });
+                // UPSERT by (plant_type_id, subcat_code) - the unique key
+                const existing = await base44.entities.PlantSubCategory.filter({ 
+                  plant_type_id: row.plant_type_id,
+                  subcat_code: row.subcat_code 
+                });
 
                 const subcatData = {
                   subcat_code: row.subcat_code,
@@ -250,7 +253,12 @@ export default function AdminDataImport() {
                 };
 
                 if (existing.length > 0) {
-                  await base44.entities.PlantSubCategory.update(existing[0].id, subcatData);
+                  // Update existing - PRESERVE is_active unless explicitly set to false in CSV
+                  const updateData = { ...subcatData };
+                  if (row.is_active === undefined || row.is_active === '' || row.is_active === null) {
+                    delete updateData.is_active; // Don't change it
+                  }
+                  await base44.entities.PlantSubCategory.update(existing[0].id, updateData);
                   updated++;
                 } else {
                   await base44.entities.PlantSubCategory.create(subcatData);

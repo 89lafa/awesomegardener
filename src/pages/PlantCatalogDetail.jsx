@@ -1011,6 +1011,8 @@ export default function PlantCatalogDetail() {
                   varieties={paginatedVarieties}
                   subCategories={subCategories}
                   visibleColumns={visibleColumns}
+                  sortBy={sortBy}
+                  onSortChange={setSortBy}
                   onAddToStash={(variety) => {
                     setSelectedVariety(variety);
                     setShowAddToStash(true);
