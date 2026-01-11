@@ -78,6 +78,14 @@ export default function GrowLists() {
 
   useEffect(() => {
     loadData();
+    
+    // Real-time subscription to prevent empty states
+    const unsubscribe = base44.entities.GrowList.subscribe((event) => {
+      console.log('[GrowList Subscription]', event.type, event.id);
+      loadData();
+    });
+    
+    return () => unsubscribe();
   }, []);
 
   useEffect(() => {

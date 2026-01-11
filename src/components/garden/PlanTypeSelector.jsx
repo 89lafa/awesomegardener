@@ -27,7 +27,13 @@ export default function PlanTypeSelector({
 
   useEffect(() => {
     loadPlans();
-  }, [activeSeason, garden, plantings]);
+    
+    // Real-time updates when plantings change
+    if (garden && activeSeason) {
+      const timer = setInterval(() => loadPlans(), 2000);
+      return () => clearInterval(timer);
+    }
+  }, [activeSeason, garden]);
 
   const loadPlans = async () => {
     if (!activeSeason || !garden) return;
@@ -219,17 +225,15 @@ export default function PlanTypeSelector({
                       <div className="flex items-center justify-between gap-2">
                         <div className="flex-1">
                           <p className="font-medium text-sm">
-                            {profile?.variety_name || plan.label || 'Unnamed Crop'}
+                            {selectedType?.common_name || 'Plant'}
+                            {(profile?.variety_name || plan.label) && (
+                              <span className="text-gray-600"> - {profile?.variety_name || plan.label}</span>
+                            )}
                           </p>
-                          {plan.label && (
-                            <p className="text-xs text-gray-500">{plan.label}</p>
-                          )}
+                          <p className="text-xs text-gray-500">
+                            {plan.plantedCount || 0} of {plan.quantity_planned || 1} planted
+                          </p>
                         </div>
-                        {plan.plantedCount > 0 && (
-                          <Badge className="bg-emerald-100 text-emerald-800">
-                            {plan.plantedCount} planted
-                          </Badge>
-                        )}
                       </div>
                     </button>
                   );

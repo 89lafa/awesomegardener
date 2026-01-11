@@ -246,10 +246,15 @@ export default function PlantCatalogDetail() {
       console.log('[VARIETY DEBUG] Attempting to load varieties for plant_type_id:', plantTypeId);
 
       let vars;
-      if (isSquashUmbrella || canonicalIds.length > 0) {
-        // Load all varieties, then filter client-side
-        const allVars = await base44.entities.Variety.filter({ status: 'active' }, 'variety_name', 1000);
+      if (isBrowseCategory && canonicalIds.length > 0) {
+        // Load all varieties, then filter by canonical plant type IDs
+        console.log('[BROWSE] Loading varieties for plant_type_ids:', canonicalIds);
+        const allVars = await base44.entities.Variety.filter({ status: 'active' }, 'variety_name', 2000);
         vars = allVars.filter(v => canonicalIds.includes(v.plant_type_id));
+        console.log('[BROWSE] Filtered to', vars.length, 'varieties');
+      } else if (isSquashUmbrella) {
+        const allVars = await base44.entities.Variety.filter({ status: 'active' }, 'variety_name', 1000);
+        vars = allVars.filter(v => SQUASH_CANONICAL_IDS.includes(v.plant_type_id));
       } else {
         vars = await base44.entities.Variety.filter({ 
           plant_type_id: plantTypeId,

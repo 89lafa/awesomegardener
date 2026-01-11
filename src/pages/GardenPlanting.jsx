@@ -246,8 +246,10 @@ function SpaceCard({ space, garden, activeSeason }) {
         open={showPlantingModal}
         onOpenChange={setShowPlantingModal}
         item={pseudoItem}
+        itemType={space.space_type}
         garden={garden}
         activeSeason={activeSeason}
+        seasonId={availableSeasons.find(s => s.season_key === activeSeason)?.id}
         onPlantingUpdate={handlePlantingUpdate}
       />
     </Card>

@@ -25,7 +25,7 @@ import StashTypeSelector from './StashTypeSelector';
 import PlanTypeSelector from './PlanTypeSelector';
 import CatalogTypeSelector from './CatalogTypeSelector';
 
-export default function PlantingModal({ open, onOpenChange, item, garden, onPlantingUpdate, activeSeason, seasonId }) {
+export default function PlantingModal({ open, onOpenChange, item, itemType, garden, onPlantingUpdate, activeSeason, seasonId }) {
   const [plantings, setPlantings] = useState([]);
   const [stashPlants, setStashPlants] = useState([]);
   const [profiles, setProfiles] = useState({});
@@ -193,16 +193,11 @@ export default function PlantingModal({ open, onOpenChange, item, garden, onPlan
   const handleSlotClick = async (slotIdx) => {
     if (!selectedPlant) return;
     
-    // For containers, no collision check - allow any plant
-    const isContainer = item.type === 'container' || item.type === 'grow_bag';
-    
-    if (!isContainer) {
-      // Check if slot is occupied (only for non-containers)
-      const existingPlanting = plantings.find(p => p.cell_col === slotIdx);
-      if (existingPlanting) {
-        toast.error('This slot is already occupied');
-        return;
-      }
+    // Check if slot is occupied
+    const existingPlanting = plantings.find(p => p.cell_col === slotIdx);
+    if (existingPlanting) {
+      toast.error('This slot is already occupied');
+      return;
     }
     
     try {
