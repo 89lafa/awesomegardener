@@ -12,6 +12,10 @@ export default function FromPlanTab({ activeSeason, garden, bedId, selectedPlanI
   
   useEffect(() => {
     loadPlans();
+    
+    // Real-time updates when plantings change
+    const timer = setInterval(() => loadPlans(), 3000);
+    return () => clearInterval(timer);
   }, [activeSeason, garden]);
   
   const loadPlans = async () => {
@@ -46,10 +50,23 @@ export default function FromPlanTab({ activeSeason, garden, bedId, selectedPlanI
       
       // Attach planting count to each plan
       const plansWithCounts = plans.map(plan => {
-        const plantedCount = allPlantings.filter(p => 
-          p.plant_type_id === plan.plant_type_id &&
-          (plan.plant_profile_id ? p.variety_id === plan.plant_profile_id : true)
-        ).length;
+        // Count plantings that match this crop plan
+        const plantedCount = allPlantings.filter(p => {
+          // Match by plant_type_id primarily
+          if (p.plant_type_id !== plan.plant_type_id) return false;
+          
+          // If plan has a specific variety/profile, match that too
+          if (plan.variety_id && p.variety_id === plan.variety_id) return true;
+          if (plan.plant_profile_id && p.variety_id === plan.plant_profile_id) return true;
+          
+          // Match by label if no specific variety
+          if (!plan.variety_id && !plan.plant_profile_id) {
+            return p.display_name?.includes(plan.label);
+          }
+          
+          return false;
+        }).length;
+        
         return { ...plan, plantedCount };
       });
       

@@ -243,15 +243,21 @@ export default function BrowseCategoryConfig() {
                     {category.info_banner}
                   </div>
                   <div>
-                    <p className="text-sm text-gray-600 mb-2">Includes {category.plant_type_ids.length} plant types:</p>
+                    <p className="text-sm text-gray-600 mb-2">
+                      Includes {category.plant_type_ids?.filter(id => plantTypes.find(p => p.id === id)).length || 0} plant types:
+                    </p>
                     <div className="flex flex-wrap gap-2">
-                      {category.plant_type_ids.map(id => {
+                      {(category.plant_type_ids || []).map(id => {
                         const pt = plantTypes.find(p => p.id === id);
                         return pt ? (
                           <span key={id} className="px-2 py-1 bg-gray-100 rounded text-xs">
                             {pt.icon} {pt.common_name}
                           </span>
-                        ) : null;
+                        ) : (
+                          <span key={id} className="px-2 py-1 bg-red-50 text-red-600 rounded text-xs">
+                            ⚠️ Invalid ID: {id}
+                          </span>
+                        );
                       })}
                     </div>
                   </div>

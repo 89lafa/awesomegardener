@@ -95,28 +95,53 @@ export default function CalendarTasks() {
   const loadData = async () => {
     try {
       const user = await base44.auth.me();
-      const [manualTasks, cropTasks, gardensData, plantsData] = await Promise.all([
+      
+      // Load user settings to get current garden/season context
+      const userSettings = await base44.entities.UserSettings.filter({ created_by: user.email });
+      const activeGardenId = userSettings[0]?.active_garden_id;
+      
+      const [manualTasks, cropTasks, gardensData, cropPlans] = await Promise.all([
         base44.entities.Task.filter({ created_by: user.email }, 'due_date'),
-        base44.entities.CropTask.filter({}, 'start_date'),
+        base44.entities.CropTask.list('start_date', 500),
         base44.entities.Garden.filter({ archived: false, created_by: user.email }),
-        base44.entities.PlantInstance.filter({ created_by: user.email })
+        base44.entities.CropPlan.list('label', 500)
       ]);
       
-      // Convert CropTasks to Task format for display
-      const convertedCropTasks = cropTasks.map(ct => ({
-        id: ct.id,
-        title: ct.title,
-        type: ct.task_type,
-        due_date: ct.start_date,
-        status: ct.is_completed ? 'done' : 'open',
-        description: ct.notes || '',
-        _isCropTask: true,
-        _cropTaskData: ct
-      }));
+      // Build crop lookup map
+      const cropMap = {};
+      cropPlans.forEach(cp => { cropMap[cp.id] = cp; });
       
+      // Convert CropTasks to Task format - ONLY show tasks from current user's gardens
+      const userCropTasks = cropTasks.filter(ct => {
+        const crop = cropMap[ct.crop_plan_id];
+        if (!crop) return false;
+        
+        // Find the garden for this crop
+        const cropGarden = gardensData.find(g => {
+          // Check if any season belongs to this garden
+          return crop.garden_id === g.id || crop.garden_season_id;
+        });
+        return cropGarden !== undefined;
+      });
+      
+      const convertedCropTasks = userCropTasks.map(ct => {
+        const crop = cropMap[ct.crop_plan_id];
+        return {
+          id: ct.id,
+          title: ct.title,
+          type: ct.task_type,
+          due_date: ct.start_date,
+          status: ct.is_completed ? 'done' : 'open',
+          description: ct.notes || '',
+          _isCropTask: true,
+          _cropTaskData: ct,
+          _cropLabel: crop?.label
+        };
+      });
+      
+      console.log('[CalendarTasks] Loaded', manualTasks.length, 'manual tasks and', convertedCropTasks.length, 'crop tasks');
       setTasks([...manualTasks, ...convertedCropTasks]);
       setGardens(gardensData);
-      setPlants(plantsData);
     } catch (error) {
       console.error('Error loading tasks:', error);
     } finally {

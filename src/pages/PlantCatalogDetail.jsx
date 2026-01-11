@@ -180,6 +180,7 @@ export default function PlantCatalogDetail() {
       // HANDLE BROWSE CATEGORIES
       if (isBrowseCategory) {
         const categoryCode = plantTypeId.replace('browse_', '');
+        console.log('[BROWSE] Looking for category code:', categoryCode);
         const browseCats = await base44.entities.BrowseCategory.filter({ category_code: categoryCode });
         
         if (browseCats.length === 0) {
@@ -190,8 +191,13 @@ export default function PlantCatalogDetail() {
         }
         
         const cat = browseCats[0];
+        console.log('[BROWSE] Found category:', cat.name, 'with plant_type_ids:', cat.plant_type_ids);
         setBrowseCategory(cat);
-        setCanonicalIds(cat.plant_type_ids || []);
+        
+        // Clean and validate plant_type_ids
+        const cleanIds = (cat.plant_type_ids || []).filter(id => id && typeof id === 'string' && id.length === 24);
+        console.log('[BROWSE] Cleaned plant_type_ids:', cleanIds);
+        setCanonicalIds(cleanIds);
         
         // Create virtual plant type
         setPlantType({
