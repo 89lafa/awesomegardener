@@ -200,9 +200,9 @@ export default function AddCropModal({ open, onOpenChange, seasonId, onSuccess }
         how_to_content: '# Transplanting\n\nTransplant seedlings:\n- Harden off for 7-10 days\n- Plant on overcast day\n- Water well after planting'
       });
       
-      // Harvest - DTM days after transplant
-      const harvestStart = addDays(transplantDateMid, cropPlan.dtm_days);
-      const harvestEnd = addDays(harvestStart, cropPlan.harvest_window_days);
+      // Harvest - DTM days after transplant midpoint
+      const harvestStart = addDays(transplantDateMid, cropPlan.dtm_days || 75);
+      const harvestEnd = addDays(harvestStart, cropPlan.harvest_window_days || 14);
       tasks.push({
         garden_season_id: seasonId,
         crop_plan_id: cropPlan.id,
@@ -215,7 +215,7 @@ export default function AddCropModal({ open, onOpenChange, seasonId, onSuccess }
         quantity_completed: 0,
         how_to_content: '# Harvesting\n\nHarvest when ready:\n- Check maturity indicators\n- Harvest in morning\n- Handle gently'
       });
-    } else {
+    } else if (cropPlan.planting_method === 'direct_seed') {
       // Direct Seed - Show as range (default ±7 days)
       const directSeedDateMid = addDays(lastFrostDate, cropPlan.direct_seed_offset_days);
       const directSeedStart = addDays(directSeedDateMid, -7);
@@ -235,8 +235,8 @@ export default function AddCropModal({ open, onOpenChange, seasonId, onSuccess }
       });
       
       // Harvest
-      const harvestStart = addDays(directSeedDateMid, cropPlan.dtm_days);
-      const harvestEnd = addDays(harvestStart, cropPlan.harvest_window_days);
+      const harvestStart = addDays(directSeedDateMid, cropPlan.dtm_days || 75);
+      const harvestEnd = addDays(harvestStart, cropPlan.harvest_window_days || 14);
       tasks.push({
         garden_season_id: seasonId,
         crop_plan_id: cropPlan.id,
@@ -251,9 +251,16 @@ export default function AddCropModal({ open, onOpenChange, seasonId, onSuccess }
       });
     }
     
+    // Create tasks with quantity tracking
     for (const task of tasks) {
       await base44.entities.CropTask.create(task);
     }
+    
+    // Update crop status to scheduled
+    await base44.entities.CropPlan.update(cropPlan.id, { 
+      status: 'scheduled',
+      quantity_scheduled: cropPlan.quantity_planned || 1
+    });
   };
   
   const handleSubmit = async () => {

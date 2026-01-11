@@ -488,13 +488,40 @@ export default function PlantingModal({ open, onOpenChange, item, garden, onPlan
 
           if (!plantA.plant_type_id || !plantB.plant_type_id) continue;
 
-          // Check adjacency - for slots (greenhouse), always consider adjacent
-          // For grid-based, check grid proximity
-          const isAdjacent = isSlotBased ? true : (
-            Math.abs(plantA.cell_col - plantB.cell_col) <= 1 && 
-            Math.abs((plantA.cell_row || 0) - (plantB.cell_row || 0)) <= 1 &&
-            !(plantA.cell_col === plantB.cell_col && (plantA.cell_row || 0) === (plantB.cell_row || 0))
-          );
+          // FIXED: Check adjacency more reliably
+          // For multi-cell plants, check if ANY cells are adjacent
+          const aCols = Array.from({ length: plantA.cell_span_cols || 1 }, (_, i) => plantA.cell_col + i);
+          const aRows = Array.from({ length: plantA.cell_span_rows || 1 }, (_, i) => (plantA.cell_row || 0) + i);
+          const bCols = Array.from({ length: plantB.cell_span_cols || 1 }, (_, i) => plantB.cell_col + i);
+          const bRows = Array.from({ length: plantB.cell_span_rows || 1 }, (_, i) => (plantB.cell_row || 0) + i);
+
+          let isAdjacent = false;
+          
+          if (isSlotBased) {
+            // For slots, always adjacent
+            isAdjacent = true;
+          } else {
+            // For grid: check if any cell of A is within 1 cell of any cell of B
+            for (const aCol of aCols) {
+              for (const aRow of aRows) {
+                for (const bCol of bCols) {
+                  for (const bRow of bRows) {
+                    const colDist = Math.abs(aCol - bCol);
+                    const rowDist = Math.abs(aRow - bRow);
+                    
+                    // Adjacent if within 1 cell (including diagonals), but not same cell
+                    if ((colDist <= 1 && rowDist <= 1) && !(colDist === 0 && rowDist === 0)) {
+                      isAdjacent = true;
+                      break;
+                    }
+                  }
+                  if (isAdjacent) break;
+                }
+                if (isAdjacent) break;
+              }
+              if (isAdjacent) break;
+            }
+          }
 
           // Look for companion rule (bidirectional)
           const rule = companionRules.find(r =>
@@ -515,7 +542,7 @@ export default function PlantingModal({ open, onOpenChange, item, garden, onPlan
         }
       }
 
-      console.log('[PlantingModal] Companion analysis found', results.length, 'adjacent pairs in bed', item.id);
+      console.log('[PlantingModal] Companion analysis found', results.length, 'relationships from', currentPlantings.length, 'plants');
       setCompanionResults(results);
     } catch (error) {
       console.error('Error analyzing companions:', error);

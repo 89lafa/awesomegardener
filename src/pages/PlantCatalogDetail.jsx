@@ -298,34 +298,47 @@ export default function PlantCatalogDetail() {
   const getEffectiveSubcategoryIds = (variety) => {
     let ids = [];
     
-    // Handle plant_subcategory_ids (array or string)
+    // Priority 1: plant_subcategory_ids (array or string)
     if (variety.plant_subcategory_ids) {
       if (Array.isArray(variety.plant_subcategory_ids)) {
-        ids = ids.concat(variety.plant_subcategory_ids);
+        ids = variety.plant_subcategory_ids;
       } else if (typeof variety.plant_subcategory_ids === 'string') {
         // Might be JSON string
         try {
           const parsed = JSON.parse(variety.plant_subcategory_ids);
           if (Array.isArray(parsed)) {
-            ids = ids.concat(parsed);
+            ids = parsed;
           }
         } catch (e) {
-          // Not JSON, ignore
+          // Not JSON, might be comma-separated
+          if (variety.plant_subcategory_ids.includes(',')) {
+            ids = variety.plant_subcategory_ids.split(',').map(id => id.trim());
+          }
         }
       }
     }
     
-    // Add plant_subcategory_id if exists
-    if (variety.plant_subcategory_id && variety.plant_subcategory_id.trim() !== '') {
-      ids.push(variety.plant_subcategory_id.trim());
+    // Priority 2: Fallback to plant_subcategory_id if array is empty
+    if (ids.length === 0 && variety.plant_subcategory_id && variety.plant_subcategory_id.trim() !== '') {
+      ids = [variety.plant_subcategory_id.trim()];
     }
     
-    // Dedupe and filter empty
+    // Dedupe and filter empty/invalid
     ids = [...new Set(ids.filter(id => id && typeof id === 'string' && id.trim() !== ''))];
     
-    // Filter out inactive subcategories
-    const activeSubcatIds = new Set(subCategories.map(s => s.id));
-    return ids.filter(id => activeSubcatIds.has(id));
+    // CRITICAL: Only filter out IDs that don't exist in subCategories at all
+    // Do NOT filter by is_active here - admin can see inactive subcats
+    const allSubcatIds = new Set(subCategories.map(s => s.id));
+    const validIds = ids.filter(id => allSubcatIds.has(id));
+    
+    // For non-admin users, also filter by is_active
+    const user_role = window.localStorage.getItem('user_role');
+    if (user_role !== 'admin') {
+      const activeSubcatIds = new Set(subCategories.filter(s => s.is_active).map(s => s.id));
+      return validIds.filter(id => activeSubcatIds.has(id));
+    }
+    
+    return validIds;
   };
 
   const applyFiltersAndSort = () => {

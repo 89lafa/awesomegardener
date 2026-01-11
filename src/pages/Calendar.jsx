@@ -68,8 +68,12 @@ export default function Calendar() {
 
   useEffect(() => {
     const syncGrowListId = searchParams.get('syncGrowList');
-    if (syncGrowListId && activeSeasonId) {
-      handleSyncGrowList(syncGrowListId);
+    const seasonParam = searchParams.get('season');
+    if (syncGrowListId && (activeSeasonId || seasonParam)) {
+      const targetSeasonId = seasonParam || activeSeasonId;
+      if (targetSeasonId && !syncing) {
+        handleSyncGrowList(syncGrowListId, targetSeasonId);
+      }
     }
   }, [searchParams, activeSeasonId]);
   
@@ -212,8 +216,9 @@ export default function Calendar() {
     }
   };
 
-  const handleSyncGrowList = async (growListId) => {
-    if (!activeSeasonId) {
+  const handleSyncGrowList = async (growListId, targetSeasonId) => {
+    const seasonId = targetSeasonId || activeSeasonId;
+    if (!seasonId) {
       toast.error('Please select a season first');
       return;
     }
@@ -222,12 +227,14 @@ export default function Calendar() {
     try {
       const response = await base44.functions.invoke('syncGrowListToCalendar', {
         grow_list_id: growListId,
-        garden_season_id: activeSeasonId
+        garden_season_id: seasonId
       });
 
       if (response.data.success) {
         await loadPlansAndTasks();
-        toast.success(`Synced ${response.data.created} new crops from grow list`);
+        toast.success(`Synced: ${response.data.created} new, ${response.data.updated} updated crops`);
+        // Clear URL params
+        window.history.replaceState({}, '', window.location.pathname);
       } else {
         toast.error('Sync failed');
       }
@@ -292,13 +299,12 @@ export default function Calendar() {
     <div className="flex h-[calc(100vh-8rem)]">
       {/* Left Sidebar - My Crops */}
       <div className="w-80 border-r bg-white flex flex-col">
-        <div className="p-4 border-b">
-          <h2 className="font-semibold text-lg mb-3">My Crops</h2>
+        <div className="p-4 border-b space-y-2">
+          <h2 className="font-semibold text-lg">My Crops</h2>
           <Input
             placeholder="Search crops..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="mb-3"
           />
           <Button 
             onClick={() => setShowAddCrop(true)}
@@ -318,10 +324,41 @@ export default function Calendar() {
             )}
           </Button>
           <Button
+            onClick={async () => {
+              // Show grow list import dialog
+              const userLists = await base44.entities.GrowList.filter({ 
+                created_by: user.email,
+                garden_season_id: activeSeasonId
+              });
+              
+              if (userLists.length === 0) {
+                toast.error('No grow lists for this season. Create one first.');
+                return;
+              }
+
+              const listId = userLists.length === 1 ? userLists[0].id : prompt(
+                `Select grow list:\n${userLists.map((l, i) => `${i+1}. ${l.name}`).join('\n')}\n\nEnter number:`
+              );
+              
+              if (listId) {
+                const list = userLists[parseInt(listId) - 1] || userLists.find(l => l.id === listId);
+                if (list) {
+                  handleSyncGrowList(list.id, activeSeasonId);
+                }
+              }
+            }}
+            variant="outline"
+            className="w-full gap-2"
+            disabled={syncing || !activeSeasonId}
+          >
+            <Download className="w-4 h-4" />
+            Import from Grow List
+          </Button>
+          <Button
             onClick={() => setShowGuide(true)}
             variant="outline"
             size="sm"
-            className="w-full mt-2"
+            className="w-full"
           >
             📖 User Guide
           </Button>

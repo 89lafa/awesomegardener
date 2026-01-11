@@ -111,14 +111,27 @@ export default function EditVariety() {
 
     try {
       // Ensure plant_subcategory_id is in plant_subcategory_ids
-      const selectedIds = formData.plant_subcategory_ids || [];
+      let selectedIds = formData.plant_subcategory_ids || [];
       let primaryId = formData.plant_subcategory_id;
-      if (selectedIds.length > 0 && !selectedIds.includes(primaryId)) {
+
+      // CRITICAL: Ensure primary is in array
+      if (primaryId && !selectedIds.includes(primaryId)) {
+        selectedIds = [primaryId, ...selectedIds];
+      }
+
+      // If array is not empty but primary is null, set primary to first
+      if (selectedIds.length > 0 && !primaryId) {
         primaryId = selectedIds[0];
       }
-      
+
       const scovilleMin = formData.scoville_min || formData.heat_scoville_min;
       const scovilleMax = formData.scoville_max || formData.heat_scoville_max;
+
+      console.log('[EditVariety] Saving subcategories:', {
+        primary: primaryId,
+        array: selectedIds,
+        variety: formData.variety_name
+      });
 
       const updateData = {
         variety_name: formData.variety_name,

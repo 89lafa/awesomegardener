@@ -58,10 +58,12 @@ export default function GrowLists() {
   const [showNewDialog, setShowNewDialog] = useState(searchParams.get('action') === 'new');
   const [showAddItemDialog, setShowAddItemDialog] = useState(false);
 
+  const [seasons, setSeasons] = useState([]);
   const [newList, setNewList] = useState({
     name: `${new Date().getFullYear()} Grow List`,
     year: new Date().getFullYear(),
-    linked_garden_id: ''
+    garden_id: '',
+    garden_season_id: ''
   });
 
   const [newItem, setNewItem] = useState({
@@ -99,17 +101,19 @@ export default function GrowLists() {
   const loadData = async () => {
     try {
       const user = await base44.auth.me();
-      const [listsData, gardensData, seedsData, typesData, profilesData] = await Promise.all([
+      const [listsData, gardensData, seedsData, typesData, profilesData, seasonsData] = await Promise.all([
         base44.entities.GrowList.filter({ created_by: user.email }, '-created_date'),
         base44.entities.Garden.filter({ archived: false, created_by: user.email }),
         base44.entities.SeedLot.filter({ is_wishlist: false, created_by: user.email }),
         base44.entities.PlantType.list('common_name', 100),
-        base44.entities.PlantProfile.list('variety_name', 500)
+        base44.entities.PlantProfile.list('variety_name', 500),
+        base44.entities.GardenSeason.list('-year')
       ]);
       setGrowLists(listsData);
       setGardens(gardensData);
       setSeeds(seedsData);
       setPlantTypes(typesData);
+      setSeasons(seasonsData);
       
       // Build profiles map
       const pMap = {};
@@ -127,7 +131,10 @@ export default function GrowLists() {
 
     try {
       const list = await base44.entities.GrowList.create({
-        ...newList,
+        name: newList.name,
+        year: newList.year,
+        garden_id: newList.garden_id || null,
+        garden_season_id: newList.garden_season_id || null,
         status: 'draft',
         items: []
       });
@@ -136,7 +143,8 @@ export default function GrowLists() {
       setNewList({
         name: `${new Date().getFullYear()} Grow List`,
         year: new Date().getFullYear(),
-        linked_garden_id: ''
+        garden_id: '',
+        garden_season_id: ''
       });
       toast.success('Grow list created!');
     } catch (error) {
@@ -252,27 +260,80 @@ export default function GrowLists() {
         </div>
 
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <div>
-            <div className="flex items-center gap-3">
+          <div className="flex-1">
+            <div className="flex items-center gap-3 mb-2">
               <h1 className="text-2xl font-bold text-gray-900">{selectedList.name}</h1>
               <Badge className={getStatusColor(selectedList.status)}>
                 {selectedList.status}
               </Badge>
             </div>
-            <p className="text-gray-600 mt-1">
-              {selectedList.items?.length || 0} items • {selectedList.year}
-            </p>
+            <div className="flex flex-wrap items-center gap-4">
+              <p className="text-gray-600">
+                {selectedList.items?.length || 0} items
+              </p>
+              <div className="flex items-center gap-2">
+                <Label className="text-sm">Garden:</Label>
+                <Select 
+                  value={selectedList.garden_id || ''} 
+                  onValueChange={async (v) => {
+                    await base44.entities.GrowList.update(selectedList.id, { garden_id: v || null, garden_season_id: null });
+                    setSelectedList({ ...selectedList, garden_id: v || null, garden_season_id: null });
+                    setGrowLists(growLists.map(l => l.id === selectedList.id ? { ...l, garden_id: v || null, garden_season_id: null } : l));
+                    if (v) {
+                      const gardenSeasons = await base44.entities.GardenSeason.filter({ garden_id: v }, '-year');
+                      setSeasons(gardenSeasons);
+                    }
+                  }}
+                >
+                  <SelectTrigger className="w-48">
+                    <SelectValue placeholder="Select garden" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={null}>None</SelectItem>
+                    {gardens.map((garden) => (
+                      <SelectItem key={garden.id} value={garden.id}>{garden.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              {selectedList.garden_id && (
+                <div className="flex items-center gap-2">
+                  <Label className="text-sm">Season:</Label>
+                  <Select 
+                    value={selectedList.garden_season_id || ''} 
+                    onValueChange={async (v) => {
+                      await base44.entities.GrowList.update(selectedList.id, { garden_season_id: v || null });
+                      setSelectedList({ ...selectedList, garden_season_id: v || null });
+                      setGrowLists(growLists.map(l => l.id === selectedList.id ? { ...l, garden_season_id: v || null } : l));
+                    }}
+                  >
+                    <SelectTrigger className="w-40">
+                      <SelectValue placeholder="Select season" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value={null}>None</SelectItem>
+                      {seasons.filter(s => s.garden_id === selectedList.garden_id).map((season) => (
+                        <SelectItem key={season.id} value={season.id}>
+                          {season.year} {season.season}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+            </div>
           </div>
           <div className="flex gap-2">
-            <Link to={createPageUrl('Calendar') + `?syncGrowList=${selectedList.id}`}>
-              <Button 
-                variant="outline"
-                className="gap-2"
-              >
-                <Calendar className="w-4 h-4" />
-                Push to Calendar
-              </Button>
-            </Link>
+            {selectedList.garden_season_id && (
+              <Link to={createPageUrl('Calendar') + `?syncGrowList=${selectedList.id}&season=${selectedList.garden_season_id}`}>
+                <Button 
+                  className="gap-2 bg-emerald-600 hover:bg-emerald-700"
+                >
+                  <Calendar className="w-4 h-4" />
+                  Sync to Calendar
+                </Button>
+              </Link>
+            )}
             <Button 
               variant="outline"
               onClick={() => handleUpdateStatus(selectedList, selectedList.status === 'active' ? 'archived' : 'active')}
@@ -336,11 +397,6 @@ export default function GrowLists() {
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
-                        <Link to={createPageUrl('GardenBuilder') + `?gardenId=${selectedList.linked_garden_id || gardens[0]?.id}`}>
-                          <Button variant="outline" size="sm">
-                            Place in Garden
-                          </Button>
-                        </Link>
                         <Button 
                           variant="ghost" 
                           size="icon"
@@ -607,19 +663,49 @@ export default function GrowLists() {
             <div>
               <Label>Link to Garden (optional)</Label>
               <Select 
-                value={newList.linked_garden_id} 
-                onValueChange={(v) => setNewList({ ...newList, linked_garden_id: v })}
+                value={newList.garden_id} 
+                onValueChange={async (v) => {
+                  setNewList({ ...newList, garden_id: v, garden_season_id: '' });
+                  // Load seasons for selected garden
+                  if (v) {
+                    const gardenSeasons = await base44.entities.GardenSeason.filter({ garden_id: v }, '-year');
+                    setSeasons(gardenSeasons);
+                  }
+                }}
               >
                 <SelectTrigger className="mt-2">
                   <SelectValue placeholder="Select a garden" />
                 </SelectTrigger>
                 <SelectContent>
+                  <SelectItem value={null}>None</SelectItem>
                   {gardens.map((garden) => (
                     <SelectItem key={garden.id} value={garden.id}>{garden.name}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
+
+            {newList.garden_id && (
+              <div>
+                <Label>Season (optional)</Label>
+                <Select 
+                  value={newList.garden_season_id} 
+                  onValueChange={(v) => setNewList({ ...newList, garden_season_id: v })}
+                >
+                  <SelectTrigger className="mt-2">
+                    <SelectValue placeholder="Select a season" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={null}>No specific season</SelectItem>
+                    {seasons.filter(s => s.garden_id === newList.garden_id).map((season) => (
+                      <SelectItem key={season.id} value={season.id}>
+                        {season.year} {season.season}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowNewDialog(false)}>Cancel</Button>
