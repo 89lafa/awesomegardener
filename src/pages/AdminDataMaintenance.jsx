@@ -392,6 +392,89 @@ export default function AdminDataMaintenance() {
         </CardContent>
       </Card>
 
+      {/* Subcategory Health & Fixes */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Subcategory Maintenance</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="p-4 bg-blue-50 rounded-lg">
+            <h3 className="font-semibold text-blue-900 mb-2">Activate All Subcategories</h3>
+            <p className="text-sm text-blue-800 mb-3">
+              Activates all inactive subcategories globally or for a specific plant type
+            </p>
+            <Button
+              onClick={async () => {
+                const result = await base44.functions.invoke('activateAllSubcategories', { dry_run: false });
+                if (result.data.success) {
+                  toast.success(`Activated ${result.data.activated} subcategories`);
+                } else {
+                  toast.error('Failed to activate subcategories');
+                }
+              }}
+              className="bg-blue-600 hover:bg-blue-700"
+            >
+              Activate All Now
+            </Button>
+          </div>
+
+          <div className="p-4 bg-purple-50 rounded-lg">
+            <h3 className="font-semibold text-purple-900 mb-2">Audit Variety Subcategories</h3>
+            <p className="text-sm text-purple-800 mb-3">
+              Find varieties with subcategory data issues (empty arrays, mismatches, inactive refs)
+            </p>
+            <Button
+              onClick={async () => {
+                const result = await base44.functions.invoke('auditVarietySubcategories', {});
+                if (result.data.success) {
+                  console.log('Audit results:', result.data);
+                  alert(`Audit Complete:\n\nTotal Varieties: ${result.data.total_varieties}\n\nIssues Found:\n- Empty array but has primary: ${result.data.issues.emptyArrayButHasPrimary.count}\n- Inactive references: ${result.data.issues.inactiveReferences.count}\n- Missing references: ${result.data.issues.missingReferences.count}\n- Array mismatch: ${result.data.issues.arrayMismatch.count}\n\nSee console for details.`);
+                } else {
+                  toast.error('Audit failed');
+                }
+              }}
+              variant="outline"
+              className="border-purple-300"
+            >
+              Run Audit
+            </Button>
+          </div>
+
+          <div className="p-4 bg-amber-50 rounded-lg">
+            <h3 className="font-semibold text-amber-900 mb-2">Fix Variety Subcategory Arrays</h3>
+            <p className="text-sm text-amber-800 mb-3">
+              Fixes varieties where primary subcategory is not in the array (batched: 50 at a time)
+            </p>
+            <div className="flex gap-2">
+              <Button
+                onClick={async () => {
+                  const result = await base44.functions.invoke('fixVarietySubcategoryArrays', { dry_run: true, batch_size: 50 });
+                  if (result.data.success) {
+                    console.log('Dry run results:', result.data);
+                    alert(`Dry Run Complete:\n\nProcessed: ${result.data.processed}/${result.data.total_varieties}\nWould fix: ${result.data.fixed}\nNo issues: ${result.data.skipped}\n\nSee console for details.`);
+                  }
+                }}
+                variant="outline"
+                className="border-amber-300"
+              >
+                Dry Run (50)
+              </Button>
+              <Button
+                onClick={async () => {
+                  const result = await base44.functions.invoke('fixVarietySubcategoryArrays', { dry_run: false, batch_size: 50 });
+                  if (result.data.success) {
+                    toast.success(`Fixed ${result.data.fixed} varieties. ${result.data.has_more ? 'Run again for more.' : 'All done!'}`);
+                  }
+                }}
+                className="bg-amber-600 hover:bg-amber-700"
+              >
+                Fix Next Batch (50)
+              </Button>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Normalize Subcategories - Global */}
       <Card>
         <CardHeader>
