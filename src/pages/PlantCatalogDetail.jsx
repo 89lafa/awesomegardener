@@ -46,6 +46,10 @@ export default function PlantCatalogDetail() {
   const SQUASH_CANONICAL_IDS = ['69594a9f1243f13d1245edfd', '69594a9f1243f13d1245edfe', '69594a9f1243f13d1245edff', '69575e5ecdbb16ee56fa7508'];
   const isSquashUmbrella = plantTypeId === SQUASH_UMBRELLA_ID;
   
+  const [browseCategory, setBrowseCategory] = useState(null);
+  const isBrowseCategory = plantTypeId?.startsWith('browse_');
+  const [canonicalIds, setCanonicalIds] = useState(isSquashUmbrella ? SQUASH_CANONICAL_IDS : []);
+  
   const [plantType, setPlantType] = useState(null);
   const [varieties, setVarieties] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -211,12 +215,12 @@ export default function PlantCatalogDetail() {
 
       // Load varieties
       console.log('[VARIETY DEBUG] Attempting to load varieties for plant_type_id:', plantTypeId);
-      
+
       let vars;
-      if (isSquashUmbrella) {
+      if (isSquashUmbrella || canonicalIds.length > 0) {
         // Load all varieties, then filter client-side
         const allVars = await base44.entities.Variety.filter({ status: 'active' }, 'variety_name', 1000);
-        vars = allVars.filter(v => SQUASH_CANONICAL_IDS.includes(v.plant_type_id));
+        vars = allVars.filter(v => canonicalIds.includes(v.plant_type_id));
       } else {
         vars = await base44.entities.Variety.filter({ 
           plant_type_id: plantTypeId,
@@ -665,11 +669,11 @@ export default function PlantCatalogDetail() {
                 </div>
                 </div>
 
-                {/* Squash Umbrella Notice */}
-                {isSquashUmbrella && (
-                <div className="px-4 py-3 bg-amber-50 border border-amber-300 rounded-lg text-sm text-amber-900">
-                <strong>ℹ️ Squash Browse View:</strong> This shows varieties from Summer Squash, Winter Squash, Zucchini, and Pumpkin. To add new varieties, navigate to the specific plant type.
-                </div>
+                {/* Browse Category Notice */}
+                {(isSquashUmbrella || browseCategory) && (
+                  <div className="px-4 py-3 bg-amber-50 border border-amber-300 rounded-lg text-sm text-amber-900">
+                    {browseCategory?.info_banner || 'ℹ️ Squash Browse View: This shows varieties from Summer Squash, Winter Squash, Zucchini, and Pumpkin. To add new varieties, navigate to the specific plant type.'}
+                  </div>
                 )}
 
                 {/* Overview - Compact */}
@@ -990,8 +994,8 @@ export default function PlantCatalogDetail() {
                 <Leaf className="w-12 h-12 text-gray-300 mx-auto mb-3" />
                 <p className="text-gray-600 mb-2">
                   {activeFilterCount > 0 ? 'No varieties match your filters' : 'No varieties cataloged yet'}
-                </p>
-                {activeFilterCount > 0 ? (
+                  </p>
+                  {activeFilterCount > 0 ? (
                   <Button 
                     onClick={handleClearFilters}
                     variant="outline"
@@ -1000,16 +1004,16 @@ export default function PlantCatalogDetail() {
                     <X className="w-4 h-4" />
                     Clear Filters
                   </Button>
-                ) : (
+                  ) : (
                   <>
                     <p className="text-sm text-gray-500 mb-4">
-                      {isSquashUmbrella 
-                        ? 'Navigate to Summer Squash, Winter Squash, Zucchini, or Pumpkin to add varieties'
+                      {(isSquashUmbrella || browseCategory)
+                        ? 'Navigate to specific plant types to add varieties'
                         : user?.role === 'admin' 
                           ? 'Import varieties or add them manually' 
                           : 'Be the first to suggest a variety!'}
                     </p>
-                    {!isSquashUmbrella && (
+                    {!(isSquashUmbrella || browseCategory) && (
                       <Button 
                         onClick={() => setShowAddVariety(true)}
                         className="bg-emerald-600 hover:bg-emerald-700 gap-2"
@@ -1019,7 +1023,7 @@ export default function PlantCatalogDetail() {
                       </Button>
                     )}
                   </>
-                )}
+                  )}
               </div>
             ) : viewMode === 'list' ? (
               <>
