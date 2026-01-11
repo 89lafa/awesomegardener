@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { motion } from 'framer-motion';
+import InstallPWAButton from '@/components/landing/InstallPWAButton';
 
 const features = [
   {
@@ -101,6 +102,7 @@ export default function Landing() {
                   Get Started Free
                   <ArrowRight className="w-5 h-5" />
                 </Button>
+                <InstallPWAButton size="lg" className="text-lg px-8 py-6" />
                 <Link to={createPageUrl('Community')}>
                   <Button 
                     variant="outline" 
