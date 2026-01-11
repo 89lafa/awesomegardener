@@ -788,6 +788,10 @@ export default function PlantCatalogDetail() {
                       const effectiveIds = getEffectiveSubcategoryIds(v);
                       return effectiveIds.includes(subcat.id);
                     }).length;
+
+                    // CRITICAL: Only show if count > 0
+                    if (count === 0) return null;
+
                     return (
                       <SelectItem key={subcat.id} value={subcat.id}>
                         {subcat.icon && <span className="mr-1">{subcat.icon}</span>}
