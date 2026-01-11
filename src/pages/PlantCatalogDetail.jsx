@@ -1036,13 +1036,13 @@ export default function PlantCatalogDetail() {
                   ) : (
                   <>
                     <p className="text-sm text-gray-500 mb-4">
-                      {(isSquashUmbrella || browseCategory)
+                      {plantType?._is_browse_only
                         ? 'Navigate to specific plant types to add varieties'
                         : user?.role === 'admin' 
                           ? 'Import varieties or add them manually' 
                           : 'Be the first to suggest a variety!'}
                     </p>
-                    {!(isSquashUmbrella || browseCategory) && (
+                    {!plantType?._is_browse_only && (
                       <Button 
                         onClick={() => setShowAddVariety(true)}
                         className="bg-emerald-600 hover:bg-emerald-700 gap-2"

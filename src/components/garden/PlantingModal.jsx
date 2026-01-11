@@ -300,11 +300,48 @@ export default function PlantingModal({ open, onOpenChange, item, garden, onPlan
       }
     } else if (selectedPlant) {
       // Placing new plant
-      const hasCollision = checkCollision(col, row, selectedPlant.spacing_cols, selectedPlant.spacing_rows);
+      // CONTAINERS: Allow any size plant (single occupancy only)
+      const ITEM_TYPES = [
+        { value: 'GROW_BAG', usesGallons: true },
+        { value: 'CONTAINER', usesGallons: true }
+      ];
+      const itemType = ITEM_TYPES.find(t => t.value === item.item_type);
+      const isContainer = itemType?.usesGallons;
       
-      if (hasCollision) {
-        toast.error('Cannot place here - space occupied or out of bounds');
-        return;
+      let hasCollision = false;
+      if (isContainer) {
+        // Containers: Only check if already occupied (ignore grid bounds)
+        hasCollision = plantings.length > 0;
+        if (hasCollision) {
+          toast.error('Container already occupied');
+          return;
+        }
+      } else {
+        // Regular beds: Check grid collision
+        for (let r = row; r < row + selectedPlant.spacing_rows; r++) {
+          for (let c = col; c < col + selectedPlant.spacing_cols; c++) {
+            if (c >= gridCols || r >= gridRows) {
+              hasCollision = true;
+              break;
+            }
+            const existing = plantings.find(p => 
+              c >= p.cell_col && 
+              c < p.cell_col + (p.cell_span_cols || 1) &&
+              r >= (p.cell_row || 0) && 
+              r < (p.cell_row || 0) + (p.cell_span_rows || 1)
+            );
+            if (existing) {
+              hasCollision = true;
+              break;
+            }
+          }
+          if (hasCollision) break;
+        }
+        
+        if (hasCollision) {
+          toast.error('Cannot place here - space occupied or out of bounds');
+          return;
+        }
       }
       
       try {
