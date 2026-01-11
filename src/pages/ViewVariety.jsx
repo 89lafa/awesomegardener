@@ -354,6 +354,17 @@ export default function ViewVariety() {
                 </p>
               </div>
             )}
+            {(variety?.plant_height_typical || variety?.height_min) && (
+              <div>
+                <Label className="text-gray-600">Height</Label>
+                <p className="font-medium mt-1">
+                  {variety.plant_height_typical || 
+                   (variety.height_min && variety.height_max 
+                     ? `${variety.height_min}-${variety.height_max}"`
+                     : variety.height_min)}
+                </p>
+              </div>
+            )}
             {variety?.sun_requirement && (
               <div>
                 <Label className="text-gray-600">Sun Requirement</Label>
@@ -370,6 +381,74 @@ export default function ViewVariety() {
               <div>
                 <Label className="text-gray-600">Growth Habit</Label>
                 <p className="font-medium mt-1 capitalize">{variety.growth_habit.replace(/_/g, ' ')}</p>
+              </div>
+            )}
+            {(variety?.scoville_min || variety?.scoville_max) && (
+              <div>
+                <Label className="text-gray-600">Heat Level (SHU)</Label>
+                <p className="font-medium mt-1">
+                  {variety.scoville_min && variety.scoville_max 
+                    ? `${variety.scoville_min.toLocaleString()}-${variety.scoville_max.toLocaleString()}`
+                    : variety.scoville_min?.toLocaleString() || variety.scoville_max?.toLocaleString()}
+                </p>
+              </div>
+            )}
+            {variety?.start_indoors_weeks && (
+              <div>
+                <Label className="text-gray-600">Start Indoors</Label>
+                <p className="font-medium mt-1">{variety.start_indoors_weeks} weeks before frost</p>
+              </div>
+            )}
+            {variety?.transplant_weeks_after_last_frost_min !== undefined && (
+              <div>
+                <Label className="text-gray-600">Transplant</Label>
+                <p className="font-medium mt-1">
+                  {variety.transplant_weeks_after_last_frost_min} weeks after frost
+                </p>
+              </div>
+            )}
+            {variety?.direct_sow_weeks_min !== undefined && (
+              <div>
+                <Label className="text-gray-600">Direct Sow</Label>
+                <p className="font-medium mt-1">
+                  {variety.direct_sow_weeks_min} weeks after frost
+                </p>
+              </div>
+            )}
+            {variety?.flavor_profile && (
+              <div className="col-span-2">
+                <Label className="text-gray-600">Flavor Profile</Label>
+                <p className="font-medium mt-1">{variety.flavor_profile}</p>
+              </div>
+            )}
+            {variety?.uses && (
+              <div className="col-span-2">
+                <Label className="text-gray-600">Uses</Label>
+                <p className="font-medium mt-1">{variety.uses}</p>
+              </div>
+            )}
+            {variety?.fruit_color && (
+              <div>
+                <Label className="text-gray-600">Fruit Color</Label>
+                <p className="font-medium mt-1 capitalize">{variety.fruit_color}</p>
+              </div>
+            )}
+            {variety?.fruit_shape && (
+              <div>
+                <Label className="text-gray-600">Fruit Shape</Label>
+                <p className="font-medium mt-1 capitalize">{variety.fruit_shape}</p>
+              </div>
+            )}
+            {variety?.disease_resistance && (
+              <div className="col-span-2">
+                <Label className="text-gray-600">Disease Resistance</Label>
+                <p className="font-medium mt-1">{variety.disease_resistance}</p>
+              </div>
+            )}
+            {variety?.breeder_or_origin && (
+              <div className="col-span-2">
+                <Label className="text-gray-600">Breeder / Origin</Label>
+                <p className="font-medium mt-1">{variety.breeder_or_origin}</p>
               </div>
             )}
           </div>
@@ -402,10 +481,32 @@ export default function ViewVariety() {
             )}
           </div>
 
+          {variety?.seed_saving_notes && (
+            <div>
+              <Label className="text-gray-600">Seed Saving Notes</Label>
+              <p className="mt-1 text-gray-900">{variety.seed_saving_notes}</p>
+            </div>
+          )}
+          {variety?.pollination_notes && (
+            <div>
+              <Label className="text-gray-600">Pollination Notes</Label>
+              <p className="mt-1 text-gray-900">{variety.pollination_notes}</p>
+            </div>
+          )}
           {(variety?.grower_notes || variety?.notes_public) && (
             <div>
               <Label className="text-gray-600">Grower Notes</Label>
               <p className="mt-1 text-gray-900">{variety.grower_notes || variety.notes_public}</p>
+            </div>
+          )}
+          {variety?.sources && variety.sources.length > 0 && (
+            <div>
+              <Label className="text-gray-600">Seed Sources</Label>
+              <div className="mt-1 flex flex-wrap gap-2">
+                {variety.sources.map((source, idx) => (
+                  <Badge key={idx} variant="outline">{source}</Badge>
+                ))}
+              </div>
             </div>
           )}
         </CardContent>

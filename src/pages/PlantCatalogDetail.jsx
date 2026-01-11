@@ -176,24 +176,53 @@ export default function PlantCatalogDetail() {
       }
 
       console.log('Loading plant type:', plantTypeId);
-      const types = await base44.entities.PlantType.filter({ id: plantTypeId });
       
-      if (types.length === 0) {
-        console.error('Plant type not found:', plantTypeId);
-        setNotFound(true);
-        setLoading(false);
-        return;
-      }
+      // HANDLE BROWSE CATEGORIES
+      if (isBrowseCategory) {
+        const categoryCode = plantTypeId.replace('browse_', '');
+        const browseCats = await base44.entities.BrowseCategory.filter({ category_code: categoryCode });
+        
+        if (browseCats.length === 0) {
+          console.error('Browse category not found:', categoryCode);
+          setNotFound(true);
+          setLoading(false);
+          return;
+        }
+        
+        const cat = browseCats[0];
+        setBrowseCategory(cat);
+        setCanonicalIds(cat.plant_type_ids || []);
+        
+        // Create virtual plant type
+        setPlantType({
+          id: plantTypeId,
+          common_name: cat.name,
+          icon: cat.icon,
+          category: 'browse',
+          description: cat.description,
+          _is_browse_only: true
+        });
+      } else {
+        // Regular plant type loading
+        const types = await base44.entities.PlantType.filter({ id: plantTypeId });
+        
+        if (types.length === 0) {
+          console.error('Plant type not found:', plantTypeId);
+          setNotFound(true);
+          setLoading(false);
+          return;
+        }
 
-      const type = types[0];
-      console.log('Loaded plant type:', type);
-      setPlantType(type);
+        const type = types[0];
+        console.log('Loaded plant type:', type);
+        setPlantType(type);
+      }
 
       // Load active subcategories (filter inactive for dropdown)
       let subcats;
-      if (isSquashUmbrella) {
+      if (isSquashUmbrella || isBrowseCategory) {
         const allSubcats = await base44.entities.PlantSubCategory.filter({ is_active: true });
-        subcats = allSubcats.filter(sc => SQUASH_CANONICAL_IDS.includes(sc.plant_type_id));
+        subcats = allSubcats.filter(sc => canonicalIds.includes(sc.plant_type_id));
       } else {
         subcats = await base44.entities.PlantSubCategory.filter({ 
           plant_type_id: plantTypeId,
@@ -651,18 +680,18 @@ export default function PlantCatalogDetail() {
                     <List className="w-4 h-4" />
                   </Button>
                 </div>
-                {!isSquashUmbrella ? (
-                 <Button 
-                   onClick={() => setShowAddVariety(true)}
-                   className="bg-emerald-600 hover:bg-emerald-700 gap-2"
-                 >
-                   <Plus className="w-4 h-4" />
-                   {user?.role === 'admin' || user?.role === 'editor' ? 'Add Variety' : 'Suggest Variety'}
-                 </Button>
+                {!isSquashUmbrella && !isBrowseCategory ? (
+                <Button 
+                  onClick={() => setShowAddVariety(true)}
+                  className="bg-emerald-600 hover:bg-emerald-700 gap-2"
+                >
+                  <Plus className="w-4 h-4" />
+                  {user?.role === 'admin' || user?.role === 'editor' ? 'Add Variety' : 'Suggest Variety'}
+                </Button>
                 ) : (
-                 <div className="px-3 py-2 bg-amber-50 border border-amber-200 rounded-lg text-xs text-amber-800 max-w-xs">
-                   ℹ️ Browse-only: Add to Summer/Winter Squash, Zucchini, or Pumpkin
-                 </div>
+                <div className="px-3 py-2 bg-amber-50 border border-amber-200 rounded-lg text-xs text-amber-800 max-w-xs">
+                  ℹ️ Browse-only: Navigate to specific plant type to add varieties
+                </div>
                 )}
                 </div>
                 </div>

@@ -258,7 +258,7 @@ export default function CalendarTasks() {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl lg:text-3xl font-bold text-gray-900">Calendar & Tasks</h1>
+          <h1 className="text-2xl lg:text-3xl font-bold text-gray-900">Tasks</h1>
           <p className="text-gray-600 mt-1">Track planting schedules and garden tasks</p>
         </div>
         <Button 

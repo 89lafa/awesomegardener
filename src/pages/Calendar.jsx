@@ -178,14 +178,16 @@ export default function Calendar() {
     }
   };
   
-  const handleDuplicateCrop = async (crop) => {
+  const handleDuplicateCrop = async (crop, isSuccession = false) => {
     try {
+      const interval = isSuccession ? parseInt(prompt('Enter succession interval (days):', '14') || '14') : 0;
+      
       const newCrop = await base44.entities.CropPlan.create({
         garden_season_id: crop.garden_season_id,
         plant_type_id: crop.plant_type_id,
         plant_profile_id: crop.plant_profile_id,
         variety_id: crop.variety_id,
-        label: `${crop.label || 'Crop'} (Copy)`,
+        label: isSuccession ? `${crop.label || 'Crop'} (S2)` : `${crop.label || 'Crop'} (Copy)`,
         quantity_planned: crop.quantity_planned || 1,
         quantity_scheduled: 0,
         quantity_planted: 0,
@@ -194,32 +196,19 @@ export default function Calendar() {
         planting_method: crop.planting_method,
         date_mode: crop.date_mode,
         relative_anchor: crop.relative_anchor,
-        seed_offset_days: crop.seed_offset_days,
-        transplant_offset_days: crop.transplant_offset_days,
-        direct_seed_offset_days: crop.direct_seed_offset_days,
+        seed_offset_days: (crop.seed_offset_days || 0) + interval,
+        transplant_offset_days: (crop.transplant_offset_days || 0) + interval,
+        direct_seed_offset_days: (crop.direct_seed_offset_days || 0) + interval,
         dtm_days: crop.dtm_days,
-        harvest_window_days: crop.harvest_window_days
+        harvest_window_days: crop.harvest_window_days,
+        succession_parent_id: isSuccession ? crop.id : null
       });
       
-      // Duplicate tasks
-      const cropTasks = tasks.filter(t => t.crop_plan_id === crop.id);
-      for (const task of cropTasks) {
-        await base44.entities.CropTask.create({
-          garden_season_id: task.garden_season_id,
-          crop_plan_id: newCrop.id,
-          task_type: task.task_type,
-          title: task.title,
-          start_date: task.start_date,
-          end_date: task.end_date,
-          color_hex: task.color_hex,
-          quantity_target: task.quantity_target || crop.quantity_planned || 1,
-          quantity_completed: 0,
-          how_to_content: task.how_to_content
-        });
-      }
+      // Auto-generate tasks with new dates
+      await base44.functions.invoke('generateTasksForCrop', { crop_plan_id: newCrop.id });
       
       await loadPlansAndTasks();
-      toast.success('Crop duplicated');
+      toast.success(isSuccession ? 'Succession planting created' : 'Crop duplicated');
     } catch (error) {
       console.error('Error duplicating crop:', error);
       toast.error('Failed to duplicate crop');
@@ -242,6 +231,8 @@ export default function Calendar() {
       });
 
       if (response.data.success) {
+        // Force immediate reload with loading state
+        await new Promise(resolve => setTimeout(resolve, 300));
         await loadPlansAndTasks();
         toast.success(`Synced: ${response.data.created} new, ${response.data.updated} updated crops with tasks`);
         // Clear URL params
@@ -440,11 +431,11 @@ export default function Calendar() {
                         <Edit className="w-4 h-4 mr-2" />
                         Edit
                       </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => handleGenerateTasks(crop)}>
-                        <RefreshCw className="w-4 h-4 mr-2" />
-                        Generate Tasks
+                      <DropdownMenuItem onClick={() => handleDuplicateCrop(crop, true)}>
+                        <Copy className="w-4 h-4 mr-2" />
+                        Succession Planting
                       </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => handleDuplicateCrop(crop)}>
+                      <DropdownMenuItem onClick={() => handleDuplicateCrop(crop, false)}>
                         <Copy className="w-4 h-4 mr-2" />
                         Duplicate
                       </DropdownMenuItem>
