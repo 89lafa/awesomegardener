@@ -37,6 +37,7 @@ export default function AddCropModal({ open, onOpenChange, seasonId, onSuccess }
     variety_id: '',
     seed_lot_id: '',
     label: '',
+    quantity_planned: 1,
     color_hex: '#10b981',
     planting_method: 'transplant',
     date_mode: 'relative_to_frost',
@@ -177,6 +178,8 @@ export default function AddCropModal({ open, onOpenChange, seasonId, onSuccess }
         start_date: seedStart.toISOString().split('T')[0],
         end_date: seedEnd.toISOString().split('T')[0],
         color_hex: color,
+        quantity_target: cropPlan.quantity_planned || 1,
+        quantity_completed: 0,
         how_to_content: '# Indoor Seeding\n\nStart seeds indoors:\n- Use seed starting mix\n- Keep warm and moist\n- Provide light once germinated'
       });
       
@@ -192,11 +195,13 @@ export default function AddCropModal({ open, onOpenChange, seasonId, onSuccess }
         start_date: transplantStart.toISOString().split('T')[0],
         end_date: transplantEnd.toISOString().split('T')[0],
         color_hex: color,
+        quantity_target: cropPlan.quantity_planned || 1,
+        quantity_completed: 0,
         how_to_content: '# Transplanting\n\nTransplant seedlings:\n- Harden off for 7-10 days\n- Plant on overcast day\n- Water well after planting'
       });
       
       // Harvest - DTM days after transplant
-      const harvestStart = addDays(transplantDate, cropPlan.dtm_days);
+      const harvestStart = addDays(transplantDateMid, cropPlan.dtm_days);
       const harvestEnd = addDays(harvestStart, cropPlan.harvest_window_days);
       tasks.push({
         garden_season_id: seasonId,
@@ -206,6 +211,8 @@ export default function AddCropModal({ open, onOpenChange, seasonId, onSuccess }
         start_date: harvestStart.toISOString().split('T')[0],
         end_date: harvestEnd.toISOString().split('T')[0],
         color_hex: color,
+        quantity_target: cropPlan.quantity_planned || 1,
+        quantity_completed: 0,
         how_to_content: '# Harvesting\n\nHarvest when ready:\n- Check maturity indicators\n- Harvest in morning\n- Handle gently'
       });
     } else {
@@ -222,11 +229,13 @@ export default function AddCropModal({ open, onOpenChange, seasonId, onSuccess }
         start_date: directSeedStart.toISOString().split('T')[0],
         end_date: directSeedEnd.toISOString().split('T')[0],
         color_hex: color,
+        quantity_target: cropPlan.quantity_planned || 1,
+        quantity_completed: 0,
         how_to_content: '# Direct Seeding\n\nSow seeds directly:\n- Check soil temperature\n- Follow spacing guidelines\n- Water gently'
       });
       
       // Harvest
-      const harvestStart = addDays(directSeedDate, cropPlan.dtm_days);
+      const harvestStart = addDays(directSeedDateMid, cropPlan.dtm_days);
       const harvestEnd = addDays(harvestStart, cropPlan.harvest_window_days);
       tasks.push({
         garden_season_id: seasonId,
@@ -236,6 +245,8 @@ export default function AddCropModal({ open, onOpenChange, seasonId, onSuccess }
         start_date: harvestStart.toISOString().split('T')[0],
         end_date: harvestEnd.toISOString().split('T')[0],
         color_hex: color,
+        quantity_target: cropPlan.quantity_planned || 1,
+        quantity_completed: 0,
         how_to_content: '# Harvesting\n\nHarvest when ready'
       });
     }
@@ -259,6 +270,10 @@ export default function AddCropModal({ open, onOpenChange, seasonId, onSuccess }
         plant_type_id: formData.plant_type_id || null,
         variety_id: formData.variety_id || null,
         label: formData.label,
+        quantity_planned: formData.quantity_planned || 1,
+        quantity_scheduled: 0,
+        quantity_planted: 0,
+        status: 'planned',
         color_hex: formData.color_hex,
         planting_method: formData.planting_method,
         date_mode: formData.date_mode,
@@ -283,6 +298,10 @@ export default function AddCropModal({ open, onOpenChange, seasonId, onSuccess }
             plant_type_id: formData.plant_type_id || null,
             variety_id: formData.variety_id || null,
             label: `${formData.label} (S${i})`,
+            quantity_planned: formData.quantity_planned || 1,
+            quantity_scheduled: 0,
+            quantity_planted: 0,
+            status: 'planned',
             color_hex: formData.color_hex,
             planting_method: formData.planting_method,
             date_mode: formData.date_mode,
@@ -310,6 +329,7 @@ export default function AddCropModal({ open, onOpenChange, seasonId, onSuccess }
         variety_id: '',
         seed_lot_id: '',
         label: '',
+        quantity_planned: 1,
         color_hex: '#10b981',
         planting_method: 'transplant',
         date_mode: 'relative_to_frost',
@@ -409,6 +429,20 @@ export default function AddCropModal({ open, onOpenChange, seasonId, onSuccess }
               placeholder="e.g., BED1, North Row"
               className="mt-2"
             />
+          </div>
+
+          <div>
+            <Label>Quantity to Grow</Label>
+            <Input
+              type="number"
+              min="1"
+              value={formData.quantity_planned}
+              onChange={(e) => setFormData({ ...formData, quantity_planned: parseInt(e.target.value) || 1 })}
+              className="mt-2"
+            />
+            <p className="text-xs text-gray-500 mt-1">
+              Track progress as you schedule and plant
+            </p>
           </div>
           
           <div>

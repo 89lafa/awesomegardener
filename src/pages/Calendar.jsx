@@ -493,6 +493,7 @@ export default function Calendar() {
         <TaskDetailPanel
           task={selectedTask}
           onClose={() => setSelectedTask(null)}
+          onUpdate={loadPlansAndTasks}
         />
       )}
       
@@ -589,16 +590,26 @@ function CalendarGridView({ tasks, crops, season, onTaskClick }) {
                                                    task.task_type === 'transplant' ? 'Trans' :
                                                    task.task_type === 'harvest' ? 'Harv' :
                                                    task.task_type === 'direct_seed' ? 'Sow' : 'Task';
+                              const progress = task.quantity_target > 0 ? (task.quantity_completed || 0) / task.quantity_target : 1;
+                              const isComplete = task.is_completed || progress >= 1;
+                              
                               return (
                                 <div
                                   key={task.id}
-                                  className="w-full h-3 rounded cursor-pointer hover:opacity-90 flex items-center px-1 overflow-hidden"
+                                  className="w-full h-3 rounded cursor-pointer hover:opacity-90 flex items-center px-1 overflow-hidden relative"
                                   style={{ backgroundColor: task.color_hex || crop?.color_hex || '#10b981' }}
                                   onClick={() => onTaskClick(task)}
-                                  title={`${crop?.label || 'Crop'}: ${task.title}`}
+                                  title={`${crop?.label || 'Crop'}: ${task.title}${task.quantity_target > 1 ? ` (${task.quantity_completed || 0}/${task.quantity_target})` : ''}`}
                                 >
-                                  <span className="text-[9px] text-white font-semibold truncate leading-none">
+                                  {task.quantity_target > 1 && (
+                                    <div 
+                                      className="absolute inset-0 bg-white/30"
+                                      style={{ width: `${(1 - progress) * 100}%`, right: 0, left: 'auto' }}
+                                    />
+                                  )}
+                                  <span className="text-[9px] text-white font-semibold truncate leading-none relative z-10">
                                     {crop?.label} - {taskTypeShort}
+                                    {isComplete && ' ✓'}
                                   </span>
                                 </div>
                               );
