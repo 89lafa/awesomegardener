@@ -185,18 +185,18 @@ export default function PlantCatalogDetail() {
       console.log('Loaded plant type:', type);
       setPlantType(type);
 
-      // Load ALL subcategories (admin can see inactive, filter later for users)
+      // Load active subcategories (filter inactive for dropdown)
       let subcats;
       if (isSquashUmbrella) {
-        // Load subcategories for all canonical squash types
-        const allSubcats = await base44.entities.PlantSubCategory.list();
+        const allSubcats = await base44.entities.PlantSubCategory.filter({ is_active: true });
         subcats = allSubcats.filter(sc => SQUASH_CANONICAL_IDS.includes(sc.plant_type_id));
       } else {
         subcats = await base44.entities.PlantSubCategory.filter({ 
-          plant_type_id: plantTypeId
+          plant_type_id: plantTypeId,
+          is_active: true
         }, 'sort_order');
       }
-      console.log('[SUBCATEGORY] Loaded subcategories:', subcats.length, 'active:', subcats.filter(s => s.is_active).length);
+      console.log('[SUBCATEGORY] Loaded active subcategories:', subcats.length);
       
       // Deduplicate subcategories by name (in case of duplicates)
       const uniqueSubcats = [];

@@ -530,73 +530,112 @@ export default function AdminDataImport() {
                   finalPrimaryId = finalSubcatIds[0];
                 }
 
+                // Build variety data - only include non-empty CSV fields
                 const varietyData = {
                   plant_type_id: resolvedTypeId,
                   plant_type_name: plantTypeName,
                   plant_subcategory_id: finalPrimaryId,
                   plant_subcategory_ids: finalSubcatIds,
                   variety_code: row.variety_code || null,
+                  variety_name: row.variety_name,
                   extended_data: {
-                    ...(row.extended_data || {}),
                     import_subcat_code: originalSubcatCode,
                     import_subcat_codes: originalSubcatCodes,
                     import_subcat_warnings: subcatWarnings.length > 0 ? subcatWarnings.join('; ') : null
                   },
-                  variety_name: row.variety_name,
-                  description: row.description || null,
-                  synonyms: row.synonyms ? row.synonyms.split('|') : [],
-                  days_to_maturity: row.days_to_maturity ? parseInt(row.days_to_maturity) : null,
-                  days_to_maturity_min: row.days_to_maturity_min ? parseInt(row.days_to_maturity_min) : null,
-                  days_to_maturity_max: row.days_to_maturity_max ? parseInt(row.days_to_maturity_max) : null,
-                  spacing_recommended: row.spacing_recommended ? parseInt(row.spacing_recommended) : null,
-                  spacing_min: row.spacing_min ? parseInt(row.spacing_min) : null,
-                  spacing_max: row.spacing_max ? parseInt(row.spacing_max) : null,
-                  plant_height_typical: row.plant_height_typical || null,
-                  height_min: row.height_min ? parseInt(row.height_min) : null,
-                  height_max: row.height_max ? parseInt(row.height_max) : null,
-                  sun_requirement: row.sun_requirement || null,
-                  water_requirement: row.water_requirement || null,
-                  trellis_required: row.trellis_required === 'true' || row.trellis_required === '1',
-                  container_friendly: row.container_friendly === 'true' || row.container_friendly === '1',
-                  growth_habit: row.growth_habit || null,
-                  species: species,
-                  is_ornamental: row.is_ornamental === 'true' || row.is_ornamental === '1',
-                  seed_line_type: seedLineType,
-                  is_organic: row.is_organic === 'true' || row.is_organic === '1',
-                  season_timing: seasonTiming,
-                  flavor_profile: row.flavor_profile || null,
-                  uses: row.uses || null,
-                  fruit_color: row.fruit_color || null,
-                  fruit_shape: row.fruit_shape || null,
-                  fruit_size: row.fruit_size || null,
-                  pod_color: row.pod_color || null,
-                  pod_shape: row.pod_shape || null,
-                  pod_size: row.pod_size || null,
-                  disease_resistance: row.disease_resistance || null,
-                  breeder_or_origin: row.breeder_or_origin || null,
-                  seed_saving_notes: row.seed_saving_notes || null,
-                  pollination_notes: row.pollination_notes || null,
-                  sources: row.sources ? row.sources.split('|') : [],
-                  affiliate_url: row.affiliate_url || null,
-                  popularity_tier: row.popularity_tier || null,
-                  grower_notes: row.grower_notes || null,
-                  scoville_min: scovilleMin ? parseInt(scovilleMin) : null,
-                  scoville_max: scovilleMax ? parseInt(scovilleMax) : null,
-                  heat_scoville_min: scovilleMin ? parseInt(scovilleMin) : null,
-                  heat_scoville_max: scovilleMax ? parseInt(scovilleMax) : null,
-                  source_attribution: row.source_attribution || 'CSV Import',
                   status: 'active',
                   is_custom: false
                 };
+                
+                // Add optional fields only if present in CSV
+                if (row.description) varietyData.description = row.description;
+                if (row.synonyms) varietyData.synonyms = row.synonyms.split('|');
+                if (row.days_to_maturity) varietyData.days_to_maturity = parseInt(row.days_to_maturity);
+                if (row.days_to_maturity_min) varietyData.days_to_maturity_min = parseInt(row.days_to_maturity_min);
+                if (row.days_to_maturity_max) varietyData.days_to_maturity_max = parseInt(row.days_to_maturity_max);
+                if (row.spacing_recommended) varietyData.spacing_recommended = parseInt(row.spacing_recommended);
+                if (row.spacing_min) varietyData.spacing_min = parseInt(row.spacing_min);
+                if (row.spacing_max) varietyData.spacing_max = parseInt(row.spacing_max);
+                if (row.plant_height_typical) varietyData.plant_height_typical = row.plant_height_typical;
+                if (row.height_min) varietyData.height_min = parseInt(row.height_min);
+                if (row.height_max) varietyData.height_max = parseInt(row.height_max);
+                if (row.sun_requirement) varietyData.sun_requirement = row.sun_requirement;
+                if (row.water_requirement) varietyData.water_requirement = row.water_requirement;
+                if (row.growth_habit) varietyData.growth_habit = row.growth_habit;
+                if (row.flavor_profile) varietyData.flavor_profile = row.flavor_profile;
+                if (row.uses) varietyData.uses = row.uses;
+                if (row.fruit_color) varietyData.fruit_color = row.fruit_color;
+                if (row.fruit_shape) varietyData.fruit_shape = row.fruit_shape;
+                if (row.fruit_size) varietyData.fruit_size = row.fruit_size;
+                if (row.pod_color) varietyData.pod_color = row.pod_color;
+                if (row.pod_shape) varietyData.pod_shape = row.pod_shape;
+                if (row.pod_size) varietyData.pod_size = row.pod_size;
+                if (row.disease_resistance) varietyData.disease_resistance = row.disease_resistance;
+                if (row.breeder_or_origin) varietyData.breeder_or_origin = row.breeder_or_origin;
+                if (row.seed_saving_notes) varietyData.seed_saving_notes = row.seed_saving_notes;
+                if (row.pollination_notes) varietyData.pollination_notes = row.pollination_notes;
+                if (row.sources) varietyData.sources = row.sources.split('|');
+                if (row.affiliate_url) varietyData.affiliate_url = row.affiliate_url;
+                if (row.popularity_tier) varietyData.popularity_tier = row.popularity_tier;
+                if (row.grower_notes) varietyData.grower_notes = row.grower_notes;
+                if (row.source_attribution) varietyData.source_attribution = row.source_attribution;
+                if (scovilleMin) {
+                  varietyData.scoville_min = parseInt(scovilleMin);
+                  varietyData.heat_scoville_min = parseInt(scovilleMin);
+                }
+                if (scovilleMax) {
+                  varietyData.scoville_max = parseInt(scovilleMax);
+                  varietyData.heat_scoville_max = parseInt(scovilleMax);
+                }
+                if (species) varietyData.species = species;
+                if (seedLineType) varietyData.seed_line_type = seedLineType;
+                if (seasonTiming) varietyData.season_timing = seasonTiming;
+                
+                // Booleans - default to false if not specified
+                varietyData.trellis_required = row.trellis_required === 'true' || row.trellis_required === '1';
+                varietyData.container_friendly = row.container_friendly === 'true' || row.container_friendly === '1';
+                varietyData.is_ornamental = row.is_ornamental === 'true' || row.is_ornamental === '1';
+                varietyData.is_organic = row.is_organic === 'true' || row.is_organic === '1';
 
                 if (existing.length > 0) {
-                  await base44.entities.Variety.update(existing[0].id, varietyData);
+                  // UPSERT: Only update non-empty fields to preserve existing data
+                  const existingData = existing[0];
+                  const updatePayload = {};
+                  
+                  // Always update core fields
+                  updatePayload.variety_name = varietyData.variety_name;
+                  updatePayload.plant_type_id = varietyData.plant_type_id;
+                  updatePayload.plant_type_name = varietyData.plant_type_name;
+                  updatePayload.plant_subcategory_id = varietyData.plant_subcategory_id;
+                  updatePayload.plant_subcategory_ids = varietyData.plant_subcategory_ids;
+                  updatePayload.variety_code = varietyData.variety_code;
+                  updatePayload.extended_data = varietyData.extended_data;
+                  
+                  // Only update optional fields if CSV has non-empty values
+                  if (varietyData.description) updatePayload.description = varietyData.description;
+                  if (varietyData.days_to_maturity) updatePayload.days_to_maturity = varietyData.days_to_maturity;
+                  if (varietyData.spacing_recommended) updatePayload.spacing_recommended = varietyData.spacing_recommended;
+                  if (varietyData.sun_requirement) updatePayload.sun_requirement = varietyData.sun_requirement;
+                  if (varietyData.water_requirement) updatePayload.water_requirement = varietyData.water_requirement;
+                  if (varietyData.growth_habit) updatePayload.growth_habit = varietyData.growth_habit;
+                  if (varietyData.species) updatePayload.species = varietyData.species;
+                  if (varietyData.seed_line_type) updatePayload.seed_line_type = varietyData.seed_line_type;
+                  if (varietyData.season_timing) updatePayload.season_timing = varietyData.season_timing;
+                  if (varietyData.grower_notes) updatePayload.grower_notes = varietyData.grower_notes;
+                  if (varietyData.scoville_min) updatePayload.scoville_min = varietyData.scoville_min;
+                  if (varietyData.scoville_max) updatePayload.scoville_max = varietyData.scoville_max;
+                  if (varietyData.heat_scoville_min) updatePayload.heat_scoville_min = varietyData.heat_scoville_min;
+                  if (varietyData.heat_scoville_max) updatePayload.heat_scoville_max = varietyData.heat_scoville_max;
+                  
+                  // Always set booleans (they have defaults)
+                  updatePayload.trellis_required = varietyData.trellis_required;
+                  updatePayload.container_friendly = varietyData.container_friendly;
+                  updatePayload.is_ornamental = varietyData.is_ornamental;
+                  updatePayload.is_organic = varietyData.is_organic;
+                  
+                  await base44.entities.Variety.update(existing[0].id, updatePayload);
                   updated++;
                 } else {
-                  // Before inserting, normalize subcategory_ids based on imported data
-                  if (varietyData.plant_subcategory_id && !varietyData.plant_subcategory_ids.includes(varietyData.plant_subcategory_id)) {
-                    varietyData.plant_subcategory_ids = [varietyData.plant_subcategory_id];
-                  }
                   await base44.entities.Variety.create(varietyData);
                   inserted++;
                 }

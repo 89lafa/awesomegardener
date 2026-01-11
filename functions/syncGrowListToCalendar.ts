@@ -9,7 +9,8 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { grow_list_id, garden_season_id } = await req.json();
+    const body = await req.json().catch(() => ({}));
+    const { grow_list_id, garden_season_id, auto_generate_tasks } = body;
 
     if (!grow_list_id || !garden_season_id) {
       return Response.json({ error: 'Missing grow_list_id or garden_season_id' }, { status: 400 });
@@ -114,7 +115,7 @@ Deno.serve(async (req) => {
       if (existing) {
         // Update quantity if changed
         if (existing.quantity_planned !== cropData.quantity_planned) {
-          await base44.entities.CropPlan.update(existing.id, { 
+          await base44.asServiceRole.entities.CropPlan.update(existing.id, { 
             quantity_planned: cropData.quantity_planned 
           });
           updated++;
@@ -122,8 +123,19 @@ Deno.serve(async (req) => {
           skipped++;
         }
       } else {
-        await base44.entities.CropPlan.create(cropData);
+        const newPlan = await base44.asServiceRole.entities.CropPlan.create(cropData);
         created++;
+        
+        // Auto-generate tasks if requested
+        if (auto_generate_tasks && lastFrostDate) {
+          try {
+            await base44.asServiceRole.functions.invoke('generateTasksForCrop', { 
+              crop_plan_id: newPlan.id 
+            });
+          } catch (error) {
+            console.error('[SyncGrowList] Failed to generate tasks for:', newPlan.label, error);
+          }
+        }
       }
     }
 

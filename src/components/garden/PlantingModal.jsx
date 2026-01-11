@@ -166,6 +166,12 @@ export default function PlantingModal({ open, onOpenChange, item, garden, onPlan
   };
 
   const checkCollision = (col, row, spanCols, spanRows, excludeId = null) => {
+    // CONTAINERS: No collision check for standalone containers
+    const isContainer = item.type === 'container' || item.type === 'grow_bag';
+    if (isContainer) {
+      return false; // Containers allow any size plant
+    }
+    
     for (let r = row; r < row + spanRows; r++) {
       for (let c = col; c < col + spanCols; c++) {
         if (c >= gridCols || r >= gridRows) return true; // Out of bounds

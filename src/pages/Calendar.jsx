@@ -80,8 +80,18 @@ export default function Calendar() {
   useEffect(() => {
     if (activeSeasonId) {
       loadPlansAndTasks();
+      generateMaintenanceTasksIfNeeded();
     }
   }, [activeSeasonId]);
+  
+  const generateMaintenanceTasksIfNeeded = async () => {
+    if (!activeSeasonId) return;
+    try {
+      await base44.functions.invoke('generateMaintenanceTasks', { garden_season_id: activeSeasonId });
+    } catch (error) {
+      console.error('Error generating maintenance tasks:', error);
+    }
+  };
 
   const getSeasonStartDate = () => {
     if (!seasons.length || !activeSeasonId) return new Date();
@@ -227,12 +237,13 @@ export default function Calendar() {
     try {
       const response = await base44.functions.invoke('syncGrowListToCalendar', {
         grow_list_id: growListId,
-        garden_season_id: seasonId
+        garden_season_id: seasonId,
+        auto_generate_tasks: true
       });
 
       if (response.data.success) {
         await loadPlansAndTasks();
-        toast.success(`Synced: ${response.data.created} new, ${response.data.updated} updated crops`);
+        toast.success(`Synced: ${response.data.created} new, ${response.data.updated} updated crops with tasks`);
         // Clear URL params
         window.history.replaceState({}, '', window.location.pathname);
       } else {
@@ -330,41 +341,46 @@ export default function Calendar() {
                 return;
               }
               
-              // Load all user's grow lists
-              const userLists = await base44.entities.GrowList.filter({ 
-                created_by: user.email
-              }, '-updated_date');
-              
-              if (userLists.length === 0) {
-                toast.error('No grow lists found. Create one first!');
-                return;
-              }
-
-              // Filter to those matching current season OR unlinked
-              const matchingLists = userLists.filter(l => 
-                l.garden_season_id === activeSeasonId || !l.garden_season_id
-              );
-
-              if (matchingLists.length === 0) {
-                toast.error(`No grow lists for this season. Available lists: ${userLists.map(l => l.name).join(', ')}`);
-                return;
-              }
-
-              if (matchingLists.length === 1) {
-                handleSyncGrowList(matchingLists[0].id, activeSeasonId);
-              } else {
-                const listNum = prompt(
-                  `Select grow list to import:\n\n${matchingLists.map((l, i) => 
-                    `${i+1}. ${l.name} (${l.items?.length || 0} items)`
-                  ).join('\n')}\n\nEnter number:`
-                );
+              try {
+                // Load all user's grow lists
+                const userLists = await base44.entities.GrowList.filter({ 
+                  created_by: user.email
+                }, '-updated_date');
                 
-                if (listNum) {
-                  const list = matchingLists[parseInt(listNum) - 1];
-                  if (list) {
-                    handleSyncGrowList(list.id, activeSeasonId);
+                if (userLists.length === 0) {
+                  toast.error('No grow lists found. Create one first!');
+                  return;
+                }
+
+                // Filter to those matching current season OR unlinked
+                const matchingLists = userLists.filter(l => 
+                  l.garden_season_id === activeSeasonId || !l.garden_season_id
+                );
+
+                if (matchingLists.length === 0) {
+                  toast.error(`No grow lists for this season. Create one in Grow Lists page.`);
+                  return;
+                }
+
+                if (matchingLists.length === 1) {
+                  await handleSyncGrowList(matchingLists[0].id, activeSeasonId);
+                } else {
+                  const listNum = prompt(
+                    `Select grow list to import:\n\n${matchingLists.map((l, i) => 
+                      `${i+1}. ${l.name} (${l.items?.length || 0} items)`
+                    ).join('\n')}\n\nEnter number:`
+                  );
+                  
+                  if (listNum) {
+                    const list = matchingLists[parseInt(listNum) - 1];
+                    if (list) {
+                      await handleSyncGrowList(list.id, activeSeasonId);
+                    }
                   }
                 }
+              } catch (error) {
+                console.error('Import error:', error);
+                toast.error('Import failed: ' + error.message);
               }
             }}
             variant="outline"

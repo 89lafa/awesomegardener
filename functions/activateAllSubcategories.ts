@@ -9,7 +9,8 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'Forbidden: Admin access required' }, { status: 403 });
     }
 
-    const { plant_type_id, dry_run } = await req.json();
+    const body = await req.json().catch(() => ({}));
+    const { plant_type_id, dry_run } = body;
 
     console.log('[ActivateSubcats] Starting for plant_type_id:', plant_type_id, 'dry_run:', dry_run);
 

@@ -405,11 +405,20 @@ export default function AdminDataMaintenance() {
             </p>
             <Button
               onClick={async () => {
-                const result = await base44.functions.invoke('activateAllSubcategories', { dry_run: false });
-                if (result.data.success) {
-                  toast.success(`Activated ${result.data.activated} subcategories`);
-                } else {
-                  toast.error('Failed to activate subcategories');
+                try {
+                  const result = await base44.functions.invoke('activateAllSubcategories', {});
+                  if (result.data && result.data.success) {
+                    if (result.data.activated === 0) {
+                      toast.success('All subcategories already active');
+                    } else {
+                      toast.success(`Activated ${result.data.activated} subcategories`);
+                    }
+                  } else {
+                    toast.error('Failed to activate subcategories');
+                  }
+                } catch (error) {
+                  console.error('Activation error:', error);
+                  toast.error('Error: ' + error.message);
                 }
               }}
               className="bg-blue-600 hover:bg-blue-700"

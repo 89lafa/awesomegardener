@@ -133,30 +133,39 @@ export default function EditVariety() {
         variety: formData.variety_name
       });
 
+      // Build update object - only include non-empty values to avoid wiping data
       const updateData = {
         variety_name: formData.variety_name,
-        description: formData.description || null,
         plant_subcategory_id: primaryId || null,
-        plant_subcategory_ids: selectedIds,
-        days_to_maturity: formData.days_to_maturity ? parseFloat(formData.days_to_maturity) : null,
-        spacing_recommended: formData.spacing_recommended ? parseFloat(formData.spacing_recommended) : null,
-        plant_height_typical: formData.plant_height_typical,
-        sun_requirement: formData.sun_requirement,
-        water_requirement: formData.water_requirement,
-        trellis_required: formData.trellis_required,
-        container_friendly: formData.container_friendly,
-        grower_notes: formData.grower_notes,
-        images: formData.images || [],
-        scoville_min: scovilleMin ? parseFloat(scovilleMin) : null,
-        scoville_max: scovilleMax ? parseFloat(scovilleMax) : null,
-        heat_scoville_min: scovilleMin ? parseFloat(scovilleMin) : null,
-        heat_scoville_max: scovilleMax ? parseFloat(scovilleMax) : null,
-        affiliate_url: formData.affiliate_url || null,
-        species: formData.species || null,
-        seed_line_type: formData.seed_line_type || null,
-        season_timing: formData.season_timing || null,
-        is_ornamental: formData.is_ornamental || false,
-        is_organic: formData.is_organic || false
+        plant_subcategory_ids: selectedIds
+      };
+      
+      // Only update fields if they have values
+      if (formData.description) updateData.description = formData.description;
+      if (formData.days_to_maturity) updateData.days_to_maturity = parseFloat(formData.days_to_maturity);
+      if (formData.spacing_recommended) updateData.spacing_recommended = parseFloat(formData.spacing_recommended);
+      if (formData.plant_height_typical) updateData.plant_height_typical = formData.plant_height_typical;
+      if (formData.sun_requirement) updateData.sun_requirement = formData.sun_requirement;
+      if (formData.water_requirement) updateData.water_requirement = formData.water_requirement;
+      if (formData.growth_habit) updateData.growth_habit = formData.growth_habit;
+      if (formData.species) updateData.species = formData.species;
+      if (formData.seed_line_type) updateData.seed_line_type = formData.seed_line_type;
+      if (formData.season_timing) updateData.season_timing = formData.season_timing;
+      if (formData.grower_notes) updateData.grower_notes = formData.grower_notes;
+      if (formData.affiliate_url) updateData.affiliate_url = formData.affiliate_url;
+      if (formData.images) updateData.images = formData.images;
+      if (scovilleMin) updateData.scoville_min = parseFloat(scovilleMin);
+      if (scovilleMax) updateData.scoville_max = parseFloat(scovilleMax);
+      if (scovilleMin) updateData.heat_scoville_min = parseFloat(scovilleMin);
+      if (scovilleMax) updateData.heat_scoville_max = parseFloat(scovilleMax);
+      
+      updateData.trellis_required = formData.trellis_required || false;
+      updateData.container_friendly = formData.container_friendly || false;
+      updateData.is_ornamental = formData.is_ornamental || false;
+      updateData.is_organic = formData.is_organic || false;
+
+      // Remove old approach
+      const oldUpdateData = {
       };
 
       // Log the edit
