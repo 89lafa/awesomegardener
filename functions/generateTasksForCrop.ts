@@ -58,13 +58,34 @@ Deno.serve(async (req) => {
       dtm: crop.dtm_days
     });
 
+    // Load variety/profile for proper timing data
+    let timingData = {};
+    if (crop.variety_id) {
+      const varieties = await base44.entities.Variety.filter({ id: crop.variety_id });
+      if (varieties.length > 0) {
+        timingData = varieties[0];
+      }
+    }
+    if (crop.plant_profile_id) {
+      const profiles = await base44.entities.PlantProfile.filter({ id: crop.plant_profile_id });
+      if (profiles.length > 0) {
+        timingData = { ...timingData, ...profiles[0] };
+      }
+    }
+    
     if (crop.planting_method === 'transplant' || crop.planting_method === 'both') {
-      // Seed start task - BEFORE last frost
+      // Seed start task - BEFORE last frost (negative offset)
       const seedDate = new Date(lastFrostDate);
-      const seedOffsetDays = crop.seed_offset_days || -42; // Negative = before frost
+      let seedOffsetDays = crop.seed_offset_days;
+      
+      // If no offset, calculate from variety data
+      if (seedOffsetDays === undefined || seedOffsetDays === null) {
+        const weeksBeforeFrost = timingData.start_indoors_weeks || 6;
+        seedOffsetDays = -(weeksBeforeFrost * 7); // Negative for BEFORE frost
+      }
+      
       seedDate.setDate(seedDate.getDate() + seedOffsetDays);
-
-      console.log('[GenerateTasks] Seed start date:', seedDate.toISOString().split('T')[0]);
+      console.log('[GenerateTasks] Seed start date:', seedDate.toISOString().split('T')[0], 'offset:', seedOffsetDays);
 
       tasksToCreate.push({
         garden_season_id: crop.garden_season_id,
@@ -78,12 +99,18 @@ Deno.serve(async (req) => {
         quantity_completed: 0
       });
 
-      // Transplant task - AFTER last frost
+      // Transplant task - AFTER last frost (positive offset)
       const transplantDate = new Date(lastFrostDate);
-      const transplantOffsetDays = crop.transplant_offset_days || 14; // Positive = after frost
+      let transplantOffsetDays = crop.transplant_offset_days;
+      
+      // If no offset, calculate from variety data
+      if (transplantOffsetDays === undefined || transplantOffsetDays === null) {
+        const weeksAfterFrost = timingData.transplant_weeks_after_last_frost_min || 2;
+        transplantOffsetDays = weeksAfterFrost * 7; // Positive for AFTER frost
+      }
+      
       transplantDate.setDate(transplantDate.getDate() + transplantOffsetDays);
-
-      console.log('[GenerateTasks] Transplant date:', transplantDate.toISOString().split('T')[0]);
+      console.log('[GenerateTasks] Transplant date:', transplantDate.toISOString().split('T')[0], 'offset:', transplantOffsetDays);
 
       tasksToCreate.push({
         garden_season_id: crop.garden_season_id,
@@ -99,12 +126,18 @@ Deno.serve(async (req) => {
     }
 
     if (crop.planting_method === 'direct_seed' || crop.planting_method === 'both') {
-      // Direct sow task
+      // Direct sow task - AFTER last frost
       const sowDate = new Date(lastFrostDate);
-      const sowOffsetDays = crop.direct_seed_offset_days || 0;
+      let sowOffsetDays = crop.direct_seed_offset_days;
+      
+      // If no offset, calculate from variety data
+      if (sowOffsetDays === undefined || sowOffsetDays === null) {
+        const weeksAfterFrost = timingData.direct_sow_weeks_min || 0;
+        sowOffsetDays = weeksAfterFrost * 7; // Positive for AFTER frost
+      }
+      
       sowDate.setDate(sowDate.getDate() + sowOffsetDays);
-
-      console.log('[GenerateTasks] Direct sow date:', sowDate.toISOString().split('T')[0]);
+      console.log('[GenerateTasks] Direct sow date:', sowDate.toISOString().split('T')[0], 'offset:', sowOffsetDays);
 
       tasksToCreate.push({
         garden_season_id: crop.garden_season_id,
@@ -122,21 +155,23 @@ Deno.serve(async (req) => {
     // Harvest task - calculated from transplant/sow date + DTM
     let harvestBaseDate;
     if (crop.planting_method === 'direct_seed') {
+      const sowOffset = crop.direct_seed_offset_days !== undefined ? crop.direct_seed_offset_days : (timingData.direct_sow_weeks_min || 0) * 7;
       harvestBaseDate = new Date(lastFrostDate);
-      harvestBaseDate.setDate(harvestBaseDate.getDate() + (crop.direct_seed_offset_days || 0));
+      harvestBaseDate.setDate(harvestBaseDate.getDate() + sowOffset);
     } else {
+      const transplantOffset = crop.transplant_offset_days !== undefined ? crop.transplant_offset_days : (timingData.transplant_weeks_after_last_frost_min || 2) * 7;
       harvestBaseDate = new Date(lastFrostDate);
-      harvestBaseDate.setDate(harvestBaseDate.getDate() + (crop.transplant_offset_days || 14));
+      harvestBaseDate.setDate(harvestBaseDate.getDate() + transplantOffset);
     }
     
     const harvestDate = new Date(harvestBaseDate);
-    const dtmDays = crop.dtm_days || 80;
+    const dtmDays = crop.dtm_days || timingData.days_to_maturity || 80;
     harvestDate.setDate(harvestDate.getDate() + dtmDays);
 
     const harvestEndDate = new Date(harvestDate);
     harvestEndDate.setDate(harvestEndDate.getDate() + (crop.harvest_window_days || 14));
 
-    console.log('[GenerateTasks] Harvest date:', harvestDate.toISOString().split('T')[0]);
+    console.log('[GenerateTasks] Harvest date:', harvestDate.toISOString().split('T')[0], 'from base:', harvestBaseDate.toISOString().split('T')[0], '+ DTM:', dtmDays);
 
     tasksToCreate.push({
       garden_season_id: crop.garden_season_id,
