@@ -25,7 +25,7 @@ import StashTypeSelector from './StashTypeSelector';
 import PlanTypeSelector from './PlanTypeSelector';
 import CatalogTypeSelector from './CatalogTypeSelector';
 
-export default function PlantingModal({ open, onOpenChange, item, garden, onPlantingUpdate, activeSeason }) {
+export default function PlantingModal({ open, onOpenChange, item, garden, onPlantingUpdate, activeSeason, seasonId }) {
   const [plantings, setPlantings] = useState([]);
   const [stashPlants, setStashPlants] = useState([]);
   const [profiles, setProfiles] = useState({});
@@ -40,6 +40,7 @@ export default function PlantingModal({ open, onOpenChange, item, garden, onPlan
   const [rotationWarning, setRotationWarning] = useState(null);
   const [companionResults, setCompanionResults] = useState([]);
   const [selectedPlanItem, setSelectedPlanItem] = useState(null);
+  const [cropPlans, setCropPlans] = useState([]);
   
   const [newPlant, setNewPlant] = useState({
     variety_id: '',
@@ -94,13 +95,24 @@ export default function PlantingModal({ open, onOpenChange, item, garden, onPlan
       const seasonKey = activeSeason || `${new Date().getFullYear()}-Spring`;
 
       // Load all plantings for this bed, then filter client-side (same logic as PlotCanvas)
-      const [allPlantings, stashData, profilesData, varietiesData, typesData] = await Promise.all([
+      const loadPromises = [
         base44.entities.PlantInstance.filter({ bed_id: item.id }),
         base44.entities.SeedLot.filter({ is_wishlist: false, created_by: user.email }),
         base44.entities.PlantProfile.list('variety_name', 500),
         base44.entities.Variety.list('variety_name', 500),
         base44.entities.PlantType.list('common_name', 100)
-      ]);
+      ];
+      
+      if (seasonId) {
+        loadPromises.push(base44.entities.CropPlan.filter({ garden_season_id: seasonId }));
+      }
+      
+      const results = await Promise.all(loadPromises);
+      const [allPlantings, stashData, profilesData, varietiesData, typesData, cropPlansData] = results;
+      
+      if (cropPlansData) {
+        setCropPlans(cropPlansData.filter(p => (p.quantity_planted || 0) < (p.quantity_planned || 0)));
+      }
 
       // Filter by season - same logic as PlotCanvas to handle old data without season_year
       let plantingsData = allPlantings;
@@ -211,6 +223,23 @@ export default function PlantingModal({ open, onOpenChange, item, garden, onPlan
         });
 
       console.log('[PlantingModal] Created PlantInstance:', planting.id);
+      
+      // If from crop plan, update quantities
+      if (selectedPlant.crop_plan_id) {
+        try {
+          await base44.functions.invoke('updatePlantingQuantities', { 
+            crop_plan_id: selectedPlant.crop_plan_id 
+          });
+          // Reload crop plans
+          if (seasonId) {
+            const updatedPlans = await base44.entities.CropPlan.filter({ garden_season_id: seasonId });
+            setCropPlans(updatedPlans.filter(p => (p.quantity_planted || 0) < (p.quantity_planned || 0)));
+          }
+        } catch (error) {
+          console.error('Error updating quantities:', error);
+        }
+      }
+      
       const updatedPlantings = [...plantings, planting];
       setPlantings(updatedPlantings);
       toast.success('Plant added');
@@ -299,6 +328,23 @@ export default function PlantingModal({ open, onOpenChange, item, garden, onPlan
         });
 
         console.log('[PlantingModal] Created PlantInstance:', planting.id);
+
+        // If from crop plan, update quantities
+        if (selectedPlant.crop_plan_id) {
+          try {
+            await base44.functions.invoke('updatePlantingQuantities', { 
+              crop_plan_id: selectedPlant.crop_plan_id 
+            });
+            // Reload crop plans to show updated counts
+            if (seasonId) {
+              const updatedPlans = await base44.entities.CropPlan.filter({ garden_season_id: seasonId });
+              setCropPlans(updatedPlans.filter(p => (p.quantity_planted || 0) < (p.quantity_planned || 0)));
+            }
+          } catch (error) {
+            console.error('Error updating quantities:', error);
+          }
+        }
+
         setPlantings([...plantings, planting]);
         toast.success('Plant added');
       } catch (error) {
@@ -658,20 +704,50 @@ export default function PlantingModal({ open, onOpenChange, item, garden, onPlan
               </TabsContent>
               
               <TabsContent value="plan" className="mt-4 flex-1 min-h-0">
-                <PlanTypeSelector
-                  activeSeason={activeSeason}
-                  garden={garden}
-                  bedId={item.id}
-                  selectedPlanId={selectedPlanItem?.id}
-                  plantings={plantings}
-                  onSelectPlan={(plantData, planItem) => {
-                    setSelectedPlanItem(planItem);
-                    setSelectedPlant(plantData);
-                    checkCompanionAndRotation(plantData);
-                  }}
-                  getSpacingForPlant={getSpacingForPlant}
-                  getDefaultSpacing={getDefaultSpacing}
-                />
+                {seasonId && cropPlans.length > 0 ? (
+                  <ScrollArea className="h-full">
+                    <div className="space-y-2">
+                      {cropPlans.map(plan => {
+                        const remaining = (plan.quantity_planned || 0) - (plan.quantity_planted || 0);
+                        return (
+                          <button
+                            key={plan.id}
+                            onClick={() => {
+                              const spacing = getDefaultSpacing(plan.label);
+                              const plantData = {
+                                crop_plan_id: plan.id,
+                                variety_id: plan.variety_id,
+                                variety_name: plan.label,
+                                plant_type_id: plan.plant_type_id,
+                                plant_type_name: plan.label,
+                                spacing_cols: spacing.cols,
+                                spacing_rows: spacing.rows
+                              };
+                              setSelectedPlanItem(plan);
+                              setSelectedPlant(plantData);
+                              checkCompanionAndRotation(plantData);
+                            }}
+                            className={cn(
+                              "w-full p-3 rounded-lg border-2 text-left transition-colors",
+                              selectedPlanItem?.id === plan.id 
+                                ? "bg-emerald-50 border-emerald-500" 
+                                : "bg-white border-gray-200 hover:border-emerald-300"
+                            )}
+                          >
+                            <p className="font-medium text-sm">{plan.label}</p>
+                            <p className="text-xs text-gray-600 mt-1">
+                              {remaining} of {plan.quantity_planned} remaining
+                            </p>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </ScrollArea>
+                ) : (
+                  <div className="text-center py-8 text-gray-500 text-sm">
+                    No calendar crops available to plant
+                  </div>
+                )}
               </TabsContent>
               
               <TabsContent value="new" className="mt-4 flex-1">
