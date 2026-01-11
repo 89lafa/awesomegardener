@@ -102,7 +102,7 @@ export default function Landing() {
                   Get Started Free
                   <ArrowRight className="w-5 h-5" />
                 </Button>
-                <InstallPWAButton size="lg" className="text-lg px-8 py-6" />
+                <InstallPWAButton />
                 <Link to={createPageUrl('Community')}>
                   <Button 
                     variant="outline" 

@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Download, CheckCircle2 } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
-export default function InstallPWAButton({ size = "lg", className = "" }) {
+export default function InstallPWAButton({ size, className }) {
   const [deferredPrompt, setDeferredPrompt] = useState(null);
   const [isInstalled, setIsInstalled] = useState(false);
   const [isIOS, setIsIOS] = useState(false);
@@ -55,36 +56,32 @@ export default function InstallPWAButton({ size = "lg", className = "" }) {
     }
   };
 
+  // Always show on mobile
+  const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+  
   // Don't show if already installed
   if (isInstalled) {
-    return (
-      <Button 
-        variant="outline"
-        size={size}
-        className={className}
-        disabled
-      >
-        <CheckCircle2 className="w-5 h-5 mr-2" />
-        App Installed
-      </Button>
-    );
+    return null;
   }
 
-  // Show install button if prompt is available OR on iOS
-  if (deferredPrompt || isIOS) {
+  // Show install button on mobile or if prompt available
+  if (isMobile || deferredPrompt || isIOS) {
     return (
       <Button 
         onClick={handleInstallClick}
         variant="outline"
-        size={size}
-        className={`border-emerald-600 text-emerald-700 hover:bg-emerald-50 ${className}`}
+        size={size || "lg"}
+        className={cn(
+          "border-emerald-600 text-emerald-700 hover:bg-emerald-50 text-lg px-8 py-6 gap-2",
+          className
+        )}
       >
-        <Download className="w-5 h-5 mr-2" />
+        <Download className="w-5 h-5" />
         Install App
       </Button>
     );
   }
 
-  // Don't show button if not supported
+  // Don't show on desktop if not supported
   return null;
 }
