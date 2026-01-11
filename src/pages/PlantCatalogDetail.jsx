@@ -685,6 +685,44 @@ export default function PlantCatalogDetail() {
                   <span className="text-sm font-medium">{plantType.default_days_to_maturity || 'Varies'}</span>
                 </div>
               </div>
+              {(plantType.typical_spacing_min && plantType.typical_spacing_max) && (
+                <div className="flex flex-col">
+                  <span className="text-xs text-gray-500 mb-0.5">Spacing</span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-medium">
+                      {plantType.typical_spacing_min}" - {plantType.typical_spacing_max}"
+                    </span>
+                  </div>
+                </div>
+              )}
+              {plantType.is_perennial !== undefined && (
+                <div className="flex flex-col">
+                  <span className="text-xs text-gray-500 mb-0.5">Growth Habit</span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-medium">
+                      {plantType.is_perennial ? 'Perennial' : 'Annual'}
+                    </span>
+                  </div>
+                </div>
+              )}
+              {plantType.default_start_indoors_weeks && (
+                <div className="flex flex-col">
+                  <span className="text-xs text-gray-500 mb-0.5">Start Indoors</span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-medium">{plantType.default_start_indoors_weeks} wks before frost</span>
+                  </div>
+                </div>
+              )}
+              {plantType.default_transplant_weeks !== undefined && (
+                <div className="flex flex-col">
+                  <span className="text-xs text-gray-500 mb-0.5">Transplant</span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-medium">
+                      {plantType.default_transplant_weeks} wks {plantType.default_transplant_weeks >= 0 ? 'after' : 'before'} frost
+                    </span>
+                  </div>
+                </div>
+              )}
               {user?.role === 'admin' && (
                 <Button 
                   size="sm" 
@@ -1129,48 +1167,7 @@ export default function PlantCatalogDetail() {
           </CardContent>
         </Card>
 
-        {/* Growing Info */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Growing Information</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              <div className="grid md:grid-cols-2 gap-6">
-                {plantType.typical_spacing_min && plantType.typical_spacing_max && (
-                  <div>
-                    <p className="text-sm text-gray-500 mb-1">Spacing</p>
-                    <p className="font-medium">
-                      {plantType.typical_spacing_min}" - {plantType.typical_spacing_max}"
-                    </p>
-                  </div>
-                )}
-                {plantType.is_perennial !== undefined && (
-                  <div>
-                    <p className="text-sm text-gray-500 mb-1">Growth Habit</p>
-                    <Badge className={plantType.is_perennial ? 'bg-purple-100 text-purple-800' : 'bg-blue-100 text-blue-800'}>
-                      {plantType.is_perennial ? 'Perennial' : 'Annual'}
-                    </Badge>
-                  </div>
-                )}
-                {plantType.default_start_indoors_weeks && (
-                  <div>
-                    <p className="text-sm text-gray-500 mb-1">Start Indoors</p>
-                    <p className="font-medium">{plantType.default_start_indoors_weeks} weeks before last frost</p>
-                  </div>
-                )}
-                {plantType.default_transplant_weeks !== undefined && (
-                  <div>
-                    <p className="text-sm text-gray-500 mb-1">Transplant</p>
-                    <p className="font-medium">
-                      {plantType.default_transplant_weeks} weeks {plantType.default_transplant_weeks >= 0 ? 'after' : 'before'} last frost
-                    </p>
-                  </div>
-                )}
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+
 
         {/* Add Variety Dialog */}
         <AddVarietyDialog 

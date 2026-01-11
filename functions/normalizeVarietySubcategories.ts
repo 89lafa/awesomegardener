@@ -76,7 +76,7 @@ Deno.serve(async (req) => {
     
     // Load varieties (filtered by plant_type_id if provided)
     const filter = plant_type_id ? { plant_type_id, status: 'active' } : { status: 'active' };
-    const allVarieties = await base44.asServiceRole.entities.Variety.filter(filter, 'variety_name', 2000);
+    const allVarieties = await base44.asServiceRole.entities.Variety.filter(filter, 'variety_name', 5000);
     console.log('[Normalize] Loaded', allVarieties.length, 'varieties');
     
     let varietiesScanned = 0;
@@ -87,52 +87,61 @@ Deno.serve(async (req) => {
     let becameUncategorized = 0;
     const changes = [];
     
-    for (const variety of allVarieties) {
-      varietiesScanned++;
+    // Process in batches to avoid timeouts
+    const BATCH_SIZE = 50;
+    
+    for (let i = 0; i < allVarieties.length; i += BATCH_SIZE) {
+      const batch = allVarieties.slice(i, i + BATCH_SIZE);
+      console.log(`[Normalize] Processing batch ${Math.floor(i / BATCH_SIZE) + 1}/${Math.ceil(allVarieties.length / BATCH_SIZE)}`);
       
-      const { effective, hadInvalid, hadStringArray } = getEffectiveSubcategoryIds(variety, validActiveIds);
-      
-      const currentIds = Array.isArray(variety.plant_subcategory_ids) ? variety.plant_subcategory_ids : [];
-      const currentPrimary = variety.plant_subcategory_id || null;
-      const newPrimary = effective.length > 0 ? effective[0] : null;
-      
-      // Determine if update needed
-      const needsUpdate = 
-        JSON.stringify(effective.sort()) !== JSON.stringify(currentIds.sort()) ||
-        newPrimary !== currentPrimary ||
-        hadStringArray;
-      
-      if (needsUpdate) {
-        if (hadStringArray) hadStringArrayFixed++;
-        if (hadInvalid) hadInactiveRemoved++;
-        if (effective.length === 0 && currentIds.length > 0) becameUncategorized++;
+      for (const variety of batch) {
+        varietiesScanned++;
         
-        changes.push({
-          id: variety.id,
-          name: variety.variety_name,
-          before: { ids: currentIds, primary: currentPrimary },
-          after: { ids: effective, primary: newPrimary },
-          hadStringArray,
-          hadInvalid
-        });
+        const { effective, hadInvalid, hadStringArray } = getEffectiveSubcategoryIds(variety, validActiveIds);
         
-        if (!dry_run) {
-          try {
-            await base44.asServiceRole.entities.Variety.update(variety.id, {
-              plant_subcategory_ids: effective,
-              plant_subcategory_id: newPrimary
-            });
-            varietiesUpdated++;
-            
-            if (varietiesUpdated % 100 === 0) {
-              console.log(`[Normalize] Progress: ${varietiesUpdated} updated...`);
+        const currentIds = Array.isArray(variety.plant_subcategory_ids) ? variety.plant_subcategory_ids : [];
+        const currentPrimary = variety.plant_subcategory_id || null;
+        const newPrimary = effective.length > 0 ? effective[0] : null;
+        
+        // Determine if update needed
+        const needsUpdate = 
+          JSON.stringify(effective.sort()) !== JSON.stringify(currentIds.sort()) ||
+          newPrimary !== currentPrimary ||
+          hadStringArray;
+        
+        if (needsUpdate) {
+          if (hadStringArray) hadStringArrayFixed++;
+          if (hadInvalid) hadInactiveRemoved++;
+          if (effective.length === 0 && currentIds.length > 0) becameUncategorized++;
+          
+          changes.push({
+            id: variety.id,
+            name: variety.variety_name,
+            before: { ids: currentIds, primary: currentPrimary },
+            after: { ids: effective, primary: newPrimary },
+            hadStringArray,
+            hadInvalid
+          });
+          
+          if (!dry_run) {
+            try {
+              await base44.asServiceRole.entities.Variety.update(variety.id, {
+                plant_subcategory_ids: effective,
+                plant_subcategory_id: newPrimary
+              });
+              varietiesUpdated++;
+            } catch (error) {
+              console.error('[Normalize] Error updating variety:', variety.variety_name, error);
             }
-          } catch (error) {
-            console.error('[Normalize] Error updating variety:', variety.variety_name, error);
           }
+        } else {
+          alreadyOk++;
         }
-      } else {
-        alreadyOk++;
+      }
+      
+      // Small delay between batches to avoid rate limits
+      if (i + BATCH_SIZE < allVarieties.length && !dry_run) {
+        await new Promise(resolve => setTimeout(resolve, 100));
       }
     }
     
