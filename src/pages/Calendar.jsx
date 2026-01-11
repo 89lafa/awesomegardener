@@ -148,11 +148,14 @@ export default function Calendar() {
   };
   
   const loadPlansAndTasks = async () => {
+    if (!activeSeasonId) return;
+    
     try {
       const [plansData, tasksData] = await Promise.all([
         base44.entities.CropPlan.filter({ garden_season_id: activeSeasonId }),
         base44.entities.CropTask.filter({ garden_season_id: activeSeasonId })
       ]);
+      console.log('[Calendar] Loaded', plansData.length, 'plans and', tasksData.length, 'tasks');
       setCropPlans(plansData);
       setTasks(tasksData);
     } catch (error) {
@@ -392,7 +395,12 @@ export default function Calendar() {
         </div>
         
         <div className="flex-1 overflow-y-auto p-2">
-          {filteredCrops.length === 0 ? (
+          {syncing ? (
+            <div className="text-center py-8">
+              <Loader2 className="w-6 h-6 animate-spin text-emerald-600 mx-auto mb-2" />
+              <p className="text-sm text-gray-500">Loading crops...</p>
+            </div>
+          ) : filteredCrops.length === 0 ? (
             <p className="text-sm text-gray-500 text-center py-8">No crops planned yet</p>
           ) : (
             <div className="space-y-1">
