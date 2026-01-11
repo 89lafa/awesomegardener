@@ -454,6 +454,7 @@ export default function MyGarden() {
               garden={activeGarden}
               plot={plot}
               activeSeason={activeSeason}
+              seasonId={availableSeasons.find(s => s.season_key === activeSeason)?.id}
               onPlotUpdate={loadPlot}
               onDeleteGarden={handleDeleteGarden}
               onItemSelect={setSelectedItem}

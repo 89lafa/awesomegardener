@@ -65,13 +65,11 @@ const GALLON_SIZES = [
   { value: 20, footprint: 24 }, { value: 30, footprint: 30 }
 ];
 
-export default function PlotCanvas({ garden, plot, activeSeason, onPlotUpdate, onDeleteGarden, onItemSelect }) {
+export default function PlotCanvas({ garden, plot, activeSeason, seasonId, onPlotUpdate, onDeleteGarden, onItemSelect }) {
   const canvasRef = useRef(null);
   const [items, setItems] = useState([]);
   const [itemsPlantingCounts, setItemsPlantingCounts] = useState({});
   const [selectedItem, setSelectedItem] = useState(null);
-  
-  console.log('[PlotCanvas.js] Component rendered, selectedItem:', selectedItem?.id);
   const [draggingItem, setDraggingItem] = useState(null);
   const [isDragging, setIsDragging] = useState(false);
   const [dragStartPos, setDragStartPos] = useState({ x: 0, y: 0 });
@@ -1398,7 +1396,7 @@ export default function PlotCanvas({ garden, plot, activeSeason, onPlotUpdate, o
           item={selectedItem}
           garden={garden}
           activeSeason={activeSeason}
-          seasonId={activeSeason?.split('-')[1] ? null : activeSeason}
+          seasonId={seasonId}
           onPlantingUpdate={loadItems}
         />
       )}

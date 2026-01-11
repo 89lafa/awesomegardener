@@ -32,14 +32,12 @@ Deno.serve(async (req) => {
     const quantityScheduled = cropTasks.reduce((sum, t) => sum + (t.quantity_target || 0), 0);
 
     // Load planting spaces for this crop
-    const plantingSpaces = crop.planting_space_ids && crop.planting_space_ids.length > 0
-      ? await base44.asServiceRole.entities.PlantingSpace.filter({
-          id: { $in: crop.planting_space_ids }
-        })
-      : [];
+    const plantingSpaces = await base44.asServiceRole.entities.PlantingSpace.filter({
+      crop_plan_id: crop_plan_id
+    });
 
-    // Calculate quantity_planted (count of planting spaces)
-    const quantityPlanted = plantingSpaces.length;
+    // Calculate quantity_planted (sum of quantity in each planting space)
+    const quantityPlanted = plantingSpaces.reduce((sum, space) => sum + (space.quantity || 1), 0);
 
     // Determine status based on quantities
     let status = 'planned';
@@ -47,11 +45,13 @@ Deno.serve(async (req) => {
       status = 'planted';
     } else if (quantityScheduled > 0) {
       status = 'scheduled';
+    } else if (quantityPlanted > 0) {
+      status = 'scheduled'; // Partially planted
     }
 
     // Update crop plan
-    await base44.entities.CropPlan.update(crop_plan_id, {
-      quantity_scheduled: quantityScheduled,
+    await base44.asServiceRole.entities.CropPlan.update(crop_plan_id, {
+      quantity_scheduled: Math.max(quantityScheduled, quantityPlanted),
       quantity_planted: quantityPlanted,
       status
     });
