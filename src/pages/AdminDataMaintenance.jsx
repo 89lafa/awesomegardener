@@ -472,6 +472,39 @@ export default function AdminDataMaintenance() {
               </Button>
             </div>
           </div>
+
+          <div className="p-4 bg-green-50 rounded-lg">
+            <h3 className="font-semibold text-green-900 mb-2">Assign Default Subcategories</h3>
+            <p className="text-sm text-green-800 mb-3">
+              For varieties with NO subcategory, assigns the first active subcategory for their plant type (batched: 100 at a time)
+            </p>
+            <div className="flex gap-2">
+              <Button
+                onClick={async () => {
+                  const result = await base44.functions.invoke('assignDefaultSubcategories', { dry_run: true, batch_size: 100 });
+                  if (result.data.success) {
+                    console.log('Dry run results:', result.data);
+                    alert(`Dry Run:\n\nWould assign: ${result.data.would_assign}\nTotal checked: ${result.data.total_checked}\n\nSee console for samples.`);
+                  }
+                }}
+                variant="outline"
+                className="border-green-300"
+              >
+                Preview (100)
+              </Button>
+              <Button
+                onClick={async () => {
+                  const result = await base44.functions.invoke('assignDefaultSubcategories', { dry_run: false, batch_size: 100 });
+                  if (result.data.success) {
+                    toast.success(`Assigned defaults to ${result.data.assigned} varieties. ${result.data.has_more ? 'Run again for more.' : 'All done!'}`);
+                  }
+                }}
+                className="bg-green-600 hover:bg-green-700"
+              >
+                Assign Batch (100)
+              </Button>
+            </div>
+          </div>
         </CardContent>
       </Card>
 
