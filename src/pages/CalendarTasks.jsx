@@ -95,12 +95,26 @@ export default function CalendarTasks() {
   const loadData = async () => {
     try {
       const user = await base44.auth.me();
-      const [tasksData, gardensData, plantsData] = await Promise.all([
+      const [manualTasks, cropTasks, gardensData, plantsData] = await Promise.all([
         base44.entities.Task.filter({ created_by: user.email }, 'due_date'),
+        base44.entities.CropTask.filter({}, 'start_date'),
         base44.entities.Garden.filter({ archived: false, created_by: user.email }),
         base44.entities.PlantInstance.filter({ created_by: user.email })
       ]);
-      setTasks(tasksData);
+      
+      // Convert CropTasks to Task format for display
+      const convertedCropTasks = cropTasks.map(ct => ({
+        id: ct.id,
+        title: ct.title,
+        type: ct.task_type,
+        due_date: ct.start_date,
+        status: ct.is_completed ? 'done' : 'open',
+        description: ct.notes || '',
+        _isCropTask: true,
+        _cropTaskData: ct
+      }));
+      
+      setTasks([...manualTasks, ...convertedCropTasks]);
       setGardens(gardensData);
       setPlants(plantsData);
     } catch (error) {
@@ -139,10 +153,17 @@ export default function CalendarTasks() {
   const handleToggleStatus = async (task) => {
     const newStatus = task.status === 'done' ? 'open' : 'done';
     try {
-      await base44.entities.Task.update(task.id, { 
-        status: newStatus,
-        completed_at: newStatus === 'done' ? new Date().toISOString() : null
-      });
+      if (task._isCropTask) {
+        await base44.entities.CropTask.update(task.id, { 
+          is_completed: newStatus === 'done',
+          completed_at: newStatus === 'done' ? new Date().toISOString() : null
+        });
+      } else {
+        await base44.entities.Task.update(task.id, { 
+          status: newStatus,
+          completed_at: newStatus === 'done' ? new Date().toISOString() : null
+        });
+      }
       setTasks(tasks.map(t => t.id === task.id ? { ...t, status: newStatus } : t));
     } catch (error) {
       console.error('Error updating task:', error);

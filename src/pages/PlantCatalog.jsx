@@ -88,14 +88,32 @@ export default function PlantCatalog() {
 
   const loadPlantTypes = async () => {
     try {
-      const types = await base44.entities.PlantType.list('common_name');
-      // Filter out inactive and invalid plant types
+      const [types, browseCats] = await Promise.all([
+        base44.entities.PlantType.list('common_name'),
+        base44.entities.BrowseCategory.filter({ is_active: true }, 'sort_order')
+      ]);
+      
+      // Filter out inactive, invalid, and deprecated plant types
       const validTypes = types.filter(type => 
         type.id && 
         type.common_name && 
-        type.is_active !== false
+        type.is_active !== false &&
+        !type.notes?.includes('DEPRECATED')
       );
-      setPlantTypes(validTypes);
+      
+      // Add browse categories as virtual plant types AT THE TOP
+      const browseTypes = browseCats.map(cat => ({
+        id: `browse_${cat.category_code}`,
+        common_name: cat.name,
+        icon: cat.icon,
+        category: 'browse',
+        color: '',
+        _is_browse_only: true,
+        _browse_category: cat,
+        _sort_priority: -1000 + cat.sort_order
+      }));
+      
+      setPlantTypes([...browseTypes, ...validTypes]);
     } catch (error) {
       console.error('Error loading plant types:', error);
     } finally {
@@ -220,9 +238,16 @@ export default function PlantCatalog() {
                            v.variety_name?.toLowerCase().includes(searchQuery.toLowerCase())
                          );
     
-    const matchesCategory = selectedCategory === 'all' || type.category === selectedCategory;
+    const matchesCategory = selectedCategory === 'all' || type.category === selectedCategory || type.category === 'browse';
     return matchesSearch && matchesCategory;
   }).sort((a, b) => {
+    // Browse categories always first
+    if (a._sort_priority !== undefined && b._sort_priority !== undefined) {
+      return a._sort_priority - b._sort_priority;
+    }
+    if (a._sort_priority !== undefined) return -1;
+    if (b._sort_priority !== undefined) return 1;
+    
     if (sortBy === 'name') {
       return (a.common_name || '').localeCompare(b.common_name || '');
     } else if (sortBy === 'category') {
@@ -732,12 +757,10 @@ export default function PlantCatalog() {
                   transition={{ delay: index * 0.03 }}
                 >
                   <Card className="cursor-pointer hover:shadow-lg transition-all duration-200 group">
-                    <CardContent className="p-4 text-center">
-                      <div className={`w-16 h-16 rounded-2xl mx-auto mb-3 flex items-center justify-center text-3xl ${
-                        type.color || 'bg-emerald-100'
-                      } group-hover:scale-110 transition-transform`}>
-                        {type.icon || '🌱'}
-                      </div>
+                   <CardContent className="p-4 text-center">
+                     <div className="w-16 h-16 rounded-2xl mx-auto mb-3 flex items-center justify-center text-3xl bg-white group-hover:scale-110 transition-transform">
+                       {type.icon || '🌱'}
+                     </div>
                       <h3 className="font-semibold text-gray-900">{type.common_name || type.name}</h3>
                       {type.scientific_name && (
                         <p className="text-xs text-gray-500 italic truncate">{type.scientific_name}</p>
@@ -771,12 +794,10 @@ export default function PlantCatalog() {
                   transition={{ delay: index * 0.02 }}
                 >
                   <Card className="cursor-pointer hover:shadow-md transition-all duration-200 group">
-                    <CardContent className="p-4 flex items-center gap-4">
-                      <div className={`w-12 h-12 rounded-lg flex items-center justify-center text-2xl flex-shrink-0 ${
-                        type.color || 'bg-emerald-100'
-                      } group-hover:scale-110 transition-transform`}>
-                        {type.icon || '🌱'}
-                      </div>
+                   <CardContent className="p-4 flex items-center gap-4">
+                     <div className="w-12 h-12 rounded-lg flex items-center justify-center text-2xl flex-shrink-0 bg-white group-hover:scale-110 transition-transform">
+                       {type.icon || '🌱'}
+                     </div>
                       <div className="flex-1 min-w-0">
                         <h3 className="font-semibold text-gray-900">{type.common_name || type.name}</h3>
                         {type.scientific_name && (

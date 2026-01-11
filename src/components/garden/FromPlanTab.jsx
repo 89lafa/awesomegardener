@@ -33,10 +33,9 @@ export default function FromPlanTab({ activeSeason, garden, bedId, selectedPlanI
       
       const season = seasons[0];
       
-      // Load ALL crop plans for this season (not just unplaced)
+      // Load ALL crop plans for this season
       const plans = await base44.entities.CropPlan.filter({
-        garden_season_id: season.id,
-        created_by: user.email
+        garden_season_id: season.id
       });
       
       // Load all plantings for this garden/season to count quantities
