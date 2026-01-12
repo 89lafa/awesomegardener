@@ -408,19 +408,30 @@ export default function Calendar() {
               try {
                 toast.loading(`Regenerating tasks for ${filteredCrops.length} crops...`, { id: 'regen-all' });
                 let totalCreated = 0;
+                let failedCount = 0;
                 
                 for (const crop of filteredCrops) {
-                  const response = await base44.functions.invoke('generateTasksForCrop', { crop_plan_id: crop.id });
-                  totalCreated += response.data.tasks_created || 0;
+                  try {
+                    const response = await base44.functions.invoke('generateTasksForCrop', { crop_plan_id: crop.id });
+                    totalCreated += response.data.tasks_created || 0;
+                  } catch (error) {
+                    console.error(`Failed to generate tasks for ${crop.label}:`, error);
+                    failedCount++;
+                  }
                 }
                 
                 await new Promise(r => setTimeout(r, 500));
                 await loadPlansAndTasks();
                 
-                toast.success(`Created ${totalCreated} tasks across ${filteredCrops.length} crops`, { id: 'regen-all' });
+                if (failedCount > 0) {
+                  toast.warning(`Created ${totalCreated} tasks. ${failedCount} crops failed - check frost dates in Settings`, { id: 'regen-all', duration: 6000 });
+                } else {
+                  toast.success(`Created ${totalCreated} tasks across ${filteredCrops.length} crops`, { id: 'regen-all' });
+                }
               } catch (error) {
                 console.error('Error regenerating all tasks:', error);
-                toast.error('Failed to regenerate tasks', { id: 'regen-all' });
+                const errorMsg = error.response?.data?.error || error.message || 'Unknown error';
+                toast.error(`Failed: ${errorMsg}`, { id: 'regen-all' });
               }
             }}
             variant="outline"
@@ -496,7 +507,8 @@ export default function Calendar() {
                           toast.success(`Created ${response.data.tasks_created || 0} tasks for ${crop.label}`, { id: 'gen-tasks' });
                         } catch (error) {
                           console.error('Error generating tasks:', error);
-                          toast.error(`Failed: ${error.message || 'Unknown error'}`, { id: 'gen-tasks' });
+                          const errorMsg = error.response?.data?.error || error.message || 'Unknown error';
+                          toast.error(`Failed: ${errorMsg}`, { id: 'gen-tasks' });
                         }
                       }}>
                         <RefreshCw className="w-4 h-4 mr-2" />

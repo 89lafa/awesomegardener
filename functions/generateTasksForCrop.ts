@@ -32,13 +32,25 @@ Deno.serve(async (req) => {
 
     const seasonData = season[0];
     
-    if (!seasonData.last_frost_date) {
-      return Response.json({ 
-        error: 'Last frost date not set for this season. Please set it in garden settings.' 
-      }, { status: 400 });
+    // Fallback to user frost dates if season doesn't have them
+    let lastFrostDate = null;
+    if (seasonData.last_frost_date) {
+      lastFrostDate = new Date(seasonData.last_frost_date);
+    } else {
+      // Load user frost dates
+      const userData = await base44.auth.me();
+      if (userData.last_frost_date) {
+        // User frost dates are stored with year, extract month/day and apply to season year
+        const userFrostDate = new Date(userData.last_frost_date);
+        const seasonYear = seasonData.year || new Date().getFullYear();
+        lastFrostDate = new Date(seasonYear, userFrostDate.getMonth(), userFrostDate.getDate());
+        console.log('[GenerateTasks] Using user frost date:', userData.last_frost_date, '→', lastFrostDate.toISOString().split('T')[0], 'for season year', seasonYear);
+      } else {
+        return Response.json({ 
+          error: 'Frost dates not set. Please set them in Settings → Location or in Garden Season settings.' 
+        }, { status: 400 });
+      }
     }
-    
-    const lastFrostDate = new Date(seasonData.last_frost_date);
 
     // Delete existing tasks for this crop
     const existingTasks = await base44.asServiceRole.entities.CropTask.filter({ crop_plan_id });
