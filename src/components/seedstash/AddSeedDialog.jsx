@@ -14,8 +14,8 @@ export default function AddSeedDialog({ open, onOpenChange, onSuccess }) {
   const [loading, setLoading] = useState(false);
   const [plantTypes, setPlantTypes] = useState([]);
   const [varieties, setVarieties] = useState([]);
-  const [selectedPlantType, setSelectedPlantType] = useState(null);
-  const [selectedVariety, setSelectedVariety] = useState(null);
+  const [selectedPlantTypeId, setSelectedPlantTypeId] = useState('');
+  const [selectedVarietyId, setSelectedVarietyId] = useState('');
   const [showAddVariety, setShowAddVariety] = useState(false);
   const [newVarietyName, setNewVarietyName] = useState('');
   const [seedData, setSeedData] = useState({
@@ -31,17 +31,20 @@ export default function AddSeedDialog({ open, onOpenChange, onSuccess }) {
     if (open) {
       loadPlantTypes();
       setStep(1);
-      setSelectedPlantType(null);
-      setSelectedVariety(null);
+      setSelectedPlantTypeId('');
+      setSelectedVarietyId('');
       setShowAddVariety(false);
     }
   }, [open]);
 
   useEffect(() => {
-    if (selectedPlantType) {
+    if (selectedPlantTypeId) {
       loadVarieties();
+    } else {
+      setVarieties([]);
+      setSelectedVarietyId('');
     }
-  }, [selectedPlantType]);
+  }, [selectedPlantTypeId]);
 
   const loadPlantTypes = async () => {
     try {
@@ -53,12 +56,13 @@ export default function AddSeedDialog({ open, onOpenChange, onSuccess }) {
   };
 
   const loadVarieties = async () => {
-    if (!selectedPlantType) return;
+    if (!selectedPlantTypeId) return;
     try {
       const vars = await base44.entities.Variety.filter({ 
-        plant_type_id: selectedPlantType.id,
+        plant_type_id: selectedPlantTypeId,
         status: 'active'
       }, 'variety_name');
+      console.log('[AddSeed] Loaded', vars.length, 'varieties for plant type', selectedPlantTypeId);
       setVarieties(vars);
     } catch (error) {
       console.error('Error loading varieties:', error);
@@ -71,18 +75,24 @@ export default function AddSeedDialog({ open, onOpenChange, onSuccess }) {
       return;
     }
 
+    const plantType = plantTypes.find(t => t.id === selectedPlantTypeId);
+    if (!plantType) {
+      toast.error('Plant type not found');
+      return;
+    }
+
     setLoading(true);
     try {
       const newVariety = await base44.entities.Variety.create({
-        plant_type_id: selectedPlantType.id,
-        plant_type_name: selectedPlantType.common_name,
+        plant_type_id: plantType.id,
+        plant_type_name: plantType.common_name,
         variety_name: newVarietyName,
         status: 'active',
         is_custom: true
       });
       
       setVarieties([...varieties, newVariety]);
-      setSelectedVariety(newVariety);
+      setSelectedVarietyId(newVariety.id);
       setShowAddVariety(false);
       setNewVarietyName('');
       toast.success('Variety added!');
@@ -95,23 +105,31 @@ export default function AddSeedDialog({ open, onOpenChange, onSuccess }) {
   };
 
   const handleSubmit = async () => {
+    const plantType = plantTypes.find(t => t.id === selectedPlantTypeId);
+    const variety = varieties.find(v => v.id === selectedVarietyId);
+    
+    if (!plantType || !variety) {
+      toast.error('Please select plant type and variety');
+      return;
+    }
+
     setLoading(true);
     try {
       // Create or get PlantProfile
       let profile = null;
       const existingProfiles = await base44.entities.PlantProfile.filter({
-        plant_type_id: selectedPlantType.id,
-        variety_id: selectedVariety.id
+        plant_type_id: plantType.id,
+        variety_id: variety.id
       });
 
       if (existingProfiles.length > 0) {
         profile = existingProfiles[0];
       } else {
         profile = await base44.entities.PlantProfile.create({
-          plant_type_id: selectedPlantType.id,
-          plant_type_name: selectedPlantType.common_name,
-          variety_id: selectedVariety.id,
-          variety_name: selectedVariety.variety_name
+          plant_type_id: plantType.id,
+          plant_type_name: plantType.common_name,
+          variety_id: variety.id,
+          variety_name: variety.variety_name
         });
       }
 
@@ -134,8 +152,8 @@ export default function AddSeedDialog({ open, onOpenChange, onSuccess }) {
       
       // Reset
       setStep(1);
-      setSelectedPlantType(null);
-      setSelectedVariety(null);
+      setSelectedPlantTypeId('');
+      setSelectedVarietyId('');
       setSeedData({
         quantity: '',
         unit: 'seeds',
@@ -162,13 +180,13 @@ export default function AddSeedDialog({ open, onOpenChange, onSuccess }) {
         <div className="space-y-4">
           {/* Step 1: Plant Type */}
           <div>
-            <Label>Plant Type</Label>
+            <Label>Plant Type (from catalog)</Label>
             <Select 
-              value={selectedPlantType?.id || ''} 
+              value={selectedPlantTypeId} 
               onValueChange={(id) => {
-                const type = plantTypes.find(t => t.id === id);
-                setSelectedPlantType(type);
-                setSelectedVariety(null);
+                console.log('[AddSeed] Selected plant type ID:', id);
+                setSelectedPlantTypeId(id);
+                setSelectedVarietyId('');
                 setShowAddVariety(false);
               }}
             >
@@ -186,13 +204,13 @@ export default function AddSeedDialog({ open, onOpenChange, onSuccess }) {
           </div>
 
           {/* Step 2: Variety */}
-          {selectedPlantType && (
+          {selectedPlantTypeId && (
             <div>
-              <Label>Variety</Label>
+              <Label>Variety Name <span className="text-red-500">*</span></Label>
               {!showAddVariety && varieties.length === 0 ? (
                 <div className="mt-2 p-4 bg-amber-50 border border-amber-200 rounded-lg">
                   <p className="text-sm text-gray-700 mb-3">
-                    No varieties available for {selectedPlantType.common_name}
+                    No varieties available for {plantTypes.find(t => t.id === selectedPlantTypeId)?.common_name}
                   </p>
                   <Button
                     size="sm"
@@ -242,10 +260,10 @@ export default function AddSeedDialog({ open, onOpenChange, onSuccess }) {
               ) : (
                 <div className="flex gap-2 mt-1">
                   <Select 
-                    value={selectedVariety?.id || ''} 
+                    value={selectedVarietyId} 
                     onValueChange={(id) => {
-                      const variety = varieties.find(v => v.id === id);
-                      setSelectedVariety(variety);
+                      console.log('[AddSeed] Selected variety ID:', id);
+                      setSelectedVarietyId(id);
                     }}
                     className="flex-1"
                   >
@@ -275,7 +293,7 @@ export default function AddSeedDialog({ open, onOpenChange, onSuccess }) {
           )}
 
           {/* Step 3: Seed Details */}
-          {selectedVariety && (
+          {selectedVarietyId && (
             <div className="space-y-4 border-t pt-4">
               <div className="grid grid-cols-2 gap-4">
                 <div>
@@ -362,11 +380,11 @@ export default function AddSeedDialog({ open, onOpenChange, onSuccess }) {
           </Button>
           <Button
             onClick={handleSubmit}
-            disabled={loading || !selectedPlantType || !selectedVariety}
+            disabled={loading || !selectedPlantTypeId || !selectedVarietyId}
             className="bg-emerald-600 hover:bg-emerald-700"
           >
             {loading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
-            Add to Stash
+            Add Seed
           </Button>
         </DialogFooter>
       </DialogContent>

@@ -392,6 +392,39 @@ export default function Calendar() {
           >
             📖 User Guide
           </Button>
+          <Button
+            onClick={async () => {
+              if (filteredCrops.length === 0) {
+                toast.error('No crops to generate tasks for');
+                return;
+              }
+              
+              try {
+                toast.loading(`Regenerating tasks for ${filteredCrops.length} crops...`, { id: 'regen-all' });
+                let totalCreated = 0;
+                
+                for (const crop of filteredCrops) {
+                  const response = await base44.functions.invoke('generateTasksForCrop', { crop_plan_id: crop.id });
+                  totalCreated += response.data.tasks_created || 0;
+                }
+                
+                await new Promise(r => setTimeout(r, 500));
+                await loadPlansAndTasks();
+                
+                toast.success(`Created ${totalCreated} tasks across ${filteredCrops.length} crops`, { id: 'regen-all' });
+              } catch (error) {
+                console.error('Error regenerating all tasks:', error);
+                toast.error('Failed to regenerate tasks', { id: 'regen-all' });
+              }
+            }}
+            variant="outline"
+            size="sm"
+            className="w-full gap-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border-emerald-200"
+            disabled={syncing || filteredCrops.length === 0}
+          >
+            <RefreshCw className="w-4 h-4" />
+            Regenerate All Tasks
+          </Button>
         </div>
         
         <div className="flex-1 overflow-y-auto p-2">
@@ -447,12 +480,17 @@ export default function Calendar() {
                       </DropdownMenuItem>
                       <DropdownMenuItem onClick={async () => {
                         try {
-                          await base44.functions.invoke('generateTasksForCrop', { crop_plan_id: crop.id });
+                          toast.loading('Generating tasks...', { id: 'gen-tasks' });
+                          const response = await base44.functions.invoke('generateTasksForCrop', { crop_plan_id: crop.id });
+                          console.log('[Calendar] Task generation response:', response.data);
+                          
+                          await new Promise(r => setTimeout(r, 500)); // Wait for DB
                           await loadPlansAndTasks();
-                          toast.success('Tasks regenerated');
+                          
+                          toast.success(`Created ${response.data.tasks_created || 0} tasks for ${crop.label}`, { id: 'gen-tasks' });
                         } catch (error) {
                           console.error('Error generating tasks:', error);
-                          toast.error('Failed to generate tasks');
+                          toast.error(`Failed: ${error.message || 'Unknown error'}`, { id: 'gen-tasks' });
                         }
                       }}>
                         <RefreshCw className="w-4 h-4 mr-2" />
