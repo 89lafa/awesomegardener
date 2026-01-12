@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
 import { base44 } from '@/api/base44Client';
 import { 
@@ -52,6 +52,7 @@ import ErrorBoundary from '@/components/common/ErrorBoundary';
 const CATEGORIES = ['vegetable', 'fruit', 'herb', 'flower', 'other'];
 
 export default function PlantCatalog() {
+  const [searchParams] = useSearchParams();
   const [plantTypes, setPlantTypes] = useState([]);
   const [allVarieties, setAllVarieties] = useState([]);
   const [varieties, setVarieties] = useState([]);
@@ -77,7 +78,13 @@ export default function PlantCatalog() {
   useEffect(() => {
     loadPlantTypes();
     loadAllVarieties();
-  }, []);
+    
+    // Handle search param from TopBar
+    const searchParam = searchParams.get('search');
+    if (searchParam) {
+      setSearchQuery(searchParam);
+    }
+  }, [searchParams]);
 
   useEffect(() => {
     if (selectedType) {
