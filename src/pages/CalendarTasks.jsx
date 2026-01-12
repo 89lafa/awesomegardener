@@ -29,6 +29,7 @@ import {
 import { toast } from 'sonner';
 import { format, parseISO, isBefore, isAfter, addDays } from 'date-fns';
 import { cn } from '@/lib/utils';
+import { format as formatDate, getDaysInMonth, startOfMonth } from 'date-fns';
 
 const TASK_TYPE_CONFIG = {
   seed: { icon: Sprout, color: 'bg-purple-100 text-purple-700 border-purple-200', label: 'Start Seeds' },
@@ -51,6 +52,7 @@ export default function CalendarTasks() {
   const [taskTypeFilter, setTaskTypeFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
   const [cropFilter, setCropFilter] = useState('all');
+  const [viewMode, setViewMode] = useState('list'); // 'list' or 'calendar'
 
   useEffect(() => {
     loadData();
@@ -298,7 +300,17 @@ export default function CalendarTasks() {
         </div>
 
         {/* Filters */}
-        <div className="flex flex-wrap gap-3">
+        <div className="flex flex-wrap gap-3 items-center">
+          <Select value={viewMode} onValueChange={setViewMode}>
+            <SelectTrigger className="w-32">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="list">List View</SelectItem>
+              <SelectItem value="calendar">Calendar View</SelectItem>
+            </SelectContent>
+          </Select>
+
           <Select value={activeGarden?.id} onValueChange={(id) => {
             const garden = gardens.find(g => g.id === id);
             setActiveGarden(garden);
@@ -392,6 +404,15 @@ export default function CalendarTasks() {
           <p className="text-gray-600 mb-2">No tasks for this season yet</p>
           <p className="text-sm text-gray-500">Add crops in Calendar Planner to generate tasks</p>
         </Card>
+      ) : viewMode === 'calendar' ? (
+        <CalendarView 
+          tasks={filteredTasks}
+          crops={cropPlans}
+          season={activeSeason}
+          onTaskClick={(task) => {
+            handleToggleComplete(task);
+          }}
+        />
       ) : (
         <div className="space-y-6">
           {/* Summary */}
@@ -451,6 +472,109 @@ export default function CalendarTasks() {
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+// Calendar View for Tasks
+function CalendarView({ tasks, crops, season, onTaskClick }) {
+  if (!season) return <div className="text-center text-gray-500 p-8">Select a season to view calendar</div>;
+
+  const seasonYear = typeof season === 'string' ? parseInt(season.split('-')[0]) : season?.year;
+  if (!seasonYear) return <div className="text-center text-gray-500 p-8">Invalid season</div>;
+
+  const startDate = new Date(seasonYear, 0, 1);
+  const months = Array.from({ length: 12 }, (_, i) => new Date(seasonYear, i, 1));
+
+  return (
+    <div className="space-y-0 border rounded-lg overflow-hidden bg-white">
+      {months.map((month, monthIdx) => {
+        const daysInMonth = getDaysInMonth(month);
+        const monthStart = startOfMonth(month);
+        const startDayOfWeek = monthStart.getDay();
+
+        return (
+          <div key={monthIdx} className="border-b last:border-b-0">
+            {/* Month Header */}
+            <div className="grid grid-cols-[100px_1fr] bg-gray-50 border-b">
+              <div className="px-3 py-2 font-semibold text-sm border-r">
+                {formatDate(month, 'MMMM')}
+              </div>
+              {monthIdx === 0 && (
+                <div className="grid grid-cols-7">
+                  {['Su', 'M', 'T', 'W', 'Th', 'F', 'Sa'].map((day, i) => (
+                    <div key={i} className="text-center text-xs font-medium py-2 border-r last:border-r-0 text-gray-500">
+                      {day}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Days Grid */}
+            <div className="grid grid-cols-[100px_1fr]">
+              <div className="border-r" />
+              <div className="grid grid-cols-7">
+                {/* Empty cells before month starts */}
+                {Array.from({ length: startDayOfWeek }).map((_, i) => (
+                  <div key={`empty-${i}`} className="h-20 border-r border-b bg-gray-50/50" />
+                ))}
+
+                {/* Days */}
+                {Array.from({ length: daysInMonth }).map((_, dayIdx) => {
+                  const day = dayIdx + 1;
+                  const currentDate = new Date(seasonYear, monthIdx, day);
+                  currentDate.setHours(0, 0, 0, 0);
+
+                  const dayTasks = tasks.filter(task => {
+                    if (!task.start_date) return false;
+                    const taskStart = new Date(task.start_date);
+                    taskStart.setHours(0, 0, 0, 0);
+                    const taskEnd = task.end_date ? new Date(task.end_date) : taskStart;
+                    taskEnd.setHours(0, 0, 0, 0);
+                    return currentDate >= taskStart && currentDate <= taskEnd;
+                  });
+
+                  return (
+                    <div
+                      key={day}
+                      className="h-20 border-r border-b relative hover:bg-blue-50/30 p-1"
+                    >
+                      <div className="text-xs text-gray-400 font-medium mb-1">{day}</div>
+                      <div className="space-y-0.5">
+                        {dayTasks.slice(0, 3).map((task) => {
+                          const crop = crops.find(c => c.id === task.crop_plan_id);
+                          const typeConfig = TASK_TYPE_CONFIG[task.task_type] || TASK_TYPE_CONFIG.cultivate;
+
+                          return (
+                            <div
+                              key={task.id}
+                              className="text-[10px] px-1 py-0.5 rounded cursor-pointer truncate"
+                              style={{ backgroundColor: task.color_hex || crop?.color_hex || '#10b981', color: 'white' }}
+                              onClick={() => onTaskClick(task)}
+                              title={`${crop?.label || 'Crop'}: ${task.title}`}
+                            >
+                              {crop?.label} - {typeConfig.label}
+                            </div>
+                          );
+                        })}
+                        {dayTasks.length > 3 && (
+                          <div className="text-[9px] text-gray-500">+{dayTasks.length - 3} more</div>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+
+                {/* Fill remaining cells */}
+                {Array.from({ length: (7 - ((startDayOfWeek + daysInMonth) % 7)) % 7 }).map((_, i) => (
+                  <div key={`fill-${i}`} className="h-20 border-r border-b bg-gray-50/50" />
+                ))}
+              </div>
+            </div>
+          </div>
+        );
+      })}
     </div>
   );
 }

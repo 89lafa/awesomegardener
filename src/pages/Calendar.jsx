@@ -153,9 +153,15 @@ export default function Calendar() {
     try {
       const [plansData, tasksData] = await Promise.all([
         base44.entities.CropPlan.filter({ garden_season_id: activeSeasonId }),
-        base44.entities.CropTask.filter({ garden_season_id: activeSeasonId })
+        base44.entities.CropTask.filter({ garden_season_id: activeSeasonId }, 'start_date')
       ]);
-      console.log('[Calendar] Loaded', plansData.length, 'plans and', tasksData.length, 'tasks');
+      console.log('[Calendar] Loaded', plansData.length, 'plans and', tasksData.length, 'tasks for season', activeSeasonId);
+      console.log('[Calendar] Tasks breakdown:', {
+        seed: tasksData.filter(t => t.task_type === 'seed').length,
+        transplant: tasksData.filter(t => t.task_type === 'transplant').length,
+        harvest: tasksData.filter(t => t.task_type === 'harvest').length,
+        cultivate: tasksData.filter(t => t.task_type === 'cultivate').length,
+      });
       setCropPlans(plansData);
       setTasks(tasksData);
     } catch (error) {

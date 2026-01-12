@@ -39,6 +39,7 @@ export default function AddSeedDialog({ open, onOpenChange, onSuccess }) {
 
   useEffect(() => {
     if (selectedPlantTypeId) {
+      setSelectedVarietyId(''); // Clear variety when type changes
       loadVarieties();
     } else {
       setVarieties([]);

@@ -38,7 +38,7 @@ import { cn } from '@/lib/utils';
 import ErrorBoundary from '@/components/common/ErrorBoundary';
 import PlantingModal from '@/components/garden/PlantingModal';
 
-function SpaceCard({ space, garden, activeSeason }) {
+function SpaceCard({ space, garden, activeSeason, seasonId }) {
   const [plantings, setPlantings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showPlantingModal, setShowPlantingModal] = useState(false);
@@ -249,7 +249,7 @@ function SpaceCard({ space, garden, activeSeason }) {
         itemType={space.space_type}
         garden={garden}
         activeSeason={activeSeason}
-        seasonId={availableSeasons.find(s => s.season_key === activeSeason)?.id}
+        seasonId={seasonId}
         onPlantingUpdate={handlePlantingUpdate}
       />
     </Card>
@@ -738,7 +738,13 @@ export default function GardenPlanting() {
             {plantingSpaces
               .filter(space => spaceTypeFilter === 'all' || space.space_type === spaceTypeFilter)
               .map((space) => (
-                <SpaceCard key={space.id} space={space} garden={activeGarden} activeSeason={activeSeason} />
+                <SpaceCard 
+                  key={space.id} 
+                  space={space} 
+                  garden={activeGarden} 
+                  activeSeason={activeSeason}
+                  seasonId={availableSeasons.find(s => s.season_key === activeSeason)?.id}
+                />
               ))}
           </div>
         )}
