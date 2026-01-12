@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Loader2, Plus, Trash2 } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 
 export default function AddFromCatalogDialog({ open, onOpenChange, onSuccess }) {
@@ -15,8 +15,8 @@ export default function AddFromCatalogDialog({ open, onOpenChange, onSuccess }) 
   const [varieties, setVarieties] = useState([]);
   const [selectedPlantTypeId, setSelectedPlantTypeId] = useState('');
   const [selectedVarietyId, setSelectedVarietyId] = useState('');
-  const [uploadingPhoto, setUploadingPhoto] = useState(false);
-  const [seedData, setSeedData] = useState({
+  
+  const [formData, setFormData] = useState({
     quantity: '',
     unit: 'seeds',
     year_acquired: new Date().getFullYear(),
@@ -24,8 +24,7 @@ export default function AddFromCatalogDialog({ open, onOpenChange, onSuccess }) 
     source_vendor_name: '',
     source_vendor_url: '',
     storage_location: '',
-    lot_notes: '',
-    lot_images: []
+    lot_notes: ''
   });
 
   useEffect(() => {
@@ -37,6 +36,7 @@ export default function AddFromCatalogDialog({ open, onOpenChange, onSuccess }) 
 
   useEffect(() => {
     if (selectedPlantTypeId) {
+      console.log('[AddFromCatalog] Loading varieties for type:', selectedPlantTypeId);
       setSelectedVarietyId('');
       loadVarieties();
     } else {
@@ -45,10 +45,15 @@ export default function AddFromCatalogDialog({ open, onOpenChange, onSuccess }) 
     }
   }, [selectedPlantTypeId]);
 
+  useEffect(() => {
+    console.log('[AddFromCatalog] selectedVarietyId:', selectedVarietyId, typeof selectedVarietyId);
+  }, [selectedVarietyId]);
+
   const loadPlantTypes = async () => {
     try {
       const types = await base44.entities.PlantType.list('common_name');
-      setPlantTypes(types.filter(t => t.common_name));
+      console.log('[AddFromCatalog] Loaded', types.length, 'plant types');
+      setPlantTypes(types);
     } catch (error) {
       console.error('Error loading plant types:', error);
     }
@@ -61,99 +66,18 @@ export default function AddFromCatalogDialog({ open, onOpenChange, onSuccess }) 
         plant_type_id: selectedPlantTypeId,
         status: 'active'
       }, 'variety_name');
+      console.log('[AddFromCatalog] Loaded', vars.length, 'varieties');
       setVarieties(vars);
     } catch (error) {
       console.error('Error loading varieties:', error);
-    }
-  };
-
-  const handlePhotoUpload = async (e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    setUploadingPhoto(true);
-    try {
-      const { file_url } = await base44.integrations.Core.UploadFile({ file });
-      setSeedData({ 
-        ...seedData, 
-        lot_images: [...(seedData.lot_images || []), file_url] 
-      });
-      toast.success('Photo added');
-    } catch (error) {
-      console.error('Error uploading photo:', error);
-      toast.error('Failed to upload photo');
-    } finally {
-      setUploadingPhoto(false);
-    }
-  };
-
-  const handleSubmit = async () => {
-    const plantType = plantTypes.find(t => t.id === selectedPlantTypeId);
-    const variety = varieties.find(v => v.id === selectedVarietyId);
-    
-    if (!plantType || !variety) {
-      toast.error('Please select plant type and variety');
-      return;
-    }
-
-    setLoading(true);
-    try {
-      // Create or get PlantProfile
-      let profile = null;
-      const existingProfiles = await base44.entities.PlantProfile.filter({
-        plant_type_id: plantType.id,
-        variety_id: variety.id
-      });
-
-      if (existingProfiles.length > 0) {
-        profile = existingProfiles[0];
-      } else {
-        profile = await base44.entities.PlantProfile.create({
-          plant_type_id: plantType.id,
-          plant_type_name: plantType.common_name,
-          variety_id: variety.id,
-          variety_name: variety.variety_name,
-          common_name: plantType.common_name,
-          days_to_maturity_seed: variety.days_to_maturity,
-          spacing_in_min: variety.spacing_min || variety.spacing_recommended,
-          spacing_in_max: variety.spacing_max || variety.spacing_recommended,
-          source_type: 'catalog'
-        });
-      }
-
-      // Create SeedLot
-      await base44.entities.SeedLot.create({
-        plant_profile_id: profile.id,
-        quantity: seedData.quantity ? parseFloat(seedData.quantity) : null,
-        unit: seedData.unit,
-        year_acquired: seedData.year_acquired,
-        packed_for_year: seedData.packed_for_year || null,
-        source_vendor_name: seedData.source_vendor_name || null,
-        source_url: seedData.source_vendor_url || null,
-        source_vendor_url: seedData.source_vendor_url || null,
-        storage_location: seedData.storage_location || null,
-        lot_notes: seedData.lot_notes || null,
-        lot_images: seedData.lot_images || [],
-        is_wishlist: false,
-        from_catalog: true
-      });
-
-      toast.success('Seed added to your stash!');
-      onSuccess?.();
-      onOpenChange(false);
-      resetForm();
-    } catch (error) {
-      console.error('Error adding seed:', error);
-      toast.error('Failed to add seed');
-    } finally {
-      setLoading(false);
+      setVarieties([]);
     }
   };
 
   const resetForm = () => {
     setSelectedPlantTypeId('');
     setSelectedVarietyId('');
-    setSeedData({
+    setFormData({
       quantity: '',
       unit: 'seeds',
       year_acquired: new Date().getFullYear(),
@@ -161,30 +85,116 @@ export default function AddFromCatalogDialog({ open, onOpenChange, onSuccess }) 
       source_vendor_name: '',
       source_vendor_url: '',
       storage_location: '',
-      lot_notes: '',
-      lot_images: []
+      lot_notes: ''
     });
   };
 
-  const selectedPlantType = plantTypes.find(t => t.id === selectedPlantTypeId);
+  const handleSubmit = async () => {
+    const variety = varieties.find(v => v.id === selectedVarietyId);
+    const plantType = plantTypes.find(t => t.id === selectedPlantTypeId);
+    
+    if (!variety || !plantType) {
+      toast.error('Please select plant type and variety');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      console.log('[AddFromCatalog] Creating for variety:', variety.variety_name);
+      const user = await base44.auth.me();
+
+      // Find or create PlantProfile
+      let profileId;
+      const existingProfiles = await base44.entities.PlantProfile.filter({
+        variety_name: variety.variety_name,
+        plant_type_id: variety.plant_type_id
+      });
+      
+      if (existingProfiles.length > 0) {
+        profileId = existingProfiles[0].id;
+        console.log('[AddFromCatalog] Using existing profile:', profileId);
+      } else {
+        const newProfile = await base44.entities.PlantProfile.create({
+          plant_type_id: variety.plant_type_id,
+          plant_subcategory_id: variety.plant_subcategory_id,
+          plant_family: plantType?.plant_family_id,
+          common_name: plantType?.common_name,
+          variety_name: variety.variety_name,
+          days_to_maturity_seed: variety.days_to_maturity,
+          spacing_in_min: variety.spacing_recommended,
+          spacing_in_max: variety.spacing_recommended,
+          height_in_min: variety.height_min,
+          height_in_max: variety.height_max,
+          sun_requirement: variety.sun_requirement,
+          trellis_required: variety.trellis_required,
+          container_friendly: variety.container_friendly,
+          notes_public: variety.grower_notes,
+          source_type: 'user_private'
+        });
+        profileId = newProfile.id;
+        console.log('[AddFromCatalog] Created profile:', profileId);
+      }
+
+      // Check for duplicates
+      const existingLots = await base44.entities.SeedLot.filter({
+        plant_profile_id: profileId,
+        is_wishlist: false,
+        created_by: user.email
+      });
+      
+      if (existingLots.length > 0) {
+        toast.info('This variety is already in your stash');
+        onOpenChange(false);
+        onSuccess?.();
+        return;
+      }
+
+      // Create SeedLot
+      await base44.entities.SeedLot.create({
+        plant_profile_id: profileId,
+        quantity: formData.quantity ? parseInt(formData.quantity) : null,
+        unit: formData.unit,
+        year_acquired: formData.year_acquired,
+        packed_for_year: formData.packed_for_year ? parseInt(formData.packed_for_year) : null,
+        source_vendor_name: formData.source_vendor_name || null,
+        source_vendor_url: formData.source_vendor_url || null,
+        storage_location: formData.storage_location || null,
+        lot_notes: formData.lot_notes || null,
+        is_wishlist: false,
+        from_catalog: true
+      });
+
+      toast.success('Added to seed stash!');
+      onOpenChange(false);
+      onSuccess?.();
+    } catch (error) {
+      console.error('Error adding from catalog:', error);
+      toast.error('Failed to add seed');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[90vh]">
+      <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Add Seeds from Plant Catalog</DialogTitle>
           <DialogDescription>
-            Select a variety from our catalog and add it to your stash
+            Select a variety from our catalog and add your stash details
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-2">
+        <div className="space-y-4">
           {/* Plant Type */}
           <div>
             <Label>Plant Type <span className="text-red-500">*</span></Label>
             <Select 
               value={String(selectedPlantTypeId || '')} 
-              onValueChange={(id) => setSelectedPlantTypeId(String(id))}
+              onValueChange={(id) => {
+                console.log('[AddFromCatalog] Plant type selected:', id, typeof id);
+                setSelectedPlantTypeId(String(id));
+              }}
             >
               <SelectTrigger className="mt-1">
                 <SelectValue placeholder="Select plant type..." />
@@ -202,17 +212,18 @@ export default function AddFromCatalogDialog({ open, onOpenChange, onSuccess }) 
           {/* Variety */}
           {selectedPlantTypeId && (
             <div>
-              <Label>Variety Name <span className="text-red-500">*</span></Label>
+              <Label>Variety <span className="text-red-500">*</span></Label>
               {varieties.length === 0 ? (
-                <div className="mt-2 p-4 bg-amber-50 border border-amber-200 rounded-lg">
-                  <p className="text-sm text-gray-700">
-                    No varieties available for {selectedPlantType?.common_name}. Use "Add My Own Seeds" to create a custom variety.
-                  </p>
-                </div>
+                <p className="text-sm text-gray-500 mt-2">
+                  No varieties in catalog for {plantTypes.find(t => t.id === selectedPlantTypeId)?.common_name}
+                </p>
               ) : (
                 <Select 
                   value={String(selectedVarietyId || '')}
-                  onValueChange={(id) => setSelectedVarietyId(String(id))}
+                  onValueChange={(id) => {
+                    console.log('[AddFromCatalog] Variety selected:', id, typeof id);
+                    setSelectedVarietyId(String(id));
+                  }}
                 >
                   <SelectTrigger className="mt-1">
                     <SelectValue placeholder="Select variety..." />
@@ -229,146 +240,99 @@ export default function AddFromCatalogDialog({ open, onOpenChange, onSuccess }) 
             </div>
           )}
 
-          {/* Stash Info */}
+          {/* Stash Details - only show after variety selected */}
           {selectedVarietyId && (
             <>
               <div className="border-t pt-4">
-                <h3 className="font-semibold text-sm text-gray-700 mb-3">Your Stash Info</h3>
-              </div>
+                <h3 className="font-semibold mb-3 text-sm">My Stash Info</h3>
+                
+                <div className="grid grid-cols-2 gap-3 mb-3">
+                  <div>
+                    <Label>Quantity</Label>
+                    <Input
+                      type="number"
+                      value={formData.quantity}
+                      onChange={(e) => setFormData({ ...formData, quantity: e.target.value })}
+                      placeholder="100"
+                      className="mt-1"
+                    />
+                  </div>
+                  <div>
+                    <Label>Unit</Label>
+                    <Select value={formData.unit} onValueChange={(v) => setFormData({ ...formData, unit: v })}>
+                      <SelectTrigger className="mt-1">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="seeds">Seeds</SelectItem>
+                        <SelectItem value="packets">Packets</SelectItem>
+                        <SelectItem value="grams">Grams</SelectItem>
+                        <SelectItem value="ounces">Ounces</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label>Quantity</Label>
+                <div className="grid grid-cols-2 gap-3 mb-3">
+                  <div>
+                    <Label>Year Acquired</Label>
+                    <Input
+                      type="number"
+                      value={formData.year_acquired}
+                      onChange={(e) => setFormData({ ...formData, year_acquired: parseInt(e.target.value) || '' })}
+                      className="mt-1"
+                    />
+                  </div>
+                  <div>
+                    <Label>Packed For Year</Label>
+                    <Input
+                      type="number"
+                      value={formData.packed_for_year}
+                      onChange={(e) => setFormData({ ...formData, packed_for_year: e.target.value })}
+                      placeholder="2025"
+                      className="mt-1"
+                    />
+                  </div>
+                </div>
+
+                <div className="mb-3">
+                  <Label>Vendor/Source</Label>
                   <Input
-                    type="number"
-                    value={seedData.quantity}
-                    onChange={(e) => setSeedData({ ...seedData, quantity: e.target.value })}
-                    placeholder="e.g., 20"
+                    value={formData.source_vendor_name}
+                    onChange={(e) => setFormData({ ...formData, source_vendor_name: e.target.value })}
+                    placeholder="Baker Creek, Johnny's, etc."
                     className="mt-1"
                   />
                 </div>
-                <div>
-                  <Label>Unit</Label>
-                  <Select 
-                    value={seedData.unit} 
-                    onValueChange={(v) => setSeedData({ ...seedData, unit: v })}
-                  >
-                    <SelectTrigger className="mt-1">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="seeds">Seeds</SelectItem>
-                      <SelectItem value="packets">Packets</SelectItem>
-                      <SelectItem value="grams">Grams</SelectItem>
-                      <SelectItem value="ounces">Ounces</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label>Year Acquired</Label>
+                <div className="mb-3">
+                  <Label>Vendor URL</Label>
                   <Input
-                    type="number"
-                    value={seedData.year_acquired}
-                    onChange={(e) => setSeedData({ ...seedData, year_acquired: parseInt(e.target.value) })}
+                    value={formData.source_vendor_url}
+                    onChange={(e) => setFormData({ ...formData, source_vendor_url: e.target.value })}
+                    placeholder="www.example.com"
                     className="mt-1"
                   />
                 </div>
-                <div>
-                  <Label>Packed For Year</Label>
+
+                <div className="mb-3">
+                  <Label>Storage Location</Label>
                   <Input
-                    type="number"
-                    value={seedData.packed_for_year}
-                    onChange={(e) => setSeedData({ ...seedData, packed_for_year: parseInt(e.target.value) || '' })}
-                    placeholder="2025"
+                    value={formData.storage_location}
+                    onChange={(e) => setFormData({ ...formData, storage_location: e.target.value })}
+                    placeholder="Fridge, Box A, etc."
                     className="mt-1"
                   />
                 </div>
-              </div>
 
-              <div>
-                <Label>Vendor/Source</Label>
-                <Input
-                  value={seedData.source_vendor_name}
-                  onChange={(e) => setSeedData({ ...seedData, source_vendor_name: e.target.value })}
-                  placeholder="e.g., Baker Creek"
-                  className="mt-1"
-                />
-              </div>
-
-              <div>
-                <Label>Vendor URL</Label>
-                <Input
-                  value={seedData.source_vendor_url}
-                  onChange={(e) => setSeedData({ ...seedData, source_vendor_url: e.target.value })}
-                  placeholder="e.g., https://www.example.com"
-                  className="mt-1"
-                />
-              </div>
-
-              <div>
-                <Label>Storage Location</Label>
-                <Input
-                  value={seedData.storage_location}
-                  onChange={(e) => setSeedData({ ...seedData, storage_location: e.target.value })}
-                  placeholder="e.g., Refrigerator, Shelf A"
-                  className="mt-1"
-                />
-              </div>
-
-              <div>
-                <Label>Notes</Label>
-                <Textarea
-                  value={seedData.lot_notes}
-                  onChange={(e) => setSeedData({ ...seedData, lot_notes: e.target.value })}
-                  rows={3}
-                  placeholder="Any notes about these seeds..."
-                  className="mt-1"
-                />
-              </div>
-
-              <div>
-                <Label>Photos</Label>
-                <div className="mt-2 space-y-2">
-                  {seedData.lot_images?.length > 0 && (
-                    <div className="grid grid-cols-3 gap-2">
-                      {seedData.lot_images.map((url, idx) => (
-                        <div key={idx} className="relative group">
-                          <img src={url} alt="Seed" className="w-full h-20 object-cover rounded-lg" />
-                          <Button
-                            type="button"
-                            variant="destructive"
-                            size="icon"
-                            className="absolute top-1 right-1 h-6 w-6 opacity-0 group-hover:opacity-100"
-                            onClick={() => {
-                              const updated = seedData.lot_images.filter((_, i) => i !== idx);
-                              setSeedData({ ...seedData, lot_images: updated });
-                            }}
-                          >
-                            <Trash2 className="w-3 h-3" />
-                          </Button>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                  <Button
-                    type="button"
-                    variant="outline"
-                    disabled={uploadingPhoto}
-                    onClick={() => document.getElementById('catalog-seed-photo').click()}
-                    className="w-full"
-                  >
-                    {uploadingPhoto ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Plus className="w-4 h-4 mr-2" />}
-                    Add Photo
-                  </Button>
-                  <input
-                    id="catalog-seed-photo"
-                    type="file"
-                    accept="image/*"
-                    onChange={handlePhotoUpload}
-                    className="hidden"
+                <div>
+                  <Label>Notes</Label>
+                  <Textarea
+                    value={formData.lot_notes}
+                    onChange={(e) => setFormData({ ...formData, lot_notes: e.target.value })}
+                    placeholder="Notes about this seed lot..."
+                    className="mt-1"
+                    rows={2}
                   />
                 </div>
               </div>
@@ -377,10 +341,8 @@ export default function AddFromCatalogDialog({ open, onOpenChange, onSuccess }) 
         </div>
 
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
-            Cancel
-          </Button>
-          <Button
+          <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
+          <Button 
             onClick={handleSubmit}
             disabled={loading || !selectedPlantTypeId || !selectedVarietyId}
             className="bg-emerald-600 hover:bg-emerald-700"

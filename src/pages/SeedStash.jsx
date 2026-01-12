@@ -60,9 +60,9 @@ import {
 import { toast } from 'sonner';
 import { motion, AnimatePresence } from 'framer-motion';
 import AdBanner from '@/components/monetization/AdBanner';
+import { cn } from '@/lib/utils';
 import AddCustomSeedDialog from '@/components/seedstash/AddCustomSeedDialog';
 import AddFromCatalogDialog from '@/components/seedstash/AddFromCatalogDialog';
-import { cn } from '@/lib/utils';
 
 const TAGS = [
   { value: 'favorite', label: 'Favorite', icon: Star, color: 'text-yellow-500' },
@@ -79,12 +79,15 @@ export default function SeedStash() {
   const [loading, setLoading] = useState(true);
   const [showAddCustomDialog, setShowAddCustomDialog] = useState(false);
   const [showAddFromCatalogDialog, setShowAddFromCatalogDialog] = useState(false);
+  const [showAddDialog, setShowAddDialog] = useState(false);
   const [editingSeed, setEditingSeed] = useState(null);
   const [viewMode, setViewMode] = useState('grid');
   const [filterTab, setFilterTab] = useState('stash');
   const [searchQuery, setSearchQuery] = useState('');
   const [filterType, setFilterType] = useState('all');
   const [filterTag, setFilterTag] = useState('all');
+  const [varieties, setVarieties] = useState([]);
+  const [selectedPlantType, setSelectedPlantType] = useState(null);
   const [sortBy, setSortBy] = useState('name');
   const [sortOrder, setSortOrder] = useState('asc');
   const [visibleColumns, setVisibleColumns] = useState({
@@ -100,6 +103,22 @@ export default function SeedStash() {
   });
   const [showColumnChooser, setShowColumnChooser] = useState(false);
   const [settings, setSettings] = useState({ aging_threshold_years: 2, old_threshold_years: 3 });
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
+
+  const [formData, setFormData] = useState({
+    plant_profile_id: '',
+    quantity: '',
+    unit: 'seeds',
+    year_acquired: new Date().getFullYear(),
+    packed_for_year: '',
+    source_vendor_name: '',
+    source_vendor_url: '',
+    storage_location: '',
+    lot_notes: '',
+    tags: [],
+    lot_images: [],
+    is_wishlist: false
+  });
 
   useEffect(() => {
     loadData();
@@ -192,7 +211,86 @@ export default function SeedStash() {
     }
   };
 
+  const handlePlantTypeChange = async (plantTypeId) => {
+    const type = plantTypes.find(t => t.id === plantTypeId);
+    setSelectedPlantType(type);
+    setFormData({ 
+      ...formData, 
+      plant_type_id: plantTypeId,
+      plant_profile_id: ''
+    });
 
+    if (plantTypeId) {
+      try {
+        const vars = await base44.entities.Variety.filter({ 
+          plant_type_id: plantTypeId,
+          status: 'active'
+        }, 'variety_name');
+        setVarieties(vars);
+      } catch (error) {
+        console.error('Error loading varieties:', error);
+        setVarieties([]);
+      }
+    } else {
+      setVarieties([]);
+    }
+  };
+
+  const handleVarietyChange = async (varietyId) => {
+    const variety = varieties.find(v => v.id === varietyId);
+    
+    // Find or create PlantProfile for this variety
+    const existingProfiles = await base44.entities.PlantProfile.filter({
+      variety_name: variety.variety_name,
+      plant_type_id: variety.plant_type_id
+    });
+    
+    let profileId;
+    if (existingProfiles.length > 0) {
+      profileId = existingProfiles[0].id;
+    } else {
+      const plantType = plantTypes.find(t => t.id === variety.plant_type_id);
+      const newProfile = await base44.entities.PlantProfile.create({
+        plant_type_id: variety.plant_type_id,
+        common_name: plantType?.common_name,
+        variety_name: variety.variety_name,
+        days_to_maturity_seed: variety.days_to_maturity,
+        spacing_in_min: variety.spacing_recommended,
+        spacing_in_max: variety.spacing_recommended,
+        source_type: 'user_private'
+      });
+      profileId = newProfile.id;
+      setProfiles({ ...profiles, [profileId]: newProfile });
+    }
+    
+    setFormData({ 
+      ...formData, 
+      plant_profile_id: profileId
+    });
+  };
+
+  const handleSubmit = async () => {
+    if (!formData.plant_profile_id) {
+      toast.error('Please select a variety');
+      return;
+    }
+
+    try {
+      if (editingSeed) {
+        await base44.entities.SeedLot.update(editingSeed.id, formData);
+        await loadData(); // Reload to get updated profiles
+        toast.success('Seed updated!');
+      } else {
+        const seed = await base44.entities.SeedLot.create(formData);
+        await loadData(); // Reload to get updated profiles
+        toast.success(formData.is_wishlist ? 'Added to wishlist!' : 'Seed added to stash!');
+      }
+      closeDialog();
+    } catch (error) {
+      console.error('Error saving seed:', error);
+      toast.error('Failed to save seed');
+    }
+  };
 
   const handleDelete = async (seed) => {
     try {
@@ -257,11 +355,84 @@ export default function SeedStash() {
     }
   };
 
+  const openEditDialog = async (seed) => {
+    setEditingSeed(seed);
+    const profile = profiles[seed.plant_profile_id];
+    
+    setFormData({
+      plant_profile_id: seed.plant_profile_id || '',
+      plant_type_id: profile?.plant_type_id || '',
+      quantity: seed.quantity || '',
+      unit: seed.unit || 'seeds',
+      year_acquired: seed.year_acquired || new Date().getFullYear(),
+      packed_for_year: seed.packed_for_year || '',
+      source_vendor_name: seed.source_vendor_name || '',
+      source_vendor_url: seed.source_vendor_url || '',
+      storage_location: seed.storage_location || '',
+      lot_notes: seed.lot_notes || '',
+      tags: seed.tags || [],
+      lot_images: seed.lot_images || [],
+      is_wishlist: seed.is_wishlist || false
+    });
 
+    if (profile?.plant_type_id) {
+      try {
+        const type = plantTypes.find(t => t.id === profile.plant_type_id);
+        setSelectedPlantType(type);
+        const vars = await base44.entities.Variety.filter({ 
+          plant_type_id: profile.plant_type_id,
+          status: 'active'
+        }, 'variety_name');
+        setVarieties(vars);
+      } catch (error) {
+        console.error('Error loading varieties:', error);
+      }
+    }
 
+    setShowAddDialog(true);
+  };
 
+  const handlePhotoUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
 
+    setUploadingPhoto(true);
+    try {
+      const { file_url } = await base44.integrations.Core.UploadFile({ file });
+      setFormData({ 
+        ...formData, 
+        lot_images: [...(formData.lot_images || []), file_url] 
+      });
+      toast.success('Photo added');
+    } catch (error) {
+      console.error('Error uploading photo:', error);
+      toast.error('Failed to upload photo');
+    } finally {
+      setUploadingPhoto(false);
+    }
+  };
 
+  const closeDialog = () => {
+    setShowAddDialog(false);
+    setEditingSeed(null);
+    setVarieties([]);
+    setSelectedPlantType(null);
+    setFormData({
+      plant_profile_id: '',
+      plant_type_id: '',
+      quantity: '',
+      unit: 'seeds',
+      year_acquired: new Date().getFullYear(),
+      packed_for_year: '',
+      source_vendor_name: '',
+      source_vendor_url: '',
+      storage_location: '',
+      lot_notes: '',
+      tags: [],
+      lot_images: [],
+      is_wishlist: false
+    });
+  };
 
   const filteredSeeds = seeds
     .filter(seed => {
@@ -484,7 +655,7 @@ export default function SeedStash() {
                 ? 'Add seeds you want to buy' 
                 : 'Add your first seeds to track your collection'}
             </p>
-            <div className="flex gap-2">
+            <div className="flex gap-2 justify-center">
               <Button 
                 onClick={() => setShowAddCustomDialog(true)}
                 className="bg-emerald-600 hover:bg-emerald-700"
@@ -559,12 +730,10 @@ export default function SeedStash() {
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
-                         <DropdownMenuItem asChild>
-                           <Link to={createPageUrl('SeedStashDetail') + `?id=${seed.id}`}>
-                             <Edit className="w-4 h-4 mr-2" />
-                             Edit
-                           </Link>
-                         </DropdownMenuItem>
+                          <DropdownMenuItem onClick={(e) => { e.preventDefault(); openEditDialog(seed); }}>
+                            <Edit className="w-4 h-4 mr-2" />
+                            Edit
+                          </DropdownMenuItem>
                           <DropdownMenuItem onClick={(e) => { e.preventDefault(); handleToggleWishlist(seed); }}>
                             <Heart className="w-4 h-4 mr-2" />
                             {seed.is_wishlist ? 'Move to Stash' : 'Move to Wishlist'}
@@ -889,12 +1058,10 @@ export default function SeedStash() {
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
-                       <DropdownMenuItem asChild>
-                         <Link to={createPageUrl('SeedStashDetail') + `?id=${seed.id}`}>
-                           <Edit className="w-4 h-4 mr-2" />
-                           Edit
-                         </Link>
-                       </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => openEditDialog(seed)}>
+                          <Edit className="w-4 h-4 mr-2" />
+                          Edit
+                        </DropdownMenuItem>
                         <DropdownMenuItem onClick={() => handleDelete(seed)}>
                           <Trash2 className="w-4 h-4 mr-2" />
                           Delete
@@ -910,13 +1077,234 @@ export default function SeedStash() {
         </Card>
       )}
 
-      <AddCustomSeedDialog
+      {/* Add/Edit Dialog */}
+      <Dialog open={showAddDialog} onOpenChange={closeDialog}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>
+              {editingSeed ? 'Edit Seed' : (formData.is_wishlist ? 'Add to Wishlist' : 'Add Seeds')}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-2">
+            <div>
+              <Label>Plant Type (from catalog)</Label>
+              <Select 
+                value={formData.plant_type_id} 
+                onValueChange={handlePlantTypeChange}
+              >
+                <SelectTrigger className="mt-2">
+                  <SelectValue placeholder="Select from catalog" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={null}>None (manual entry)</SelectItem>
+                  {plantTypes.map((type) => (
+                    <SelectItem key={type.id} value={type.id}>
+                      {type.common_name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {formData.plant_type_id && (
+              <div>
+                <Label>Variety Name *</Label>
+                {varieties.length > 0 ? (
+                  <Select 
+                    value={formData.plant_profile_id} 
+                    onValueChange={handleVarietyChange}
+                  >
+                    <SelectTrigger className="mt-2">
+                      <SelectValue placeholder="Select variety" />
+                    </SelectTrigger>
+                    <SelectContent className="max-h-64">
+                      {varieties.map((variety) => (
+                        <SelectItem key={variety.id} value={variety.id}>
+                          {variety.variety_name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                ) : (
+                  <p className="text-sm text-gray-500 mt-2">No varieties available for {selectedPlantType?.common_name}</p>
+                )}
+              </div>
+            )}
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="quantity">Quantity</Label>
+                <Input
+                  id="quantity"
+                  type="number"
+                  placeholder="e.g., 25"
+                  value={formData.quantity}
+                  onChange={(e) => setFormData({ ...formData, quantity: e.target.value })}
+                  className="mt-2"
+                />
+              </div>
+              <div>
+                <Label>Unit</Label>
+                <Select 
+                  value={formData.unit} 
+                  onValueChange={(v) => setFormData({ ...formData, unit: v })}
+                >
+                  <SelectTrigger className="mt-2">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="seeds">Seeds</SelectItem>
+                    <SelectItem value="packets">Packets</SelectItem>
+                    <SelectItem value="grams">Grams</SelectItem>
+                    <SelectItem value="ounces">Ounces</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="year_acquired">Year Acquired</Label>
+                <Input
+                  id="year_acquired"
+                  type="number"
+                  value={formData.year_acquired}
+                  onChange={(e) => setFormData({ ...formData, year_acquired: parseInt(e.target.value) || '' })}
+                  className="mt-2"
+                />
+              </div>
+              <div>
+                <Label htmlFor="packed_for">Packed For Year</Label>
+                <Input
+                  id="packed_for"
+                  type="number"
+                  placeholder="2025"
+                  value={formData.packed_for_year}
+                  onChange={(e) => setFormData({ ...formData, packed_for_year: parseInt(e.target.value) || '' })}
+                  className="mt-2"
+                />
+              </div>
+            </div>
+
+            <div>
+              <Label htmlFor="source">Vendor/Source</Label>
+              <Input
+                id="source"
+                placeholder="e.g., Baker Creek"
+                value={formData.source_vendor_name}
+                onChange={(e) => setFormData({ ...formData, source_vendor_name: e.target.value })}
+                className="mt-2"
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="source_url">Vendor URL</Label>
+              <Input
+                id="source_url"
+                value={formData.source_vendor_url}
+                onChange={(e) => setFormData({ ...formData, source_vendor_url: e.target.value })}
+                placeholder="pepperseeds.net or www.example.com"
+                className="mt-2"
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="storage">Storage Location</Label>
+              <Input
+                id="storage"
+                placeholder="e.g., Refrigerator, Box A"
+                value={formData.storage_location}
+                onChange={(e) => setFormData({ ...formData, storage_location: e.target.value })}
+                className="mt-2"
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="notes">Notes</Label>
+              <Textarea
+                id="notes"
+                placeholder="Any notes about these seeds..."
+                value={formData.lot_notes}
+                onChange={(e) => setFormData({ ...formData, lot_notes: e.target.value })}
+                className="mt-2"
+              />
+            </div>
+
+            <div>
+              <Label>Photos (optional)</Label>
+              <div className="mt-2 space-y-2">
+                {formData.lot_images?.length > 0 && (
+                  <div className="grid grid-cols-3 gap-2">
+                    {formData.lot_images.map((url, idx) => (
+                      <div key={idx} className="relative group">
+                        <img src={url} alt="Seed" className="w-full h-20 object-cover rounded-lg" />
+                        <Button
+                          type="button"
+                          variant="destructive"
+                          size="icon"
+                          className="absolute top-1 right-1 h-6 w-6 opacity-0 group-hover:opacity-100"
+                          onClick={() => {
+                            const updated = formData.lot_images.filter((_, i) => i !== idx);
+                            setFormData({ ...formData, lot_images: updated });
+                          }}
+                        >
+                          <Trash2 className="w-3 h-3" />
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={uploadingPhoto}
+                  onClick={() => document.getElementById('stash-photo-upload').click()}
+                  className="w-full"
+                >
+                  {uploadingPhoto ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Plus className="w-4 h-4 mr-2" />}
+                  Add Photo
+                </Button>
+                <input
+                  id="stash-photo-upload"
+                  type="file"
+                  accept="image/*"
+                  onChange={handlePhotoUpload}
+                  className="hidden"
+                />
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <Checkbox
+                id="wishlist"
+                checked={formData.is_wishlist}
+                onCheckedChange={(checked) => setFormData({ ...formData, is_wishlist: checked })}
+              />
+              <Label htmlFor="wishlist" className="text-sm font-normal">
+                Add to wishlist (seeds I want to buy)
+              </Label>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={closeDialog}>Cancel</Button>
+            <Button 
+              onClick={handleSubmit}
+              className="bg-emerald-600 hover:bg-emerald-700"
+            >
+              {editingSeed ? 'Save Changes' : 'Add Seed'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* New Dialogs */}
+      <AddCustomSeedDialog 
         open={showAddCustomDialog}
         onOpenChange={setShowAddCustomDialog}
         onSuccess={loadData}
       />
 
-      <AddFromCatalogDialog
+      <AddFromCatalogDialog 
         open={showAddFromCatalogDialog}
         onOpenChange={setShowAddFromCatalogDialog}
         onSuccess={loadData}

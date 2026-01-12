@@ -9,18 +9,17 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Checkbox } from '@/components/ui/checkbox';
 import { Loader2, Plus, Trash2, Sparkles } from 'lucide-react';
 import { toast } from 'sonner';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 export default function AddCustomSeedDialog({ open, onOpenChange, onSuccess }) {
   const [loading, setLoading] = useState(false);
   const [plantTypes, setPlantTypes] = useState([]);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const [showSuggestButton, setShowSuggestButton] = useState(false);
+  
   const [formData, setFormData] = useState({
-    // Plant Type Selection
     plant_type_id: '',
     variety_name: '',
-    
-    // Variety Profile Attributes
+    description: '',
     days_to_maturity_seed: '',
     days_to_maturity_transplant: '',
     spacing_min: '',
@@ -40,9 +39,6 @@ export default function AddCustomSeedDialog({ open, onOpenChange, onSuccess }) {
     scoville_min: '',
     scoville_max: '',
     growing_notes: '',
-    description: '',
-    
-    // Stash Info (Personal)
     quantity: '',
     unit: 'seeds',
     year_acquired: new Date().getFullYear(),
@@ -57,134 +53,16 @@ export default function AddCustomSeedDialog({ open, onOpenChange, onSuccess }) {
   useEffect(() => {
     if (open) {
       loadPlantTypes();
+      resetForm();
     }
   }, [open]);
 
   const loadPlantTypes = async () => {
     try {
       const types = await base44.entities.PlantType.list('common_name');
-      setPlantTypes(types.filter(t => t.common_name));
+      setPlantTypes(types);
     } catch (error) {
       console.error('Error loading plant types:', error);
-    }
-  };
-
-  const handlePhotoUpload = async (e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    setUploadingPhoto(true);
-    try {
-      const { file_url } = await base44.integrations.Core.UploadFile({ file });
-      setFormData({ 
-        ...formData, 
-        lot_images: [...(formData.lot_images || []), file_url] 
-      });
-      toast.success('Photo added');
-    } catch (error) {
-      console.error('Error uploading photo:', error);
-      toast.error('Failed to upload photo');
-    } finally {
-      setUploadingPhoto(false);
-    }
-  };
-
-  const handleSubmit = async () => {
-    if (!formData.plant_type_id || !formData.variety_name.trim()) {
-      toast.error('Plant type and variety name are required');
-      return;
-    }
-
-    setLoading(true);
-    try {
-      const plantType = plantTypes.find(t => t.id === formData.plant_type_id);
-      
-      // Create PlantProfile
-      const profile = await base44.entities.PlantProfile.create({
-        plant_type_id: formData.plant_type_id,
-        common_name: plantType.common_name,
-        variety_name: formData.variety_name,
-        days_to_maturity_seed: formData.days_to_maturity_seed ? parseInt(formData.days_to_maturity_seed) : null,
-        days_to_maturity_transplant: formData.days_to_maturity_transplant ? parseInt(formData.days_to_maturity_transplant) : null,
-        spacing_in_min: formData.spacing_min ? parseFloat(formData.spacing_min) : null,
-        spacing_in_max: formData.spacing_max ? parseFloat(formData.spacing_max) : null,
-        height_in_min: formData.height_min ? parseFloat(formData.height_min) : null,
-        height_in_max: formData.height_max ? parseFloat(formData.height_max) : null,
-        sun_requirement: formData.sun_requirement || null,
-        water_requirement: formData.water_requirement || null,
-        growth_habit: formData.growth_habit || null,
-        transplant_timing: formData.transplant_timing || null,
-        flavor_profile: formData.flavor_profile || null,
-        fruit_color: formData.fruit_color || null,
-        fruit_shape: formData.fruit_shape || null,
-        container_friendly: formData.container_friendly,
-        trellis_required: formData.trellis_required,
-        is_perennial: formData.is_perennial,
-        scoville_min: formData.scoville_min ? parseFloat(formData.scoville_min) : null,
-        scoville_max: formData.scoville_max ? parseFloat(formData.scoville_max) : null,
-        notes_private: formData.growing_notes || null,
-        description: formData.description || null,
-        source_type: 'user_private'
-      });
-
-      // Create SeedLot
-      await base44.entities.SeedLot.create({
-        plant_profile_id: profile.id,
-        quantity: formData.quantity ? parseFloat(formData.quantity) : null,
-        unit: formData.unit,
-        year_acquired: formData.year_acquired,
-        packed_for_year: formData.packed_for_year || null,
-        source_vendor_name: formData.source_vendor_name || null,
-        source_url: formData.source_vendor_url || null,
-        source_vendor_url: formData.source_vendor_url || null,
-        storage_location: formData.storage_location || null,
-        lot_notes: formData.lot_notes || null,
-        lot_images: formData.lot_images || [],
-        is_wishlist: false,
-        from_catalog: false
-      });
-
-      toast.success('Custom seed added to your stash!');
-      onSuccess?.();
-      onOpenChange(false);
-      resetForm();
-    } catch (error) {
-      console.error('Error adding custom seed:', error);
-      toast.error('Failed to add seed');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleSuggestToCatalog = async () => {
-    if (!formData.plant_type_id || !formData.variety_name.trim()) {
-      toast.error('Plant type and variety name are required to suggest');
-      return;
-    }
-
-    try {
-      await base44.entities.VarietySuggestion.create({
-        plant_type_id: formData.plant_type_id,
-        plant_type_name: plantTypes.find(t => t.id === formData.plant_type_id)?.common_name,
-        variety_name: formData.variety_name,
-        description: formData.description || null,
-        days_to_maturity: formData.days_to_maturity_seed ? parseInt(formData.days_to_maturity_seed) : null,
-        spacing_recommended: formData.spacing_min ? parseFloat(formData.spacing_min) : null,
-        plant_height_typical: formData.height_min && formData.height_max ? `${formData.height_min}-${formData.height_max}"` : null,
-        sun_requirement: formData.sun_requirement || null,
-        water_requirement: formData.water_requirement || null,
-        growth_habit: formData.growth_habit || null,
-        trellis_required: formData.trellis_required,
-        container_friendly: formData.container_friendly,
-        grower_notes: formData.growing_notes || null,
-        status: 'pending',
-        submitted_by: (await base44.auth.me()).email
-      });
-
-      toast.success('Variety suggested to catalog for review!');
-    } catch (error) {
-      console.error('Error suggesting variety:', error);
-      toast.error('Failed to submit suggestion');
     }
   };
 
@@ -192,6 +70,7 @@ export default function AddCustomSeedDialog({ open, onOpenChange, onSuccess }) {
     setFormData({
       plant_type_id: '',
       variety_name: '',
+      description: '',
       days_to_maturity_seed: '',
       days_to_maturity_transplant: '',
       spacing_min: '',
@@ -211,7 +90,6 @@ export default function AddCustomSeedDialog({ open, onOpenChange, onSuccess }) {
       scoville_min: '',
       scoville_max: '',
       growing_notes: '',
-      description: '',
       quantity: '',
       unit: 'seeds',
       year_acquired: new Date().getFullYear(),
@@ -222,41 +100,179 @@ export default function AddCustomSeedDialog({ open, onOpenChange, onSuccess }) {
       lot_notes: '',
       lot_images: []
     });
+    setShowSuggestButton(false);
+  };
+
+  const handlePhotoUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setUploadingPhoto(true);
+    try {
+      const { file_url } = await base44.integrations.Core.UploadFile({ file });
+      setFormData({ 
+        ...formData, 
+        lot_images: [...formData.lot_images, file_url] 
+      });
+      toast.success('Photo added');
+    } catch (error) {
+      console.error('Error uploading photo:', error);
+      toast.error('Failed to upload photo');
+    } finally {
+      setUploadingPhoto(false);
+    }
+  };
+
+  const handleSubmit = async () => {
+    if (!formData.plant_type_id || !formData.variety_name.trim()) {
+      toast.error('Please select plant type and enter variety name');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const user = await base44.auth.me();
+      const plantType = plantTypes.find(t => t.id === formData.plant_type_id);
+
+      // Create custom PlantProfile
+      const profile = await base44.entities.PlantProfile.create({
+        plant_type_id: formData.plant_type_id,
+        plant_family: plantType?.plant_family_id,
+        common_name: plantType?.common_name,
+        variety_name: formData.variety_name,
+        description: formData.description || null,
+        days_to_maturity_seed: formData.days_to_maturity_seed ? parseInt(formData.days_to_maturity_seed) : null,
+        days_to_maturity_transplant: formData.days_to_maturity_transplant ? parseInt(formData.days_to_maturity_transplant) : null,
+        spacing_in_min: formData.spacing_min ? parseInt(formData.spacing_min) : null,
+        spacing_in_max: formData.spacing_max ? parseInt(formData.spacing_max) : null,
+        height_in_min: formData.height_min ? parseInt(formData.height_min) : null,
+        height_in_max: formData.height_max ? parseInt(formData.height_max) : null,
+        sun_requirement: formData.sun_requirement || null,
+        water_requirement: formData.water_requirement || null,
+        growth_habit: formData.growth_habit || null,
+        transplant_timing: formData.transplant_timing || null,
+        flavor_profile: formData.flavor_profile || null,
+        fruit_color: formData.fruit_color || null,
+        fruit_shape: formData.fruit_shape || null,
+        container_friendly: formData.container_friendly,
+        trellis_required: formData.trellis_required,
+        is_perennial: formData.is_perennial,
+        scoville_min: formData.scoville_min ? parseInt(formData.scoville_min) : null,
+        scoville_max: formData.scoville_max ? parseInt(formData.scoville_max) : null,
+        notes_private: formData.growing_notes || null,
+        source_type: 'user_private',
+        is_custom: true
+      });
+
+      // Create SeedLot
+      await base44.entities.SeedLot.create({
+        plant_profile_id: profile.id,
+        quantity: formData.quantity ? parseInt(formData.quantity) : null,
+        unit: formData.unit,
+        year_acquired: formData.year_acquired,
+        packed_for_year: formData.packed_for_year ? parseInt(formData.packed_for_year) : null,
+        source_vendor_name: formData.source_vendor_name || null,
+        source_vendor_url: formData.source_vendor_url || null,
+        storage_location: formData.storage_location || null,
+        lot_notes: formData.lot_notes || null,
+        lot_images: formData.lot_images,
+        is_wishlist: false,
+        from_catalog: false
+      });
+
+      toast.success('Custom seed added to stash!');
+      setShowSuggestButton(true);
+      
+      // Don't close immediately - show suggest button
+      setTimeout(() => {
+        onSuccess?.();
+        onOpenChange(false);
+        setShowSuggestButton(false);
+      }, 3000);
+    } catch (error) {
+      console.error('Error adding custom seed:', error);
+      toast.error('Failed to add seed');
+      setLoading(false);
+    }
+  };
+
+  const handleSuggestToCatalog = async () => {
+    try {
+      const plantType = plantTypes.find(t => t.id === formData.plant_type_id);
+      
+      await base44.entities.VarietySuggestion.create({
+        plant_type_id: formData.plant_type_id,
+        plant_type_name: plantType?.common_name,
+        variety_name: formData.variety_name,
+        description: formData.description,
+        days_to_maturity: formData.days_to_maturity_seed ? parseInt(formData.days_to_maturity_seed) : null,
+        spacing_recommended: formData.spacing_min ? parseInt(formData.spacing_min) : null,
+        plant_height_typical: formData.height_max ? `${formData.height_min || formData.height_max}` : null,
+        sun_requirement: formData.sun_requirement,
+        water_requirement: formData.water_requirement,
+        growth_habit: formData.growth_habit,
+        trellis_required: formData.trellis_required,
+        container_friendly: formData.container_friendly,
+        grower_notes: formData.growing_notes,
+        images: formData.lot_images,
+        submitted_by: (await base44.auth.me()).email,
+        status: 'pending'
+      });
+
+      toast.success('Variety suggested to catalog! Admins will review it.');
+      onOpenChange(false);
+      onSuccess?.();
+    } catch (error) {
+      console.error('Error suggesting variety:', error);
+      toast.error('Failed to submit suggestion');
+    }
   };
 
   const selectedPlantType = plantTypes.find(t => t.id === formData.plant_type_id);
-  const isPepper = selectedPlantType?.common_name?.toLowerCase().includes('pepper');
+  const isPepperType = selectedPlantType?.common_name?.toLowerCase().includes('pepper');
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl max-h-[90vh]">
+      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Add My Own Seeds</DialogTitle>
           <DialogDescription>
-            Add a custom variety to your seed stash (may or may not be in the catalog)
+            Add a custom variety to your seed stash (may or may not be in our catalog)
           </DialogDescription>
         </DialogHeader>
 
-        <Tabs defaultValue="variety" className="flex-1">
-          <TabsList className="w-full">
-            <TabsTrigger value="variety" className="flex-1">Variety Info</TabsTrigger>
-            <TabsTrigger value="stash" className="flex-1">My Stash Info</TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="variety" className="space-y-4 max-h-[60vh] overflow-y-auto pr-2">
+        {showSuggestButton ? (
+          <div className="py-8 text-center space-y-4">
+            <div className="w-16 h-16 rounded-full bg-emerald-100 flex items-center justify-center mx-auto">
+              <Sparkles className="w-8 h-8 text-emerald-600" />
+            </div>
+            <h3 className="text-lg font-semibold">Seed Added!</h3>
+            <p className="text-gray-600">Would you like to suggest this variety to our Plant Catalog?</p>
+            <div className="flex gap-2 justify-center">
+              <Button variant="outline" onClick={() => { onOpenChange(false); onSuccess?.(); }}>
+                No Thanks
+              </Button>
+              <Button onClick={handleSuggestToCatalog} className="bg-emerald-600 hover:bg-emerald-700 gap-2">
+                <Sparkles className="w-4 h-4" />
+                Suggest to Catalog
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <div className="space-y-4">
             {/* Plant Type */}
             <div>
               <Label>Plant Type <span className="text-red-500">*</span></Label>
               <Select 
-                value={formData.plant_type_id} 
-                onValueChange={(id) => setFormData({ ...formData, plant_type_id: id })}
+                value={String(formData.plant_type_id || '')} 
+                onValueChange={(id) => setFormData({ ...formData, plant_type_id: String(id) })}
               >
                 <SelectTrigger className="mt-1">
-                  <SelectValue placeholder="Select plant type..." />
+                  <SelectValue placeholder="Select from our plant types..." />
                 </SelectTrigger>
                 <SelectContent>
                   {plantTypes.map(type => (
-                    <SelectItem key={type.id} value={type.id}>
+                    <SelectItem key={type.id} value={String(type.id)}>
                       {type.icon} {type.common_name}
                     </SelectItem>
                   ))}
@@ -275,419 +291,385 @@ export default function AddCustomSeedDialog({ open, onOpenChange, onSuccess }) {
               />
             </div>
 
-            {/* Days to Maturity */}
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label>Days to Maturity (seed)</Label>
-                <Input
-                  type="number"
-                  value={formData.days_to_maturity_seed}
-                  onChange={(e) => setFormData({ ...formData, days_to_maturity_seed: e.target.value })}
-                  placeholder="e.g., 70"
-                  className="mt-1"
-                />
-              </div>
-              <div>
-                <Label>Days to Maturity (transplant)</Label>
-                <Input
-                  type="number"
-                  value={formData.days_to_maturity_transplant}
-                  onChange={(e) => setFormData({ ...formData, days_to_maturity_transplant: e.target.value })}
-                  placeholder="e.g., 55"
-                  className="mt-1"
-                />
-              </div>
-            </div>
-
-            {/* Spacing */}
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label>Spacing Min (inches)</Label>
-                <Input
-                  type="number"
-                  value={formData.spacing_min}
-                  onChange={(e) => setFormData({ ...formData, spacing_min: e.target.value })}
-                  placeholder="e.g., 18"
-                  className="mt-1"
-                />
-              </div>
-              <div>
-                <Label>Spacing Max (inches)</Label>
-                <Input
-                  type="number"
-                  value={formData.spacing_max}
-                  onChange={(e) => setFormData({ ...formData, spacing_max: e.target.value })}
-                  placeholder="e.g., 24"
-                  className="mt-1"
-                />
-              </div>
-            </div>
-
-            {/* Height */}
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label>Height Min (inches)</Label>
-                <Input
-                  type="number"
-                  value={formData.height_min}
-                  onChange={(e) => setFormData({ ...formData, height_min: e.target.value })}
-                  placeholder="e.g., 36"
-                  className="mt-1"
-                />
-              </div>
-              <div>
-                <Label>Height Max (inches)</Label>
-                <Input
-                  type="number"
-                  value={formData.height_max}
-                  onChange={(e) => setFormData({ ...formData, height_max: e.target.value })}
-                  placeholder="e.g., 48"
-                  className="mt-1"
-                />
-              </div>
-            </div>
-
-            {/* Sun & Water */}
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label>Sun Requirement</Label>
-                <Select 
-                  value={formData.sun_requirement} 
-                  onValueChange={(v) => setFormData({ ...formData, sun_requirement: v })}
-                >
-                  <SelectTrigger className="mt-1">
-                    <SelectValue placeholder="Select..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="full_sun">Full Sun</SelectItem>
-                    <SelectItem value="partial_sun">Partial Sun</SelectItem>
-                    <SelectItem value="partial_shade">Partial Shade</SelectItem>
-                    <SelectItem value="full_shade">Full Shade</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <Label>Water Requirement</Label>
-                <Select 
-                  value={formData.water_requirement} 
-                  onValueChange={(v) => setFormData({ ...formData, water_requirement: v })}
-                >
-                  <SelectTrigger className="mt-1">
-                    <SelectValue placeholder="Select..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="low">Low</SelectItem>
-                    <SelectItem value="moderate">Moderate</SelectItem>
-                    <SelectItem value="high">High</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-
-            {/* Growth Habit & Transplant */}
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label>Growth Habit</Label>
-                <Input
-                  value={formData.growth_habit}
-                  onChange={(e) => setFormData({ ...formData, growth_habit: e.target.value })}
-                  placeholder="e.g., Vining, Bush, Indeterminate"
-                  className="mt-1"
-                />
-              </div>
-              <div>
-                <Label>Transplant Timing</Label>
-                <Input
-                  value={formData.transplant_timing}
-                  onChange={(e) => setFormData({ ...formData, transplant_timing: e.target.value })}
-                  placeholder="e.g., 2 weeks after frost"
-                  className="mt-1"
-                />
-              </div>
-            </div>
-
-            {/* Flavor & Fruit Info */}
-            <div>
-              <Label>Flavor Profile</Label>
-              <Input
-                value={formData.flavor_profile}
-                onChange={(e) => setFormData({ ...formData, flavor_profile: e.target.value })}
-                placeholder="e.g., Sweet, acidic, complex"
-                className="mt-1"
-              />
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label>Fruit Color</Label>
-                <Input
-                  value={formData.fruit_color}
-                  onChange={(e) => setFormData({ ...formData, fruit_color: e.target.value })}
-                  placeholder="e.g., Red, Yellow"
-                  className="mt-1"
-                />
-              </div>
-              <div>
-                <Label>Fruit Shape</Label>
-                <Input
-                  value={formData.fruit_shape}
-                  onChange={(e) => setFormData({ ...formData, fruit_shape: e.target.value })}
-                  placeholder="e.g., Round, Oblong"
-                  className="mt-1"
-                />
-              </div>
-            </div>
-
-            {/* Checkboxes */}
-            <div className="space-y-3">
-              <div className="flex items-center gap-2">
-                <Checkbox
-                  id="container"
-                  checked={formData.container_friendly}
-                  onCheckedChange={(checked) => setFormData({ ...formData, container_friendly: checked })}
-                />
-                <Label htmlFor="container" className="text-sm font-normal">Container Friendly</Label>
-              </div>
-              <div className="flex items-center gap-2">
-                <Checkbox
-                  id="trellis"
-                  checked={formData.trellis_required}
-                  onCheckedChange={(checked) => setFormData({ ...formData, trellis_required: checked })}
-                />
-                <Label htmlFor="trellis" className="text-sm font-normal">Trellis Required</Label>
-              </div>
-              <div className="flex items-center gap-2">
-                <Checkbox
-                  id="perennial"
-                  checked={formData.is_perennial}
-                  onCheckedChange={(checked) => setFormData({ ...formData, is_perennial: checked })}
-                />
-                <Label htmlFor="perennial" className="text-sm font-normal">Perennial</Label>
-              </div>
-            </div>
-
-            {/* Scoville (Peppers only) */}
-            {isPepper && (
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label>Scoville Min</Label>
-                  <Input
-                    type="number"
-                    value={formData.scoville_min}
-                    onChange={(e) => setFormData({ ...formData, scoville_min: e.target.value })}
-                    placeholder="e.g., 0"
-                    className="mt-1"
-                  />
-                </div>
-                <div>
-                  <Label>Scoville Max</Label>
-                  <Input
-                    type="number"
-                    value={formData.scoville_max}
-                    onChange={(e) => setFormData({ ...formData, scoville_max: e.target.value })}
-                    placeholder="e.g., 5000"
-                    className="mt-1"
-                  />
-                </div>
-              </div>
-            )}
-
-            {/* Growing Notes */}
-            <div>
-              <Label>Growing Notes</Label>
-              <Textarea
-                value={formData.growing_notes}
-                onChange={(e) => setFormData({ ...formData, growing_notes: e.target.value })}
-                placeholder="Tips for growing this variety..."
-                rows={3}
-                className="mt-1"
-              />
-            </div>
-
             {/* Description */}
             <div>
               <Label>Description</Label>
               <Textarea
                 value={formData.description}
                 onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                placeholder="General description of this variety..."
-                rows={3}
+                placeholder="Describe this variety..."
                 className="mt-1"
+                rows={2}
               />
             </div>
-          </TabsContent>
 
-          <TabsContent value="stash" className="space-y-4 max-h-[60vh] overflow-y-auto pr-2">
-            {/* Quantity */}
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label>Quantity</Label>
+            {/* Seed Details Section */}
+            <div className="border-t pt-4">
+              <h3 className="font-semibold mb-3">My Stash Info</h3>
+              
+              <div className="grid grid-cols-2 gap-3 mb-3">
+                <div>
+                  <Label>Quantity</Label>
+                  <Input
+                    type="number"
+                    value={formData.quantity}
+                    onChange={(e) => setFormData({ ...formData, quantity: e.target.value })}
+                    placeholder="100"
+                    className="mt-1"
+                  />
+                </div>
+                <div>
+                  <Label>Unit</Label>
+                  <Select value={formData.unit} onValueChange={(v) => setFormData({ ...formData, unit: v })}>
+                    <SelectTrigger className="mt-1">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="seeds">Seeds</SelectItem>
+                      <SelectItem value="packets">Packets</SelectItem>
+                      <SelectItem value="grams">Grams</SelectItem>
+                      <SelectItem value="ounces">Ounces</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3 mb-3">
+                <div>
+                  <Label>Year Acquired</Label>
+                  <Input
+                    type="number"
+                    value={formData.year_acquired}
+                    onChange={(e) => setFormData({ ...formData, year_acquired: parseInt(e.target.value) || '' })}
+                    className="mt-1"
+                  />
+                </div>
+                <div>
+                  <Label>Packed For Year</Label>
+                  <Input
+                    type="number"
+                    value={formData.packed_for_year}
+                    onChange={(e) => setFormData({ ...formData, packed_for_year: e.target.value })}
+                    placeholder="2025"
+                    className="mt-1"
+                  />
+                </div>
+              </div>
+
+              <div className="mb-3">
+                <Label>Vendor/Source</Label>
                 <Input
-                  type="number"
-                  value={formData.quantity}
-                  onChange={(e) => setFormData({ ...formData, quantity: e.target.value })}
-                  placeholder="e.g., 20"
+                  value={formData.source_vendor_name}
+                  onChange={(e) => setFormData({ ...formData, source_vendor_name: e.target.value })}
+                  placeholder="Baker Creek, Johnny's, etc."
                   className="mt-1"
                 />
               </div>
-              <div>
-                <Label>Unit</Label>
-                <Select 
-                  value={formData.unit} 
-                  onValueChange={(v) => setFormData({ ...formData, unit: v })}
-                >
-                  <SelectTrigger className="mt-1">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="seeds">Seeds</SelectItem>
-                    <SelectItem value="packets">Packets</SelectItem>
-                    <SelectItem value="grams">Grams</SelectItem>
-                    <SelectItem value="ounces">Ounces</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
 
-            {/* Years */}
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label>Year Acquired</Label>
+              <div className="mb-3">
+                <Label>Vendor URL</Label>
                 <Input
-                  type="number"
-                  value={formData.year_acquired}
-                  onChange={(e) => setFormData({ ...formData, year_acquired: parseInt(e.target.value) })}
+                  value={formData.source_vendor_url}
+                  onChange={(e) => setFormData({ ...formData, source_vendor_url: e.target.value })}
+                  placeholder="www.example.com"
                   className="mt-1"
                 />
               </div>
-              <div>
-                <Label>Packed For Year</Label>
+
+              <div className="mb-3">
+                <Label>Storage Location</Label>
                 <Input
-                  type="number"
-                  value={formData.packed_for_year}
-                  onChange={(e) => setFormData({ ...formData, packed_for_year: parseInt(e.target.value) || '' })}
-                  placeholder="2025"
+                  value={formData.storage_location}
+                  onChange={(e) => setFormData({ ...formData, storage_location: e.target.value })}
+                  placeholder="Fridge, Box A, etc."
                   className="mt-1"
+                />
+              </div>
+
+              <div className="mb-3">
+                <Label>Lot Notes</Label>
+                <Textarea
+                  value={formData.lot_notes}
+                  onChange={(e) => setFormData({ ...formData, lot_notes: e.target.value })}
+                  placeholder="Notes about this seed lot..."
+                  className="mt-1"
+                  rows={2}
                 />
               </div>
             </div>
 
-            {/* Vendor */}
-            <div>
-              <Label>Vendor/Source</Label>
-              <Input
-                value={formData.source_vendor_name}
-                onChange={(e) => setFormData({ ...formData, source_vendor_name: e.target.value })}
-                placeholder="e.g., Baker Creek"
-                className="mt-1"
-              />
-            </div>
+            {/* Growing Details Section */}
+            <div className="border-t pt-4">
+              <h3 className="font-semibold mb-3">Variety Details</h3>
+              
+              <div className="grid grid-cols-2 gap-3 mb-3">
+                <div>
+                  <Label>Days to Maturity (seed)</Label>
+                  <Input
+                    type="number"
+                    value={formData.days_to_maturity_seed}
+                    onChange={(e) => setFormData({ ...formData, days_to_maturity_seed: e.target.value })}
+                    placeholder="65"
+                    className="mt-1"
+                  />
+                </div>
+                <div>
+                  <Label>Days to Maturity (transplant)</Label>
+                  <Input
+                    type="number"
+                    value={formData.days_to_maturity_transplant}
+                    onChange={(e) => setFormData({ ...formData, days_to_maturity_transplant: e.target.value })}
+                    placeholder="55"
+                    className="mt-1"
+                  />
+                </div>
+              </div>
 
-            {/* Vendor URL */}
-            <div>
-              <Label>Vendor URL</Label>
-              <Input
-                value={formData.source_vendor_url}
-                onChange={(e) => setFormData({ ...formData, source_vendor_url: e.target.value })}
-                placeholder="e.g., https://www.example.com"
-                className="mt-1"
-              />
-            </div>
+              <div className="grid grid-cols-2 gap-3 mb-3">
+                <div>
+                  <Label>Spacing Min (inches)</Label>
+                  <Input
+                    type="number"
+                    value={formData.spacing_min}
+                    onChange={(e) => setFormData({ ...formData, spacing_min: e.target.value })}
+                    placeholder="12"
+                    className="mt-1"
+                  />
+                </div>
+                <div>
+                  <Label>Spacing Max (inches)</Label>
+                  <Input
+                    type="number"
+                    value={formData.spacing_max}
+                    onChange={(e) => setFormData({ ...formData, spacing_max: e.target.value })}
+                    placeholder="24"
+                    className="mt-1"
+                  />
+                </div>
+              </div>
 
-            {/* Storage */}
-            <div>
-              <Label>Storage Location</Label>
-              <Input
-                value={formData.storage_location}
-                onChange={(e) => setFormData({ ...formData, storage_location: e.target.value })}
-                placeholder="e.g., Refrigerator, Shelf A"
-                className="mt-1"
-              />
-            </div>
+              <div className="grid grid-cols-2 gap-3 mb-3">
+                <div>
+                  <Label>Height Min (inches)</Label>
+                  <Input
+                    type="number"
+                    value={formData.height_min}
+                    onChange={(e) => setFormData({ ...formData, height_min: e.target.value })}
+                    placeholder="24"
+                    className="mt-1"
+                  />
+                </div>
+                <div>
+                  <Label>Height Max (inches)</Label>
+                  <Input
+                    type="number"
+                    value={formData.height_max}
+                    onChange={(e) => setFormData({ ...formData, height_max: e.target.value })}
+                    placeholder="36"
+                    className="mt-1"
+                  />
+                </div>
+              </div>
 
-            {/* Notes */}
-            <div>
-              <Label>Notes</Label>
-              <Textarea
-                value={formData.lot_notes}
-                onChange={(e) => setFormData({ ...formData, lot_notes: e.target.value })}
-                rows={3}
-                placeholder="Any notes about these seeds..."
-                className="mt-1"
-              />
-            </div>
+              <div className="grid grid-cols-2 gap-3 mb-3">
+                <div>
+                  <Label>Sun Requirement</Label>
+                  <Select value={formData.sun_requirement} onValueChange={(v) => setFormData({ ...formData, sun_requirement: v })}>
+                    <SelectTrigger className="mt-1">
+                      <SelectValue placeholder="Select..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="full_sun">Full Sun</SelectItem>
+                      <SelectItem value="partial_sun">Partial Sun</SelectItem>
+                      <SelectItem value="partial_shade">Partial Shade</SelectItem>
+                      <SelectItem value="full_shade">Full Shade</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label>Water Requirement</Label>
+                  <Select value={formData.water_requirement} onValueChange={(v) => setFormData({ ...formData, water_requirement: v })}>
+                    <SelectTrigger className="mt-1">
+                      <SelectValue placeholder="Select..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="low">Low</SelectItem>
+                      <SelectItem value="moderate">Moderate</SelectItem>
+                      <SelectItem value="high">High</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
 
-            {/* Photos */}
-            <div>
-              <Label>Photos</Label>
-              <div className="mt-2 space-y-2">
-                {formData.lot_images?.length > 0 && (
-                  <div className="grid grid-cols-3 gap-2">
-                    {formData.lot_images.map((url, idx) => (
-                      <div key={idx} className="relative group">
-                        <img src={url} alt="Seed" className="w-full h-20 object-cover rounded-lg" />
-                        <Button
-                          type="button"
-                          variant="destructive"
-                          size="icon"
-                          className="absolute top-1 right-1 h-6 w-6 opacity-0 group-hover:opacity-100"
-                          onClick={() => {
-                            const updated = formData.lot_images.filter((_, i) => i !== idx);
-                            setFormData({ ...formData, lot_images: updated });
-                          }}
-                        >
-                          <Trash2 className="w-3 h-3" />
-                        </Button>
-                      </div>
-                    ))}
+              <div className="mb-3">
+                <Label>Growth Habit</Label>
+                <Input
+                  value={formData.growth_habit}
+                  onChange={(e) => setFormData({ ...formData, growth_habit: e.target.value })}
+                  placeholder="e.g., Bush, Vining, Indeterminate"
+                  className="mt-1"
+                />
+              </div>
+
+              <div className="mb-3">
+                <Label>Transplant Timing</Label>
+                <Input
+                  value={formData.transplant_timing}
+                  onChange={(e) => setFormData({ ...formData, transplant_timing: e.target.value })}
+                  placeholder="e.g., 6 weeks before frost, 2 weeks after frost"
+                  className="mt-1"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3 mb-3">
+                <div>
+                  <Label>Flavor Profile</Label>
+                  <Input
+                    value={formData.flavor_profile}
+                    onChange={(e) => setFormData({ ...formData, flavor_profile: e.target.value })}
+                    placeholder="Sweet, tangy, etc."
+                    className="mt-1"
+                  />
+                </div>
+                <div>
+                  <Label>Fruit Color</Label>
+                  <Input
+                    value={formData.fruit_color}
+                    onChange={(e) => setFormData({ ...formData, fruit_color: e.target.value })}
+                    placeholder="Red, yellow, etc."
+                    className="mt-1"
+                  />
+                </div>
+              </div>
+
+              <div className="mb-3">
+                <Label>Fruit Shape</Label>
+                <Input
+                  value={formData.fruit_shape}
+                  onChange={(e) => setFormData({ ...formData, fruit_shape: e.target.value })}
+                  placeholder="Round, oblong, etc."
+                  className="mt-1"
+                />
+              </div>
+
+              {isPepperType && (
+                <div className="grid grid-cols-2 gap-3 mb-3">
+                  <div>
+                    <Label>Scoville Min (peppers)</Label>
+                    <Input
+                      type="number"
+                      value={formData.scoville_min}
+                      onChange={(e) => setFormData({ ...formData, scoville_min: e.target.value })}
+                      placeholder="0"
+                      className="mt-1"
+                    />
                   </div>
-                )}
-                <Button
-                  type="button"
-                  variant="outline"
-                  disabled={uploadingPhoto}
-                  onClick={() => document.getElementById('custom-seed-photo').click()}
-                  className="w-full"
-                >
-                  {uploadingPhoto ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Plus className="w-4 h-4 mr-2" />}
-                  Add Photo
-                </Button>
-                <input
-                  id="custom-seed-photo"
-                  type="file"
-                  accept="image/*"
-                  onChange={handlePhotoUpload}
-                  className="hidden"
+                  <div>
+                    <Label>Scoville Max</Label>
+                    <Input
+                      type="number"
+                      value={formData.scoville_max}
+                      onChange={(e) => setFormData({ ...formData, scoville_max: e.target.value })}
+                      placeholder="5000"
+                      className="mt-1"
+                    />
+                  </div>
+                </div>
+              )}
+
+              <div className="flex gap-4 mb-3">
+                <label className="flex items-center gap-2">
+                  <Checkbox
+                    checked={formData.container_friendly}
+                    onCheckedChange={(checked) => setFormData({ ...formData, container_friendly: checked })}
+                  />
+                  <span className="text-sm">Container Friendly</span>
+                </label>
+                <label className="flex items-center gap-2">
+                  <Checkbox
+                    checked={formData.trellis_required}
+                    onCheckedChange={(checked) => setFormData({ ...formData, trellis_required: checked })}
+                  />
+                  <span className="text-sm">Trellis Required</span>
+                </label>
+                <label className="flex items-center gap-2">
+                  <Checkbox
+                    checked={formData.is_perennial}
+                    onCheckedChange={(checked) => setFormData({ ...formData, is_perennial: checked })}
+                  />
+                  <span className="text-sm">Perennial</span>
+                </label>
+              </div>
+
+              <div className="mb-3">
+                <Label>Growing Notes</Label>
+                <Textarea
+                  value={formData.growing_notes}
+                  onChange={(e) => setFormData({ ...formData, growing_notes: e.target.value })}
+                  placeholder="Tips for growing this variety..."
+                  className="mt-1"
+                  rows={3}
                 />
               </div>
-            </div>
-          </TabsContent>
-        </Tabs>
 
-        <DialogFooter className="flex-col sm:flex-row gap-2">
-          <Button 
-            variant="outline" 
-            onClick={handleSuggestToCatalog}
-            className="gap-2"
-            disabled={!formData.plant_type_id || !formData.variety_name.trim()}
-          >
-            <Sparkles className="w-4 h-4" />
-            Suggest to Plant Catalog
-          </Button>
-          <div className="flex gap-2 ml-auto">
-            <Button variant="outline" onClick={() => onOpenChange(false)}>
-              Cancel
-            </Button>
-            <Button
-              onClick={handleSubmit}
-              disabled={loading || !formData.plant_type_id || !formData.variety_name.trim()}
-              className="bg-emerald-600 hover:bg-emerald-700"
-            >
-              {loading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
-              Add to Stash
-            </Button>
+              <div>
+                <Label>Photos</Label>
+                <div className="mt-2 space-y-2">
+                  {formData.lot_images.length > 0 && (
+                    <div className="grid grid-cols-4 gap-2">
+                      {formData.lot_images.map((url, idx) => (
+                        <div key={idx} className="relative group">
+                          <img src={url} alt="Seed" className="w-full h-20 object-cover rounded-lg" />
+                          <Button
+                            type="button"
+                            variant="destructive"
+                            size="icon"
+                            className="absolute top-1 right-1 h-6 w-6 opacity-0 group-hover:opacity-100"
+                            onClick={() => {
+                              const updated = formData.lot_images.filter((_, i) => i !== idx);
+                              setFormData({ ...formData, lot_images: updated });
+                            }}
+                          >
+                            <Trash2 className="w-3 h-3" />
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  <Button
+                    type="button"
+                    variant="outline"
+                    disabled={uploadingPhoto}
+                    onClick={() => document.getElementById('custom-seed-photo').click()}
+                    className="w-full"
+                  >
+                    {uploadingPhoto ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Plus className="w-4 h-4 mr-2" />}
+                    Add Photo
+                  </Button>
+                  <input
+                    id="custom-seed-photo"
+                    type="file"
+                    accept="image/*"
+                    onChange={handlePhotoUpload}
+                    className="hidden"
+                  />
+                </div>
+              </div>
+            </div>
+
+            <DialogFooter>
+              <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
+              <Button 
+                onClick={handleSubmit}
+                disabled={loading || !formData.plant_type_id || !formData.variety_name.trim()}
+                className="bg-emerald-600 hover:bg-emerald-700"
+              >
+                {loading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+                Add to Stash
+              </Button>
+            </DialogFooter>
           </div>
-        </DialogFooter>
+        )}
       </DialogContent>
     </Dialog>
   );
