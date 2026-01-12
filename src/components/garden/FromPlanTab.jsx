@@ -14,7 +14,9 @@ export default function FromPlanTab({ activeSeason, garden, bedId, selectedPlanI
     loadPlans();
     
     // Real-time updates when plantings change
-    const timer = setInterval(() => loadPlans(), 3000);
+    const timer = setInterval(() => {
+      loadPlans();
+    }, 2000);
     return () => clearInterval(timer);
   }, [activeSeason, garden]);
   

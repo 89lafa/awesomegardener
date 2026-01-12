@@ -201,9 +201,54 @@ export default function PlantCatalogDetail() {
         
         if (cleanIds.length === 0) {
           console.error('[BROWSE] No valid plant_type_ids found');
-          setNotFound(true);
+          // Don't set notFound - show empty state instead
+          setPlantType({
+            id: plantTypeId,
+            common_name: cat.name,
+            icon: cat.icon,
+            category: 'browse',
+            description: cat.description,
+            _is_browse_only: true
+          });
+          setVarieties([]);
+          setSubCategories([]);
           setLoading(false);
           return;
+        }
+        
+        // CRITICAL: Use local variable cleanIds, not state canonicalIds
+        // Load subcategories for these plant types
+        console.log('[BROWSE] Loading subcategories for plant_type_ids:', cleanIds);
+        const allSubcats = await base44.entities.PlantSubCategory.filter({ is_active: true });
+        const validSubcats = allSubcats.filter(sc => cleanIds.includes(sc.plant_type_id));
+        console.log('[BROWSE] Found', validSubcats.length, 'subcategories');
+        setSubCategories(validSubcats);
+        
+        // Load varieties for these plant types
+        console.log('[BROWSE] Loading varieties for plant_type_ids:', cleanIds);
+        const allVars = await base44.entities.Variety.filter({ status: 'active' }, 'variety_name', 2000);
+        const filteredVars = allVars.filter(v => cleanIds.includes(v.plant_type_id));
+        console.log('[BROWSE] Filtered to', filteredVars.length, 'varieties from', allVars.length, 'total active varieties');
+        
+        // Load subcategory mappings
+        const varietyIds = filteredVars.map(v => v.id);
+        if (varietyIds.length > 0) {
+          const allMaps = await base44.entities.VarietySubCategoryMap.list();
+          const mapsForThese = allMaps.filter(m => varietyIds.includes(m.variety_id));
+          
+          const varsWithMaps = filteredVars.map(v => {
+            if (!v.plant_subcategory_id) {
+              const mapping = mapsForThese.find(m => m.variety_id === v.id);
+              if (mapping) {
+                return { ...v, plant_subcategory_id: mapping.plant_subcategory_id };
+              }
+            }
+            return v;
+          });
+          
+          setVarieties(varsWithMaps);
+        } else {
+          setVarieties(filteredVars);
         }
         
         setCanonicalIds(cleanIds);
@@ -217,6 +262,9 @@ export default function PlantCatalogDetail() {
           description: cat.description,
           _is_browse_only: true
         });
+        
+        setLoading(false);
+        return;
       } else {
         // Regular plant type loading
         const types = await base44.entities.PlantType.filter({ id: plantTypeId });
@@ -259,31 +307,12 @@ export default function PlantCatalogDetail() {
         setSubCategories(uniqueSubcats);
       }
 
-      // Load varieties
+      // Load varieties - ONLY for non-browse categories (browse already handled above)
       console.log('[VARIETY DEBUG] Attempting to load varieties for plant_type_id:', plantTypeId);
 
       let vars = [];
       
-      // Load subcategories FIRST for browse categories
-      if (isBrowseCategory && canonicalIds.length > 0) {
-        console.log('[BROWSE] Loading subcategories for plant_type_ids:', canonicalIds);
-        const allSubcats = await base44.entities.PlantSubCategory.filter({ is_active: true });
-        const validSubcats = allSubcats.filter(sc => canonicalIds.includes(sc.plant_type_id));
-        console.log('[BROWSE] Found', validSubcats.length, 'subcategories');
-        setSubCategories(validSubcats);
-        
-        // Load ALL active varieties, then filter by canonical plant type IDs
-        console.log('[BROWSE] Loading varieties for plant_type_ids:', canonicalIds);
-        const allVars = await base44.entities.Variety.filter({ status: 'active' }, 'variety_name', 2000);
-        vars = allVars.filter(v => {
-          const match = canonicalIds.includes(v.plant_type_id);
-          if (!match && v.plant_type_id) {
-            console.log('[BROWSE] Filtering out variety', v.variety_name, '- plant_type_id', v.plant_type_id, 'not in canonicalIds');
-          }
-          return match;
-        });
-        console.log('[BROWSE] Filtered to', vars.length, 'varieties from', allVars.length, 'total');
-      } else if (isSquashUmbrella) {
+      if (isSquashUmbrella) {
         const allVars = await base44.entities.Variety.filter({ status: 'active' }, 'variety_name', 1000);
         vars = allVars.filter(v => SQUASH_CANONICAL_IDS.includes(v.plant_type_id));
       } else {

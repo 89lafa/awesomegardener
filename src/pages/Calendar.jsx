@@ -445,6 +445,19 @@ export default function Calendar() {
                         <Copy className="w-4 h-4 mr-2" />
                         Duplicate
                       </DropdownMenuItem>
+                      <DropdownMenuItem onClick={async () => {
+                        try {
+                          await base44.functions.invoke('generateTasksForCrop', { crop_plan_id: crop.id });
+                          await loadPlansAndTasks();
+                          toast.success('Tasks regenerated');
+                        } catch (error) {
+                          console.error('Error generating tasks:', error);
+                          toast.error('Failed to generate tasks');
+                        }
+                      }}>
+                        <RefreshCw className="w-4 h-4 mr-2" />
+                        Regenerate Tasks
+                      </DropdownMenuItem>
                       <DropdownMenuItem onClick={() => handleDeleteCrop(crop)}>
                         <Trash2 className="w-4 h-4 mr-2" />
                         Delete

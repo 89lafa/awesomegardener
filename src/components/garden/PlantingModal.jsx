@@ -248,6 +248,7 @@ export default function PlantingModal({ open, onOpenChange, item, itemType, gard
       
       const updatedPlantings = [...plantings, planting];
       setPlantings(updatedPlantings);
+      setSelectedPlant(null); // Clear selection
       toast.success('Plant added');
       
       // Re-run companion analysis with new plantings state
@@ -390,6 +391,7 @@ export default function PlantingModal({ open, onOpenChange, item, itemType, gard
 
         const updatedPlantings = [...plantings, planting];
         setPlantings(updatedPlantings);
+        setSelectedPlant(null); // Clear selection
         toast.success('Plant added');
       } catch (error) {
         console.error('[PlantingModal] Error adding plant:', error);
