@@ -233,7 +233,7 @@ export default function PlantingModal({ open, onOpenChange, item, itemType, gard
       // If from crop plan, update quantities
       if (selectedPlant.crop_plan_id) {
         try {
-          await base44.functions.invoke('updatePlantingQuantities', { 
+          await base44.functions.invoke('updateCropPlantedQuantity', { 
             crop_plan_id: selectedPlant.crop_plan_id 
           });
           // Reload crop plans
@@ -375,7 +375,7 @@ export default function PlantingModal({ open, onOpenChange, item, itemType, gard
         // If from crop plan, update quantities
         if (selectedPlant.crop_plan_id) {
           try {
-            await base44.functions.invoke('updatePlantingQuantities', { 
+            await base44.functions.invoke('updateCropPlantedQuantity', { 
               crop_plan_id: selectedPlant.crop_plan_id 
             });
             // Reload crop plans to show updated counts
@@ -388,7 +388,8 @@ export default function PlantingModal({ open, onOpenChange, item, itemType, gard
           }
         }
 
-        setPlantings([...plantings, planting]);
+        const updatedPlantings = [...plantings, planting];
+        setPlantings(updatedPlantings);
         toast.success('Plant added');
       } catch (error) {
         console.error('[PlantingModal] Error adding plant:', error);
@@ -409,6 +410,21 @@ export default function PlantingModal({ open, onOpenChange, item, itemType, gard
       
       // Re-run companion analysis with updated plantings
       analyzeCompanionsWithPlantings(updatedPlantings);
+      
+      // Update crop plan quantities
+      if (selectedPlant?.crop_plan_id) {
+        try {
+          await base44.functions.invoke('updateCropPlantedQuantity', { 
+            crop_plan_id: selectedPlant.crop_plan_id 
+          });
+          if (seasonId) {
+            const updatedPlans = await base44.entities.CropPlan.filter({ garden_season_id: seasonId });
+            setCropPlans(updatedPlans.filter(p => (p.quantity_planted || 0) < (p.quantity_planned || 0)));
+          }
+        } catch (error) {
+          console.error('Error updating quantities after delete:', error);
+        }
+      }
     } catch (error) {
       console.error('Error deleting planting:', error);
       toast.error('Failed to remove plant');
