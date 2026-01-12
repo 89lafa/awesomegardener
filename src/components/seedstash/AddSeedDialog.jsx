@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -39,13 +39,18 @@ export default function AddSeedDialog({ open, onOpenChange, onSuccess }) {
 
   useEffect(() => {
     if (selectedPlantTypeId) {
-      setSelectedVarietyId(''); // Clear variety when type changes
+      console.log('[AddSeed] Plant type changed, clearing variety');
+      setSelectedVarietyId('');
       loadVarieties();
     } else {
       setVarieties([]);
       setSelectedVarietyId('');
     }
   }, [selectedPlantTypeId]);
+
+  useEffect(() => {
+    console.log('[AddSeed] selectedVarietyId updated to:', selectedVarietyId, typeof selectedVarietyId);
+  }, [selectedVarietyId]);
 
   const loadPlantTypes = async () => {
     try {
@@ -93,7 +98,7 @@ export default function AddSeedDialog({ open, onOpenChange, onSuccess }) {
       });
       
       setVarieties([...varieties, newVariety]);
-      setSelectedVarietyId(newVariety.id);
+      setSelectedVarietyId(String(newVariety.id));
       setShowAddVariety(false);
       setNewVarietyName('');
       toast.success('Variety added!');
@@ -176,6 +181,9 @@ export default function AddSeedDialog({ open, onOpenChange, onSuccess }) {
       <DialogContent className="max-w-2xl">
         <DialogHeader>
           <DialogTitle>Add Seeds to Stash</DialogTitle>
+          <DialogDescription>
+            Select a plant type and variety to add seeds to your stash
+          </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4">
@@ -183,12 +191,10 @@ export default function AddSeedDialog({ open, onOpenChange, onSuccess }) {
           <div>
             <Label>Plant Type (from catalog)</Label>
             <Select 
-              value={selectedPlantTypeId} 
+              value={String(selectedPlantTypeId || '')} 
               onValueChange={(id) => {
-                console.log('[AddSeed] Selected plant type ID:', id);
-                setSelectedPlantTypeId(id);
-                setSelectedVarietyId('');
-                setShowAddVariety(false);
+                console.log('[AddSeed] Plant type selected:', id, typeof id);
+                setSelectedPlantTypeId(String(id));
               }}
             >
               <SelectTrigger className="mt-1">
@@ -196,7 +202,7 @@ export default function AddSeedDialog({ open, onOpenChange, onSuccess }) {
               </SelectTrigger>
               <SelectContent>
                 {plantTypes.map(type => (
-                  <SelectItem key={type.id} value={type.id}>
+                  <SelectItem key={type.id} value={String(type.id)}>
                     {type.icon} {type.common_name}
                   </SelectItem>
                 ))}
@@ -261,19 +267,18 @@ export default function AddSeedDialog({ open, onOpenChange, onSuccess }) {
               ) : (
                 <div className="flex gap-2 mt-1">
                   <Select 
-                    value={selectedVarietyId} 
+                    value={String(selectedVarietyId || '')}
                     onValueChange={(id) => {
-                      console.log('[AddSeed] Selected variety ID:', id);
-                      setSelectedVarietyId(id);
+                      console.log('[AddSeed] Variety selected:', id, typeof id);
+                      setSelectedVarietyId(String(id));
                     }}
-                    className="flex-1"
                   >
-                    <SelectTrigger>
+                    <SelectTrigger className="flex-1">
                       <SelectValue placeholder="Select variety..." />
                     </SelectTrigger>
                     <SelectContent>
                       {varieties.map(v => (
-                        <SelectItem key={v.id} value={v.id}>
+                        <SelectItem key={v.id} value={String(v.id)}>
                           {v.variety_name}
                         </SelectItem>
                       ))}
@@ -283,7 +288,7 @@ export default function AddSeedDialog({ open, onOpenChange, onSuccess }) {
                     size="sm"
                     variant="outline"
                     onClick={() => setShowAddVariety(true)}
-                    className="gap-2"
+                    className="gap-2 flex-shrink-0"
                   >
                     <Plus className="w-4 h-4" />
                     New
