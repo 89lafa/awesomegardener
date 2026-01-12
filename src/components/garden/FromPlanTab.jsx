@@ -177,9 +177,9 @@ export default function FromPlanTab({ activeSeason, garden, bedId, selectedPlanI
               />
               <div className="flex-1">
                 <p className="font-medium text-sm">
-                  {plantType?.common_name || profile?.common_name || 'Unknown Type'}
-                  {(profile?.variety_name || plan.label) && (
-                    <span className="text-gray-600"> - {profile?.variety_name || plan.label}</span>
+                  {profile?.variety_name || plan.label || 'Unknown'}
+                  {(plantType?.common_name || profile?.common_name) && (
+                    <span className="text-gray-600"> - {plantType?.common_name || profile?.common_name}</span>
                   )}
                 </p>
                 <p className="text-xs text-gray-500">

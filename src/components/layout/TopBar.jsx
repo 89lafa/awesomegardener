@@ -65,15 +65,31 @@ export default function TopBar({ user, onMobileMenuToggle, onSidebarToggle, side
 
       {/* Search */}
       <div className="hidden md:flex flex-1 max-w-md">
-        <div className="relative w-full">
+        <form 
+          className="relative w-full"
+          onSubmit={(e) => {
+            e.preventDefault();
+            if (searchQuery.trim()) {
+              window.location.href = createPageUrl('PlantCatalog') + '?search=' + encodeURIComponent(searchQuery);
+            }
+          }}
+        >
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
           <Input
             placeholder="Search plants, varieties, gardens..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault();
+                if (searchQuery.trim()) {
+                  window.location.href = createPageUrl('PlantCatalog') + '?search=' + encodeURIComponent(searchQuery);
+                }
+              }
+            }}
             className="pl-10 bg-gray-50 border-gray-200 focus:bg-white"
           />
-        </div>
+        </form>
       </div>
 
       <div className="flex items-center gap-2">

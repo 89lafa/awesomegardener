@@ -419,11 +419,9 @@ export default function Calendar() {
                   />
                   <div className="flex-1 min-w-0">
                     <p className="font-medium text-sm truncate">{crop.label || 'Unnamed Crop'}</p>
-                    {crop.quantity_planned > 1 && (
-                      <p className="text-xs text-gray-500">
-                        Qty: {crop.quantity_scheduled || 0}/{crop.quantity_planned}
-                      </p>
-                    )}
+                    <p className="text-xs text-gray-500">
+                      Qty: {crop.quantity_planted || crop.quantity_scheduled || 0}/{crop.quantity_planned}
+                    </p>
                   </div>
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>

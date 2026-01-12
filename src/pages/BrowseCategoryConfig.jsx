@@ -134,10 +134,28 @@ export default function BrowseCategoryConfig() {
           <h1 className="text-2xl font-bold text-gray-900">Browse Category Manager</h1>
           <p className="text-gray-600">Configure umbrella categories for Plant Catalog</p>
         </div>
-        <Button onClick={() => setShowNewDialog(true)} className="gap-2 bg-emerald-600 hover:bg-emerald-700">
-          <Plus className="w-4 h-4" />
-          New Category
-        </Button>
+        <div className="flex gap-2">
+          <Button 
+            onClick={async () => {
+              if (!confirm('Clean invalid IDs from all categories?')) return;
+              try {
+                const result = await base44.functions.invoke('cleanupBrowseCategoryIds');
+                toast.success(`Cleaned ${result.data.total_cleaned} invalid IDs`);
+                await checkAdminAndLoad();
+              } catch (error) {
+                toast.error('Failed to cleanup: ' + error.message);
+              }
+            }}
+            variant="outline"
+            className="gap-2"
+          >
+            🧹 Clean Invalid IDs
+          </Button>
+          <Button onClick={() => setShowNewDialog(true)} className="gap-2 bg-emerald-600 hover:bg-emerald-700">
+            <Plus className="w-4 h-4" />
+            New Category
+          </Button>
+        </div>
       </div>
 
       <div className="space-y-4">

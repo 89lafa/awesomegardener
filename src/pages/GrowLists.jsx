@@ -15,7 +15,8 @@ import {
   Calendar,
   Loader2,
   ArrowLeft,
-  Target
+  Target,
+  AlertTriangle
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -445,7 +446,8 @@ export default function GrowLists() {
                         plant_type_id: profile?.plant_type_id || '',
                         plant_type_name: profile?.common_name || '',
                         variety_id: profile?.variety_id || '',
-                        variety_name: profile?.variety_name || ''
+                        variety_name: profile?.variety_name || '',
+                        available_quantity: seed.quantity || 0
                       });
                     }
                   }}
@@ -462,13 +464,18 @@ export default function GrowLists() {
                         if (!profile) return null;
                         return (
                           <SelectItem key={seed.id} value={seed.id}>
-                            {profile.variety_name} ({profile.common_name})
+                            {profile.variety_name} ({profile.common_name}) - {seed.quantity || 0} {seed.unit || 'seeds'}
                           </SelectItem>
                         );
                       })
                     )}
                   </SelectContent>
                 </Select>
+                {newItem.seed_lot_id && newItem.available_quantity !== undefined && (
+                  <p className="text-xs text-gray-600 mt-1">
+                    Available: {newItem.available_quantity} seeds
+                  </p>
+                )}
               </div>
 
               <div className="grid grid-cols-2 gap-4">
@@ -523,6 +530,12 @@ export default function GrowLists() {
                   onChange={(e) => setNewItem({ ...newItem, quantity: parseInt(e.target.value) || 1 })}
                   className="mt-2"
                 />
+                {newItem.seed_lot_id && newItem.available_quantity !== undefined && newItem.quantity > newItem.available_quantity && (
+                  <p className="text-xs text-red-600 mt-1 flex items-center gap-1">
+                    <AlertTriangle className="w-3 h-3" />
+                    Not enough seeds! You only have {newItem.available_quantity} available.
+                  </p>
+                )}
               </div>
 
               <div>
@@ -540,7 +553,10 @@ export default function GrowLists() {
               <Button variant="outline" onClick={() => setShowAddItemDialog(false)}>Cancel</Button>
               <Button 
                 onClick={handleAddItem}
-                disabled={!newItem.plant_type_id}
+                disabled={
+                  !newItem.plant_type_id || 
+                  (newItem.seed_lot_id && newItem.available_quantity !== undefined && newItem.quantity > newItem.available_quantity)
+                }
                 className="bg-emerald-600 hover:bg-emerald-700"
               >
                 Add Item
