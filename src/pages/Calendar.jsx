@@ -646,6 +646,35 @@ export default function Calendar() {
         onOpenChange={setShowEditCrop}
         onSuccess={loadPlansAndTasks}
       />
+
+      <DayTasksPanel
+        date={selectedDate}
+        tasks={selectedDate ? tasks.filter(t => {
+          const taskDate = format(new Date(t.start_date), 'yyyy-MM-dd');
+          const clickedDate = format(new Date(selectedDate), 'yyyy-MM-dd');
+          return taskDate === clickedDate;
+        }) : []}
+        open={showDayPanel}
+        onOpenChange={setShowDayPanel}
+        onToggleComplete={async (task) => {
+          try {
+            const newCompleted = !task.is_completed;
+            await base44.entities.CropTask.update(task.id, { 
+              is_completed: newCompleted,
+              completed_at: newCompleted ? new Date().toISOString() : null
+            });
+            setTasks(prev => prev.map(t => 
+              t.id === task.id 
+                ? { ...t, is_completed: newCompleted, completed_at: newCompleted ? new Date().toISOString() : null }
+                : t
+            ));
+            toast.success(newCompleted ? 'Task completed!' : 'Task reopened');
+          } catch (error) {
+            console.error('Error toggling task:', error);
+            toast.error('Failed to update task');
+          }
+        }}
+      />
       
       {/* User Guide */}
       <CalendarGuide
@@ -721,7 +750,11 @@ function CalendarGridView({ tasks, crops, season, onTaskClick }) {
                     return (
                       <div
                         key={day}
-                        className="h-16 border-r border-b relative hover:bg-blue-50/30"
+                        className="h-16 border-r border-b relative hover:bg-blue-50/30 cursor-pointer"
+                        onClick={() => {
+                          setSelectedDate(currentDate);
+                          setShowDayPanel(true);
+                        }}
                       >
                         <div className="absolute top-0.5 left-0.5 text-[9px] text-gray-400 font-medium">{day}</div>
                         {dayTasks.length > 0 && (
