@@ -140,6 +140,7 @@ export default function PublicPlant() {
           <p>Shared from <a href="/" className="text-emerald-600 hover:underline">AwesomeGardener</a></p>
         </div>
       </div>
-    </div>
+      </div>
+    </>
   );
 }
