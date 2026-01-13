@@ -2,20 +2,88 @@ import React, { useState, useEffect } from 'react';
 import { Helmet } from 'react-helmet';
 import { useSearchParams } from 'react-router-dom';
 import { base44 } from '@/api/base44Client';
-import { Loader2, MapPin, Calendar, Sprout } from 'lucide-react';
+import { Loader2, MapPin, Calendar, Sprout, ChevronDown, ChevronUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import ShareButton from '@/components/common/ShareButton';
+
+function PlotItemCard({ item, plantings, gardenId }) {
+  const [expanded, setExpanded] = React.useState(false);
+  
+  const typeColors = {
+    RAISED_BED: 'bg-emerald-100 text-emerald-800 border-emerald-300',
+    IN_GROUND_BED: 'bg-amber-100 text-amber-800 border-amber-300',
+    GREENHOUSE: 'bg-blue-100 text-blue-800 border-blue-300',
+    CONTAINER: 'bg-purple-100 text-purple-800 border-purple-300',
+    GROW_BAG: 'bg-pink-100 text-pink-800 border-pink-300'
+  };
+  
+  return (
+    <div className="border rounded-lg overflow-hidden">
+      <button
+        onClick={() => setExpanded(!expanded)}
+        className="w-full p-4 flex items-center justify-between hover:bg-gray-50 transition-colors"
+      >
+        <div className="flex items-center gap-3">
+          <Badge className={typeColors[item.item_type] || 'bg-gray-100 text-gray-800'}>
+            {item.item_type?.replace(/_/g, ' ')}
+          </Badge>
+          <div className="text-left">
+            <h4 className="font-semibold text-lg">{item.label}</h4>
+            <p className="text-sm text-gray-600">
+              {item.width}" × {item.height}" • {plantings.length} plant{plantings.length !== 1 ? 's' : ''}
+            </p>
+          </div>
+        </div>
+        {expanded ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
+      </button>
+      
+      {expanded && plantings.length > 0 && (
+        <div className="p-4 bg-gray-50 border-t space-y-2">
+          {plantings.map((planting) => (
+            <div key={planting.id} className="flex items-center justify-between p-3 bg-white rounded-lg border">
+              <div className="flex items-center gap-3">
+                <span className="text-2xl">{planting.plant_type_icon || '🌱'}</span>
+                <div>
+                  <p className="font-medium">{planting.display_name}</p>
+                  {planting.planted_date && (
+                    <p className="text-xs text-gray-500">
+                      Planted {new Date(planting.planted_date).toLocaleDateString()}
+                    </p>
+                  )}
+                </div>
+              </div>
+              {planting.status && (
+                <Badge variant="outline" className="capitalize">
+                  {planting.status}
+                </Badge>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+      
+      {expanded && plantings.length === 0 && (
+        <div className="p-4 bg-gray-50 border-t text-center text-gray-500 text-sm">
+          No plants currently growing here
+        </div>
+      )}
+    </div>
+  );
+}
 
 export default function PublicGarden() {
   const [searchParams] = useSearchParams();
   const gardenId = searchParams.get('id');
   const [garden, setGarden] = useState(null);
   const [seasons, setSeasons] = useState([]);
-  const [plots, setPlots] = useState([]);
+  const [plot, setPlot] = useState(null);
+  const [plotItems, setPlotItems] = useState([]);
   const [plantings, setPlantings] = useState([]);
+  const [myPlants, setMyPlants] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [activeSeason, setActiveSeason] = useState(null);
 
   useEffect(() => {
     if (gardenId) {
@@ -47,13 +115,20 @@ export default function PublicGarden() {
 
       setGarden(g);
 
-      const [seasonsData, plotsData] = await Promise.all([
+      const [seasonsData, plotsData, plotItemsData, plantingsData, myPlantsData] = await Promise.all([
         base44.entities.GardenSeason.filter({ garden_id: gardenId }, '-year'),
-        base44.entities.PlotItem.filter({ garden_id: gardenId })
+        base44.entities.GardenPlot.filter({ garden_id: gardenId }),
+        base44.entities.PlotItem.filter({ garden_id: gardenId }),
+        base44.entities.PlantInstance.filter({ garden_id: gardenId }),
+        base44.entities.MyPlant.filter({ garden_season_id: seasonsData[0]?.id })
       ]);
 
       setSeasons(seasonsData);
-      setPlots(plotsData);
+      if (plotsData.length > 0) setPlot(plotsData[0]);
+      setPlotItems(plotItemsData);
+      setPlantings(plantingsData);
+      setMyPlants(myPlantsData);
+      if (seasonsData.length > 0) setActiveSeason(seasonsData[0]);
     } catch (error) {
       console.error('Error loading garden:', error);
     } finally {
@@ -183,19 +258,153 @@ export default function PublicGarden() {
             </Card>
           )}
 
-          {plots.length > 0 && (
+          {/* Stats Row */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
             <Card>
+              <CardContent className="pt-6 text-center">
+                <div className="text-3xl font-bold text-emerald-600">{plotItems.length}</div>
+                <p className="text-sm text-gray-600 mt-1">Growing Spaces</p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="pt-6 text-center">
+                <div className="text-3xl font-bold text-blue-600">{plantings.length + myPlants.length}</div>
+                <p className="text-sm text-gray-600 mt-1">Active Plants</p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="pt-6 text-center">
+                <div className="text-3xl font-bold text-purple-600">{seasons.length}</div>
+                <p className="text-sm text-gray-600 mt-1">Seasons</p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="pt-6 text-center">
+                <div className="text-3xl font-bold text-amber-600">
+                  {activeSeason ? `${activeSeason.year}` : '-'}
+                </div>
+                <p className="text-sm text-gray-600 mt-1">Active Year</p>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Garden Layout Canvas */}
+          {plot && plotItems.length > 0 && (
+            <Card className="mb-6">
               <CardHeader>
-                <CardTitle>Garden Layout ({plots.length} beds/plots)</CardTitle>
+                <CardTitle className="text-2xl">Garden Layout</CardTitle>
+                <p className="text-sm text-gray-600">Visual map of growing spaces</p>
               </CardHeader>
               <CardContent>
-                <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {plots.map(plot => (
-                    <div key={plot.id} className="p-4 bg-white rounded-lg border">
-                      <h4 className="font-semibold">{plot.label}</h4>
-                      <p className="text-sm text-gray-600 capitalize">{plot.item_type?.replace(/_/g, ' ')}</p>
-                    </div>
-                  ))}
+                <div className="bg-emerald-50 rounded-xl p-8 min-h-[400px] relative overflow-auto">
+                  <svg
+                    width={plot.width || 800}
+                    height={plot.height || 600}
+                    className="mx-auto"
+                    style={{ maxWidth: '100%', height: 'auto' }}
+                  >
+                    {/* Grid */}
+                    {plot.grid_enabled && (
+                      <>
+                        {Array.from({ length: Math.floor(plot.width / (plot.grid_size || 12)) }).map((_, i) => (
+                          <line
+                            key={`v-${i}`}
+                            x1={i * (plot.grid_size || 12)}
+                            y1={0}
+                            x2={i * (plot.grid_size || 12)}
+                            y2={plot.height}
+                            stroke="#d1fae5"
+                            strokeWidth="1"
+                          />
+                        ))}
+                        {Array.from({ length: Math.floor(plot.height / (plot.grid_size || 12)) }).map((_, i) => (
+                          <line
+                            key={`h-${i}`}
+                            x1={0}
+                            y1={i * (plot.grid_size || 12)}
+                            x2={plot.width}
+                            y2={i * (plot.grid_size || 12)}
+                            stroke="#d1fae5"
+                            strokeWidth="1"
+                          />
+                        ))}
+                      </>
+                    )}
+                    
+                    {/* Plot Items */}
+                    {plotItems.map((item) => {
+                      const itemPlantings = plantings.filter(p => p.bed_id === item.id);
+                      const colors = {
+                        RAISED_BED: '#10b981',
+                        IN_GROUND_BED: '#f59e0b',
+                        GREENHOUSE: '#3b82f6',
+                        CONTAINER: '#8b5cf6',
+                        GROW_BAG: '#ec4899'
+                      };
+                      const color = colors[item.item_type] || '#6b7280';
+                      
+                      return (
+                        <g key={item.id}>
+                          <rect
+                            x={item.x}
+                            y={item.y}
+                            width={item.width}
+                            height={item.height}
+                            fill={color}
+                            fillOpacity="0.3"
+                            stroke={color}
+                            strokeWidth="2"
+                            rx="4"
+                          />
+                          <text
+                            x={item.x + item.width / 2}
+                            y={item.y + 20}
+                            textAnchor="middle"
+                            className="text-xs font-semibold"
+                            fill="#1f2937"
+                          >
+                            {item.label}
+                          </text>
+                          {itemPlantings.length > 0 && (
+                            <text
+                              x={item.x + item.width / 2}
+                              y={item.y + 35}
+                              textAnchor="middle"
+                              className="text-xs"
+                              fill="#059669"
+                            >
+                              🌱 {itemPlantings.length} plant{itemPlantings.length !== 1 ? 's' : ''}
+                            </text>
+                          )}
+                        </g>
+                      );
+                    })}
+                  </svg>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* What's Planted Where */}
+          {plotItems.length > 0 && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-2xl">What's Growing Where</CardTitle>
+                <p className="text-sm text-gray-600">Explore each growing space</p>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  {plotItems.map((item) => {
+                    const itemPlantings = plantings.filter(p => p.bed_id === item.id);
+                    return (
+                      <PlotItemCard
+                        key={item.id}
+                        item={item}
+                        plantings={itemPlantings}
+                        gardenId={gardenId}
+                      />
+                    );
+                  })}
                 </div>
               </CardContent>
             </Card>

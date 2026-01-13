@@ -17,6 +17,7 @@ import CompanionPlanner from './pages/CompanionPlanner';
 import CompanionRuleImport from './pages/CompanionRuleImport';
 import CompanionRulesAudit from './pages/CompanionRulesAudit';
 import Dashboard from './pages/Dashboard';
+import DebugFeatures from './pages/DebugFeatures';
 import EditPlantType from './pages/EditPlantType';
 import EditVariety from './pages/EditVariety';
 import EditorReviewQueue from './pages/EditorReviewQueue';
@@ -55,7 +56,6 @@ import Users from './pages/Users';
 import VarietyReviewQueue from './pages/VarietyReviewQueue';
 import ViewVariety from './pages/ViewVariety';
 import ZoneMap from './pages/ZoneMap';
-import DebugFeatures from './pages/DebugFeatures';
 import __Layout from './Layout.jsx';
 
 
@@ -79,6 +79,7 @@ export const PAGES = {
     "CompanionRuleImport": CompanionRuleImport,
     "CompanionRulesAudit": CompanionRulesAudit,
     "Dashboard": Dashboard,
+    "DebugFeatures": DebugFeatures,
     "EditPlantType": EditPlantType,
     "EditVariety": EditVariety,
     "EditorReviewQueue": EditorReviewQueue,
@@ -117,7 +118,6 @@ export const PAGES = {
     "VarietyReviewQueue": VarietyReviewQueue,
     "ViewVariety": ViewVariety,
     "ZoneMap": ZoneMap,
-    "DebugFeatures": DebugFeatures,
 }
 
 export const pagesConfig = {
