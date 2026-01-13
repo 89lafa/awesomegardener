@@ -115,20 +115,27 @@ export default function PublicGarden() {
 
       setGarden(g);
 
-      const [seasonsData, plotsData, plotItemsData, plantingsData, myPlantsData] = await Promise.all([
-        base44.entities.GardenSeason.filter({ garden_id: gardenId }, '-year'),
+      const seasonsData = await base44.entities.GardenSeason.filter({ garden_id: gardenId }, '-year');
+      setSeasons(seasonsData);
+      
+      const [plotsData, plotItemsData] = await Promise.all([
         base44.entities.GardenPlot.filter({ garden_id: gardenId }),
-        base44.entities.PlotItem.filter({ garden_id: gardenId }),
-        base44.entities.PlantInstance.filter({ garden_id: gardenId }),
-        base44.entities.MyPlant.filter({ garden_season_id: seasonsData[0]?.id })
+        base44.entities.PlotItem.filter({ garden_id: gardenId })
       ]);
 
-      setSeasons(seasonsData);
       if (plotsData.length > 0) setPlot(plotsData[0]);
       setPlotItems(plotItemsData);
+      
+      // Load plantings - these are stored in PlantInstance entity
+      const plantingsData = await base44.entities.PlantInstance.filter({ garden_id: gardenId });
       setPlantings(plantingsData);
-      setMyPlants(myPlantsData);
-      if (seasonsData.length > 0) setActiveSeason(seasonsData[0]);
+      
+      // Load MyPlants if season exists
+      if (seasonsData.length > 0) {
+        setActiveSeason(seasonsData[0]);
+        const myPlantsData = await base44.entities.MyPlant.filter({ garden_season_id: seasonsData[0].id });
+        setMyPlants(myPlantsData);
+      }
     } catch (error) {
       console.error('Error loading garden:', error);
     } finally {

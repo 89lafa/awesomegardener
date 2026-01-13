@@ -57,6 +57,7 @@ import VarietyReviewQueue from './pages/VarietyReviewQueue';
 import ViewVariety from './pages/ViewVariety';
 import ZoneMap from './pages/ZoneMap';
 import PublicSeed from './pages/PublicSeed';
+import ShipAudit from './pages/ShipAudit';
 import __Layout from './Layout.jsx';
 
 
@@ -120,6 +121,7 @@ export const PAGES = {
     "ViewVariety": ViewVariety,
     "ZoneMap": ZoneMap,
     "PublicSeed": PublicSeed,
+    "ShipAudit": ShipAudit,
 }
 
 export const pagesConfig = {

@@ -21,7 +21,10 @@ import {
   BookText,
   Bug,
   Apple,
-  Users
+  Users,
+  MapPin,
+  BookMarked,
+  Link2
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -41,8 +44,11 @@ const getNavItems = (userRole, isEditor, user) => {
       { name: 'Diary', icon: BookText, page: 'GardenDiary' },
       { name: 'Harvest Log', icon: Apple, page: 'HarvestLog' },
       { name: 'Issues Log', icon: Bug, page: 'IssuesLog' },
-      { name: 'Browse Gardens', icon: Globe, page: 'Community' },
+      { name: 'Browse Gardens', icon: Globe, page: 'BrowseGardens' },
       { name: 'Community Board', icon: MessageSquare, page: 'CommunityBoard' },
+      { name: 'Zone Map', icon: MapPin, page: 'ZoneMap' },
+      { name: 'Gardening Basics', icon: BookMarked, page: 'GardeningBasics' },
+      { name: 'Resources', icon: Link2, page: 'Resources' },
       { name: 'Feature Requests', icon: Lightbulb, page: 'FeatureRequests' },
     ];
 
