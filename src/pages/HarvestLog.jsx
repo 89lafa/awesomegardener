@@ -52,6 +52,7 @@ export default function HarvestLog() {
     harvest_date: format(new Date(), 'yyyy-MM-dd'),
     quantity: '',
     unit: 'lbs',
+    plant_part: 'fruit',
     quality_rating: 5,
     notes: ''
   });
@@ -139,6 +140,7 @@ export default function HarvestLog() {
       harvest_date: format(new Date(), 'yyyy-MM-dd'),
       quantity: '',
       unit: 'lbs',
+      plant_part: 'fruit',
       quality_rating: 5,
       notes: ''
     });
@@ -242,6 +244,16 @@ export default function HarvestLog() {
                     </Button>
                   </div>
                   <div className="flex items-center gap-4 text-sm">
+                    {harvest.plant_part && (
+                      <Badge className="bg-blue-100 text-blue-800 capitalize">
+                        {harvest.plant_part === 'fruit' ? '🍅' : 
+                         harvest.plant_part === 'leaf' ? '🥬' :
+                         harvest.plant_part === 'root' ? '🥕' :
+                         harvest.plant_part === 'flower' ? '🌸' :
+                         harvest.plant_part === 'seed' ? '🌾' :
+                         harvest.plant_part === 'whole_plant' ? '🌿' : '📦'} {harvest.plant_part.replace('_', ' ')}
+                      </Badge>
+                    )}
                     {harvest.quantity && (
                       <div>
                         <span className="font-semibold text-emerald-700 text-lg">
@@ -325,6 +337,26 @@ export default function HarvestLog() {
                 onChange={(e) => setFormData({ ...formData, harvest_date: e.target.value })}
                 className="mt-2"
               />
+            </div>
+            <div>
+              <Label>Plant Part</Label>
+              <Select 
+                value={formData.plant_part} 
+                onValueChange={(v) => setFormData({ ...formData, plant_part: v })}
+              >
+                <SelectTrigger className="mt-2">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="fruit">🍅 Fruit</SelectItem>
+                  <SelectItem value="leaf">🥬 Leaf</SelectItem>
+                  <SelectItem value="root">🥕 Root</SelectItem>
+                  <SelectItem value="flower">🌸 Flower</SelectItem>
+                  <SelectItem value="seed">🌾 Seed</SelectItem>
+                  <SelectItem value="whole_plant">🌿 Whole Plant</SelectItem>
+                  <SelectItem value="other">Other</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div>

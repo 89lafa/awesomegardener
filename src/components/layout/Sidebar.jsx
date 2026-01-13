@@ -44,6 +44,7 @@ const getNavItems = (userRole, isEditor, user) => {
       { name: 'Diary', icon: BookText, page: 'GardenDiary' },
       { name: 'Harvest Log', icon: Apple, page: 'HarvestLog' },
       { name: 'Issues Log', icon: Bug, page: 'IssuesLog' },
+      { name: 'Garden Care', icon: Sprout, page: 'GardenCare' },
       { name: 'Browse Gardens', icon: Globe, page: 'BrowseGardens' },
       { name: 'Community Board', icon: MessageSquare, page: 'CommunityBoard' },
       { name: 'Zone Map', icon: MapPin, page: 'ZoneMap' },
