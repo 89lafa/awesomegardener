@@ -392,6 +392,85 @@ export default function AdminDataMaintenance() {
         </CardContent>
       </Card>
 
+      {/* Single Subcategory Migration */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            🔄 Single Sub-Category Migration
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="p-4 bg-purple-50 rounded-lg">
+            <h3 className="font-semibold text-purple-900 mb-2">Migrate Legacy Multi-Categories → Single Sub-Category</h3>
+            <p className="text-sm text-purple-800 mb-3">
+              For varieties with null plant_subcategory_id but have plant_subcategory_ids array, sets single ID from first element.
+            </p>
+            <Button
+              onClick={async () => {
+                try {
+                  const result = await base44.functions.invoke('migrateToSingleSubcategory');
+                  if (result.data.success) {
+                    toast.success(`Migrated ${result.data.migrated} varieties (${result.data.alreadySet} already set, ${result.data.skipped} skipped)`);
+                  } else {
+                    toast.error('Migration failed');
+                  }
+                } catch (error) {
+                  toast.error('Error: ' + error.message);
+                }
+              }}
+              className="bg-purple-600 hover:bg-purple-700"
+            >
+              Run Migration
+            </Button>
+          </div>
+
+          <div className="p-4 bg-indigo-50 rounded-lg">
+            <h3 className="font-semibold text-indigo-900 mb-2">Ensure Uncategorized Sub-Categories</h3>
+            <p className="text-sm text-indigo-800 mb-3">
+              Creates "Uncategorized" subcategory for each plant type (if missing) and optionally assigns null varieties to it.
+            </p>
+            <div className="flex gap-2">
+              <Button
+                onClick={async () => {
+                  try {
+                    const result = await base44.functions.invoke('ensureUncategorizedSubcats', { auto_assign: false });
+                    if (result.data.success) {
+                      toast.success(`Created ${result.data.created} uncategorized subcategories (${result.data.alreadyExists} already existed)`);
+                    } else {
+                      toast.error('Operation failed');
+                    }
+                  } catch (error) {
+                    toast.error('Error: ' + error.message);
+                  }
+                }}
+                variant="outline"
+                className="border-indigo-300"
+              >
+                Create Only
+              </Button>
+              <Button
+                onClick={async () => {
+                  if (!confirm('This will assign ALL uncategorized varieties to "Uncategorized" subcategory. Continue?')) return;
+                  try {
+                    const result = await base44.functions.invoke('ensureUncategorizedSubcats', { auto_assign: true });
+                    if (result.data.success) {
+                      toast.success(`Created ${result.data.created}, assigned ${result.data.assigned} varieties`);
+                    } else {
+                      toast.error('Operation failed');
+                    }
+                  } catch (error) {
+                    toast.error('Error: ' + error.message);
+                  }
+                }}
+                className="bg-indigo-600 hover:bg-indigo-700"
+              >
+                Create & Auto-Assign
+              </Button>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Subcategory Health & Fixes */}
       <Card>
         <CardHeader>
@@ -1102,6 +1181,12 @@ export default function AdminDataMaintenance() {
           <CardTitle>Other Tools</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
+          <Link to={createPageUrl('AdminBulkEdit')}>
+            <Button variant="outline" className="w-full justify-start gap-2">
+              <Settings className="w-4 h-4" />
+              Bulk Edit Varieties
+            </Button>
+          </Link>
           <Link to={createPageUrl('AdminDataCleanup')}>
             <Button variant="outline" className="w-full justify-start gap-2">
               <AlertCircle className="w-4 h-4" />

@@ -279,11 +279,22 @@ export default function HarvestLog() {
                 </SelectTrigger>
                 <SelectContent className="max-h-64">
                   <SelectItem value={null}>None</SelectItem>
-                  {plantings
-                    .filter(p => p.garden_id === formData.garden_id)
-                    .map(p => (
+                  {(() => {
+                    const gardenPlantings = plantings.filter(p => p.garden_id === formData.garden_id);
+                    const uniqueNames = new Set();
+                    const uniquePlantings = [];
+                    
+                    for (const p of gardenPlantings) {
+                      if (!uniqueNames.has(p.display_name)) {
+                        uniqueNames.add(p.display_name);
+                        uniquePlantings.push(p);
+                      }
+                    }
+                    
+                    return uniquePlantings.map(p => (
                       <SelectItem key={p.id} value={p.id}>{p.display_name}</SelectItem>
-                    ))}
+                    ));
+                  })()}
                 </SelectContent>
               </Select>
             </div>

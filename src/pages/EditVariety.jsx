@@ -86,13 +86,16 @@ export default function EditVariety() {
           }
           setSubCategories(uniqueSubcats);
           
-          // Migrate to multi-subcategory if needed
-          let subcatIds = v.plant_subcategory_ids || [];
-          if (subcatIds.length === 0 && v.plant_subcategory_id) {
-            subcatIds = [v.plant_subcategory_id];
-          }
+          // Extract species_custom if species is not in enum
+          const knownSpecies = ['annuum', 'chinense', 'baccatum', 'frutescens', 'pubescens'];
+          const species_custom = v.species && !knownSpecies.includes(v.species) ? v.species : '';
+          const species = v.species && knownSpecies.includes(v.species) ? v.species : '';
           
-          setFormData({ ...v, plant_subcategory_ids: subcatIds });
+          setFormData({ 
+            ...v, 
+            species,
+            species_custom
+          });
         } else {
           setFormData(v);
         }
@@ -136,8 +139,8 @@ export default function EditVariety() {
       // Build update object - only include non-empty values to avoid wiping data
       const updateData = {
         variety_name: formData.variety_name,
-        plant_subcategory_id: primaryId || null,
-        plant_subcategory_ids: selectedIds
+        plant_subcategory_id: formData.plant_subcategory_id || null,
+        plant_subcategory_ids: formData.plant_subcategory_id ? [formData.plant_subcategory_id] : []
       };
       
       // Only update fields if they have values
@@ -148,7 +151,11 @@ export default function EditVariety() {
       if (formData.sun_requirement) updateData.sun_requirement = formData.sun_requirement;
       if (formData.water_requirement) updateData.water_requirement = formData.water_requirement;
       if (formData.growth_habit) updateData.growth_habit = formData.growth_habit;
-      if (formData.species) updateData.species = formData.species;
+      if (formData.species_custom) {
+        updateData.species = formData.species_custom;
+      } else if (formData.species) {
+        updateData.species = formData.species;
+      }
       if (formData.seed_line_type) updateData.seed_line_type = formData.seed_line_type;
       if (formData.season_timing) updateData.season_timing = formData.season_timing;
       if (formData.grower_notes) updateData.grower_notes = formData.grower_notes;
@@ -242,70 +249,27 @@ export default function EditVariety() {
 
             {subCategories.length > 0 && (
               <div>
-                <Label>Categories (multi-select)</Label>
-                <div className="mt-2 p-3 border rounded-lg max-h-64 overflow-y-auto space-y-3">
-                  {(() => {
-                    const grouped = {};
-                    subCategories.forEach(s => {
-                      const dim = s.dimension || 'Other';
-                      if (!grouped[dim]) grouped[dim] = [];
-                      grouped[dim].push(s);
-                    });
-                    
-                    return Object.entries(grouped).map(([dimension, subcats]) => (
-                      <div key={dimension} className="space-y-2">
-                        <p className="text-xs font-semibold text-gray-500 uppercase">{dimension}</p>
-                        <div className="flex flex-wrap gap-2">
-                          {subcats.map(subcat => {
-                            const isSelected = (formData.plant_subcategory_ids || []).includes(subcat.id);
-                            const isPrimary = formData.plant_subcategory_id === subcat.id;
-                            return (
-                              <Button
-                                key={subcat.id}
-                                type="button"
-                                size="sm"
-                                variant={isSelected ? 'default' : 'outline'}
-                                onClick={() => {
-                                  const currentIds = formData.plant_subcategory_ids || [];
-                                  let newIds;
-                                  if (isSelected) {
-                                    newIds = currentIds.filter(id => id !== subcat.id);
-                                    if (isPrimary) {
-                                      setFormData({ 
-                                        ...formData, 
-                                        plant_subcategory_ids: newIds,
-                                        plant_subcategory_id: newIds.length > 0 ? newIds[0] : null
-                                      });
-                                      return;
-                                    }
-                                  } else {
-                                    newIds = [...currentIds, subcat.id];
-                                    if (!formData.plant_subcategory_id && dimension === 'CulinaryUse') {
-                                      setFormData({ 
-                                        ...formData, 
-                                        plant_subcategory_ids: newIds,
-                                        plant_subcategory_id: subcat.id
-                                      });
-                                      return;
-                                    }
-                                  }
-                                  setFormData({ ...formData, plant_subcategory_ids: newIds });
-                                }}
-                                className={isSelected ? 'bg-emerald-600 hover:bg-emerald-700' : ''}
-                              >
-                                {subcat.icon && <span className="mr-1">{subcat.icon}</span>}
-                                {subcat.name}
-                                {isPrimary && <span className="ml-1 text-xs">★</span>}
-                              </Button>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    ));
-                  })()}
-                </div>
+                <Label>Sub-Category</Label>
+                <Select 
+                  value={formData.plant_subcategory_id || ''} 
+                  onValueChange={(v) => setFormData({ ...formData, plant_subcategory_id: v || null })}
+                >
+                  <SelectTrigger className="mt-2">
+                    <SelectValue placeholder="Select sub-category..." />
+                  </SelectTrigger>
+                  <SelectContent className="max-h-64">
+                    <SelectItem value={null}>Uncategorized</SelectItem>
+                    {subCategories.map(subcat => (
+                      <SelectItem key={subcat.id} value={subcat.id}>
+                        {subcat.icon && <span className="mr-2">{subcat.icon}</span>}
+                        {subcat.name}
+                        {!subcat.is_active && <span className="ml-2 text-xs text-gray-400">(inactive)</span>}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
                 <p className="text-xs text-gray-500 mt-1">
-                  Primary category (★) is used for main classification. Click to toggle selection.
+                  Primary sub-category for classification and filtering
                 </p>
               </div>
             )}
@@ -443,21 +407,35 @@ export default function EditVariety() {
                 <Label htmlFor="species">Species (botanical)</Label>
                 <Select 
                   value={formData.species || ''} 
-                  onValueChange={(v) => setFormData({ ...formData, species: v })}
+                  onValueChange={(v) => {
+                    if (v === 'other') {
+                      setFormData({ ...formData, species: '', species_custom: formData.species_custom || '' });
+                    } else {
+                      setFormData({ ...formData, species: v, species_custom: '' });
+                    }
+                  }}
                 >
                   <SelectTrigger className="mt-1">
                     <SelectValue placeholder="Select..." />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value={null}>Not specified</SelectItem>
-                    <SelectItem value="annuum">Annuum</SelectItem>
-                    <SelectItem value="chinense">Chinense</SelectItem>
-                    <SelectItem value="baccatum">Baccatum</SelectItem>
-                    <SelectItem value="frutescens">Frutescens</SelectItem>
-                    <SelectItem value="pubescens">Pubescens</SelectItem>
-                    <SelectItem value="unknown">Unknown</SelectItem>
+                    <SelectItem value="annuum">Annuum (peppers)</SelectItem>
+                    <SelectItem value="chinense">Chinense (peppers)</SelectItem>
+                    <SelectItem value="baccatum">Baccatum (peppers)</SelectItem>
+                    <SelectItem value="frutescens">Frutescens (peppers)</SelectItem>
+                    <SelectItem value="pubescens">Pubescens (peppers)</SelectItem>
+                    <SelectItem value="other">Other (specify)</SelectItem>
                   </SelectContent>
                 </Select>
+                {(!formData.species || formData.species === 'other' || formData.species_custom) && (
+                  <Input
+                    value={formData.species_custom || formData.species || ''}
+                    onChange={(e) => setFormData({ ...formData, species_custom: e.target.value, species: '' })}
+                    placeholder="Enter species name..."
+                    className="mt-2"
+                  />
+                )}
               </div>
               <div>
                 <Label htmlFor="seed_line_type">Seed Line Type</Label>
