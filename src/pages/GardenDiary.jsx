@@ -32,6 +32,7 @@ import {
 } from '@/components/ui/select';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
+import { createPageUrl } from '@/utils';
 
 const DIARY_TAGS = ['pests', 'fertilizer', 'weather', 'harvest', 'success', 'failure', 'watering', 'planting'];
 
@@ -46,12 +47,17 @@ export default function GardenDiary() {
   const [saving, setSaving] = useState(false);
   const [filterGarden, setFilterGarden] = useState('all');
   const [filterTag, setFilterTag] = useState('all');
+  const [myPlants, setMyPlants] = useState([]);
+  const [seasons, setSeasons] = useState([]);
+  const [profiles, setProfiles] = useState({});
   
   const [formData, setFormData] = useState({
     garden_id: '',
+    garden_season_id: '',
+    plant_instance_id: '',
     entry_date: format(new Date(), 'yyyy-MM-dd'),
+    entry_text: '',
     title: '',
-    notes: '',
     tags: []
   });
 
@@ -59,17 +65,45 @@ export default function GardenDiary() {
     loadData();
   }, []);
 
+  // Check if we should pre-open dialog with plant preselected
+  useEffect(() => {
+    const plantParam = searchParams.get('plant');
+    const newParam = searchParams.get('new');
+    if (plantParam && newParam === 'true' && myPlants.length > 0) {
+      setFormData(prev => ({ ...prev, plant_instance_id: plantParam }));
+      setShowDialog(true);
+      // Clear URL params
+      window.history.replaceState({}, '', createPageUrl('GardenDiary') + `?plant=${plantParam}`);
+    }
+  }, [searchParams, myPlants]);
+
   const loadData = async () => {
     try {
       const userData = await base44.auth.me();
-      const [gardensData, entriesData] = await Promise.all([
+      const plantParam = searchParams.get('plant');
+      
+      const [gardensData, entriesData, seasonsData, plantsData, profilesData] = await Promise.all([
         base44.entities.Garden.filter({ archived: false, created_by: userData.email }),
-        base44.entities.GardenDiary.filter({ created_by: userData.email }, '-entry_date')
+        base44.entities.GardenDiary.filter({ created_by: userData.email }, '-entry_date'),
+        base44.entities.GardenSeason.filter({ created_by: userData.email }, '-year'),
+        base44.entities.MyPlant.filter({ created_by: userData.email }),
+        base44.entities.PlantProfile.list('variety_name', 500)
       ]);
       
       setUser(userData);
       setGardens(gardensData);
-      setEntries(entriesData);
+      setSeasons(seasonsData);
+      setMyPlants(plantsData);
+      
+      const profilesMap = {};
+      profilesData.forEach(p => { profilesMap[p.id] = p; });
+      setProfiles(profilesMap);
+      
+      // Filter entries by plant if URL param exists
+      const filtered = plantParam 
+        ? entriesData.filter(e => e.plant_instance_id === plantParam)
+        : entriesData;
+      setEntries(filtered);
       
       if (gardensData.length > 0 && !formData.garden_id) {
         setFormData({ ...formData, garden_id: gardensData[0].id });
@@ -121,9 +155,11 @@ export default function GardenDiary() {
     setEditing(entry);
     setFormData({
       garden_id: entry.garden_id,
+      garden_season_id: entry.garden_season_id || '',
+      plant_instance_id: entry.plant_instance_id || '',
       entry_date: entry.entry_date,
       title: entry.title || '',
-      notes: entry.notes || '',
+      entry_text: entry.entry_text || entry.notes || '',
       tags: entry.tags || []
     });
     setShowDialog(true);
@@ -134,9 +170,11 @@ export default function GardenDiary() {
     setEditing(null);
     setFormData({
       garden_id: gardens[0]?.id || '',
+      garden_season_id: '',
+      plant_instance_id: '',
       entry_date: format(new Date(), 'yyyy-MM-dd'),
+      entry_text: '',
       title: '',
-      notes: '',
       tags: []
     });
   };
@@ -255,8 +293,8 @@ export default function GardenDiary() {
                       </Button>
                     </div>
                   </div>
-                  {entry.notes && (
-                    <p className="text-gray-700 whitespace-pre-wrap mb-3">{entry.notes}</p>
+                  {(entry.entry_text || entry.notes) && (
+                   <p className="text-gray-700 whitespace-pre-wrap mb-3">{entry.entry_text || entry.notes}</p>
                   )}
                   {entry.tags && entry.tags.length > 0 && (
                     <div className="flex flex-wrap gap-1">
@@ -308,6 +346,28 @@ export default function GardenDiary() {
               />
             </div>
             <div>
+              <Label>Plant (optional)</Label>
+              <Select 
+                value={formData.plant_instance_id || ''} 
+                onValueChange={(v) => setFormData({ ...formData, plant_instance_id: v || null })}
+              >
+                <SelectTrigger className="mt-2">
+                  <SelectValue placeholder="Select plant" />
+                </SelectTrigger>
+                <SelectContent className="max-h-64">
+                  <SelectItem value={null}>None</SelectItem>
+                  {myPlants.map(p => {
+                    const profile = profiles[p.plant_profile_id];
+                    return (
+                      <SelectItem key={p.id} value={p.id}>
+                        {p.name || profile?.variety_name || 'Unknown'} - {p.location_name || 'No location'}
+                      </SelectItem>
+                    );
+                  })}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
               <Label htmlFor="title">Title (optional)</Label>
               <Input
                 id="title"
@@ -318,12 +378,12 @@ export default function GardenDiary() {
               />
             </div>
             <div>
-              <Label htmlFor="notes">Notes *</Label>
+              <Label htmlFor="notes">Entry Text *</Label>
               <Textarea
                 id="notes"
                 placeholder="What happened in the garden today?"
-                value={formData.notes}
-                onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                value={formData.entry_text}
+                onChange={(e) => setFormData({ ...formData, entry_text: e.target.value })}
                 className="mt-2"
                 rows={6}
               />
@@ -352,8 +412,8 @@ export default function GardenDiary() {
             <Button variant="outline" onClick={handleClose}>Cancel</Button>
             <Button 
               onClick={handleSave}
-              disabled={!formData.garden_id || !formData.notes.trim() || saving}
-              className="bg-emerald-600 hover:bg-emerald-700"
+              disabled={!formData.garden_id || !formData.entry_text?.trim() || saving}
+              className="bg-emerald-600 hover:bg-emerald-700 interactive-button"
             >
               {saving ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
               {editing ? 'Update' : 'Save'} Entry

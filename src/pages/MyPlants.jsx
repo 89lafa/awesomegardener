@@ -271,7 +271,7 @@ export default function MyPlants() {
         </div>
         <Button
           onClick={() => setShowAddPlant(true)}
-          className="bg-emerald-600 hover:bg-emerald-700"
+          className="bg-emerald-600 hover:bg-emerald-700 interactive-button"
         >
           <Plus className="w-4 h-4 mr-2" />
           Add Plant
@@ -369,6 +369,7 @@ export default function MyPlants() {
           variant={hasPhotosFilter ? "default" : "outline"}
           size="sm"
           onClick={() => setHasPhotosFilter(!hasPhotosFilter)}
+          className="interactive-button"
         >
           📷 Has Photos
         </Button>
@@ -376,6 +377,7 @@ export default function MyPlants() {
           variant={hasIssuesFilter ? "default" : "outline"}
           size="sm"
           onClick={() => setHasIssuesFilter(!hasIssuesFilter)}
+          className="interactive-button"
         >
           ⚠️ Has Issues
         </Button>
@@ -411,7 +413,7 @@ export default function MyPlants() {
                   return (
                     <Card 
                       key={plant.id} 
-                      className="cursor-pointer hover:shadow-lg transition-shadow"
+                      className="interactive-card"
                       onClick={() => setSelectedPlantId(plant.id)}
                     >
                       {mainPhoto && (

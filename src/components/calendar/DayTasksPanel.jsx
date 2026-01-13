@@ -5,7 +5,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { format } from 'date-fns';
-import { Calendar as CalendarIcon, CheckCircle2 } from 'lucide-react';
+import { Calendar as CalendarIcon, CheckCircle2, ChevronRight } from 'lucide-react';
 import { toast } from 'sonner';
 
 const TASK_TYPES = {
@@ -18,7 +18,14 @@ const TASK_TYPES = {
 };
 
 export default function DayTasksPanel({ date, tasks, open, onOpenChange, onToggleComplete }) {
-  if (!tasks || tasks.length === 0) return null;
+  const [showCompleted, setShowCompleted] = React.useState(true);
+  const [expandedGroups, setExpandedGroups] = React.useState({});
+
+  const toggleGroup = (type) => {
+    setExpandedGroups(prev => ({ ...prev, [type]: !prev[type] }));
+  };
+
+  if (!open) return null;
 
   // Group tasks by type
   const groupedTasks = tasks.reduce((acc, task) => {
@@ -37,11 +44,23 @@ export default function DayTasksPanel({ date, tasks, open, onOpenChange, onToggl
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <CalendarIcon className="w-5 h-5 text-emerald-600" />
-            Tasks for {format(new Date(date), 'MMMM d, yyyy')}
+            Tasks for {date ? format(new Date(date), 'MMMM d, yyyy') : 'Selected Date'}
           </DialogTitle>
-          <p className="text-sm text-gray-600">
-            {pendingTasks.length} pending, {completedTasks.length} completed
-          </p>
+          <div className="flex items-center justify-between">
+            <p className="text-sm text-gray-600">
+              {pendingTasks.length} pending, {completedTasks.length} completed
+            </p>
+            {completedTasks.length > 0 && (
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => setShowCompleted(!showCompleted)}
+                className="text-xs"
+              >
+                {showCompleted ? 'Hide' : 'Show'} Completed
+              </Button>
+            )}
+          </div>
         </DialogHeader>
 
         <div className="space-y-4">
@@ -55,18 +74,25 @@ export default function DayTasksPanel({ date, tasks, open, onOpenChange, onToggl
                 
                 if (pendingInGroup.length === 0) return null;
 
+                const isExpanded = expandedGroups[taskType] !== false;
+                
                 return (
                   <div key={taskType} className="mb-4">
-                    <div className="flex items-center gap-2 mb-2">
+                    <button
+                      onClick={() => toggleGroup(taskType)}
+                      className="flex items-center gap-2 mb-2 w-full hover:bg-gray-50 p-2 rounded-lg transition-colors"
+                    >
                       <span className="text-lg">{config.icon}</span>
                       <h4 className="font-medium text-sm">{config.label}</h4>
                       <Badge variant="outline" className="text-xs">{pendingInGroup.length}</Badge>
-                    </div>
+                      <ChevronRight className={`w-4 h-4 ml-auto transition-transform ${isExpanded ? 'rotate-90' : ''}`} />
+                    </button>
+                    {isExpanded && (
                     <div className="ml-6 space-y-2">
                       {pendingInGroup.map(task => (
                         <label 
                           key={task.id}
-                          className="flex items-start gap-3 p-3 bg-white border rounded-lg hover:bg-gray-50 cursor-pointer transition-colors"
+                          className="flex items-start gap-3 p-3 bg-white border rounded-lg hover:bg-emerald-50 cursor-pointer transition-all active:scale-[0.99]"
                         >
                           <Checkbox
                             checked={task.is_completed}
@@ -87,6 +113,7 @@ export default function DayTasksPanel({ date, tasks, open, onOpenChange, onToggl
                         </label>
                       ))}
                     </div>
+                    )}
                   </div>
                 );
               })}
@@ -94,7 +121,7 @@ export default function DayTasksPanel({ date, tasks, open, onOpenChange, onToggl
           )}
 
           {/* Completed Tasks */}
-          {completedTasks.length > 0 && (
+          {completedTasks.length > 0 && showCompleted && (
             <>
               <Separator />
               <div>
@@ -106,7 +133,7 @@ export default function DayTasksPanel({ date, tasks, open, onOpenChange, onToggl
                   {completedTasks.map(task => (
                     <label 
                       key={task.id}
-                      className="flex items-start gap-3 p-3 bg-gray-50 border rounded-lg cursor-pointer"
+                      className="flex items-start gap-3 p-3 bg-gray-50 border rounded-lg cursor-pointer hover:bg-gray-100 transition-colors active:scale-[0.99]"
                     >
                       <Checkbox
                         checked={true}
@@ -130,7 +157,7 @@ export default function DayTasksPanel({ date, tasks, open, onOpenChange, onToggl
             </>
           )}
 
-          {tasks.length === 0 && (
+          {pendingTasks.length === 0 && completedTasks.length === 0 && (
             <div className="text-center py-8 text-gray-500">
               No tasks for this day
             </div>

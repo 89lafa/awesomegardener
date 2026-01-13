@@ -66,41 +66,11 @@ export default function ZoneMap() {
     }
   };
 
-  const handleLookupZone = async () => {
-    if (!formData.location_zip) {
-      toast.error('Enter ZIP code first');
-      return;
-    }
-
-    try {
-      const response = await base44.integrations.Core.InvokeLLM({
-        prompt: `What is the USDA Hardiness Zone for ZIP code ${formData.location_zip}? Also provide the city and state. Return ONLY the zone code (e.g., 7b), city, and state.`,
-        add_context_from_internet: true,
-        response_json_schema: {
-          type: "object",
-          properties: {
-            zone: { type: "string" },
-            city: { type: "string" },
-            state: { type: "string" }
-          }
-        }
-      });
-
-      if (response.zone) {
-        setFormData({
-          ...formData,
-          usda_zone: response.zone,
-          location_city: response.city || formData.location_city,
-          location_state: response.state || formData.location_state
-        });
-        toast.success('Zone found!');
-      } else {
-        toast.error('Could not determine zone');
-      }
-    } catch (error) {
-      console.error('Lookup error:', error);
-      toast.error('Failed to lookup zone');
-    }
+  const handleLookupZone = () => {
+    // Simple deterministic helper - user selects from map or dropdown
+    toast.info('Please select your zone from the dropdown below, or reference the USDA map');
+    // Scroll to zone selector
+    document.getElementById('zone-selector')?.scrollIntoView({ behavior: 'smooth' });
   };
 
   const handleSave = async () => {
@@ -149,21 +119,17 @@ export default function ZoneMap() {
           <CardTitle>Your Location</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="flex gap-3">
-            <div className="flex-1">
-              <Label>ZIP Code</Label>
-              <Input
-                value={formData.location_zip}
-                onChange={(e) => setFormData({ ...formData, location_zip: e.target.value })}
-                placeholder="Enter ZIP"
-                className="mt-2"
-              />
-            </div>
-            <div className="flex items-end">
-              <Button onClick={handleLookupZone} variant="outline">
-                Lookup Zone
-              </Button>
-            </div>
+          <div>
+            <Label>ZIP Code (optional)</Label>
+            <Input
+              value={formData.location_zip}
+              onChange={(e) => setFormData({ ...formData, location_zip: e.target.value })}
+              placeholder="Enter ZIP for reference"
+              className="mt-2"
+            />
+            <p className="text-xs text-gray-500 mt-1">
+              Use the map below to find your zone, then select it from the dropdown
+            </p>
           </div>
 
           <div className="grid grid-cols-2 gap-4">
@@ -185,11 +151,11 @@ export default function ZoneMap() {
             </div>
           </div>
 
-          <div>
-            <Label>USDA Zone</Label>
+          <div id="zone-selector">
+            <Label>USDA Zone *</Label>
             <Select value={formData.usda_zone} onValueChange={(v) => setFormData({ ...formData, usda_zone: v })}>
               <SelectTrigger className="mt-2">
-                <SelectValue placeholder="Select zone" />
+                <SelectValue placeholder="Select your zone" />
               </SelectTrigger>
               <SelectContent>
                 {Object.keys(ZONE_INFO).map(zone => (

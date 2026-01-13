@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Helmet } from 'react-helmet';
 import { useSearchParams } from 'react-router-dom';
 import { base44 } from '@/api/base44Client';
 import { Loader2, Sprout } from 'lucide-react';
@@ -64,9 +65,25 @@ export default function PublicPlant() {
   const shareUrl = window.location.href;
   const shareTitle = `${plant.name || profile?.variety_name} - AwesomeGardener`;
   const shareText = `Check out this ${profile?.common_name || 'plant'} on AwesomeGardener!`;
+  const shareImage = plant.photos?.[0]?.url || 'https://awesomegardener.com/og-default.jpg';
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-emerald-50 to-green-50 py-12">
+    <>
+      <Helmet>
+        <title>{shareTitle}</title>
+        <meta name="description" content={shareText} />
+        <meta property="og:title" content={shareTitle} />
+        <meta property="og:description" content={shareText} />
+        <meta property="og:image" content={shareImage} />
+        <meta property="og:url" content={shareUrl} />
+        <meta property="og:type" content="website" />
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:title" content={shareTitle} />
+        <meta name="twitter:description" content={shareText} />
+        <meta name="twitter:image" content={shareImage} />
+      </Helmet>
+
+      <div className="min-h-screen bg-gradient-to-br from-emerald-50 to-green-50 py-12">
       <div className="max-w-3xl mx-auto px-4">
         <div className="mb-6 flex justify-between items-center">
           <h1 className="text-3xl font-bold text-gray-900">
@@ -76,7 +93,7 @@ export default function PublicPlant() {
             title={shareTitle}
             text={shareText}
             url={shareUrl}
-            imageUrl={plant.photos?.[0]?.url}
+            imageUrl={shareImage}
           />
         </div>
 

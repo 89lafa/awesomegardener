@@ -27,6 +27,7 @@ import ForumTopic from './pages/ForumTopic';
 import GardenBuilder from './pages/GardenBuilder';
 import GardenDiary from './pages/GardenDiary';
 import GardenPlanting from './pages/GardenPlanting';
+import GardeningBasics from './pages/GardeningBasics';
 import Gardens from './pages/Gardens';
 import GrowLists from './pages/GrowLists';
 import GrowingProfile from './pages/GrowingProfile';
@@ -43,6 +44,8 @@ import PlantCatalogDetail from './pages/PlantCatalogDetail';
 import PlantCatalogV2 from './pages/PlantCatalogV2';
 import PlotBuilder from './pages/PlotBuilder';
 import PublicGarden from './pages/PublicGarden';
+import PublicPlant from './pages/PublicPlant';
+import Resources from './pages/Resources';
 import SeedInventory from './pages/SeedInventory';
 import SeedStash from './pages/SeedStash';
 import SeedStashDetail from './pages/SeedStashDetail';
@@ -51,10 +54,7 @@ import SubcategoryMapping from './pages/SubcategoryMapping';
 import Users from './pages/Users';
 import VarietyReviewQueue from './pages/VarietyReviewQueue';
 import ViewVariety from './pages/ViewVariety';
-import Resources from './pages/Resources';
 import ZoneMap from './pages/ZoneMap';
-import PublicPlant from './pages/PublicPlant';
-import GardeningBasics from './pages/GardeningBasics';
 import __Layout from './Layout.jsx';
 
 
@@ -88,6 +88,7 @@ export const PAGES = {
     "GardenBuilder": GardenBuilder,
     "GardenDiary": GardenDiary,
     "GardenPlanting": GardenPlanting,
+    "GardeningBasics": GardeningBasics,
     "Gardens": Gardens,
     "GrowLists": GrowLists,
     "GrowingProfile": GrowingProfile,
@@ -104,6 +105,8 @@ export const PAGES = {
     "PlantCatalogV2": PlantCatalogV2,
     "PlotBuilder": PlotBuilder,
     "PublicGarden": PublicGarden,
+    "PublicPlant": PublicPlant,
+    "Resources": Resources,
     "SeedInventory": SeedInventory,
     "SeedStash": SeedStash,
     "SeedStashDetail": SeedStashDetail,
@@ -112,10 +115,7 @@ export const PAGES = {
     "Users": Users,
     "VarietyReviewQueue": VarietyReviewQueue,
     "ViewVariety": ViewVariety,
-    "Resources": Resources,
     "ZoneMap": ZoneMap,
-    "PublicPlant": PublicPlant,
-    "GardeningBasics": GardeningBasics,
 }
 
 export const pagesConfig = {

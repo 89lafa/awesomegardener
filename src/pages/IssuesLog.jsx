@@ -29,10 +29,13 @@ import {
 } from '@/components/ui/select';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
+import { createPageUrl } from '@/utils';
+import { useSearchParams } from 'react-router-dom';
 import AIIdentifyButton from '@/components/issues/AIIdentifyButton';
 import { cn } from '@/lib/utils';
 
 export default function IssuesLog() {
+  const [searchParams] = useSearchParams();
   const [user, setUser] = useState(null);
   const [gardens, setGardens] = useState([]);
   const [issues, setIssues] = useState([]);
@@ -42,32 +45,58 @@ export default function IssuesLog() {
   const [saving, setSaving] = useState(false);
   const [filterType, setFilterType] = useState('all');
   const [filterGarden, setFilterGarden] = useState('all');
+  const [myPlants, setMyPlants] = useState([]);
+  const [seasons, setSeasons] = useState([]);
+  const [profiles, setProfiles] = useState({});
   
   const [formData, setFormData] = useState({
     garden_id: '',
+    garden_season_id: '',
+    plant_instance_id: '',
     date: format(new Date(), 'yyyy-MM-dd'),
     issue_type: 'pest',
     severity: 'medium',
-    symptoms: '',
+    description: '',
     actions_taken: '',
-    outcome: ''
+    outcome: '',
+    status: 'open'
   });
 
   useEffect(() => {
     loadData();
   }, []);
 
+  // Pre-open dialog with plant if coming from My Plants
+  useEffect(() => {
+    const plantParam = searchParams.get('plant');
+    const newParam = searchParams.get('new');
+    if (plantParam && newParam === 'true' && myPlants.length > 0) {
+      setFormData(prev => ({ ...prev, plant_instance_id: plantParam }));
+      setShowDialog(true);
+      window.history.replaceState({}, '', createPageUrl('IssuesLog') + `?plant=${plantParam}`);
+    }
+  }, [searchParams, myPlants]);
+
   const loadData = async () => {
     try {
       const userData = await base44.auth.me();
-      const [gardensData, issuesData] = await Promise.all([
+      const [gardensData, issuesData, seasonsData, plantsData, profilesData] = await Promise.all([
         base44.entities.Garden.filter({ archived: false, created_by: userData.email }),
-        base44.entities.IssueLog.filter({ created_by: userData.email }, '-date')
+        base44.entities.IssueLog.filter({ created_by: userData.email }, '-created_date'),
+        base44.entities.GardenSeason.filter({ created_by: userData.email }, '-year'),
+        base44.entities.MyPlant.filter({ created_by: userData.email }),
+        base44.entities.PlantProfile.list('variety_name', 500)
       ]);
       
       setUser(userData);
       setGardens(gardensData);
       setIssues(issuesData);
+      setSeasons(seasonsData);
+      setMyPlants(plantsData);
+      
+      const profilesMap = {};
+      profilesData.forEach(p => { profilesMap[p.id] = p; });
+      setProfiles(profilesMap);
       
       if (gardensData.length > 0) {
         setFormData({ ...formData, garden_id: gardensData[0].id });
@@ -107,12 +136,15 @@ export default function IssuesLog() {
     setEditing(null);
     setFormData({
       garden_id: gardens[0]?.id || '',
+      garden_season_id: '',
+      plant_instance_id: '',
       date: format(new Date(), 'yyyy-MM-dd'),
       issue_type: 'pest',
       severity: 'medium',
-      symptoms: '',
+      description: '',
       actions_taken: '',
-      outcome: ''
+      outcome: '',
+      status: 'open'
     });
   };
 
@@ -237,8 +269,8 @@ export default function IssuesLog() {
                   </div>
                   <div className="space-y-2 text-sm">
                     <div>
-                      <span className="font-medium text-gray-700">Symptoms:</span>
-                      <p className="text-gray-600 mt-1">{issue.symptoms}</p>
+                      <span className="font-medium text-gray-700">Description:</span>
+                      <p className="text-gray-600 mt-1">{issue.description || issue.symptoms}</p>
                     </div>
                     {issue.actions_taken && (
                       <div>
@@ -332,12 +364,34 @@ export default function IssuesLog() {
               </div>
             </div>
             <div>
-              <Label htmlFor="symptoms">Symptoms *</Label>
+              <Label>Plant (optional)</Label>
+              <Select 
+                value={formData.plant_instance_id || ''} 
+                onValueChange={(v) => setFormData({ ...formData, plant_instance_id: v || null })}
+              >
+                <SelectTrigger className="mt-2">
+                  <SelectValue placeholder="Select plant" />
+                </SelectTrigger>
+                <SelectContent className="max-h-64">
+                  <SelectItem value={null}>None</SelectItem>
+                  {myPlants.map(p => {
+                    const profile = profiles[p.plant_profile_id];
+                    return (
+                      <SelectItem key={p.id} value={p.id}>
+                        {p.name || profile?.variety_name || 'Unknown'} - {p.location_name || 'No location'}
+                      </SelectItem>
+                    );
+                  })}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label htmlFor="description">Description *</Label>
               <Textarea
-                id="symptoms"
+                id="description"
                 placeholder="Describe what you observed..."
-                value={formData.symptoms}
-                onChange={(e) => setFormData({ ...formData, symptoms: e.target.value })}
+                value={formData.description}
+                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                 className="mt-2"
                 rows={3}
               />
@@ -369,8 +423,8 @@ export default function IssuesLog() {
             <Button variant="outline" onClick={handleClose}>Cancel</Button>
             <Button 
               onClick={handleSave}
-              disabled={!formData.garden_id || !formData.symptoms.trim() || saving}
-              className="bg-emerald-600 hover:bg-emerald-700"
+              disabled={!formData.garden_id || !formData.description?.trim() || saving}
+              className="bg-emerald-600 hover:bg-emerald-700 interactive-button"
             >
               {saving ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
               {editing ? 'Update' : 'Log'} Issue

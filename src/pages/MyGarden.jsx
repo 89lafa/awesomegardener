@@ -387,8 +387,8 @@ export default function MyGarden() {
       <div className="h-[calc(100vh-8rem)] flex flex-col">
         {/* Header with Garden Selector */}
         <div className="flex flex-col gap-3 pb-4 border-b">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
+          <div className="flex items-center justify-between gap-4">
+            <div className="flex items-center gap-3 flex-1">
               <TreeDeciduous className="w-6 h-6 text-emerald-600" />
               {gardens.length > 1 ? (
                 <Select value={activeGarden?.id} onValueChange={handleGardenChange}>
@@ -407,6 +407,14 @@ export default function MyGarden() {
                 <h1 className="text-xl lg:text-2xl font-bold text-gray-900">{activeGarden?.name}</h1>
               )}
             </div>
+            {activeGarden?.is_public && (
+              <ShareButton
+                title={`${activeGarden.name} - AwesomeGardener`}
+                text={`Check out my garden on AwesomeGardener!`}
+                url={`${window.location.origin}/PublicGarden?id=${activeGarden.id}`}
+                imageUrl={activeGarden.cover_image}
+              />
+            )}
             <Button 
               onClick={() => setShowCreateGarden(true)}
               variant="outline"

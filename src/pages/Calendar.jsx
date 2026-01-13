@@ -322,7 +322,7 @@ export default function Calendar() {
           />
           <Button 
             onClick={() => setShowAddCrop(true)}
-            className="w-full bg-emerald-600 hover:bg-emerald-700"
+            className="w-full bg-emerald-600 hover:bg-emerald-700 interactive-button"
             disabled={syncing}
           >
             {syncing ? (
@@ -387,7 +387,7 @@ export default function Calendar() {
               }
             }}
             variant="outline"
-            className="w-full gap-2"
+            className="w-full gap-2 interactive-button"
             disabled={syncing || !activeSeasonId}
           >
             <Download className="w-4 h-4" />
@@ -439,7 +439,7 @@ export default function Calendar() {
             }}
             variant="outline"
             size="sm"
-            className="w-full gap-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border-emerald-200"
+            className="w-full gap-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border-emerald-200 interactive-button"
             disabled={syncing || filteredCrops.length === 0}
           >
             <RefreshCw className="w-4 h-4" />
@@ -750,16 +750,16 @@ function CalendarGridView({ tasks, crops, season, onTaskClick }) {
                     return (
                       <div
                         key={day}
-                        className="h-16 border-r border-b relative hover:bg-blue-50/30 cursor-pointer"
+                        className="h-16 border-r border-b relative clickable-day group"
                         onClick={() => {
                           setSelectedDate(currentDate);
                           setShowDayPanel(true);
                         }}
                       >
-                        <div className="absolute top-0.5 left-0.5 text-[9px] text-gray-400 font-medium">{day}</div>
+                        <div className="absolute top-0.5 left-0.5 text-[9px] text-gray-400 font-medium group-hover:text-emerald-600 transition-colors">{day}</div>
                         {dayTasks.length > 0 && (
                           <div className="absolute inset-0 flex flex-col gap-0.5 p-0.5 pt-3">
-                            {dayTasks.slice(0, 4).map((task) => {
+                            {dayTasks.slice(0, 3).map((task) => {
                               const crop = crops.find(c => c.id === task.crop_plan_id);
                               const taskTypeShort = task.task_type === 'seed' ? 'Start' : 
                                                    task.task_type === 'transplant' ? 'Trans' :
@@ -789,6 +789,20 @@ function CalendarGridView({ tasks, crops, season, onTaskClick }) {
                                 </div>
                               );
                             })}
+                            {dayTasks.length > 3 && (
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setSelectedDate(currentDate);
+                                  setShowDayPanel(true);
+                                }}
+                                className="w-full h-3 rounded bg-gray-700 hover:bg-gray-600 flex items-center justify-center px-1 transition-colors"
+                              >
+                                <span className="text-[9px] text-white font-semibold">
+                                  +{dayTasks.length - 3} more
+                                </span>
+                              </button>
+                            )}
                           </div>
                         )}
                       </div>

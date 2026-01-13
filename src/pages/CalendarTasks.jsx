@@ -29,6 +29,7 @@ import {
 import { toast } from 'sonner';
 import { format, parseISO, isBefore, isAfter, addDays } from 'date-fns';
 import { cn } from '@/lib/utils';
+import DayTasksPanel from '@/components/calendar/DayTasksPanel';
 import { format as formatDate, getDaysInMonth, startOfMonth } from 'date-fns';
 
 const TASK_TYPE_CONFIG = {

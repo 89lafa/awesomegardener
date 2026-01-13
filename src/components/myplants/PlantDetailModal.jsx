@@ -246,6 +246,39 @@ export default function PlantDetailModal({ plantId, open, onOpenChange, onUpdate
 
           <Separator />
 
+          {/* CropPlan Linkage */}
+          <div className="p-3 bg-gray-50 rounded-lg border">
+            <div className="flex items-center justify-between">
+              <div>
+                <Label className="text-xs text-gray-500">Linked to Crop Plan</Label>
+                <p className="text-sm font-medium">
+                  {cropPlan ? `✓ Yes (${cropPlan.label})` : '✗ No crop plan linked'}
+                </p>
+              </div>
+              {!cropPlan && (
+                <Button size="sm" variant="outline" onClick={async () => {
+                  // Allow user to link to a CropPlan
+                  const plans = await base44.entities.CropPlan.filter({ garden_season_id: plant.garden_season_id });
+                  if (plans.length === 0) {
+                    toast.error('No crop plans in this season');
+                    return;
+                  }
+                  const selection = prompt(`Select crop plan:\n${plans.map((p, i) => `${i+1}. ${p.label}`).join('\n')}\n\nEnter number:`);
+                  if (selection) {
+                    const plan = plans[parseInt(selection) - 1];
+                    if (plan) {
+                      await base44.entities.MyPlant.update(plant.id, { crop_plan_id: plan.id });
+                      toast.success('Linked to crop plan');
+                      loadPlantData();
+                    }
+                  }
+                }}>
+                  Fix Link
+                </Button>
+              )}
+            </div>
+          </div>
+
           {/* Identification & Location */}
           <div className="grid grid-cols-2 gap-4">
             <div>
@@ -257,7 +290,7 @@ export default function PlantDetailModal({ plantId, open, onOpenChange, onUpdate
                 <Label className="text-xs text-gray-500">Location</Label>
                 <Link 
                   to={createPageUrl('GardenPlanting') + `?garden=${plant.garden_id}`}
-                  className="text-sm font-medium text-emerald-600 hover:underline flex items-center gap-1"
+                  className="text-sm font-medium text-emerald-600 hover:underline flex items-center gap-1 interactive-button"
                 >
                   <MapPin className="w-3 h-3" />
                   {plant.location_name}
@@ -391,26 +424,62 @@ export default function PlantDetailModal({ plantId, open, onOpenChange, onUpdate
           <div className="space-y-4">
             <h3 className="font-semibold">Related Activity</h3>
             
+            {/* Quick Actions */}
+            <div className="flex gap-2">
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  window.location.href = createPageUrl('GardenDiary') + `?plant=${plantId}&new=true`;
+                }}
+                className="flex-1 interactive-button"
+              >
+                <BookOpen className="w-4 h-4 mr-2" />
+                Add Entry
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  window.location.href = createPageUrl('HarvestLog') + `?plant=${plantId}&new=true`;
+                }}
+                className="flex-1 interactive-button"
+              >
+                <Apple className="w-4 h-4 mr-2" />
+                + Harvest
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  window.location.href = createPageUrl('IssuesLog') + `?plant=${plantId}&new=true`;
+                }}
+                className="flex-1 interactive-button"
+              >
+                <AlertTriangle className="w-4 h-4 mr-2" />
+                + Issue
+              </Button>
+            </div>
+
             {/* Diary */}
-            <Card>
+            <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => window.location.href = createPageUrl('GardenDiary') + `?plant=${plantId}`}>
               <CardContent className="p-4">
                 <div className="flex items-center justify-between mb-3">
                   <div className="flex items-center gap-2">
                     <BookOpen className="w-4 h-4 text-emerald-600" />
-                    <span className="font-medium text-sm">Diary Entries</span>
+                    <span className="font-medium text-sm">Diary Entries ({diaryEntries.length})</span>
                   </div>
-                  <Link to={createPageUrl('GardenDiary') + `?plant=${plantId}`}>
-                    <Button size="sm" variant="ghost" className="gap-1">
-                      View All <ExternalLink className="w-3 h-3" />
-                    </Button>
-                  </Link>
+                  <ExternalLink className="w-3 h-3 text-gray-400" />
                 </div>
                 {diaryEntries.length > 0 ? (
                   <div className="space-y-2">
                     {diaryEntries.map(entry => (
                       <div key={entry.id} className="text-sm">
                         <p className="text-xs text-gray-500">{format(new Date(entry.entry_date), 'MMM d, yyyy')}</p>
-                        <p className="text-gray-700 line-clamp-2">{entry.entry_text}</p>
+                        <p className="text-gray-700 line-clamp-2">{entry.entry_text || entry.notes}</p>
                       </div>
                     ))}
                   </div>
@@ -421,25 +490,21 @@ export default function PlantDetailModal({ plantId, open, onOpenChange, onUpdate
             </Card>
 
             {/* Issues */}
-            <Card>
+            <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => window.location.href = createPageUrl('IssuesLog') + `?plant=${plantId}`}>
               <CardContent className="p-4">
                 <div className="flex items-center justify-between mb-3">
                   <div className="flex items-center gap-2">
                     <AlertTriangle className="w-4 h-4 text-orange-600" />
                     <span className="font-medium text-sm">Open Issues ({issues.length})</span>
                   </div>
-                  <Link to={createPageUrl('IssuesLog') + `?plant=${plantId}`}>
-                    <Button size="sm" variant="ghost" className="gap-1">
-                      View All <ExternalLink className="w-3 h-3" />
-                    </Button>
-                  </Link>
+                  <ExternalLink className="w-3 h-3 text-gray-400" />
                 </div>
                 {issues.length > 0 ? (
                   <div className="space-y-2">
                     {issues.map(issue => (
                       <div key={issue.id} className="text-sm flex items-center justify-between">
-                        <span className="text-gray-700">{issue.issue_type}</span>
-                        <Badge variant="outline" className="text-xs">{issue.severity}</Badge>
+                        <span className="text-gray-700 capitalize">{issue.issue_type}</span>
+                        <Badge variant="outline" className="text-xs capitalize">{issue.severity}</Badge>
                       </div>
                     ))}
                   </div>
@@ -450,18 +515,14 @@ export default function PlantDetailModal({ plantId, open, onOpenChange, onUpdate
             </Card>
 
             {/* Harvests */}
-            <Card>
+            <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => window.location.href = createPageUrl('HarvestLog') + `?plant=${plantId}`}>
               <CardContent className="p-4">
                 <div className="flex items-center justify-between mb-3">
                   <div className="flex items-center gap-2">
                     <Apple className="w-4 h-4 text-purple-600" />
                     <span className="font-medium text-sm">Harvests ({harvests.length})</span>
                   </div>
-                  <Link to={createPageUrl('HarvestLog') + `?plant=${plantId}`}>
-                    <Button size="sm" variant="ghost" className="gap-1">
-                      View All <ExternalLink className="w-3 h-3" />
-                    </Button>
-                  </Link>
+                  <ExternalLink className="w-3 h-3 text-gray-400" />
                 </div>
                 {harvests.length > 0 ? (
                   <div className="space-y-2">

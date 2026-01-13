@@ -18,7 +18,8 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Loader2, ChevronDown } from 'lucide-react';
+import { Loader2, ChevronDown, Info } from 'lucide-react';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { toast } from 'sonner';
 import { addDays, addWeeks } from 'date-fns';
 
@@ -504,7 +505,13 @@ export default function AddCropModal({ open, onOpenChange, seasonId, onSuccess }
             </Button>
             
             {showAdvanced && (
-              <div className="mt-4 space-y-4 p-4 border rounded-lg">
+              <div className="mt-4 space-y-4 p-4 border rounded-lg bg-gray-50">
+                <Alert className="bg-blue-50 border-blue-200">
+                  <Info className="w-4 h-4 text-blue-600" />
+                  <AlertDescription className="text-xs text-blue-800">
+                    These values override variety/type defaults. Leave blank to use defaults.
+                  </AlertDescription>
+                </Alert>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <Label>Days to Maturity</Label>

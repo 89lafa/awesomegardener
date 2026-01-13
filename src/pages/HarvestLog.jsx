@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
+import { useSearchParams } from 'react-router-dom';
 import { 
   Apple,
   Plus,
@@ -29,8 +30,10 @@ import {
 } from '@/components/ui/select';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
+import { createPageUrl } from '@/utils';
 
 export default function HarvestLog() {
+  const [searchParams] = useSearchParams();
   const [gardens, setGardens] = useState([]);
   const [harvests, setHarvests] = useState([]);
   const [plantings, setPlantings] = useState([]);
@@ -39,9 +42,12 @@ export default function HarvestLog() {
   const [editing, setEditing] = useState(null);
   const [saving, setSaving] = useState(false);
   const [filterGarden, setFilterGarden] = useState('all');
+  const [myPlants, setMyPlants] = useState([]);
+  const [profiles, setProfiles] = useState({});
   
   const [formData, setFormData] = useState({
     garden_id: '',
+    garden_season_id: '',
     plant_instance_id: '',
     harvest_date: format(new Date(), 'yyyy-MM-dd'),
     quantity: '',
@@ -54,18 +60,36 @@ export default function HarvestLog() {
     loadData();
   }, []);
 
+  // Pre-open dialog with plant if coming from My Plants
+  useEffect(() => {
+    const plantParam = searchParams.get('plant');
+    const newParam = searchParams.get('new');
+    if (plantParam && newParam === 'true' && myPlants.length > 0) {
+      setFormData(prev => ({ ...prev, plant_instance_id: plantParam }));
+      setShowDialog(true);
+      window.history.replaceState({}, '', createPageUrl('HarvestLog') + `?plant=${plantParam}`);
+    }
+  }, [searchParams, myPlants]);
+
   const loadData = async () => {
     try {
       const userData = await base44.auth.me();
-      const [gardensData, harvestsData, plantingsData] = await Promise.all([
+      const [gardensData, harvestsData, plantingsData, plantsData, profilesData] = await Promise.all([
         base44.entities.Garden.filter({ archived: false, created_by: userData.email }),
         base44.entities.HarvestLog.filter({ created_by: userData.email }, '-harvest_date'),
-        base44.entities.PlantInstance.filter({ created_by: userData.email }, 'display_name')
+        base44.entities.PlantInstance.filter({ created_by: userData.email }, 'display_name'),
+        base44.entities.MyPlant.filter({ created_by: userData.email }),
+        base44.entities.PlantProfile.list('variety_name', 500)
       ]);
       
       setGardens(gardensData);
       setHarvests(harvestsData);
       setPlantings(plantingsData);
+      setMyPlants(plantsData);
+      
+      const profilesMap = {};
+      profilesData.forEach(p => { profilesMap[p.id] = p; });
+      setProfiles(profilesMap);
       
       if (gardensData.length > 0) {
         setFormData({ ...formData, garden_id: gardensData[0].id });
@@ -110,6 +134,7 @@ export default function HarvestLog() {
     setEditing(null);
     setFormData({
       garden_id: gardens[0]?.id || '',
+      garden_season_id: '',
       plant_instance_id: '',
       harvest_date: format(new Date(), 'yyyy-MM-dd'),
       quantity: '',
@@ -272,31 +297,24 @@ export default function HarvestLog() {
               <Label>Plant (optional)</Label>
               <Select 
                 value={formData.plant_instance_id || ''} 
-                onValueChange={(v) => setFormData({ ...formData, plant_instance_id: v })}
+                onValueChange={(v) => setFormData({ ...formData, plant_instance_id: v || null })}
               >
                 <SelectTrigger className="mt-2">
                   <SelectValue placeholder="Select plant" />
                 </SelectTrigger>
                 <SelectContent className="max-h-64">
                   <SelectItem value={null}>None</SelectItem>
-                  {(() => {
-                    const gardenPlantings = plantings.filter(p => p.garden_id === formData.garden_id);
-                    const uniqueNames = new Set();
-                    const uniquePlantings = [];
-                    
-                    for (const p of gardenPlantings) {
-                      if (!uniqueNames.has(p.display_name)) {
-                        uniqueNames.add(p.display_name);
-                        uniquePlantings.push(p);
-                      }
-                    }
-                    
-                    return uniquePlantings.map(p => (
-                      <SelectItem key={p.id} value={p.id}>{p.display_name}</SelectItem>
-                    ));
-                  })()}
+                  {myPlants.map(p => {
+                    const profile = profiles[p.plant_profile_id];
+                    return (
+                      <SelectItem key={p.id} value={p.id}>
+                        {p.name || profile?.variety_name || 'Unknown'} - {p.location_name || 'No location'}
+                      </SelectItem>
+                    );
+                  })}
                 </SelectContent>
               </Select>
+              <p className="text-xs text-gray-500 mt-1">Link this harvest to a specific plant</p>
             </div>
             <div>
               <Label htmlFor="date">Harvest Date *</Label>
