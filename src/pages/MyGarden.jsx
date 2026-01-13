@@ -481,39 +481,70 @@ export default function MyGarden() {
             </Button>
           </div>
 
-          {/* Season Selector */}
-          {availableSeasons.length > 0 && (
+          {/* Season Selector + Mode Selector */}
+          <div className="flex items-center gap-4 flex-wrap">
+            {availableSeasons.length > 0 && (
+              <div className="flex items-center gap-2">
+                <Calendar className="w-4 h-4 text-gray-500" />
+                <Label className="text-sm font-medium">Season:</Label>
+                <Select value={activeSeason} onValueChange={setActiveSeason}>
+                  <SelectTrigger className="w-36">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {availableSeasons.map((season) => (
+                      <SelectItem key={season.id} value={season.season_key}>
+                        {season.year} {season.season}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Button 
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setShowAddSeason(true)}
+                  className="gap-1"
+                >
+                  <Plus className="w-3 h-3" />
+                  Add Season
+                </Button>
+              </div>
+            )}
+            
             <div className="flex items-center gap-2">
-              <Calendar className="w-4 h-4 text-gray-500" />
-              <Label className="text-sm font-medium">Season:</Label>
-              <Select value={activeSeason} onValueChange={setActiveSeason}>
-                <SelectTrigger className="w-36">
+              <Label className="text-sm font-medium">Mode:</Label>
+              <Select 
+                value={activeGarden?.chaos_mode ? 'chaos' : 'standard'}
+                onValueChange={async (value) => {
+                  const chaosMode = value === 'chaos';
+                  await base44.entities.Garden.update(activeGarden.id, { chaos_mode: chaosMode });
+                  setGardens(gardens.map(g => g.id === activeGarden.id ? { ...g, chaos_mode: chaosMode } : g));
+                  setActiveGarden({ ...activeGarden, chaos_mode: chaosMode });
+                  toast.success(chaosMode ? 'Chaos Mode enabled! Freeform planting.' : 'Standard mode restored');
+                }}
+              >
+                <SelectTrigger className="w-40">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {availableSeasons.map((season) => (
-                    <SelectItem key={season.id} value={season.season_key}>
-                      {season.year} {season.season}
-                    </SelectItem>
-                  ))}
+                  <SelectItem value="standard">📐 Standard</SelectItem>
+                  <SelectItem value="chaos">🎨 Chaos Garden</SelectItem>
                 </SelectContent>
               </Select>
-              <Button 
-                size="sm"
-                variant="outline"
-                onClick={() => setShowAddSeason(true)}
-                className="gap-1"
-              >
-                <Plus className="w-3 h-3" />
-                Add Season
-              </Button>
             </div>
-          )}
+          </div>
         </div>
 
         {/* Plot Canvas */}
         {activeGarden && plot && activeSeason && (
           <>
+            {activeGarden?.chaos_mode && (
+              <div className="mb-4 p-3 bg-gradient-to-r from-purple-50 to-pink-50 border border-purple-200 rounded-lg">
+                <p className="text-sm text-purple-900">
+                  🎨 <strong>Chaos Garden Mode:</strong> Freeform planting without strict grid constraints. Place items anywhere!
+                </p>
+              </div>
+            )}
             <PlotCanvas 
               garden={activeGarden}
               plot={plot}
