@@ -34,7 +34,7 @@ import { useSearchParams } from 'react-router-dom';
 import AIIdentifyButton from '@/components/issues/AIIdentifyButton';
 import { cn } from '@/lib/utils';
 import DiseaseIdentifier from '@/components/myplants/DiseaseIdentifier';
-import { Sparkles } from 'lucide-react';
+import { Sparkles, Trash2 } from 'lucide-react';
 
 export default function IssuesLog() {
   const [searchParams] = useSearchParams();
