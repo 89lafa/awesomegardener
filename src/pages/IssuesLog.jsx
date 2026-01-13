@@ -114,7 +114,7 @@ export default function IssuesLog() {
   };
 
   const handleSave = async () => {
-    if (!formData.garden_id || !formData.symptoms.trim() || saving) return;
+    if (!formData.garden_id || !formData.description?.trim() || saving) return;
     
     setSaving(true);
     try {

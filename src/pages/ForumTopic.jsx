@@ -22,6 +22,7 @@ import { format, formatDistanceToNow } from 'date-fns';
 import { cn } from '@/lib/utils';
 import ReactMarkdown from 'react-markdown';
 import PostCard from '@/components/forum/PostCard';
+import ErrorBoundary from '@/components/common/ErrorBoundary';
 
 export default function ForumTopic() {
   const [searchParams] = useSearchParams();
@@ -213,6 +214,7 @@ export default function ForumTopic() {
   const isLocked = topic.status === 'locked';
 
   return (
+    <ErrorBoundary fallbackTitle="Forum Error" fallbackMessage="An error occurred loading this topic. Please try again.">
     <div className="space-y-6 max-w-4xl mx-auto">
       {/* Header */}
       <div className="flex items-center gap-3">
@@ -318,5 +320,6 @@ export default function ForumTopic() {
         </Card>
       )}
     </div>
+    </ErrorBoundary>
   );
 }
