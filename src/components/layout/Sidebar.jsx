@@ -58,6 +58,7 @@ const getNavItems = (userRole, isEditor, user) => {
     items.push({ name: 'Data Import', icon: Database, page: 'AdminDataImport' });
     items.push({ name: 'Admin Maintenance', icon: Settings, page: 'AdminDataMaintenance' });
     items.push({ name: 'Audit Log', icon: Shield, page: 'AdminAuditLog' });
+    items.push({ name: '🚢 Ship Audit', icon: Bug, page: 'DebugFeatures' });
   }
 
   items.push({ name: 'Settings', icon: Settings, page: 'Settings' });
