@@ -17,7 +17,8 @@ import {
   Ruler,
   Plus,
   TrendingUp,
-  Droplets
+  Droplets,
+  Share2
 } from 'lucide-react';
 import SuggestVarietyButton from '@/components/seedstash/SuggestVarietyButton';
 import { Button } from '@/components/ui/button';
@@ -42,6 +43,7 @@ import {
 } from '@/components/ui/dialog';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
+import ShareButton from '@/components/common/ShareButton';
 
 export default function SeedStashDetail() {
   const [searchParams] = useSearchParams();
@@ -257,8 +259,18 @@ export default function SeedStashDetail() {
           )}
         </div>
         <div className="flex gap-2">
-          {profile && !seed.from_catalog && (
-            <SuggestVarietyButton profile={profile} seedLot={seed} />
+          {profile && (
+            <>
+              <ShareButton
+                title={`${profile.variety_name} - Seed Stash`}
+                text={`Check out this ${profile.common_name} variety!`}
+                url={`${window.location.origin}${createPageUrl('PublicSeed')}?id=${seed.id}`}
+                imageUrl={seed.lot_images?.[0]}
+              />
+              {!seed.from_catalog && (
+                <SuggestVarietyButton profile={profile} seedLot={seed} />
+              )}
+            </>
           )}
           <Button 
             variant="outline" 
