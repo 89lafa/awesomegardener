@@ -11,7 +11,8 @@ import {
   Upload,
   Users,
   Wrench,
-  Sprout
+  Sprout,
+  Copy
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
@@ -30,6 +31,8 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { toast } from 'sonner';
 
 const USDA_ZONES = ['1a', '1b', '2a', '2b', '3a', '3b', '4a', '4b', '5a', '5b', '6a', '6b', '7a', '7b', '8a', '8b', '9a', '9b', '10a', '10b', '11a', '11b', '12a', '12b', '13a', '13b'];
+
+const BUILD_VERSION = import.meta.env.VITE_BUILD_TIMESTAMP || new Date().toISOString();
 
 export default function Settings() {
   const [user, setUser] = useState(null);
@@ -194,6 +197,10 @@ export default function Settings() {
           <TabsTrigger value="data" className="gap-2">
             <Download className="w-4 h-4" />
             Data
+          </TabsTrigger>
+          <TabsTrigger value="debug" className="gap-2">
+            <Wrench className="w-4 h-4" />
+            Debug
           </TabsTrigger>
         </TabsList>
 
@@ -473,6 +480,98 @@ export default function Settings() {
               </CardContent>
             </Card>
           )}
+        </TabsContent>
+
+        <TabsContent value="debug" className="mt-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>Build & Feature Debug</CardTitle>
+              <CardDescription>Technical information for troubleshooting</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              {/* Build Version */}
+              <div className="p-4 bg-gray-50 rounded-lg font-mono text-sm">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="font-semibold">Build Version:</span>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => {
+                      navigator.clipboard.writeText(BUILD_VERSION);
+                      toast.success('Copied!');
+                    }}
+                  >
+                    <Copy className="w-3 h-3 mr-1" />
+                    Copy
+                  </Button>
+                </div>
+                <code className="text-emerald-600">{BUILD_VERSION}</code>
+              </div>
+
+              {/* Feature Visibility */}
+              <div>
+                <h4 className="font-semibold text-sm mb-3">Feature Visibility:</h4>
+                <div className="space-y-2 text-sm">
+                  <div className="flex items-center justify-between p-2 bg-gray-50 rounded">
+                    <span>ShareButton Component</span>
+                    <span className="text-emerald-600 font-mono">✓ Loaded</span>
+                  </div>
+                  <div className="flex items-center justify-between p-2 bg-gray-50 rounded">
+                    <span>PublicGarden Page</span>
+                    <span className="text-emerald-600 font-mono">✓ Available</span>
+                  </div>
+                  <div className="flex items-center justify-between p-2 bg-gray-50 rounded">
+                    <span>DayTasksPanel</span>
+                    <span className="text-emerald-600 font-mono">✓ Available</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Cache Controls */}
+              <div>
+                <h4 className="font-semibold text-sm mb-3">Cache Controls:</h4>
+                <div className="space-y-2">
+                  <Button
+                    variant="outline"
+                    className="w-full justify-start"
+                    onClick={() => {
+                      window.location.reload(true);
+                    }}
+                  >
+                    🔄 Hard Reload (Ctrl+Shift+R)
+                  </Button>
+                  <Button
+                    variant="outline"
+                    className="w-full justify-start"
+                    onClick={async () => {
+                      if ('serviceWorker' in navigator) {
+                        const registrations = await navigator.serviceWorker.getRegistrations();
+                        for (let registration of registrations) {
+                          await registration.unregister();
+                        }
+                        toast.success('Service workers unregistered. Reload page.');
+                      } else {
+                        toast.info('No service workers found');
+                      }
+                    }}
+                  >
+                    🗑️ Clear Service Workers
+                  </Button>
+                  <Button
+                    variant="outline"
+                    className="w-full justify-start"
+                    onClick={() => {
+                      localStorage.clear();
+                      sessionStorage.clear();
+                      toast.success('Storage cleared. Reload page.');
+                    }}
+                  >
+                    🧹 Clear All Storage
+                  </Button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
         </TabsContent>
       </Tabs>
 

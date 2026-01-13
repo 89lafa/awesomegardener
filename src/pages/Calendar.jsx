@@ -410,9 +410,10 @@ export default function Calendar() {
               
               try {
                 toast.loading(`Regenerating tasks for ${filteredCrops.length} crops...`, { id: 'regen-all' });
+                setSyncing(true);
                 let totalCreated = 0;
                 let failedCount = 0;
-                
+
                 for (const crop of filteredCrops) {
                   try {
                     const response = await base44.functions.invoke('generateTasksForCrop', { crop_plan_id: crop.id });
@@ -422,9 +423,10 @@ export default function Calendar() {
                     failedCount++;
                   }
                 }
-                
+
                 await new Promise(r => setTimeout(r, 500));
                 await loadPlansAndTasks();
+                setSyncing(false);
                 
                 if (failedCount > 0) {
                   toast.warning(`Created ${totalCreated} tasks. ${failedCount} crops failed - check frost dates in Settings`, { id: 'regen-all', duration: 6000 });
@@ -435,16 +437,21 @@ export default function Calendar() {
                 console.error('Error regenerating all tasks:', error);
                 const errorMsg = error.response?.data?.error || error.message || 'Unknown error';
                 toast.error(`Failed: ${errorMsg}`, { id: 'regen-all' });
+                setSyncing(false);
               }
-            }}
-            variant="outline"
-            size="sm"
-            className="w-full gap-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border-emerald-200 interactive-button"
-            disabled={syncing || filteredCrops.length === 0}
-          >
-            <RefreshCw className="w-4 h-4" />
-            Regenerate All Tasks
-          </Button>
+              }}
+              variant="outline"
+              size="sm"
+              className="w-full gap-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border-emerald-200 interactive-button"
+              disabled={syncing || filteredCrops.length === 0}
+              >
+              {syncing ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+              <RefreshCw className="w-4 h-4" />
+              )}
+              Regenerate All Tasks
+              </Button>
         </div>
         
         <div className="flex-1 overflow-y-auto p-2">
@@ -610,6 +617,10 @@ export default function Calendar() {
               crops={cropPlans}
               season={getCurrentSeason()}
               onTaskClick={setSelectedTask}
+              onDayClick={(date) => {
+                setSelectedDate(date);
+                setShowDayPanel(true);
+              }}
             />
           ) : (
             <TimelineView 
@@ -686,7 +697,7 @@ export default function Calendar() {
 }
 
 // Calendar Grid View - Compact full year view like SeedTime
-function CalendarGridView({ tasks, crops, season, onTaskClick }) {
+function CalendarGridView({ tasks, crops, season, onTaskClick, onDayClick }) {
   if (!season) {
     return (
       <div className="p-8 text-center text-gray-500">
@@ -751,12 +762,14 @@ function CalendarGridView({ tasks, crops, season, onTaskClick }) {
                       <div
                         key={day}
                         className="h-16 border-r border-b relative clickable-day group"
-                        onClick={() => {
-                          setSelectedDate(currentDate);
-                          setShowDayPanel(true);
+                        onClick={(e) => {
+                          // Only trigger if clicking the cell itself, not a task chip
+                          if (e.target === e.currentTarget || e.target.classList.contains('day-number')) {
+                            onDayClick?.(currentDate);
+                          }
                         }}
                       >
-                        <div className="absolute top-0.5 left-0.5 text-[9px] text-gray-400 font-medium group-hover:text-emerald-600 transition-colors">{day}</div>
+                        <div className="absolute top-0.5 left-0.5 text-[9px] text-gray-400 font-medium group-hover:text-emerald-600 transition-colors day-number">{day}</div>
                         {dayTasks.length > 0 && (
                           <div className="absolute inset-0 flex flex-col gap-0.5 p-0.5 pt-3">
                             {dayTasks.slice(0, 3).map((task) => {
@@ -771,9 +784,12 @@ function CalendarGridView({ tasks, crops, season, onTaskClick }) {
                               return (
                                 <div
                                   key={task.id}
-                                  className="w-full h-3 rounded cursor-pointer hover:opacity-90 flex items-center px-1 overflow-hidden relative"
+                                  className="w-full h-3 rounded cursor-pointer hover:opacity-90 active:scale-95 flex items-center px-1 overflow-hidden relative transition-all"
                                   style={{ backgroundColor: task.color_hex || crop?.color_hex || '#10b981' }}
-                                  onClick={() => onTaskClick(task)}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    onTaskClick(task);
+                                  }}
                                   title={`${crop?.label || 'Crop'}: ${task.title}${task.quantity_target > 1 ? ` (${task.quantity_completed || 0}/${task.quantity_target})` : ''}`}
                                 >
                                   {task.quantity_target > 1 && (
@@ -793,10 +809,9 @@ function CalendarGridView({ tasks, crops, season, onTaskClick }) {
                               <button
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  setSelectedDate(currentDate);
-                                  setShowDayPanel(true);
+                                  onDayClick?.(currentDate);
                                 }}
-                                className="w-full h-3 rounded bg-gray-700 hover:bg-gray-600 flex items-center justify-center px-1 transition-colors"
+                                className="w-full h-3 rounded bg-gray-700 hover:bg-gray-600 active:bg-gray-800 flex items-center justify-center px-1 transition-all active:scale-95"
                               >
                                 <span className="text-[9px] text-white font-semibold">
                                   +{dayTasks.length - 3} more

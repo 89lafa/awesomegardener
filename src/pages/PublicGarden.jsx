@@ -3,6 +3,7 @@ import { Helmet } from 'react-helmet';
 import { useSearchParams } from 'react-router-dom';
 import { base44 } from '@/api/base44Client';
 import { Loader2, MapPin, Calendar, Sprout } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import ShareButton from '@/components/common/ShareButton';
@@ -24,13 +25,26 @@ export default function PublicGarden() {
 
   const loadGarden = async () => {
     try {
-      const gardens = await base44.entities.Garden.filter({ id: gardenId, is_public: true });
+      // First try to fetch by ID without is_public filter
+      const gardens = await base44.entities.Garden.filter({ id: gardenId });
+      
       if (gardens.length === 0) {
+        console.log('[PublicGarden] Garden not found:', gardenId);
         setLoading(false);
         return;
       }
 
       const g = gardens[0];
+      console.log('[PublicGarden] Fetched garden:', { id: g.id, name: g.name, is_public: g.is_public, owner: g.created_by });
+      
+      // Check if public
+      if (!g.is_public) {
+        console.log('[PublicGarden] Garden is not public');
+        setGarden({ ...g, _notPublic: true });
+        setLoading(false);
+        return;
+      }
+
       setGarden(g);
 
       const [seasonsData, plotsData] = await Promise.all([
@@ -58,9 +72,29 @@ export default function PublicGarden() {
   if (!garden) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-emerald-50 to-green-50 flex items-center justify-center">
-        <div className="text-center">
+        <div className="text-center max-w-md mx-auto p-6">
           <Sprout className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-          <p className="text-gray-600">Garden not found or not public</p>
+          <p className="text-lg font-semibold text-gray-900 mb-2">Garden not found</p>
+          <p className="text-sm text-gray-600">
+            This garden may have been deleted or the link is incorrect.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  if (garden._notPublic) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-emerald-50 to-green-50 flex items-center justify-center">
+        <div className="text-center max-w-md mx-auto p-6">
+          <Sprout className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+          <p className="text-lg font-semibold text-gray-900 mb-2">This garden is private</p>
+          <p className="text-sm text-gray-600 mb-4">
+            The owner has not made this garden public. Ask them to enable public sharing in their garden settings.
+          </p>
+          <Button variant="outline" onClick={() => window.location.href = '/'}>
+            Go to Home
+          </Button>
         </div>
       </div>
     );

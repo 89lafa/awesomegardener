@@ -8,7 +8,9 @@ import {
   Loader2,
   ChevronDown,
   Trash2,
-  Calendar
+  Calendar,
+  Copy,
+  Eye
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -407,14 +409,65 @@ export default function MyGarden() {
                 <h1 className="text-xl lg:text-2xl font-bold text-gray-900">{activeGarden?.name}</h1>
               )}
             </div>
-            {activeGarden?.is_public && (
-              <ShareButton
-                title={`${activeGarden.name} - AwesomeGardener`}
-                text={`Check out my garden on AwesomeGardener!`}
-                url={`${window.location.origin}/PublicGarden?id=${activeGarden.id}`}
-                imageUrl={activeGarden.cover_image}
-              />
-            )}
+            
+            {/* Public Toggle + Share Buttons */}
+            <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 px-3 py-2 rounded-lg border bg-white">
+                <Label className="text-sm cursor-pointer flex items-center gap-2">
+                  <Switch
+                    checked={activeGarden?.is_public || false}
+                    onCheckedChange={async (checked) => {
+                      try {
+                        await base44.entities.Garden.update(activeGarden.id, { is_public: checked });
+                        setActiveGarden({ ...activeGarden, is_public: checked });
+                        toast.success(checked ? 'Garden is now public' : 'Garden is now private');
+                        loadData(); // Refresh
+                      } catch (error) {
+                        console.error('Error updating privacy:', error);
+                        toast.error('Failed to update privacy');
+                      }
+                    }}
+                  />
+                  {activeGarden?.is_public ? '🌐 Public' : '🔒 Private'}
+                </Label>
+              </div>
+              
+              {activeGarden?.is_public && (
+                <>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      const publicUrl = `${window.location.origin}${createPageUrl('PublicGarden')}?id=${activeGarden.id}`;
+                      navigator.clipboard.writeText(publicUrl);
+                      toast.success('Public link copied!');
+                    }}
+                    className="gap-2"
+                  >
+                    <Copy className="w-4 h-4" />
+                    Copy Link
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      window.open(`${createPageUrl('PublicGarden')}?id=${activeGarden.id}`, '_blank');
+                    }}
+                    className="gap-2"
+                  >
+                    <Eye className="w-4 h-4" />
+                    Preview
+                  </Button>
+                  <ShareButton
+                    title={`${activeGarden.name} - AwesomeGardener`}
+                    text={`Check out my garden on AwesomeGardener!`}
+                    url={`${window.location.origin}${createPageUrl('PublicGarden')}?id=${activeGarden.id}`}
+                    imageUrl={activeGarden.cover_image}
+                  />
+                </>
+              )}
+            </div>
+
             <Button 
               onClick={() => setShowCreateGarden(true)}
               variant="outline"
