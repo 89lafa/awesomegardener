@@ -17,11 +17,9 @@ import {
   ChevronRight,
   Sprout,
   Shield,
-  Database,
   BookText,
   Bug,
   Apple,
-  Users,
   MapPin,
   BookMarked,
   Link2
@@ -53,19 +51,9 @@ const getNavItems = (userRole, isEditor, user) => {
       { name: 'Feature Requests', icon: Lightbulb, page: 'FeatureRequests' },
     ];
 
+  // Admin/Moderator/Editor consolidated hub
   if (isEditor || userRole === 'admin' || user?.is_moderator) {
-    items.push({ name: 'Review Queue', icon: Shield, page: 'EditorReviewQueue' });
-    items.push({ name: 'Variety Reviews', icon: Sprout, page: 'VarietyReviewQueue' });
-    items.push({ name: 'Change Requests', icon: Shield, page: 'ChangeRequests' });
-  }
-
-  if (userRole === 'admin') {
-    items.push({ name: 'Users', icon: Users, page: 'Users' });
-    items.push({ name: 'Browse Categories', icon: Database, page: 'BrowseCategoryConfig' });
-    items.push({ name: 'Data Import', icon: Database, page: 'AdminDataImport' });
-    items.push({ name: 'Admin Maintenance', icon: Settings, page: 'AdminDataMaintenance' });
-    items.push({ name: 'Audit Log', icon: Shield, page: 'AdminAuditLog' });
-    items.push({ name: '🚢 Ship Audit', icon: Bug, page: 'DebugFeatures' });
+    items.push({ name: 'Admin Hub', icon: Shield, page: 'AdminHub' });
   }
 
   items.push({ name: 'Settings', icon: Settings, page: 'Settings' });

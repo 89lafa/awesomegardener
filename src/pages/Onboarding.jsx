@@ -40,6 +40,8 @@ export default function Onboarding() {
   const [currentStep, setCurrentStep] = useState(0);
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
+    nickname: '',
+    profile_logo_url: '',
     avatar_url: '',
     location_zip: '',
     location_city: '',
@@ -56,6 +58,14 @@ export default function Onboarding() {
   };
 
   const handleNext = () => {
+    // Validate nickname on profile step
+    if (currentStep === 0) {
+      if (!formData.nickname.trim()) {
+        toast.error('Please enter a nickname to continue');
+        return;
+      }
+    }
+    
     // Validate frost dates if on frost step
     if (currentStep === 2) {
       if (!formData.last_frost_date || !formData.first_frost_date) {
@@ -82,6 +92,8 @@ export default function Onboarding() {
     try {
       // Update user profile
       await base44.auth.updateMe({
+        nickname: formData.nickname,
+        profile_logo_url: formData.profile_logo_url,
         avatar_url: formData.avatar_url,
         location_zip: formData.location_zip,
         location_city: formData.location_city,
@@ -124,15 +136,41 @@ export default function Onboarding() {
         return (
           <div className="space-y-6">
             <div>
-              <Label htmlFor="avatar">Profile Picture URL (optional)</Label>
+              <Label htmlFor="nickname">Nickname *</Label>
               <Input
-                id="avatar"
-                type="url"
-                placeholder="https://example.com/your-photo.jpg"
-                value={formData.avatar_url}
-                onChange={(e) => handleChange('avatar_url', e.target.value)}
+                id="nickname"
+                placeholder="Your display name for the community"
+                value={formData.nickname}
+                onChange={(e) => handleChange('nickname', e.target.value)}
                 className="mt-2"
               />
+              <p className="text-sm text-gray-500 mt-1">This will appear on your public gardens and forum posts</p>
+            </div>
+            <div>
+              <Label htmlFor="logo">Logo/Avatar (optional)</Label>
+              <Input
+                id="logo"
+                type="file"
+                accept="image/*"
+                onChange={async (e) => {
+                  const file = e.target.files?.[0];
+                  if (file) {
+                    try {
+                      const { file_url } = await base44.integrations.Core.UploadFile({ file });
+                      handleChange('profile_logo_url', file_url);
+                      toast.success('Logo uploaded!');
+                    } catch (error) {
+                      console.error('Error uploading logo:', error);
+                      toast.error('Failed to upload logo');
+                    }
+                  }
+                }}
+                className="mt-2"
+              />
+              <p className="text-sm text-gray-500 mt-1">Upload your profile logo (will appear on your public garden cards)</p>
+              {formData.profile_logo_url && (
+                <img src={formData.profile_logo_url} alt="Logo preview" className="w-16 h-16 rounded-full mt-2 border" />
+              )}
             </div>
             <div>
               <Label htmlFor="units">Preferred Units</Label>

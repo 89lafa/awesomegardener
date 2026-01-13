@@ -13,26 +13,31 @@ export default function DiseaseIdentifier({ open, onOpenChange, imageUrl, plantC
 
   React.useEffect(() => {
     if (open && imageUrl && !result) {
+      console.log('AI_ID_REQUEST_SENT', imageUrl);
       analyzeImage();
+    } else if (!open) {
+      setResult(null);
     }
   }, [open, imageUrl]);
 
   const analyzeImage = async () => {
     setAnalyzing(true);
     try {
+      console.log('AI_ID_REQUEST_SENT', { imageUrl, plantCommonName });
       const response = await base44.functions.invoke('identifyDisease', {
         image_url: imageUrl,
         plant_common_name: plantCommonName
       });
 
+      console.log('AI_ID_RESPONSE_RECEIVED', response.data);
       if (response.data.success) {
         setResult(response.data);
       } else {
         toast.error('Analysis failed');
       }
     } catch (error) {
-      console.error('Analysis error:', error);
-      toast.error('Failed to analyze image');
+      console.error('AI_ID_ERROR:', error);
+      toast.error('Failed to analyze image: ' + (error.response?.data?.error || error.message));
     } finally {
       setAnalyzing(false);
     }

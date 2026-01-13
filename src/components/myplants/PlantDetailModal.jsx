@@ -396,18 +396,19 @@ export default function PlantDetailModal({ plantId, open, onOpenChange, onUpdate
                       alt={photo.caption || 'Plant photo'}
                       className="w-full h-24 object-cover rounded-lg border"
                     />
-                    <Button
-                      size="sm"
-                      variant="secondary"
-                      className="absolute bottom-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity text-xs h-6 px-2"
+                    <button
+                      type="button"
+                      className="absolute bottom-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity text-xs h-6 px-2 bg-white hover:bg-gray-50 border rounded shadow-sm pointer-events-auto z-10"
                       onClick={(e) => {
+                        e.preventDefault();
                         e.stopPropagation();
+                        console.log('AI_ID_CLICKED', photo.url);
                         setDiseaseIdImage(photo.url);
                         setShowDiseaseId(true);
                       }}
                     >
                       🔍 ID
-                    </Button>
+                    </button>
                   </div>
                 ))}
               </div>
@@ -619,6 +620,45 @@ export default function PlantDetailModal({ plantId, open, onOpenChange, onUpdate
           )}
         </div>
       </DialogContent>
+      
+      {/* Disease Identifier Modal */}
+      <DiseaseIdentifier
+        open={showDiseaseId}
+        onOpenChange={setShowDiseaseId}
+        imageUrl={diseaseIdImage}
+        plantCommonName={profile?.common_name}
+        onSaveToIssues={async (aiResult) => {
+          console.log('AI_ID_SAVE_ISSUE_CREATING', aiResult);
+          try {
+            // Build issue description from AI result
+            const issueDescription = aiResult.issues?.map(issue => 
+              `**${issue.name}** (${issue.confidence} confidence)\n` +
+              (issue.symptoms ? `Symptoms: ${issue.symptoms}\n` : '') +
+              (issue.recommendations?.length > 0 ? `Actions: ${issue.recommendations.join(', ')}` : '')
+            ).join('\n\n') || aiResult.general_notes || 'AI identified potential disease';
+            
+            await base44.entities.IssueLog.create({
+              garden_id: plant.garden_season_id,
+              garden_season_id: plant.garden_season_id,
+              plant_instance_id: plant.id,
+              date: new Date().toISOString().split('T')[0],
+              issue_type: 'disease',
+              severity: 'medium',
+              description: issueDescription,
+              identified_by: 'AI',
+              images: [diseaseIdImage],
+              status: 'open'
+            });
+            
+            console.log('AI_ID_SAVE_ISSUE_CREATED');
+            toast.success('Saved to Issues Log');
+            onUpdate?.();
+          } catch (error) {
+            console.error('Error saving to issues:', error);
+            toast.error('Failed to save to Issues Log');
+          }
+        }}
+      />
     </Dialog>
   );
 }

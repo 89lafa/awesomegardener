@@ -41,7 +41,25 @@ export default function BrowseGardens() {
         is_public: true,
         archived: false 
       }, '-updated_date');
-      setGardens(allGardens);
+      
+      // Load owner data for each garden
+      const ownerEmails = [...new Set(allGardens.map(g => g.created_by))];
+      const allUsers = await base44.entities.User.list();
+      const ownersMap = {};
+      ownerEmails.forEach(email => {
+        const owner = allUsers.find(u => u.email === email);
+        if (owner) {
+          ownersMap[email] = owner;
+        }
+      });
+      
+      // Attach owner data to gardens
+      const gardensWithOwners = allGardens.map(g => ({
+        ...g,
+        owner: ownersMap[g.created_by]
+      }));
+      
+      setGardens(gardensWithOwners);
     } catch (error) {
       console.error('Error loading gardens:', error);
     } finally {
@@ -138,7 +156,15 @@ export default function BrowseGardens() {
         </Card>
       ) : (
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredGardens.map((garden) => (
+          {filteredGardens.map((garden) => {
+            const owner = garden.owner;
+            const ownerName = owner?.nickname || owner?.first_name || owner?.full_name || 'Gardener';
+            const ownerLocation = owner?.location_city && owner?.location_state 
+              ? `${owner.location_city}, ${owner.location_state}` 
+              : owner?.location_state || 'Location not set';
+            const ownerLogo = owner?.profile_logo_url || owner?.avatar_url;
+            
+            return (
             <Link key={garden.id} to={createPageUrl('PublicGarden') + `?id=${garden.id}`}>
               <Card className="hover:shadow-lg transition-shadow h-full">
                 <div className="aspect-video bg-gradient-to-br from-emerald-100 to-green-50 relative">
@@ -153,9 +179,27 @@ export default function BrowseGardens() {
                       <Globe className="w-12 h-12 text-emerald-200" />
                     </div>
                   )}
+                  {/* Owner Logo Badge */}
+                  {ownerLogo && (
+                    <div className="absolute top-3 right-3">
+                      <img 
+                        src={ownerLogo} 
+                        alt={ownerName}
+                        className="w-12 h-12 rounded-full border-2 border-white shadow-lg object-cover"
+                      />
+                    </div>
+                  )}
                 </div>
                 <CardContent className="p-4">
-                  <h3 className="font-semibold text-lg mb-2">{garden.name}</h3>
+                  <h3 className="font-semibold text-lg mb-1">{garden.name}</h3>
+                  <div className="flex items-center gap-2 text-xs text-gray-600 mb-2">
+                    <span className="font-medium">by {ownerName}</span>
+                    <span>•</span>
+                    <div className="flex items-center gap-1">
+                      <MapPin className="w-3 h-3" />
+                      {ownerLocation}
+                    </div>
+                  </div>
                   {garden.description && (
                     <p className="text-sm text-gray-600 line-clamp-2 mb-3">{garden.description}</p>
                   )}
@@ -177,7 +221,8 @@ export default function BrowseGardens() {
                 </CardContent>
               </Card>
             </Link>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>

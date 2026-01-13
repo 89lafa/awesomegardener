@@ -26,6 +26,7 @@ import ForumAdmin from './pages/ForumAdmin';
 import ForumCategory from './pages/ForumCategory';
 import ForumTopic from './pages/ForumTopic';
 import GardenBuilder from './pages/GardenBuilder';
+import GardenCare from './pages/GardenCare';
 import GardenDiary from './pages/GardenDiary';
 import GardenPlanting from './pages/GardenPlanting';
 import GardeningBasics from './pages/GardeningBasics';
@@ -46,19 +47,19 @@ import PlantCatalogV2 from './pages/PlantCatalogV2';
 import PlotBuilder from './pages/PlotBuilder';
 import PublicGarden from './pages/PublicGarden';
 import PublicPlant from './pages/PublicPlant';
+import PublicSeed from './pages/PublicSeed';
 import Resources from './pages/Resources';
 import SeedInventory from './pages/SeedInventory';
 import SeedStash from './pages/SeedStash';
 import SeedStashDetail from './pages/SeedStashDetail';
 import Settings from './pages/Settings';
+import ShipAudit from './pages/ShipAudit';
 import SubcategoryMapping from './pages/SubcategoryMapping';
 import Users from './pages/Users';
 import VarietyReviewQueue from './pages/VarietyReviewQueue';
 import ViewVariety from './pages/ViewVariety';
 import ZoneMap from './pages/ZoneMap';
-import PublicSeed from './pages/PublicSeed';
-import ShipAudit from './pages/ShipAudit';
-import GardenCare from './pages/GardenCare';
+import AdminHub from './pages/AdminHub';
 import __Layout from './Layout.jsx';
 
 
@@ -91,6 +92,7 @@ export const PAGES = {
     "ForumCategory": ForumCategory,
     "ForumTopic": ForumTopic,
     "GardenBuilder": GardenBuilder,
+    "GardenCare": GardenCare,
     "GardenDiary": GardenDiary,
     "GardenPlanting": GardenPlanting,
     "GardeningBasics": GardeningBasics,
@@ -111,19 +113,19 @@ export const PAGES = {
     "PlotBuilder": PlotBuilder,
     "PublicGarden": PublicGarden,
     "PublicPlant": PublicPlant,
+    "PublicSeed": PublicSeed,
     "Resources": Resources,
     "SeedInventory": SeedInventory,
     "SeedStash": SeedStash,
     "SeedStashDetail": SeedStashDetail,
     "Settings": Settings,
+    "ShipAudit": ShipAudit,
     "SubcategoryMapping": SubcategoryMapping,
     "Users": Users,
     "VarietyReviewQueue": VarietyReviewQueue,
     "ViewVariety": ViewVariety,
     "ZoneMap": ZoneMap,
-    "PublicSeed": PublicSeed,
-    "ShipAudit": ShipAudit,
-    "GardenCare": GardenCare,
+    "AdminHub": AdminHub,
 }
 
 export const pagesConfig = {

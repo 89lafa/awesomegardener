@@ -190,18 +190,32 @@ export default function ZoneMap() {
             ℹ️ Your zone & frost dates are set in Settings → Location and used across Calendar/Tasks
           </p>
         </CardHeader>
-        <CardContent>
-          <img 
-            src="https://images.immediate.co.uk/production/volatile/sites/10/2024/02/usda-plant-hardiness-zone-map-b38a3f3.jpg?quality=90&resize=940,627"
-            alt="USDA Hardiness Zone Map"
-            className="w-full rounded-lg border"
-            onError={(e) => {
-              e.target.src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="800" height="600"%3E%3Crect fill="%23f3f4f6" width="800" height="600"/%3E%3Ctext x="50%25" y="50%25" dominant-baseline="middle" text-anchor="middle" font-family="Arial" font-size="16" fill="%236b7280"%3EMap unavailable - use dropdown above to select your zone%3C/text%3E%3C/svg%3E';
-            }}
-          />
-          <p className="text-xs text-gray-500 mt-2">
-            Source: USDA Hardiness Zone Map • <a href="https://planthardiness.ars.usda.gov/" target="_blank" rel="noopener noreferrer" className="text-emerald-600 hover:underline">View Official Map</a>
-          </p>
+        <CardContent className="space-y-4">
+          <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
+            <h4 className="font-semibold text-blue-900 mb-2">📍 Find Your Zone Online</h4>
+            <p className="text-sm text-blue-800 mb-3">
+              Use the official USDA Plant Hardiness Zone Map to identify your exact zone.
+            </p>
+            <a
+              href="https://planthardiness.ars.usda.gov/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-block"
+            >
+              <Button className="bg-blue-600 hover:bg-blue-700">
+                Open Official USDA Zone Finder →
+              </Button>
+            </a>
+            <p className="text-xs text-blue-600 mt-2">
+              Enter your ZIP code on the official site, then return here and select your zone from the dropdown above
+            </p>
+          </div>
+          
+          <div className="p-4 bg-gray-50 rounded-lg border text-center">
+            <p className="text-sm text-gray-600">
+              The interactive USDA map is a government-maintained tool. We link to it rather than embedding to ensure you always have access to the most up-to-date zone information.
+            </p>
+          </div>
         </CardContent>
       </Card>
     </div>

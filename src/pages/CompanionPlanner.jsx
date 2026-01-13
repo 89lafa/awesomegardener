@@ -278,6 +278,36 @@ Cucumber,Radish,Good Conditional,Radishes can deter cucumber beetles but compete
         </div>
       </div>
 
+      {/* Evidence Level Key */}
+      <Card className="bg-blue-50 border-blue-200">
+        <CardContent className="p-4">
+          <h3 className="font-semibold text-blue-900 mb-3">📚 Understanding Evidence Levels</h3>
+          <div className="grid md:grid-cols-3 gap-4 text-sm">
+            <div className="flex items-start gap-2">
+              <Badge className="bg-blue-600 text-white flex-shrink-0">A</Badge>
+              <div>
+                <p className="font-semibold text-blue-900">Scientific Research</p>
+                <p className="text-blue-700 text-xs">Peer-reviewed studies, university extension research</p>
+              </div>
+            </div>
+            <div className="flex items-start gap-2">
+              <Badge className="bg-emerald-600 text-white flex-shrink-0">B</Badge>
+              <div>
+                <p className="font-semibold text-blue-900">Experienced Growers</p>
+                <p className="text-blue-700 text-xs">Extension services, master gardeners, documented practices</p>
+              </div>
+            </div>
+            <div className="flex items-start gap-2">
+              <Badge className="bg-amber-600 text-white flex-shrink-0">C</Badge>
+              <div>
+                <p className="font-semibold text-blue-900">Anecdotal</p>
+                <p className="text-blue-700 text-xs">Community tradition, personal observations, unverified claims</p>
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Filter by Plant */}
       <Card>
         <CardContent className="p-4">

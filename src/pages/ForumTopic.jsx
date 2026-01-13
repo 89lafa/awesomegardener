@@ -41,10 +41,14 @@ export default function ForumTopic() {
   useEffect(() => {
     if (topicId) {
       loadData();
+    } else {
+      setLoading(false);
     }
   }, [topicId]);
 
   const loadData = async () => {
+    console.log('[ForumTopic] Loading topic:', topicId);
+    setLoading(true);
     try {
       const [userData, topicData, postsData, commentsData, votesData] = await Promise.all([
         base44.auth.me(),
@@ -54,6 +58,7 @@ export default function ForumTopic() {
         base44.entities.ForumVote.list()
       ]);
       
+      console.log('[ForumTopic] Data loaded:', { topicFound: topicData.length > 0, posts: postsData.length });
       setUser(userData);
       if (topicData.length > 0) setTopic(topicData[0]);
       setPosts(postsData.filter(p => !p.deleted_at));
@@ -67,7 +72,8 @@ export default function ForumTopic() {
         });
       }
     } catch (error) {
-      console.error('Error loading topic:', error);
+      console.error('[ForumTopic] Error loading topic:', error);
+      toast.error('Failed to load topic');
     } finally {
       setLoading(false);
     }
@@ -180,10 +186,23 @@ export default function ForumTopic() {
     );
   }
 
+  if (!topicId) {
+    return (
+      <div className="text-center py-16">
+        <h2 className="text-2xl font-bold text-gray-900 mb-2">No Topic ID Provided</h2>
+        <p className="text-gray-600 mb-4">Please provide a topic ID in the URL (e.g., /ForumTopic?id=...)</p>
+        <Link to={createPageUrl('CommunityBoard')}>
+          <Button>Back to Community Board</Button>
+        </Link>
+      </div>
+    );
+  }
+
   if (!topic) {
     return (
       <div className="text-center py-16">
         <h2 className="text-2xl font-bold text-gray-900 mb-2">Topic Not Found</h2>
+        <p className="text-gray-600 mb-4">This topic may have been deleted or the ID is incorrect.</p>
         <Link to={createPageUrl('CommunityBoard')}>
           <Button>Back to Community Board</Button>
         </Link>

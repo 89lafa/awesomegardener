@@ -33,6 +33,8 @@ import { createPageUrl } from '@/utils';
 import { useSearchParams } from 'react-router-dom';
 import AIIdentifyButton from '@/components/issues/AIIdentifyButton';
 import { cn } from '@/lib/utils';
+import DiseaseIdentifier from '@/components/myplants/DiseaseIdentifier';
+import { Sparkles } from 'lucide-react';
 
 export default function IssuesLog() {
   const [searchParams] = useSearchParams();
@@ -59,8 +61,11 @@ export default function IssuesLog() {
     description: '',
     actions_taken: '',
     outcome: '',
-    status: 'open'
+    status: 'open',
+    images: []
   });
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const [showAIIdentify, setShowAIIdentify] = useState(false);
 
   useEffect(() => {
     loadData();
@@ -144,8 +149,11 @@ export default function IssuesLog() {
       description: '',
       actions_taken: '',
       outcome: '',
-      status: 'open'
+      status: 'open',
+      images: []
     });
+    setUploadingPhoto(false);
+    setShowAIIdentify(false);
   };
 
   const filteredIssues = issues.filter(i => {
@@ -396,6 +404,78 @@ export default function IssuesLog() {
                 rows={3}
               />
             </div>
+            
+            {formData.issue_type === 'disease' && (
+              <div>
+                <Label>Disease Photo (optional but recommended)</Label>
+                <div className="mt-2 space-y-2">
+                  {formData.images && formData.images.length > 0 && (
+                    <div className="grid grid-cols-3 gap-2">
+                      {formData.images.map((url, idx) => (
+                        <div key={idx} className="relative group">
+                          <img src={url} alt="Disease" className="w-full h-24 object-cover rounded-lg border" />
+                          <Button
+                            type="button"
+                            variant="destructive"
+                            size="icon"
+                            className="absolute top-1 right-1 h-6 w-6 opacity-0 group-hover:opacity-100"
+                            onClick={() => {
+                              setFormData({ ...formData, images: formData.images.filter((_, i) => i !== idx) });
+                            }}
+                          >
+                            <Trash2 className="w-3 h-3" />
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  <Button
+                    type="button"
+                    variant="outline"
+                    disabled={uploadingPhoto}
+                    onClick={() => document.getElementById('disease-photo-upload').click()}
+                    className="w-full"
+                  >
+                    {uploadingPhoto ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Plus className="w-4 h-4 mr-2" />}
+                    Upload Photo
+                  </Button>
+                  <input
+                    id="disease-photo-upload"
+                    type="file"
+                    accept="image/*"
+                    onChange={async (e) => {
+                      const file = e.target.files?.[0];
+                      if (!file) return;
+                      setUploadingPhoto(true);
+                      try {
+                        const { file_url } = await base44.integrations.Core.UploadFile({ file });
+                        setFormData({ ...formData, images: [...(formData.images || []), file_url] });
+                        toast.success('Photo uploaded');
+                      } catch (error) {
+                        console.error('Error uploading:', error);
+                        toast.error('Failed to upload photo');
+                      } finally {
+                        setUploadingPhoto(false);
+                      }
+                    }}
+                    className="hidden"
+                  />
+                  {formData.images && formData.images.length > 0 && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => {
+                        setShowAIIdentify(true);
+                      }}
+                      className="w-full gap-2 bg-purple-50 hover:bg-purple-100 text-purple-700 border-purple-300"
+                    >
+                      <Sparkles className="w-4 h-4" />
+                      AI Identify Disease
+                    </Button>
+                  )}
+                </div>
+              </div>
+            )}
             <div>
               <Label htmlFor="actions">Actions Taken</Label>
               <Textarea
@@ -432,6 +512,29 @@ export default function IssuesLog() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* AI Disease Identifier */}
+      <DiseaseIdentifier
+        open={showAIIdentify}
+        onOpenChange={setShowAIIdentify}
+        imageUrl={formData.images?.[0]}
+        plantCommonName={
+          formData.plant_instance_id
+            ? myPlants.find(p => p.id === formData.plant_instance_id)?.name || profiles[myPlants.find(p => p.id === formData.plant_instance_id)?.plant_profile_id]?.common_name
+            : null
+        }
+        onSaveToIssues={(aiResult) => {
+          const description = aiResult.issues?.map(issue => 
+            `**${issue.name}** (${issue.confidence} confidence)\n` +
+            (issue.symptoms ? `Symptoms: ${issue.symptoms}\n` : '') +
+            (issue.recommendations?.length > 0 ? `Actions: ${issue.recommendations.join(', ')}` : '')
+          ).join('\n\n') || aiResult.general_notes || 'AI identified potential disease';
+          
+          setFormData({ ...formData, description, identified_by: 'AI' });
+          setShowAIIdentify(false);
+          toast.success('AI analysis added to description');
+        }}
+      />
     </div>
   );
 }
