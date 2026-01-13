@@ -16,6 +16,7 @@ import {
 import PlotSettingsDialog from './PlotSettingsDialog';
 import PlantingModal from './PlantingModal';
 import AISuggestLayoutButton from './AISuggestLayoutButton';
+import SunPathOverlay from './SunPathOverlay';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -99,6 +100,8 @@ export default function PlotCanvas({ garden, plot, activeSeason, seasonId, onPlo
   const [showEditItem, setShowEditItem] = useState(false);
   const [showPlantingModal, setShowPlantingModal] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [showSunPath, setShowSunPath] = useState(false);
+  const [showSFGGrid, setShowSFGGrid] = useState(false);
   const [editItemData, setEditItemData] = useState({
     label: '',
     dimensions: '',
@@ -619,10 +622,16 @@ export default function PlotCanvas({ garden, plot, activeSeason, seasonId, onPlo
     let x = (e.clientX - rect.left) / zoom - dragOffset.x;
     let y = (e.clientY - rect.top) / zoom - dragOffset.y;
 
-    if (snapToGrid) {
+    // In chaos mode, only snap if explicitly enabled
+    if (snapToGrid && !garden?.chaos_mode) {
       const gridSize = plot.grid_size || 12;
       x = Math.round(x / gridSize) * gridSize;
       y = Math.round(y / gridSize) * gridSize;
+    } else if (snapToGrid && garden?.chaos_mode) {
+      // In chaos mode with snap enabled, use finer grid (3 inches instead of 12)
+      const fineGrid = 3;
+      x = Math.round(x / fineGrid) * fineGrid;
+      y = Math.round(y / fineGrid) * fineGrid;
     }
 
     x = Math.max(0, Math.min(x, plot.width - draggingItem.width));
@@ -986,8 +995,28 @@ export default function PlotCanvas({ garden, plot, activeSeason, seasonId, onPlo
               className="w-full gap-2"
             >
               <Grid3X3 className="w-4 h-4" />
-              Snap to Grid
+              {garden?.chaos_mode ? 'Fine Snap' : 'Snap to Grid'}
             </Button>
+            
+            <Button
+              variant={showSunPath ? 'secondary' : 'outline'}
+              size="sm"
+              onClick={() => setShowSunPath(!showSunPath)}
+              className="w-full gap-2"
+            >
+              ☀️ Sun Path
+            </Button>
+            
+            {garden?.planting_method === 'SQUARE_FOOT' && (
+              <Button
+                variant={showSFGGrid ? 'secondary' : 'outline'}
+                size="sm"
+                onClick={() => setShowSFGGrid(!showSFGGrid)}
+                className="w-full gap-2"
+              >
+                📐 SFG Grid
+              </Button>
+            )}
           </div>
           {selectedItem && (
             <div className="pt-4 border-t space-y-3">
@@ -1075,7 +1104,7 @@ export default function PlotCanvas({ garden, plot, activeSeason, seasonId, onPlo
           onMouseLeave={handleCanvasMouseUp}
         >
           {/* Grid */}
-          {plot.grid_enabled && (
+          {plot.grid_enabled && !showSFGGrid && (
             <svg className="absolute inset-0 pointer-events-none" width="100%" height="100%">
               {Array.from({ length: Math.ceil(plot.width / plot.grid_size) }).map((_, i) => (
                 <line
@@ -1101,6 +1130,63 @@ export default function PlotCanvas({ garden, plot, activeSeason, seasonId, onPlo
               ))}
             </svg>
           )}
+
+          {/* Square Foot Gardening Grid */}
+          {showSFGGrid && garden?.planting_method === 'SQUARE_FOOT' && (
+            <svg className="absolute inset-0 pointer-events-none" width="100%" height="100%" style={{ zIndex: 5 }}>
+              {/* 1ft grid (12 inches) */}
+              {Array.from({ length: Math.ceil(plot.width / 12) + 1 }).map((_, i) => (
+                <line
+                  key={`sfg-v-${i}`}
+                  x1={i * 12 * zoom}
+                  y1={0}
+                  x2={i * 12 * zoom}
+                  y2={plot.height * zoom}
+                  stroke="#10b981"
+                  strokeWidth="2"
+                  opacity="0.6"
+                />
+              ))}
+              {Array.from({ length: Math.ceil(plot.height / 12) + 1 }).map((_, i) => (
+                <line
+                  key={`sfg-h-${i}`}
+                  x1={0}
+                  y1={i * 12 * zoom}
+                  x2={plot.width * zoom}
+                  y2={i * 12 * zoom}
+                  stroke="#10b981"
+                  strokeWidth="2"
+                  opacity="0.6"
+                />
+              ))}
+              {/* Grid cell labels */}
+              {Array.from({ length: Math.floor(plot.width / 12) }).map((_, col) =>
+                Array.from({ length: Math.floor(plot.height / 12) }).map((_, row) => (
+                  <text
+                    key={`label-${col}-${row}`}
+                    x={(col * 12 + 6) * zoom}
+                    y={(row * 12 + 8) * zoom}
+                    textAnchor="middle"
+                    fontSize={9 * zoom}
+                    fill="#10b981"
+                    opacity="0.4"
+                    fontWeight="bold"
+                  >
+                    1ft²
+                  </text>
+                ))
+              )}
+            </svg>
+          )}
+
+          {/* Sun Path Overlay */}
+          <SunPathOverlay
+            width={plot.width}
+            height={plot.height}
+            zoom={zoom}
+            enabled={showSunPath}
+            season="summer"
+          />
 
           {/* Items */}
           {items.map((item) => {
