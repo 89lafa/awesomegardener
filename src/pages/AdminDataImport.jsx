@@ -543,28 +543,38 @@ export default function AdminDataImport() {
                   extended_data: {
                     import_subcat_code: originalSubcatCode,
                     import_subcat_codes: originalSubcatCodes,
-                    import_subcat_warnings: subcatWarnings.length > 0 ? subcatWarnings.join('; ') : null
+                    import_subcat_warnings: subcatWarnings.length > 0 ? subcatWarnings.join('; ') : null,
+                    resolved_subcat_id: finalPrimaryId,
+                    resolved_subcat_name: finalPrimaryId ? (Object.values(subCategoryLookup).find(sc => sc.id === finalPrimaryId)?.name) : null
                   },
                   status: 'active',
                   is_custom: false
                 };
                 
-                // Add optional fields only if present in CSV
-                if (row.description) varietyData.description = row.description;
+                // Add optional fields only if present in CSV (blank-safe)
+                if (row.description && row.description.trim()) varietyData.description = row.description;
                 if (row.synonyms) varietyData.synonyms = row.synonyms.split('|');
-                if (row.days_to_maturity) varietyData.days_to_maturity = parseInt(row.days_to_maturity);
-                if (row.days_to_maturity_min) varietyData.days_to_maturity_min = parseInt(row.days_to_maturity_min);
-                if (row.days_to_maturity_max) varietyData.days_to_maturity_max = parseInt(row.days_to_maturity_max);
-                if (row.spacing_recommended) varietyData.spacing_recommended = parseInt(row.spacing_recommended);
-                if (row.spacing_min) varietyData.spacing_min = parseInt(row.spacing_min);
-                if (row.spacing_max) varietyData.spacing_max = parseInt(row.spacing_max);
-                if (row.plant_height_typical) varietyData.plant_height_typical = row.plant_height_typical;
-                if (row.height_min) varietyData.height_min = parseInt(row.height_min);
-                if (row.height_max) varietyData.height_max = parseInt(row.height_max);
-                if (row.sun_requirement) varietyData.sun_requirement = row.sun_requirement;
-                if (row.water_requirement) varietyData.water_requirement = row.water_requirement;
-                if (row.growth_habit) varietyData.growth_habit = row.growth_habit;
-                if (row.flavor_profile) varietyData.flavor_profile = row.flavor_profile;
+                if (row.days_to_maturity && row.days_to_maturity.trim()) varietyData.days_to_maturity = parseInt(row.days_to_maturity);
+                if (row.days_to_maturity_min && row.days_to_maturity_min.trim()) varietyData.days_to_maturity_min = parseInt(row.days_to_maturity_min);
+                if (row.days_to_maturity_max && row.days_to_maturity_max.trim()) varietyData.days_to_maturity_max = parseInt(row.days_to_maturity_max);
+                
+                // Timing fields (blank-safe)
+                if (row.start_indoors_weeks_min && row.start_indoors_weeks_min.trim()) varietyData.start_indoors_weeks_min = parseFloat(row.start_indoors_weeks_min);
+                if (row.start_indoors_weeks_max && row.start_indoors_weeks_max.trim()) varietyData.start_indoors_weeks_max = parseFloat(row.start_indoors_weeks_max);
+                if (row.transplant_weeks_after_last_frost_min && row.transplant_weeks_after_last_frost_min.trim()) varietyData.transplant_weeks_after_last_frost_min = parseFloat(row.transplant_weeks_after_last_frost_min);
+                if (row.transplant_weeks_after_last_frost_max && row.transplant_weeks_after_last_frost_max.trim()) varietyData.transplant_weeks_after_last_frost_max = parseFloat(row.transplant_weeks_after_last_frost_max);
+                if (row.direct_sow_weeks_min && row.direct_sow_weeks_min.trim()) varietyData.direct_sow_weeks_min = parseFloat(row.direct_sow_weeks_min);
+                if (row.direct_sow_weeks_max && row.direct_sow_weeks_max.trim()) varietyData.direct_sow_weeks_max = parseFloat(row.direct_sow_weeks_max);
+                if (row.spacing_recommended && row.spacing_recommended.trim()) varietyData.spacing_recommended = parseInt(row.spacing_recommended);
+                if (row.spacing_min && row.spacing_min.trim()) varietyData.spacing_min = parseInt(row.spacing_min);
+                if (row.spacing_max && row.spacing_max.trim()) varietyData.spacing_max = parseInt(row.spacing_max);
+                if (row.plant_height_typical && row.plant_height_typical.trim()) varietyData.plant_height_typical = row.plant_height_typical;
+                if (row.height_min && row.height_min.trim()) varietyData.height_min = parseInt(row.height_min);
+                if (row.height_max && row.height_max.trim()) varietyData.height_max = parseInt(row.height_max);
+                if (row.sun_requirement && row.sun_requirement.trim()) varietyData.sun_requirement = row.sun_requirement;
+                if (row.water_requirement && row.water_requirement.trim()) varietyData.water_requirement = row.water_requirement;
+                if (row.growth_habit && row.growth_habit.trim()) varietyData.growth_habit = row.growth_habit;
+                if (row.flavor_profile && row.flavor_profile.trim()) varietyData.flavor_profile = row.flavor_profile;
                 if (row.uses) varietyData.uses = row.uses;
                 if (row.fruit_color) varietyData.fruit_color = row.fruit_color;
                 if (row.fruit_shape) varietyData.fruit_shape = row.fruit_shape;
@@ -613,9 +623,10 @@ export default function AdminDataImport() {
                   updatePayload.variety_code = varietyData.variety_code;
                   updatePayload.extended_data = varietyData.extended_data;
                   
-                  // Only update optional fields if CSV has non-empty values
-                  if (varietyData.description) updatePayload.description = varietyData.description;
-                  if (varietyData.days_to_maturity) updatePayload.days_to_maturity = varietyData.days_to_maturity;
+                  // Only update optional fields if CSV has non-empty values (blank-safe upsert)
+                  // CRITICAL: Check for both null AND empty string to prevent blanks from overwriting
+                  if (varietyData.description && varietyData.description.trim()) updatePayload.description = varietyData.description;
+                  if (varietyData.days_to_maturity !== null && varietyData.days_to_maturity !== undefined) updatePayload.days_to_maturity = varietyData.days_to_maturity;
                   if (varietyData.spacing_recommended) updatePayload.spacing_recommended = varietyData.spacing_recommended;
                   if (varietyData.sun_requirement) updatePayload.sun_requirement = varietyData.sun_requirement;
                   if (varietyData.water_requirement) updatePayload.water_requirement = varietyData.water_requirement;
@@ -624,10 +635,16 @@ export default function AdminDataImport() {
                   if (varietyData.seed_line_type) updatePayload.seed_line_type = varietyData.seed_line_type;
                   if (varietyData.season_timing) updatePayload.season_timing = varietyData.season_timing;
                   if (varietyData.grower_notes) updatePayload.grower_notes = varietyData.grower_notes;
-                  if (varietyData.scoville_min) updatePayload.scoville_min = varietyData.scoville_min;
-                  if (varietyData.scoville_max) updatePayload.scoville_max = varietyData.scoville_max;
-                  if (varietyData.heat_scoville_min) updatePayload.heat_scoville_min = varietyData.heat_scoville_min;
-                  if (varietyData.heat_scoville_max) updatePayload.heat_scoville_max = varietyData.heat_scoville_max;
+                  if (varietyData.scoville_min !== null && varietyData.scoville_min !== undefined) updatePayload.scoville_min = varietyData.scoville_min;
+                  if (varietyData.scoville_max !== null && varietyData.scoville_max !== undefined) updatePayload.scoville_max = varietyData.scoville_max;
+                  if (varietyData.heat_scoville_min !== null && varietyData.heat_scoville_min !== undefined) updatePayload.heat_scoville_min = varietyData.heat_scoville_min;
+                  if (varietyData.heat_scoville_max !== null && varietyData.heat_scoville_max !== undefined) updatePayload.heat_scoville_max = varietyData.heat_scoville_max;
+                  if (row.direct_sow_weeks_min) updatePayload.direct_sow_weeks_min = parseFloat(row.direct_sow_weeks_min);
+                  if (row.direct_sow_weeks_max) updatePayload.direct_sow_weeks_max = parseFloat(row.direct_sow_weeks_max);
+                  if (row.start_indoors_weeks_min) updatePayload.start_indoors_weeks_min = parseFloat(row.start_indoors_weeks_min);
+                  if (row.start_indoors_weeks_max) updatePayload.start_indoors_weeks_max = parseFloat(row.start_indoors_weeks_max);
+                  if (row.transplant_weeks_after_last_frost_min) updatePayload.transplant_weeks_after_last_frost_min = parseFloat(row.transplant_weeks_after_last_frost_min);
+                  if (row.transplant_weeks_after_last_frost_max) updatePayload.transplant_weeks_after_last_frost_max = parseFloat(row.transplant_weeks_after_last_frost_max);
                   
                   // Always set booleans (they have defaults)
                   updatePayload.trellis_required = varietyData.trellis_required;
@@ -761,30 +778,82 @@ export default function AdminDataImport() {
         <CardContent>
           <div className="space-y-3">
             <p className="text-sm text-gray-600">Download clean templates with exact headers the importer expects</p>
-            <Button
-              onClick={async () => {
-                try {
-                  const response = await base44.functions.invoke('generateVarietyCSVTemplate');
-                  const blob = new Blob([response.data], { type: 'text/csv' });
-                  const url = window.URL.createObjectURL(blob);
-                  const a = document.createElement('a');
-                  a.href = url;
-                  a.download = 'variety_import_template.csv';
-                  document.body.appendChild(a);
-                  a.click();
-                  window.URL.revokeObjectURL(url);
-                  a.remove();
-                  toast.success('Template downloaded');
-                } catch (error) {
-                  toast.error('Failed to download template');
-                }
-              }}
-              variant="outline"
-              className="gap-2"
-            >
-              <Download className="w-4 h-4" />
-              Download Variety Template CSV
-            </Button>
+            <div className="flex flex-wrap gap-2">
+              <Button
+                onClick={async () => {
+                  try {
+                    const response = await base44.functions.invoke('generateVarietyCSVTemplate');
+                    const blob = new Blob([response.data], { type: 'text/csv' });
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = 'variety_import_template.csv';
+                    document.body.appendChild(a);
+                    a.click();
+                    window.URL.revokeObjectURL(url);
+                    a.remove();
+                    toast.success('Template downloaded');
+                  } catch (error) {
+                    toast.error('Failed to download template');
+                  }
+                }}
+                variant="outline"
+                className="gap-2"
+              >
+                <Download className="w-4 h-4" />
+                Variety Template
+              </Button>
+              
+              <Button
+                onClick={async () => {
+                  try {
+                    const response = await base44.functions.invoke('generatePlantTypeCSVTemplate');
+                    const blob = new Blob([response.data], { type: 'text/csv' });
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = 'plant_type_import_template.csv';
+                    document.body.appendChild(a);
+                    a.click();
+                    window.URL.revokeObjectURL(url);
+                    a.remove();
+                    toast.success('Template downloaded');
+                  } catch (error) {
+                    toast.error('Failed to download template');
+                  }
+                }}
+                variant="outline"
+                className="gap-2"
+              >
+                <Download className="w-4 h-4" />
+                PlantType Template
+              </Button>
+
+              <Button
+                onClick={async () => {
+                  try {
+                    const response = await base44.functions.invoke('generateSubcategoryCSVTemplate');
+                    const blob = new Blob([response.data], { type: 'text/csv' });
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = 'subcategory_import_template.csv';
+                    document.body.appendChild(a);
+                    a.click();
+                    window.URL.revokeObjectURL(url);
+                    a.remove();
+                    toast.success('Template downloaded');
+                  } catch (error) {
+                    toast.error('Failed to download template');
+                  }
+                }}
+                variant="outline"
+                className="gap-2"
+              >
+                <Download className="w-4 h-4" />
+                Subcategory Template
+              </Button>
+            </div>
           </div>
         </CardContent>
       </Card>

@@ -55,6 +55,7 @@ export default function Settings() {
 
   useEffect(() => {
     loadUser();
+    loadUserSettings();
   }, []);
 
   const loadUser = async () => {
@@ -82,6 +83,18 @@ export default function Settings() {
       console.error('Error loading user:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadUserSettings = async () => {
+    try {
+      const userData = await base44.auth.me();
+      const settings = await base44.entities.UserSettings.filter({ user_email: userData.email });
+      if (settings.length > 0) {
+        setUserSettings(settings[0]);
+      }
+    } catch (error) {
+      console.error('Error loading user settings:', error);
     }
   };
 

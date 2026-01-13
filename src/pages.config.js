@@ -1,4 +1,5 @@
 import AdminAuditLog from './pages/AdminAuditLog';
+import AdminBulkEdit from './pages/AdminBulkEdit';
 import AdminDataCleanup from './pages/AdminDataCleanup';
 import AdminDataImport from './pages/AdminDataImport';
 import AdminDataMaintenance from './pages/AdminDataMaintenance';
@@ -50,12 +51,16 @@ import SubcategoryMapping from './pages/SubcategoryMapping';
 import Users from './pages/Users';
 import VarietyReviewQueue from './pages/VarietyReviewQueue';
 import ViewVariety from './pages/ViewVariety';
-import AdminBulkEdit from './pages/AdminBulkEdit';
+import Resources from './pages/Resources';
+import ZoneMap from './pages/ZoneMap';
+import PublicPlant from './pages/PublicPlant';
+import GardeningBasics from './pages/GardeningBasics';
 import __Layout from './Layout.jsx';
 
 
 export const PAGES = {
     "AdminAuditLog": AdminAuditLog,
+    "AdminBulkEdit": AdminBulkEdit,
     "AdminDataCleanup": AdminDataCleanup,
     "AdminDataImport": AdminDataImport,
     "AdminDataMaintenance": AdminDataMaintenance,
@@ -107,7 +112,10 @@ export const PAGES = {
     "Users": Users,
     "VarietyReviewQueue": VarietyReviewQueue,
     "ViewVariety": ViewVariety,
-    "AdminBulkEdit": AdminBulkEdit,
+    "Resources": Resources,
+    "ZoneMap": ZoneMap,
+    "PublicPlant": PublicPlant,
+    "GardeningBasics": GardeningBasics,
 }
 
 export const pagesConfig = {

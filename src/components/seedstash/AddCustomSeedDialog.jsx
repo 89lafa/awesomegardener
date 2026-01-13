@@ -10,7 +10,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Loader2, Plus, Trash2, Sparkles } from 'lucide-react';
 import { toast } from 'sonner';
 
-export default function AddCustomSeedDialog({ open, onOpenChange, onSuccess }) {
+export default function AddCustomSeedDialog({ open, onOpenChange, onSuccess, prefilledData }) {
   const [loading, setLoading] = useState(false);
   const [plantTypes, setPlantTypes] = useState([]);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);

@@ -63,6 +63,7 @@ import AdBanner from '@/components/monetization/AdBanner';
 import { cn } from '@/lib/utils';
 import AddCustomSeedDialog from '@/components/seedstash/AddCustomSeedDialog';
 import AddFromCatalogDialog from '@/components/seedstash/AddFromCatalogDialog';
+import ImportFromURLDialog from '@/components/seedstash/ImportFromURLDialog';
 
 const TAGS = [
   { value: 'favorite', label: 'Favorite', icon: Star, color: 'text-yellow-500' },

@@ -44,6 +44,7 @@ export default function AddCropModal({ open, onOpenChange, seasonId, onSuccess }
     seed_offset_days: -42,
     transplant_offset_days: 0,
     direct_seed_offset_days: 0,
+    direct_seed_offset_days_max: 0,
     dtm_days: 75,
     harvest_window_days: 14,
     succession_count: 0,
@@ -107,10 +108,13 @@ export default function AddCropModal({ open, onOpenChange, seasonId, onSuccess }
     const startIndoorsWeeksMax = variety.start_indoors_weeks_max || variety.start_indoors_weeks || startIndoorsWeeksMin;
     const transplantWeeksMin = variety.transplant_weeks_after_last_frost_min || 2;
     const transplantWeeksMax = variety.transplant_weeks_after_last_frost_max || transplantWeeksMin;
+    const directSowWeeksMin = variety.direct_sow_weeks_min || 0;
+    const directSowWeeksMax = variety.direct_sow_weeks_max || directSowWeeksMin;
     
     // Use midpoint for defaults
     const startIndoorsWeeks = Math.round((startIndoorsWeeksMin + startIndoorsWeeksMax) / 2);
     const transplantWeeks = Math.round((transplantWeeksMin + transplantWeeksMax) / 2);
+    const directSowWeeks = Math.round((directSowWeeksMin + directSowWeeksMax) / 2);
     
     setFormData({ 
       ...formData, 
@@ -118,7 +122,9 @@ export default function AddCropModal({ open, onOpenChange, seasonId, onSuccess }
       dtm_days: variety.days_to_maturity || variety.days_to_maturity_min || 75,
       label: variety.variety_name,
       seed_offset_days: -(startIndoorsWeeks * 7),
-      transplant_offset_days: transplantWeeks * 7
+      transplant_offset_days: transplantWeeks * 7,
+      direct_seed_offset_days: directSowWeeks * 7,
+      direct_seed_offset_days_max: directSowWeeksMax * 7
     });
   };
   
@@ -132,6 +138,8 @@ export default function AddCropModal({ open, onOpenChange, seasonId, onSuccess }
     // Get timing from profile
     const startIndoorsWeeks = profile.start_indoors_weeks_before_last_frost_min || 6;
     const transplantWeeks = profile.transplant_weeks_after_last_frost_min || 2;
+    const directSowWeeksMin = profile.direct_sow_weeks_relative_to_last_frost_min || 0;
+    const directSowWeeksMax = profile.direct_sow_weeks_relative_to_last_frost_max || directSowWeeksMin;
     
     setFormData({
       ...formData,
@@ -140,7 +148,9 @@ export default function AddCropModal({ open, onOpenChange, seasonId, onSuccess }
       dtm_days: profile.days_to_maturity_seed || 75,
       label: profile.variety_name || 'Crop',
       seed_offset_days: -(startIndoorsWeeks * 7),
-      transplant_offset_days: transplantWeeks * 7
+      transplant_offset_days: transplantWeeks * 7,
+      direct_seed_offset_days: directSowWeeksMin * 7,
+      direct_seed_offset_days_max: directSowWeeksMax * 7
     });
   };
   
@@ -288,6 +298,7 @@ export default function AddCropModal({ open, onOpenChange, seasonId, onSuccess }
         seed_offset_days: formData.seed_offset_days,
         transplant_offset_days: formData.transplant_offset_days,
         direct_seed_offset_days: formData.direct_seed_offset_days,
+        direct_seed_offset_days_max: formData.direct_seed_offset_days_max,
         dtm_days: formData.dtm_days,
         harvest_window_days: formData.harvest_window_days,
         succession_interval_days: formData.succession_interval_days,
@@ -316,6 +327,7 @@ export default function AddCropModal({ open, onOpenChange, seasonId, onSuccess }
             seed_offset_days: formData.seed_offset_days + (i * formData.succession_interval_days),
             transplant_offset_days: formData.transplant_offset_days + (i * formData.succession_interval_days),
             direct_seed_offset_days: formData.direct_seed_offset_days + (i * formData.succession_interval_days),
+            direct_seed_offset_days_max: formData.direct_seed_offset_days_max + (i * formData.succession_interval_days),
             dtm_days: formData.dtm_days,
             harvest_window_days: formData.harvest_window_days,
             succession_parent_id: cropPlan.id
@@ -343,6 +355,7 @@ export default function AddCropModal({ open, onOpenChange, seasonId, onSuccess }
         seed_offset_days: -42,
         transplant_offset_days: 0,
         direct_seed_offset_days: 0,
+        direct_seed_offset_days_max: 0,
         dtm_days: 75,
         harvest_window_days: 14,
         succession_count: 0,
@@ -537,14 +550,28 @@ export default function AddCropModal({ open, onOpenChange, seasonId, onSuccess }
                 )}
                 
                 {formData.planting_method === 'direct_seed' && (
-                  <div>
-                    <Label>Direct Seed (days after last frost)</Label>
-                    <Input
-                      type="number"
-                      value={formData.direct_seed_offset_days}
-                      onChange={(e) => setFormData({ ...formData, direct_seed_offset_days: parseInt(e.target.value) || 0 })}
-                      className="mt-2"
-                    />
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <Label>Direct Sow Min (days after last frost)</Label>
+                      <Input
+                        type="number"
+                        value={formData.direct_seed_offset_days}
+                        onChange={(e) => setFormData({ ...formData, direct_seed_offset_days: parseInt(e.target.value) || 0 })}
+                        placeholder="e.g., 0 or -14"
+                        className="mt-2"
+                      />
+                      <p className="text-xs text-gray-500 mt-1">Negative = before frost</p>
+                    </div>
+                    <div>
+                      <Label>Direct Sow Max (days after last frost)</Label>
+                      <Input
+                        type="number"
+                        value={formData.direct_seed_offset_days_max || formData.direct_seed_offset_days}
+                        onChange={(e) => setFormData({ ...formData, direct_seed_offset_days_max: parseInt(e.target.value) || 0 })}
+                        placeholder="e.g., 14"
+                        className="mt-2"
+                      />
+                    </div>
                   </div>
                 )}
                 

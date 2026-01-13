@@ -10,8 +10,11 @@ import {
   ExternalLink,
   BookOpen,
   AlertTriangle,
-  Apple
+  Apple,
+  Share2
 } from 'lucide-react';
+import ShareButton from '@/components/common/ShareButton';
+import DiseaseIdentifier from '@/components/myplants/DiseaseIdentifier';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -37,11 +40,14 @@ export default function PlantDetailModal({ plantId, open, onOpenChange, onUpdate
   const [plant, setPlant] = useState(null);
   const [profile, setProfile] = useState(null);
   const [seedLot, setSeedLot] = useState(null);
+  const [cropPlan, setCropPlan] = useState(null);
   const [loading, setLoading] = useState(true);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [diaryEntries, setDiaryEntries] = useState([]);
   const [harvests, setHarvests] = useState([]);
   const [issues, setIssues] = useState([]);
+  const [showDiseaseId, setShowDiseaseId] = useState(false);
+  const [diseaseIdImage, setDiseaseIdImage] = useState(null);
 
   useEffect(() => {
     if (open && plantId) {
@@ -65,7 +71,7 @@ export default function PlantDetailModal({ plantId, open, onOpenChange, onUpdate
       console.log('[PlantDetailModal] Loaded plant:', freshPlant.name, 'Status:', freshPlant.status);
       setPlant(freshPlant);
 
-      // Load profile
+      // Load profile and crop plan
       if (freshPlant.plant_profile_id) {
         const profiles = await base44.entities.PlantProfile.filter({ id: freshPlant.plant_profile_id });
         if (profiles.length > 0) setProfile(profiles[0]);
@@ -77,6 +83,12 @@ export default function PlantDetailModal({ plantId, open, onOpenChange, onUpdate
           created_by: user.email
         });
         if (lots.length > 0) setSeedLot(lots[0]);
+      }
+
+      // Load crop plan if exists (for Planner Stage)
+      if (freshPlant.crop_plan_id) {
+        const plans = await base44.entities.CropPlan.filter({ id: freshPlant.crop_plan_id });
+        if (plans.length > 0) setCropPlan(plans[0]);
       }
 
       // Load related activity
@@ -189,13 +201,51 @@ export default function PlantDetailModal({ plantId, open, onOpenChange, onUpdate
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="text-xl">
-            {plant.name || profile?.variety_name || 'Plant Details'}
-          </DialogTitle>
-          <p className="text-sm text-gray-600">{profile?.common_name}</p>
+          <div className="flex items-start justify-between">
+            <div>
+              <DialogTitle className="text-xl">
+                {plant.name || profile?.variety_name || 'Plant Details'}
+              </DialogTitle>
+              <p className="text-sm text-gray-600">{profile?.common_name}</p>
+            </div>
+            <ShareButton
+              title={`${plant.name || profile?.variety_name} - AwesomeGardener`}
+              text={`Check out my ${profile?.common_name || 'plant'}!`}
+              url={`${window.location.origin}/PublicPlant?id=${plant.id}`}
+              imageUrl={plant.photos?.[0]?.url}
+            />
+          </div>
         </DialogHeader>
 
         <div className="space-y-6">
+          {/* Planner Stage vs Observed Stage */}
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <Label className="text-xs text-gray-500">
+                Planner Stage {cropPlan ? '(auto from calendar)' : '(no plan)'}
+              </Label>
+              {cropPlan ? (
+                <Badge className="mt-1 bg-blue-100 text-blue-800">
+                  {cropPlan.status || 'planned'}
+                </Badge>
+              ) : (
+                <Badge className="mt-1 bg-gray-100 text-gray-600">
+                  Not scheduled
+                </Badge>
+              )}
+              <p className="text-xs text-gray-500 mt-1">From crop calendar</p>
+            </div>
+            <div>
+              <Label className="text-xs text-gray-500">Observed Stage (manual)</Label>
+              <Badge className="mt-1 bg-emerald-100 text-emerald-800">
+                {STATUS_OPTIONS.find(s => s.value === plant.status)?.label || plant.status}
+              </Badge>
+              <p className="text-xs text-gray-500 mt-1">Your observation</p>
+            </div>
+          </div>
+
+          <Separator />
+
           {/* Identification & Location */}
           <div className="grid grid-cols-2 gap-4">
             <div>
@@ -215,6 +265,20 @@ export default function PlantDetailModal({ plantId, open, onOpenChange, onUpdate
               </div>
             )}
           </div>
+
+          {/* Health Status */}
+          {plant.health_status && (
+            <div>
+              <Label className="text-xs text-gray-500">Plant Health</Label>
+              <Badge className={
+                plant.health_status === 'thriving' ? 'bg-green-100 text-green-800' :
+                plant.health_status === 'struggling' ? 'bg-red-100 text-red-800' :
+                'bg-yellow-100 text-yellow-800'
+              }>
+                {plant.health_status}
+              </Badge>
+            </div>
+          )}
 
           {/* Status Section */}
           <div>
@@ -293,12 +357,25 @@ export default function PlantDetailModal({ plantId, open, onOpenChange, onUpdate
             {plant.photos && plant.photos.length > 0 ? (
               <div className="grid grid-cols-4 gap-2">
                 {plant.photos.map((photo, idx) => (
-                  <img
-                    key={idx}
-                    src={photo.url}
-                    alt={photo.caption || 'Plant photo'}
-                    className="w-full h-24 object-cover rounded-lg border"
-                  />
+                  <div key={idx} className="relative group">
+                    <img
+                      src={photo.url}
+                      alt={photo.caption || 'Plant photo'}
+                      className="w-full h-24 object-cover rounded-lg border"
+                    />
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      className="absolute bottom-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity text-xs h-6 px-2"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setDiseaseIdImage(photo.url);
+                        setShowDiseaseId(true);
+                      }}
+                    >
+                      🔍 ID
+                    </Button>
+                  </div>
                 ))}
               </div>
             ) : (

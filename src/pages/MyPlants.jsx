@@ -46,9 +46,18 @@ export default function MyPlants() {
   const [profiles, setProfiles] = useState({});
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState('all');
+  const [plannerStageFilter, setPlannerStageFilter] = useState('all');
+  const [locationFilter, setLocationFilter] = useState('all');
+  const [hasPhotosFilter, setHasPhotosFilter] = useState(false);
+  const [hasIssuesFilter, setHasIssuesFilter] = useState(false);
+  const [hasHarvestFilter, setHasHarvestFilter] = useState('all');
+  const [sortBy, setSortBy] = useState('updated');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedPlantId, setSelectedPlantId] = useState(null);
   const [showAddPlant, setShowAddPlant] = useState(false);
+  const [cropPlans, setCropPlans] = useState([]);
+  const [issuesCounts, setIssuesCounts] = useState({});
+  const [harvestsCounts, setHarvestsCounts] = useState({});
   
   const [newPlant, setNewPlant] = useState({
     plant_profile_id: '',
@@ -108,11 +117,44 @@ export default function MyPlants() {
 
   const loadMyPlants = async () => {
     try {
-      const plants = await base44.entities.MyPlant.filter({
-        garden_season_id: activeSeason.id,
-        created_by: user.email
-      }, '-updated_date');
+      const [plants, plans, allIssues, allHarvests] = await Promise.all([
+        base44.entities.MyPlant.filter({
+          garden_season_id: activeSeason.id,
+          created_by: user.email
+        }, '-updated_date'),
+        base44.entities.CropPlan.filter({
+          garden_season_id: activeSeason.id
+        }),
+        base44.entities.IssueLog.filter({
+          garden_season_id: activeSeason.id,
+          status: 'open'
+        }),
+        base44.entities.HarvestLog.filter({
+          garden_season_id: activeSeason.id
+        })
+      ]);
+      
       setMyPlants(plants);
+      setCropPlans(plans);
+      
+      // Build counts maps
+      const issuesMap = {};
+      const harvestsMap = {};
+      
+      allIssues.forEach(issue => {
+        if (issue.plant_instance_id) {
+          issuesMap[issue.plant_instance_id] = (issuesMap[issue.plant_instance_id] || 0) + 1;
+        }
+      });
+      
+      allHarvests.forEach(harvest => {
+        if (harvest.plant_instance_id) {
+          harvestsMap[harvest.plant_instance_id] = (harvestsMap[harvest.plant_instance_id] || 0) + 1;
+        }
+      });
+      
+      setIssuesCounts(issuesMap);
+      setHarvestsCounts(harvestsMap);
     } catch (error) {
       console.error('Error loading plants:', error);
     }
@@ -147,6 +189,19 @@ export default function MyPlants() {
 
   const filteredPlants = myPlants.filter(plant => {
     if (statusFilter !== 'all' && plant.status !== statusFilter) return false;
+    
+    if (plannerStageFilter !== 'all') {
+      const plan = cropPlans.find(cp => cp.id === plant.crop_plan_id);
+      if (!plan || plan.status !== plannerStageFilter) return false;
+    }
+    
+    if (locationFilter !== 'all' && plant.location_name !== locationFilter) return false;
+    if (hasPhotosFilter && (!plant.photos || plant.photos.length === 0)) return false;
+    if (hasIssuesFilter && !issuesCounts[plant.id]) return false;
+    
+    if (hasHarvestFilter === 'harvested' && !harvestsCounts[plant.id]) return false;
+    if (hasHarvestFilter === 'not_harvested' && harvestsCounts[plant.id]) return false;
+    
     if (searchQuery) {
       const profile = profiles[plant.plant_profile_id];
       const searchStr = `${plant.name || ''} ${profile?.variety_name || ''} ${profile?.common_name || ''}`.toLowerCase();
@@ -154,10 +209,36 @@ export default function MyPlants() {
     }
     return true;
   });
+  
+  // Sort plants
+  const sortedPlants = [...filteredPlants].sort((a, b) => {
+    const profileA = profiles[a.plant_profile_id];
+    const profileB = profiles[b.plant_profile_id];
+    
+    switch (sortBy) {
+      case 'name':
+        return (a.name || profileA?.variety_name || '').localeCompare(b.name || profileB?.variety_name || '');
+      case 'stage':
+        const planA = cropPlans.find(cp => cp.id === a.crop_plan_id);
+        const planB = cropPlans.find(cp => cp.id === b.crop_plan_id);
+        return (planA?.status || '').localeCompare(planB?.status || '');
+      case 'issues':
+        return (issuesCounts[b.id] || 0) - (issuesCounts[a.id] || 0);
+      case 'harvests':
+        return (harvestsCounts[b.id] || 0) - (harvestsCounts[a.id] || 0);
+      case 'photos':
+        return (b.photos?.length || 0) - (a.photos?.length || 0);
+      case 'updated':
+      default:
+        return new Date(b.updated_date) - new Date(a.updated_date);
+    }
+  });
+  
+  const uniqueLocations = [...new Set(myPlants.map(p => p.location_name).filter(Boolean))];
 
   // Group by status
   const plantsByStatus = STATUS_OPTIONS.reduce((acc, status) => {
-    acc[status.value] = filteredPlants.filter(p => p.status === status.value);
+    acc[status.value] = sortedPlants.filter(p => p.status === status.value);
     return acc;
   }, {});
 
@@ -198,8 +279,8 @@ export default function MyPlants() {
       </div>
 
       {/* Filters */}
-      <div className="flex gap-3">
-        <div className="relative flex-1">
+      <div className="flex flex-wrap gap-3">
+        <div className="relative flex-1 min-w-[200px]">
           <Input
             placeholder="Search plants..."
             value={searchQuery}
@@ -236,10 +317,76 @@ export default function MyPlants() {
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">All Status</SelectItem>
+            <SelectItem value="all">All Observed</SelectItem>
             {STATUS_OPTIONS.map(opt => (
               <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
             ))}
+          </SelectContent>
+        </Select>
+        <Select value={plannerStageFilter} onValueChange={setPlannerStageFilter}>
+          <SelectTrigger className="w-40">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Planner</SelectItem>
+            <SelectItem value="planned">Planned</SelectItem>
+            <SelectItem value="scheduled">Scheduled</SelectItem>
+            <SelectItem value="planted">Planted</SelectItem>
+            <SelectItem value="completed">Completed</SelectItem>
+          </SelectContent>
+        </Select>
+        {uniqueLocations.length > 0 && (
+          <Select value={locationFilter} onValueChange={setLocationFilter}>
+            <SelectTrigger className="w-40">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Locations</SelectItem>
+              {uniqueLocations.map(loc => (
+                <SelectItem key={loc} value={loc}>{loc}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
+        <Select value={sortBy} onValueChange={setSortBy}>
+          <SelectTrigger className="w-40">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="updated">Recent</SelectItem>
+            <SelectItem value="name">Name</SelectItem>
+            <SelectItem value="stage">Planner Stage</SelectItem>
+            <SelectItem value="photos">Most Photos</SelectItem>
+            <SelectItem value="issues">Most Issues</SelectItem>
+            <SelectItem value="harvests">Most Harvests</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+      
+      {/* Advanced Filters */}
+      <div className="flex gap-2">
+        <Button
+          variant={hasPhotosFilter ? "default" : "outline"}
+          size="sm"
+          onClick={() => setHasPhotosFilter(!hasPhotosFilter)}
+        >
+          📷 Has Photos
+        </Button>
+        <Button
+          variant={hasIssuesFilter ? "default" : "outline"}
+          size="sm"
+          onClick={() => setHasIssuesFilter(!hasIssuesFilter)}
+        >
+          ⚠️ Has Issues
+        </Button>
+        <Select value={hasHarvestFilter} onValueChange={setHasHarvestFilter}>
+          <SelectTrigger className="w-40">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Harvest</SelectItem>
+            <SelectItem value="harvested">Harvested</SelectItem>
+            <SelectItem value="not_harvested">Not Harvested</SelectItem>
           </SelectContent>
         </Select>
       </div>

@@ -38,6 +38,8 @@ export default function EditPlantType() {
     default_days_to_maturity: null,
     default_start_indoors_weeks: null,
     default_transplant_weeks: null,
+    default_direct_sow_weeks_min: null,
+    default_direct_sow_weeks_max: null,
     trellis_common: false,
     is_perennial: false,
     buy_seeds_link: '',
@@ -75,6 +77,8 @@ export default function EditPlantType() {
         default_days_to_maturity: type.default_days_to_maturity || null,
         default_start_indoors_weeks: type.default_start_indoors_weeks || null,
         default_transplant_weeks: type.default_transplant_weeks || null,
+        default_direct_sow_weeks_min: type.default_direct_sow_weeks_min || null,
+        default_direct_sow_weeks_max: type.default_direct_sow_weeks_max || null,
         trellis_common: type.trellis_common || false,
         is_perennial: type.is_perennial || false,
         buy_seeds_link: type.buy_seeds_link || '',
@@ -291,6 +295,30 @@ export default function EditPlantType() {
                 type="number"
                 value={formData.default_transplant_weeks || ''}
                 onChange={(e) => setFormData({ ...formData, default_transplant_weeks: e.target.value ? parseInt(e.target.value) : null })}
+                className="mt-2"
+              />
+            </div>
+          </div>
+
+          <div className="grid md:grid-cols-2 gap-4">
+            <div>
+              <Label>Direct Sow Min (weeks relative to last frost)</Label>
+              <Input
+                type="number"
+                value={formData.default_direct_sow_weeks_min || ''}
+                onChange={(e) => setFormData({ ...formData, default_direct_sow_weeks_min: e.target.value ? parseInt(e.target.value) : null })}
+                placeholder="e.g., -2 (before) or 2 (after)"
+                className="mt-2"
+              />
+              <p className="text-xs text-gray-500 mt-1">Negative = before frost, Positive = after</p>
+            </div>
+            <div>
+              <Label>Direct Sow Max (weeks relative to last frost)</Label>
+              <Input
+                type="number"
+                value={formData.default_direct_sow_weeks_max || ''}
+                onChange={(e) => setFormData({ ...formData, default_direct_sow_weeks_max: e.target.value ? parseInt(e.target.value) : null })}
+                placeholder="e.g., 4"
                 className="mt-2"
               />
             </div>

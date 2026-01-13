@@ -7,7 +7,7 @@ import { cn } from '@/lib/utils';
 import { Loader2 } from 'lucide-react';
 
 // Public pages that don't require authentication
-const publicPages = ['Landing', 'PublicGarden', 'PublicPlant', 'Community'];
+const publicPages = ['Landing', 'PublicGarden', 'PublicPlant', 'Community', 'GardeningBasics'];
 
 export default function Layout({ children, currentPageName }) {
   const [user, setUser] = useState(null);

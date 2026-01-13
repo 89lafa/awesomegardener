@@ -29,6 +29,7 @@ import {
 } from '@/components/ui/select';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
+import AIIdentifyButton from '@/components/issues/AIIdentifyButton';
 import { cn } from '@/lib/utils';
 
 export default function IssuesLog() {

@@ -37,6 +37,14 @@ Deno.serve(async (req) => {
       'height_min',
       'height_max',
       
+      // Timing Ranges
+      'start_indoors_weeks_min',
+      'start_indoors_weeks_max',
+      'transplant_weeks_after_last_frost_min',
+      'transplant_weeks_after_last_frost_max',
+      'direct_sow_weeks_min',
+      'direct_sow_weeks_max',
+      
       // Requirements
       'sun_requirement',
       'water_requirement',
@@ -98,7 +106,13 @@ Deno.serve(async (req) => {
       species: 'lycopersicum (or annuum for peppers)',
       seed_line_type: 'heirloom',
       trellis_required: 'false',
-      container_friendly: 'true'
+      container_friendly: 'true',
+      start_indoors_weeks_min: '6',
+      start_indoors_weeks_max: '8',
+      transplant_weeks_after_last_frost_min: '0',
+      transplant_weeks_after_last_frost_max: '2',
+      direct_sow_weeks_min: '0',
+      direct_sow_weeks_max: '4'
     };
 
     const csvLines = [headers.join(',')];
