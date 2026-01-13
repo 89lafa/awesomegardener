@@ -23,6 +23,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
+import PlantDetailModal from '@/components/myplants/PlantDetailModal';
 
 const STATUS_OPTIONS = [
   { value: 'seed', label: '🌰 Seed', color: 'bg-gray-100 text-gray-800' },
@@ -46,9 +47,8 @@ export default function MyPlants() {
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedPlant, setSelectedPlant] = useState(null);
+  const [selectedPlantId, setSelectedPlantId] = useState(null);
   const [showAddPlant, setShowAddPlant] = useState(false);
-  const [uploadingPhoto, setUploadingPhoto] = useState(false);
   
   const [newPlant, setNewPlant] = useState({
     plant_profile_id: '',
@@ -143,58 +143,7 @@ export default function MyPlants() {
     }
   };
 
-  const handleUpdateStatus = async (plant, newStatus) => {
-    try {
-      const updateData = { status: newStatus };
-      
-      // Auto-set milestone dates
-      if (newStatus === 'sprout' && !plant.germination_date) {
-        updateData.germination_date = new Date().toISOString().split('T')[0];
-      }
-      if (newStatus === 'transplanted' && !plant.transplant_date) {
-        updateData.transplant_date = new Date().toISOString().split('T')[0];
-      }
-      if (newStatus === 'harvested' && !plant.first_harvest_date) {
-        updateData.first_harvest_date = new Date().toISOString().split('T')[0];
-      }
 
-      await base44.entities.MyPlant.update(plant.id, updateData);
-      await loadMyPlants();
-      toast.success('Status updated');
-    } catch (error) {
-      console.error('Error updating status:', error);
-      toast.error('Failed to update status');
-    }
-  };
-
-  const handlePhotoUpload = async (e) => {
-    const file = e.target.files?.[0];
-    if (!file || !selectedPlant) return;
-
-    setUploadingPhoto(true);
-    try {
-      const { file_url } = await base44.integrations.Core.UploadFile({ file });
-      
-      const existingPhotos = selectedPlant.photos || [];
-      await base44.entities.MyPlant.update(selectedPlant.id, {
-        photos: [...existingPhotos, {
-          url: file_url,
-          caption: '',
-          taken_at: new Date().toISOString()
-        }]
-      });
-
-      await loadMyPlants();
-      const updatedPlant = myPlants.find(p => p.id === selectedPlant.id);
-      setSelectedPlant(updatedPlant);
-      toast.success('Photo added!');
-    } catch (error) {
-      console.error('Error uploading photo:', error);
-      toast.error('Failed to upload photo');
-    } finally {
-      setUploadingPhoto(false);
-    }
-  };
 
   const filteredPlants = myPlants.filter(plant => {
     if (statusFilter !== 'all' && plant.status !== statusFilter) return false;
@@ -316,7 +265,7 @@ export default function MyPlants() {
                     <Card 
                       key={plant.id} 
                       className="cursor-pointer hover:shadow-lg transition-shadow"
-                      onClick={() => setSelectedPlant(plant)}
+                      onClick={() => setSelectedPlantId(plant.id)}
                     >
                       {mainPhoto && (
                         <div className="h-48 overflow-hidden rounded-t-lg">
@@ -451,114 +400,12 @@ export default function MyPlants() {
       </Dialog>
 
       {/* Plant Detail Modal */}
-      {selectedPlant && (
-        <Dialog open={!!selectedPlant} onOpenChange={() => setSelectedPlant(null)}>
-          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle>
-                {selectedPlant.name || profiles[selectedPlant.plant_profile_id]?.variety_name}
-              </DialogTitle>
-            </DialogHeader>
-            <div className="space-y-4">
-              <div>
-                <Label>Status</Label>
-                <Select
-                  value={selectedPlant.status}
-                  onValueChange={(v) => handleUpdateStatus(selectedPlant, v)}
-                >
-                  <SelectTrigger className="mt-2">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {STATUS_OPTIONS.map(opt => (
-                      <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <Label>Photos</Label>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => document.getElementById('photo-upload-input').click()}
-                    disabled={uploadingPhoto}
-                  >
-                    {uploadingPhoto ? (
-                      <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                    ) : (
-                      <Upload className="w-4 h-4 mr-2" />
-                    )}
-                    Add Photo
-                  </Button>
-                  <input
-                    id="photo-upload-input"
-                    type="file"
-                    accept="image/*"
-                    onChange={handlePhotoUpload}
-                    className="hidden"
-                  />
-                </div>
-                {selectedPlant.photos && selectedPlant.photos.length > 0 && (
-                  <div className="grid grid-cols-3 gap-2">
-                    {selectedPlant.photos.map((photo, idx) => (
-                      <img
-                        key={idx}
-                        src={photo.url}
-                        alt={photo.caption || 'Plant photo'}
-                        className="w-full h-24 object-cover rounded border"
-                      />
-                    ))}
-                  </div>
-                )}
-                {(!selectedPlant.photos || selectedPlant.photos.length === 0) && (
-                  <div className="text-center py-8 bg-gray-50 rounded-lg">
-                    <ImageIcon className="w-8 h-8 text-gray-300 mx-auto mb-2" />
-                    <p className="text-sm text-gray-500">No photos yet</p>
-                  </div>
-                )}
-              </div>
-
-              {selectedPlant.notes && (
-                <div>
-                  <Label>Notes</Label>
-                  <p className="text-sm text-gray-700 mt-2 whitespace-pre-wrap">{selectedPlant.notes}</p>
-                </div>
-              )}
-
-              {/* Milestones */}
-              <div>
-                <Label>Milestones</Label>
-                <div className="space-y-2 mt-2 text-sm">
-                  {selectedPlant.germination_date ? (
-                    <p className="text-gray-600">
-                      🌱 Germinated: {format(new Date(selectedPlant.germination_date), 'MMM d, yyyy')}
-                    </p>
-                  ) : (
-                    <p className="text-gray-400">🌱 Not germinated yet</p>
-                  )}
-                  {selectedPlant.transplant_date ? (
-                    <p className="text-gray-600">
-                      🪴 Transplanted: {format(new Date(selectedPlant.transplant_date), 'MMM d, yyyy')}
-                    </p>
-                  ) : (
-                    <p className="text-gray-400">🪴 Not transplanted yet</p>
-                  )}
-                  {selectedPlant.first_harvest_date ? (
-                    <p className="text-gray-600">
-                      ✂️ First Harvest: {format(new Date(selectedPlant.first_harvest_date), 'MMM d, yyyy')}
-                    </p>
-                  ) : (
-                    <p className="text-gray-400">✂️ Not harvested yet</p>
-                  )}
-                </div>
-              </div>
-            </div>
-          </DialogContent>
-        </Dialog>
-      )}
+      <PlantDetailModal
+        plantId={selectedPlantId}
+        open={!!selectedPlantId}
+        onOpenChange={(open) => !open && setSelectedPlantId(null)}
+        onUpdate={loadMyPlants}
+      />
     </div>
   );
 }

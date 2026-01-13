@@ -296,6 +296,8 @@ export default function AdminDataImport() {
                 if (row.default_days_to_maturity) row.default_days_to_maturity = parseFloat(row.default_days_to_maturity);
                 if (row.default_start_indoors_weeks) row.default_start_indoors_weeks = parseFloat(row.default_start_indoors_weeks);
                 if (row.default_transplant_weeks) row.default_transplant_weeks = parseFloat(row.default_transplant_weeks);
+                if (row.default_direct_sow_weeks_min) row.default_direct_sow_weeks_min = parseFloat(row.default_direct_sow_weeks_min);
+                if (row.default_direct_sow_weeks_max) row.default_direct_sow_weeks_max = parseFloat(row.default_direct_sow_weeks_max);
               }
 
               if (item.key === 'Variety') {
@@ -751,6 +753,83 @@ export default function AdminDataImport() {
       </Card>
 
       {/* Import Method */}
+      {/* CSV Template Download */}
+      <Card>
+        <CardHeader>
+          <CardTitle>CSV Templates</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-3">
+            <p className="text-sm text-gray-600">Download clean templates with exact headers the importer expects</p>
+            <Button
+              onClick={async () => {
+                try {
+                  const response = await base44.functions.invoke('generateVarietyCSVTemplate');
+                  const blob = new Blob([response.data], { type: 'text/csv' });
+                  const url = window.URL.createObjectURL(blob);
+                  const a = document.createElement('a');
+                  a.href = url;
+                  a.download = 'variety_import_template.csv';
+                  document.body.appendChild(a);
+                  a.click();
+                  window.URL.revokeObjectURL(url);
+                  a.remove();
+                  toast.success('Template downloaded');
+                } catch (error) {
+                  toast.error('Failed to download template');
+                }
+              }}
+              variant="outline"
+              className="gap-2"
+            >
+              <Download className="w-4 h-4" />
+              Download Variety Template CSV
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Expected Columns Reference */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Variety Import: Expected Columns</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-2">
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-2 text-sm">
+            <div>
+              <p className="font-semibold text-xs text-red-600 mb-1">REQUIRED:</p>
+              <ul className="text-xs text-gray-700 space-y-0.5">
+                <li>• variety_name</li>
+                <li>• plant_type_id (or plant_type_code)</li>
+              </ul>
+            </div>
+            <div>
+              <p className="font-semibold text-xs text-emerald-600 mb-1">RECOMMENDED:</p>
+              <ul className="text-xs text-gray-700 space-y-0.5">
+                <li>• plant_subcategory_code</li>
+                <li>• days_to_maturity</li>
+                <li>• spacing_recommended</li>
+                <li>• sun_requirement</li>
+                <li>• species</li>
+              </ul>
+            </div>
+            <div>
+              <p className="font-semibold text-xs text-blue-600 mb-1">OPTIONAL:</p>
+              <ul className="text-xs text-gray-700 space-y-0.5">
+                <li>• description, synonyms</li>
+                <li>• height, water, growth_habit</li>
+                <li>• scoville (peppers)</li>
+                <li>• trellis, container flags</li>
+                <li>• All others (see template)</li>
+              </ul>
+            </div>
+          </div>
+          <p className="text-xs text-gray-500 mt-3 border-t pt-3">
+            <strong>Note:</strong> Blank cells will NOT overwrite existing data on UPSERT. Only populated cells update fields.
+          </p>
+        </CardContent>
+      </Card>
+
       <Card>
         <CardHeader>
           <CardTitle>Upload Files</CardTitle>

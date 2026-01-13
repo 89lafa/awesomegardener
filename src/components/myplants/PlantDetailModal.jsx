@@ -1,0 +1,486 @@
+import React, { useState, useEffect } from 'react';
+import { base44 } from '@/api/base44Client';
+import { createPageUrl } from '@/utils';
+import { Link } from 'react-router-dom';
+import { 
+  Loader2, 
+  Upload, 
+  MapPin, 
+  Calendar as CalendarIcon,
+  ExternalLink,
+  BookOpen,
+  AlertTriangle,
+  Apple
+} from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
+import { Label } from '@/components/ui/label';
+import { Badge } from '@/components/ui/badge';
+import { Card, CardContent } from '@/components/ui/card';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Separator } from '@/components/ui/separator';
+import { toast } from 'sonner';
+import { format } from 'date-fns';
+
+const STATUS_OPTIONS = [
+  { value: 'seed', label: '🌰 Seed' },
+  { value: 'sprout', label: '🌱 Sprout' },
+  { value: 'seedling', label: '🌿 Seedling' },
+  { value: 'transplanted', label: '🪴 Transplanted' },
+  { value: 'flowering', label: '🌸 Flowering' },
+  { value: 'fruiting', label: '🍅 Fruiting' },
+  { value: 'harvested', label: '✂️ Harvested' },
+  { value: 'done', label: '✓ Done' }
+];
+
+export default function PlantDetailModal({ plantId, open, onOpenChange, onUpdate }) {
+  const [plant, setPlant] = useState(null);
+  const [profile, setProfile] = useState(null);
+  const [seedLot, setSeedLot] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const [diaryEntries, setDiaryEntries] = useState([]);
+  const [harvests, setHarvests] = useState([]);
+  const [issues, setIssues] = useState([]);
+
+  useEffect(() => {
+    if (open && plantId) {
+      console.log('[PlantDetailModal] Loading plant ID:', plantId);
+      loadPlantData();
+    }
+  }, [open, plantId]);
+
+  const loadPlantData = async () => {
+    setLoading(true);
+    try {
+      // Fetch fresh data by ID
+      const plants = await base44.entities.MyPlant.filter({ id: plantId });
+      if (plants.length === 0) {
+        toast.error('Plant not found');
+        onOpenChange(false);
+        return;
+      }
+      
+      const freshPlant = plants[0];
+      console.log('[PlantDetailModal] Loaded plant:', freshPlant.name, 'Status:', freshPlant.status);
+      setPlant(freshPlant);
+
+      // Load profile
+      if (freshPlant.plant_profile_id) {
+        const profiles = await base44.entities.PlantProfile.filter({ id: freshPlant.plant_profile_id });
+        if (profiles.length > 0) setProfile(profiles[0]);
+
+        // Load seed lot if exists
+        const user = await base44.auth.me();
+        const lots = await base44.entities.SeedLot.filter({
+          plant_profile_id: freshPlant.plant_profile_id,
+          created_by: user.email
+        });
+        if (lots.length > 0) setSeedLot(lots[0]);
+      }
+
+      // Load related activity
+      const [diaryData, harvestData, issueData] = await Promise.all([
+        base44.entities.GardenDiary.filter({ 
+          plant_instance_id: plantId 
+        }, '-entry_date', 3),
+        base44.entities.HarvestLog.filter({ 
+          plant_instance_id: plantId 
+        }, '-harvest_date', 3),
+        base44.entities.IssueLog.filter({ 
+          plant_instance_id: plantId,
+          status: 'open'
+        }, '-created_date', 3)
+      ]);
+
+      setDiaryEntries(diaryData);
+      setHarvests(harvestData);
+      setIssues(issueData);
+    } catch (error) {
+      console.error('[PlantDetailModal] Error loading:', error);
+      toast.error('Failed to load plant details');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleStatusChange = async (newStatus) => {
+    console.log('[PlantDetailModal] Changing status from', plant.status, 'to', newStatus);
+    
+    try {
+      const updateData = { status: newStatus };
+      
+      // Auto-set milestone dates
+      if (newStatus === 'sprout' && !plant.germination_date) {
+        updateData.germination_date = new Date().toISOString().split('T')[0];
+      }
+      if (newStatus === 'transplanted' && !plant.transplant_date) {
+        updateData.transplant_date = new Date().toISOString().split('T')[0];
+      }
+      if (newStatus === 'harvested' && !plant.first_harvest_date) {
+        updateData.first_harvest_date = new Date().toISOString().split('T')[0];
+      }
+
+      await base44.entities.MyPlant.update(plant.id, updateData);
+      
+      // Reload fresh data
+      const updated = await base44.entities.MyPlant.filter({ id: plant.id });
+      if (updated.length > 0) {
+        setPlant(updated[0]);
+        console.log('[PlantDetailModal] Status updated and reloaded:', updated[0].status);
+      }
+      
+      onUpdate?.(); // Refresh parent list
+      toast.success('Status updated');
+    } catch (error) {
+      console.error('[PlantDetailModal] Error updating status:', error);
+      toast.error('Failed to update status');
+    }
+  };
+
+  const handlePhotoUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setUploadingPhoto(true);
+    try {
+      const { file_url } = await base44.integrations.Core.UploadFile({ file });
+      
+      const existingPhotos = plant.photos || [];
+      await base44.entities.MyPlant.update(plant.id, {
+        photos: [...existingPhotos, {
+          url: file_url,
+          caption: '',
+          taken_at: new Date().toISOString()
+        }]
+      });
+
+      // Reload
+      const updated = await base44.entities.MyPlant.filter({ id: plant.id });
+      if (updated.length > 0) setPlant(updated[0]);
+      
+      onUpdate?.();
+      toast.success('Photo added!');
+    } catch (error) {
+      console.error('[PlantDetailModal] Error uploading photo:', error);
+      toast.error('Failed to upload photo');
+    } finally {
+      setUploadingPhoto(false);
+    }
+  };
+
+  if (!open) return null;
+
+  if (loading) {
+    return (
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent className="max-w-3xl">
+          <div className="flex items-center justify-center py-12">
+            <Loader2 className="w-8 h-8 animate-spin text-emerald-600" />
+          </div>
+        </DialogContent>
+      </Dialog>
+    );
+  }
+
+  if (!plant) return null;
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle className="text-xl">
+            {plant.name || profile?.variety_name || 'Plant Details'}
+          </DialogTitle>
+          <p className="text-sm text-gray-600">{profile?.common_name}</p>
+        </DialogHeader>
+
+        <div className="space-y-6">
+          {/* Identification & Location */}
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <Label className="text-xs text-gray-500">Season</Label>
+              <p className="text-sm font-medium">{plant.season_year || 'Current'}</p>
+            </div>
+            {plant.location_name && (
+              <div>
+                <Label className="text-xs text-gray-500">Location</Label>
+                <Link 
+                  to={createPageUrl('GardenPlanting') + `?garden=${plant.garden_id}`}
+                  className="text-sm font-medium text-emerald-600 hover:underline flex items-center gap-1"
+                >
+                  <MapPin className="w-3 h-3" />
+                  {plant.location_name}
+                </Link>
+              </div>
+            )}
+          </div>
+
+          {/* Status Section */}
+          <div>
+            <Label>Observed Stage (manual)</Label>
+            <Select
+              value={plant.status || 'seed'}
+              onValueChange={handleStatusChange}
+            >
+              <SelectTrigger className="mt-1">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {STATUS_OPTIONS.map(opt => (
+                  <SelectItem key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-gray-500 mt-1">
+              Your manual lifecycle tracking for this plant
+            </p>
+          </div>
+
+          {/* Milestones */}
+          <div>
+            <Label className="text-sm font-medium mb-2 block">Milestones</Label>
+            <div className="grid grid-cols-3 gap-3">
+              <div className="p-3 bg-green-50 rounded-lg">
+                <p className="text-xs text-gray-600 mb-1">Germinated</p>
+                <p className="text-sm font-medium">
+                  {plant.germination_date ? format(new Date(plant.germination_date), 'MMM d') : '—'}
+                </p>
+              </div>
+              <div className="p-3 bg-blue-50 rounded-lg">
+                <p className="text-xs text-gray-600 mb-1">Transplanted</p>
+                <p className="text-sm font-medium">
+                  {plant.transplant_date ? format(new Date(plant.transplant_date), 'MMM d') : '—'}
+                </p>
+              </div>
+              <div className="p-3 bg-purple-50 rounded-lg">
+                <p className="text-xs text-gray-600 mb-1">First Harvest</p>
+                <p className="text-sm font-medium">
+                  {plant.first_harvest_date ? format(new Date(plant.first_harvest_date), 'MMM d') : '—'}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Photos */}
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <Label>Photos ({plant.photos?.length || 0})</Label>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => document.getElementById('plant-photo-upload').click()}
+                disabled={uploadingPhoto}
+                className="gap-2"
+              >
+                {uploadingPhoto ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <Upload className="w-4 h-4" />
+                )}
+                Add Photo
+              </Button>
+              <input
+                id="plant-photo-upload"
+                type="file"
+                accept="image/*"
+                onChange={handlePhotoUpload}
+                className="hidden"
+              />
+            </div>
+            {plant.photos && plant.photos.length > 0 ? (
+              <div className="grid grid-cols-4 gap-2">
+                {plant.photos.map((photo, idx) => (
+                  <img
+                    key={idx}
+                    src={photo.url}
+                    alt={photo.caption || 'Plant photo'}
+                    className="w-full h-24 object-cover rounded-lg border"
+                  />
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-8 bg-gray-50 rounded-lg">
+                <p className="text-sm text-gray-500">No photos yet</p>
+              </div>
+            )}
+          </div>
+
+          <Separator />
+
+          {/* Related Activity */}
+          <div className="space-y-4">
+            <h3 className="font-semibold">Related Activity</h3>
+            
+            {/* Diary */}
+            <Card>
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-2">
+                    <BookOpen className="w-4 h-4 text-emerald-600" />
+                    <span className="font-medium text-sm">Diary Entries</span>
+                  </div>
+                  <Link to={createPageUrl('GardenDiary') + `?plant=${plantId}`}>
+                    <Button size="sm" variant="ghost" className="gap-1">
+                      View All <ExternalLink className="w-3 h-3" />
+                    </Button>
+                  </Link>
+                </div>
+                {diaryEntries.length > 0 ? (
+                  <div className="space-y-2">
+                    {diaryEntries.map(entry => (
+                      <div key={entry.id} className="text-sm">
+                        <p className="text-xs text-gray-500">{format(new Date(entry.entry_date), 'MMM d, yyyy')}</p>
+                        <p className="text-gray-700 line-clamp-2">{entry.entry_text}</p>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-sm text-gray-500">No diary entries yet</p>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Issues */}
+            <Card>
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-2">
+                    <AlertTriangle className="w-4 h-4 text-orange-600" />
+                    <span className="font-medium text-sm">Open Issues ({issues.length})</span>
+                  </div>
+                  <Link to={createPageUrl('IssuesLog') + `?plant=${plantId}`}>
+                    <Button size="sm" variant="ghost" className="gap-1">
+                      View All <ExternalLink className="w-3 h-3" />
+                    </Button>
+                  </Link>
+                </div>
+                {issues.length > 0 ? (
+                  <div className="space-y-2">
+                    {issues.map(issue => (
+                      <div key={issue.id} className="text-sm flex items-center justify-between">
+                        <span className="text-gray-700">{issue.issue_type}</span>
+                        <Badge variant="outline" className="text-xs">{issue.severity}</Badge>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-sm text-gray-500">No open issues</p>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Harvests */}
+            <Card>
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-2">
+                    <Apple className="w-4 h-4 text-purple-600" />
+                    <span className="font-medium text-sm">Harvests ({harvests.length})</span>
+                  </div>
+                  <Link to={createPageUrl('HarvestLog') + `?plant=${plantId}`}>
+                    <Button size="sm" variant="ghost" className="gap-1">
+                      View All <ExternalLink className="w-3 h-3" />
+                    </Button>
+                  </Link>
+                </div>
+                {harvests.length > 0 ? (
+                  <div className="space-y-2">
+                    {harvests.map(harvest => (
+                      <div key={harvest.id} className="text-sm flex items-center justify-between">
+                        <span className="text-xs text-gray-500">{format(new Date(harvest.harvest_date), 'MMM d')}</span>
+                        <span className="font-medium text-emerald-700">
+                          {harvest.quantity} {harvest.unit}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-sm text-gray-500">No harvests yet</p>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+
+          <Separator />
+
+          {/* Variety Details (Read-Only) */}
+          {profile && (
+            <div>
+              <h3 className="font-semibold mb-3">Variety Info</h3>
+              <div className="grid grid-cols-2 gap-3 text-sm">
+                {profile.days_to_maturity_seed && (
+                  <div>
+                    <span className="text-gray-500">Days to Maturity:</span>
+                    <span className="ml-2 font-medium">{profile.days_to_maturity_seed}</span>
+                  </div>
+                )}
+                {profile.spacing_in_min && (
+                  <div>
+                    <span className="text-gray-500">Spacing:</span>
+                    <span className="ml-2 font-medium">{profile.spacing_in_min}-{profile.spacing_in_max || profile.spacing_in_min}"</span>
+                  </div>
+                )}
+                {profile.sun_requirement && (
+                  <div>
+                    <span className="text-gray-500">Sun:</span>
+                    <span className="ml-2 font-medium capitalize">{profile.sun_requirement.replace(/_/g, ' ')}</span>
+                  </div>
+                )}
+                {profile.container_friendly && (
+                  <Badge variant="outline" className="text-xs">Container Friendly</Badge>
+                )}
+                {profile.trellis_required && (
+                  <Badge variant="outline" className="text-xs">Needs Trellis</Badge>
+                )}
+              </div>
+              <div className="mt-3 flex gap-2">
+                {profile.variety_id && (
+                  <Link to={createPageUrl('ViewVariety') + `?id=${profile.variety_id}`}>
+                    <Button size="sm" variant="outline" className="gap-1">
+                      View in Catalog <ExternalLink className="w-3 h-3" />
+                    </Button>
+                  </Link>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Seed Stash Info (Read-Only) */}
+          {seedLot && (
+            <div>
+              <h3 className="font-semibold mb-3">Seed Stash Info</h3>
+              <div className="space-y-2 text-sm">
+                {seedLot.source_vendor_name && (
+                  <div>
+                    <span className="text-gray-500">Source:</span>
+                    <span className="ml-2 font-medium">{seedLot.source_vendor_name}</span>
+                  </div>
+                )}
+                {seedLot.year_acquired && (
+                  <div>
+                    <span className="text-gray-500">Year Acquired:</span>
+                    <span className="ml-2 font-medium">{seedLot.year_acquired}</span>
+                  </div>
+                )}
+                {seedLot.lot_notes && (
+                  <div>
+                    <span className="text-gray-500">Notes:</span>
+                    <p className="text-gray-700 mt-1">{seedLot.lot_notes}</p>
+                  </div>
+                )}
+              </div>
+              <Link to={createPageUrl('SeedStashDetail') + `?id=${seedLot.id}`} className="mt-3 inline-block">
+                <Button size="sm" variant="outline" className="gap-1">
+                  View in Seed Stash <ExternalLink className="w-3 h-3" />
+                </Button>
+              </Link>
+            </div>
+          )}
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}

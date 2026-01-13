@@ -37,6 +37,7 @@ import { format, addDays, addMonths, startOfMonth, endOfMonth, eachDayOfInterval
 import AddCropModal from '@/components/calendar/AddCropModal';
 import TaskDetailPanel from '@/components/calendar/TaskDetailPanel';
 import CropEditModal from '@/components/calendar/CropEditModal';
+import DayTasksPanel from '@/components/calendar/DayTasksPanel';
 import CalendarGuide from '@/components/help/CalendarGuide';
 import { cn } from '@/lib/utils';
 
@@ -54,6 +55,8 @@ export default function Calendar() {
   const [showAddCrop, setShowAddCrop] = useState(false);
   const [showEditCrop, setShowEditCrop] = useState(false);
   const [showGuide, setShowGuide] = useState(false);
+  const [selectedDate, setSelectedDate] = useState(null);
+  const [showDayPanel, setShowDayPanel] = useState(false);
   const [selectedCrop, setSelectedCrop] = useState(null);
   const [selectedTask, setSelectedTask] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
