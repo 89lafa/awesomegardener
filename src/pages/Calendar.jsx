@@ -780,13 +780,16 @@ function CalendarGridView({ tasks, crops, season, onTaskClick, onDayClick }) {
                                                    task.task_type === 'direct_seed' ? 'Sow' : 'Task';
                               const progress = task.quantity_target > 0 ? (task.quantity_completed || 0) / task.quantity_target : 1;
                               const isComplete = task.is_completed || progress >= 1;
-                              
+
+                              // AI Harvest Prediction: Show predicted harvest window
+                              const showPrediction = task.task_type === 'harvest' && !task.is_completed && crop?.dtm_days;
+
                               return (
                                 <div
                                   key={task.id}
                                   className="w-full h-3 rounded flex items-center px-1 overflow-hidden relative"
                                   style={{ backgroundColor: task.color_hex || crop?.color_hex || '#10b981' }}
-                                  title={`${crop?.label || 'Crop'}: ${task.title}${task.quantity_target > 1 ? ` (${task.quantity_completed || 0}/${task.quantity_target})` : ''}`}
+                                  title={`${crop?.label || 'Crop'}: ${task.title}${task.quantity_target > 1 ? ` (${task.quantity_completed || 0}/${task.quantity_target})` : ''}${showPrediction ? ' • AI Predicted' : ''}`}
                                 >
                                   {task.quantity_target > 1 && (
                                     <div 
@@ -796,6 +799,7 @@ function CalendarGridView({ tasks, crops, season, onTaskClick, onDayClick }) {
                                   )}
                                   <span className="text-[9px] text-white font-semibold truncate leading-none relative z-10">
                                     {crop?.label} - {taskTypeShort}
+                                    {showPrediction && ' 🔮'}
                                     {isComplete && ' ✓'}
                                   </span>
                                 </div>

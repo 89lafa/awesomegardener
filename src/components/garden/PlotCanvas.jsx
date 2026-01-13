@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import PlotSettingsDialog from './PlotSettingsDialog';
 import PlantingModal from './PlantingModal';
+import AISuggestLayoutButton from './AISuggestLayoutButton';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -66,6 +67,22 @@ const GALLON_SIZES = [
 ];
 
 export default function PlotCanvas({ garden, plot, activeSeason, seasonId, onPlotUpdate, onDeleteGarden, onItemSelect }) {
+  const [cropPlans, setCropPlans] = useState([]);
+  
+  useEffect(() => {
+    if (seasonId) {
+      loadCropPlans();
+    }
+  }, [seasonId]);
+
+  const loadCropPlans = async () => {
+    try {
+      const plans = await base44.entities.CropPlan.filter({ garden_season_id: seasonId });
+      setCropPlans(plans);
+    } catch (error) {
+      console.error('Error loading crop plans:', error);
+    }
+  };
   const canvasRef = useRef(null);
   const [items, setItems] = useState([]);
   const [itemsPlantingCounts, setItemsPlantingCounts] = useState({});
@@ -922,6 +939,15 @@ export default function PlotCanvas({ garden, plot, activeSeason, seasonId, onPlo
             <Settings className="w-4 h-4" />
             Plot Settings
           </Button>
+
+          <AISuggestLayoutButton
+            garden={garden}
+            plot={plot}
+            crops={cropPlans}
+            onApply={(placements) => {
+              toast.success('Review suggestions and manually place crops');
+            }}
+          />
 
           {onDeleteGarden && (
             <Button 
