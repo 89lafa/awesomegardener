@@ -238,7 +238,11 @@ Cucumber,Radish,Good Conditional,Radishes can deter cucumber beetles but compete
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl lg:text-3xl font-bold text-gray-900">Companion Planting</h1>
-          <p className="text-gray-600 mt-1">Define which plants grow well together</p>
+          <p className="text-gray-600 mt-1">
+            {user?.role === 'admin' 
+              ? 'Define which plants grow well together' 
+              : 'View companion relationships • Rules are curated by admins'}
+          </p>
         </div>
         <div className="flex gap-2">
           {user?.role === 'admin' && (

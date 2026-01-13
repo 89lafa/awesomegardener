@@ -48,17 +48,13 @@ export default function ZoneMap() {
       const userData = await base44.auth.me();
       setUser(userData);
 
-      const settingsData = await base44.entities.UserSettings.filter({ user_email: userData.email });
-      if (settingsData.length > 0) {
-        const s = settingsData[0];
-        setSettings(s);
-        setFormData({
-          location_zip: s.location_zip || '',
-          location_city: s.location_city || '',
-          location_state: s.location_state || '',
-          usda_zone: s.usda_zone || ''
-        });
-      }
+      // Use SAME fields as Settings → Location tab (from user object)
+      setFormData({
+        location_zip: userData.location_zip || '',
+        location_city: userData.location_city || '',
+        location_state: userData.location_state || '',
+        usda_zone: userData.usda_zone_override || userData.usda_zone || ''
+      });
     } catch (error) {
       console.error('Error loading data:', error);
     } finally {
@@ -76,15 +72,14 @@ export default function ZoneMap() {
   const handleSave = async () => {
     setSaving(true);
     try {
-      if (settings) {
-        await base44.entities.UserSettings.update(settings.id, formData);
-      } else {
-        await base44.entities.UserSettings.create({
-          ...formData,
-          user_email: user.email
-        });
-      }
-      toast.success('Zone saved!');
+      // Save to SAME user fields as Settings → Location
+      await base44.auth.updateMe({
+        location_zip: formData.location_zip,
+        location_city: formData.location_city,
+        location_state: formData.location_state,
+        usda_zone_override: formData.usda_zone
+      });
+      toast.success('Zone saved! This updates your Settings → Location.');
       await loadData();
     } catch (error) {
       console.error('Error saving:', error);
@@ -191,15 +186,21 @@ export default function ZoneMap() {
       <Card>
         <CardHeader>
           <CardTitle>USDA Hardiness Zone Map</CardTitle>
+          <p className="text-sm text-gray-600 mt-1">
+            ℹ️ Your zone & frost dates are set in Settings → Location and used across Calendar/Tasks
+          </p>
         </CardHeader>
         <CardContent>
           <img 
-            src="https://planthardiness.ars.usda.gov/assets/images/phzm_us_2023_large.jpg"
+            src="https://images.immediate.co.uk/production/volatile/sites/10/2024/02/usda-plant-hardiness-zone-map-b38a3f3.jpg?quality=90&resize=940,627"
             alt="USDA Hardiness Zone Map"
             className="w-full rounded-lg border"
+            onError={(e) => {
+              e.target.src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="800" height="600"%3E%3Crect fill="%23f3f4f6" width="800" height="600"/%3E%3Ctext x="50%25" y="50%25" dominant-baseline="middle" text-anchor="middle" font-family="Arial" font-size="16" fill="%236b7280"%3EMap unavailable - use dropdown above to select your zone%3C/text%3E%3C/svg%3E';
+            }}
           />
           <p className="text-xs text-gray-500 mt-2">
-            Source: USDA Agricultural Research Service
+            Source: USDA Hardiness Zone Map • <a href="https://planthardiness.ars.usda.gov/" target="_blank" rel="noopener noreferrer" className="text-emerald-600 hover:underline">View Official Map</a>
           </p>
         </CardContent>
       </Card>
