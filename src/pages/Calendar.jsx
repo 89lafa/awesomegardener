@@ -761,17 +761,17 @@ function CalendarGridView({ tasks, crops, season, onTaskClick, onDayClick }) {
                     return (
                       <div
                         key={day}
-                        className="h-16 border-r border-b relative clickable-day group"
+                        className="h-16 border-r border-b relative group cursor-pointer hover:bg-emerald-50/50 transition-colors"
                         onClick={(e) => {
-                          // Only trigger if clicking the cell itself, not a task chip
-                          if (e.target === e.currentTarget || e.target.classList.contains('day-number')) {
-                            onDayClick?.(currentDate);
-                          }
+                          // Clicking anywhere on the cell opens the day panel
+                          e.preventDefault();
+                          e.stopPropagation();
+                          onDayClick?.(currentDate);
                         }}
                       >
-                        <div className="absolute top-0.5 left-0.5 text-[9px] text-gray-400 font-medium group-hover:text-emerald-600 transition-colors day-number">{day}</div>
+                        <div className="absolute top-0.5 left-0.5 text-[9px] text-gray-400 font-medium group-hover:text-emerald-600 transition-colors pointer-events-none">{day}</div>
                         {dayTasks.length > 0 && (
-                          <div className="absolute inset-0 flex flex-col gap-0.5 p-0.5 pt-3">
+                          <div className="absolute inset-0 flex flex-col gap-0.5 p-0.5 pt-3 pointer-events-none">
                             {dayTasks.slice(0, 3).map((task) => {
                               const crop = crops.find(c => c.id === task.crop_plan_id);
                               const taskTypeShort = task.task_type === 'seed' ? 'Start' : 
@@ -784,12 +784,8 @@ function CalendarGridView({ tasks, crops, season, onTaskClick, onDayClick }) {
                               return (
                                 <div
                                   key={task.id}
-                                  className="w-full h-3 rounded cursor-pointer hover:opacity-90 active:scale-95 flex items-center px-1 overflow-hidden relative transition-all"
+                                  className="w-full h-3 rounded flex items-center px-1 overflow-hidden relative"
                                   style={{ backgroundColor: task.color_hex || crop?.color_hex || '#10b981' }}
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    onTaskClick(task);
-                                  }}
                                   title={`${crop?.label || 'Crop'}: ${task.title}${task.quantity_target > 1 ? ` (${task.quantity_completed || 0}/${task.quantity_target})` : ''}`}
                                 >
                                   {task.quantity_target > 1 && (
@@ -806,17 +802,11 @@ function CalendarGridView({ tasks, crops, season, onTaskClick, onDayClick }) {
                               );
                             })}
                             {dayTasks.length > 3 && (
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  onDayClick?.(currentDate);
-                                }}
-                                className="w-full h-3 rounded bg-gray-700 hover:bg-gray-600 active:bg-gray-800 flex items-center justify-center px-1 transition-all active:scale-95"
-                              >
+                              <div className="w-full h-3 rounded bg-gray-700 flex items-center justify-center px-1">
                                 <span className="text-[9px] text-white font-semibold">
                                   +{dayTasks.length - 3} more
                                 </span>
-                              </button>
+                              </div>
                             )}
                           </div>
                         )}

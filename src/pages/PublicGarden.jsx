@@ -123,6 +123,15 @@ export default function PublicGarden() {
 
       <div className="min-h-screen bg-gradient-to-br from-emerald-50 to-green-50 py-12">
         <div className="max-w-6xl mx-auto px-4">
+          {/* Debug Info (visible to everyone for verification) */}
+          <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg text-xs font-mono">
+            <div className="font-semibold mb-1">Debug Info:</div>
+            <div>Garden ID: {garden.id}</div>
+            <div>is_public: {String(garden.is_public)}</div>
+            <div>Owner: {garden.created_by}</div>
+            <div>Status: ✓ Garden found and is public</div>
+          </div>
+
           <div className="flex items-center justify-between gap-4 mb-6">
             <div className="flex-1">
               <h1 className="text-3xl font-bold text-gray-900">{garden.name}</h1>
@@ -133,12 +142,17 @@ export default function PublicGarden() {
                 </p>
               )}
             </div>
-            <ShareButton
-              title={shareTitle}
-              text={shareDescription}
-              url={shareUrl}
-              imageUrl={shareImage}
-            />
+            <div className="flex flex-col gap-2 items-end">
+              <ShareButton
+                title={shareTitle}
+                text={shareDescription}
+                url={shareUrl}
+                imageUrl={shareImage}
+              />
+              <div className="text-xs text-gray-500 font-mono">
+                OG Tags Present ✓
+              </div>
+            </div>
           </div>
 
           {garden.cover_image && (

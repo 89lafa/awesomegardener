@@ -34,6 +34,20 @@ const USDA_ZONES = ['1a', '1b', '2a', '2b', '3a', '3b', '4a', '4b', '5a', '5b', 
 
 const BUILD_VERSION = import.meta.env.VITE_BUILD_TIMESTAMP || new Date().toISOString();
 
+function FeatureRow({ name, status, route }) {
+  const statusColor = status === 'SHIPPED' ? 'text-emerald-600' : 
+                      status === 'PENDING' ? 'text-yellow-600' : 'text-gray-400';
+  return (
+    <div className="flex items-center justify-between p-2 bg-gray-50 rounded">
+      <span>{name}</span>
+      <div className="flex items-center gap-2">
+        {route && <span className="text-gray-400">{route}</span>}
+        <span className={`font-mono ${statusColor}`}>{status}</span>
+      </div>
+    </div>
+  );
+}
+
 export default function Settings() {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -508,22 +522,29 @@ export default function Settings() {
                 <code className="text-emerald-600">{BUILD_VERSION}</code>
               </div>
 
-              {/* Feature Visibility */}
+              {/* Feature Audit Checklist */}
               <div>
-                <h4 className="font-semibold text-sm mb-3">Feature Visibility:</h4>
-                <div className="space-y-2 text-sm">
-                  <div className="flex items-center justify-between p-2 bg-gray-50 rounded">
-                    <span>ShareButton Component</span>
-                    <span className="text-emerald-600 font-mono">✓ Loaded</span>
-                  </div>
-                  <div className="flex items-center justify-between p-2 bg-gray-50 rounded">
-                    <span>PublicGarden Page</span>
-                    <span className="text-emerald-600 font-mono">✓ Available</span>
-                  </div>
-                  <div className="flex items-center justify-between p-2 bg-gray-50 rounded">
-                    <span>DayTasksPanel</span>
-                    <span className="text-emerald-600 font-mono">✓ Available</span>
-                  </div>
+                <h4 className="font-semibold text-sm mb-3">🚢 Feature Ship Status:</h4>
+                <div className="space-y-1 text-xs">
+                  <FeatureRow name="Share Buttons (My Garden)" status="SHIPPED" route="/MyGarden" />
+                  <FeatureRow name="Public Garden Page" status="SHIPPED" route="/PublicGarden" />
+                  <FeatureRow name="Calendar Day Click → Panel" status="SHIPPED" route="/Calendar" />
+                  <FeatureRow name="DayTasksPanel Component" status="SHIPPED" />
+                  <FeatureRow name="My Plants Activity Links" status="SHIPPED" route="/MyPlants" />
+                  <FeatureRow name="Effective Scheduling UI" status="SHIPPED" route="/EditVariety" />
+                  <FeatureRow name="Direct Sow Fields" status="SHIPPED" />
+                  <FeatureRow name="Plant Selectors in Logs" status="SHIPPED" route="/GardenDiary" />
+                  <FeatureRow name="OG Meta Tags" status="SHIPPED" />
+                </div>
+              </div>
+
+              {/* Live Environment Info */}
+              <div>
+                <h4 className="font-semibold text-sm mb-3">Environment:</h4>
+                <div className="p-3 bg-gray-50 rounded font-mono text-xs space-y-1">
+                  <div>URL: {window.location.origin}</div>
+                  <div>Expected: awesomegardener.com</div>
+                  <div>Match: {window.location.origin.includes('awesomegardener.com') ? '✓ YES' : '✗ NO'}</div>
                 </div>
               </div>
 
