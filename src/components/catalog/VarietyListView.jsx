@@ -54,19 +54,11 @@ export default function VarietyListView({
   };
 
   const getSubCategoryName = (variety) => {
-    // Get effective subcategory IDs
-    let effectiveIds = [];
-    if (variety.plant_subcategory_id) effectiveIds.push(variety.plant_subcategory_id);
-    if (Array.isArray(variety.plant_subcategory_ids)) {
-      effectiveIds = effectiveIds.concat(variety.plant_subcategory_ids);
-    }
-    effectiveIds = [...new Set(effectiveIds.filter(id => id && typeof id === 'string' && id.trim() !== ''))];
+    // NEW SYSTEM: Display ONLY the primary subcategory name
+    if (!variety.plant_subcategory_id) return 'Uncategorized';
     
-    if (effectiveIds.length === 0) return 'Uncategorized';
-    
-    const subcat = subCategories.find(s => s.id === effectiveIds[0]);
-    const displayName = subcat?.name || 'Unknown';
-    return effectiveIds.length > 1 ? `${displayName} +${effectiveIds.length - 1}` : displayName;
+    const subcat = subCategories.find(s => s.id === variety.plant_subcategory_id);
+    return subcat?.name || 'Uncategorized';
   };
 
   return (

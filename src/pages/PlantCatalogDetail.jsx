@@ -827,7 +827,7 @@ export default function PlantCatalogDetail() {
                 </div>
               </div>
               
-              {/* Sub-Category Dropdown */}
+              {/* Sub-Category Dropdown - Display by NAME */}
               <Select 
                 value={selectedSubCategories[0] || ''} 
                 onValueChange={(v) => {
@@ -840,24 +840,23 @@ export default function PlantCatalogDetail() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value={null}>All ({varieties.length})</SelectItem>
-                  {subCategories.filter(s => s.is_active).map((subcat) => {
-                    // Count varieties with this subcategory using plant_subcategory_id
-                    const count = varieties.filter(v => v.plant_subcategory_id === subcat.id).length;
+                  {subCategories
+                    .filter(s => s.is_active)
+                    .sort((a, b) => (a.name || '').localeCompare(b.name || ''))
+                    .map((subcat) => {
+                      // Count varieties with this single primary subcategory
+                      const count = varieties.filter(v => v.plant_subcategory_id === subcat.id).length;
+                      if (count === 0) return null;
 
-                    // CRITICAL: Only show if count > 0
-                    if (count === 0) return null;
-
-                    return (
-                      <SelectItem key={subcat.id} value={subcat.id}>
-                        {subcat.icon && <span className="mr-1">{subcat.icon}</span>}
-                        {subcat.name} ({count})
-                      </SelectItem>
-                    );
-                  })}
+                      return (
+                        <SelectItem key={subcat.id} value={subcat.id}>
+                          {subcat.icon && <span className="mr-1">{subcat.icon}</span>}
+                          {subcat.name} ({count})
+                        </SelectItem>
+                      );
+                    })}
                   {(() => {
-                    // Uncategorized = no plant_subcategory_id
                     const uncategorizedCount = varieties.filter(v => !v.plant_subcategory_id).length;
-
                     return uncategorizedCount > 0 && (
                       <SelectItem value="uncategorized">
                         Uncategorized ({uncategorizedCount})
@@ -1165,7 +1164,7 @@ export default function PlantCatalogDetail() {
                         </div>
                         <div className="flex flex-wrap gap-2">
                          {(() => {
-                          // Show ONLY the single primary subcategory from plant_subcategory_id
+                          // Display single primary subcategory NAME (no arrays, no codes)
                           if (!variety.plant_subcategory_id) {
                             return (
                               <Badge variant="outline" className="text-xs text-gray-500">
@@ -1179,11 +1178,7 @@ export default function PlantCatalogDetail() {
                               {subcat.icon && <span className="mr-1">{subcat.icon}</span>}
                               {subcat.name}
                             </Badge>
-                          ) : (
-                            <Badge variant="outline" className="text-xs text-gray-500">
-                              Unknown
-                            </Badge>
-                          );
+                          ) : null;
                          })()}
                          {(variety.days_to_maturity || variety.days_to_maturity_seed) && (
                            <Badge variant="outline" className="text-xs">

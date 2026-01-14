@@ -113,34 +113,31 @@ export default function EditVariety() {
     setSaving(true);
 
     try {
-      // Ensure plant_subcategory_id is in plant_subcategory_ids
-      let selectedIds = formData.plant_subcategory_ids || [];
-      let primaryId = formData.plant_subcategory_id;
-
-      // CRITICAL: Ensure primary is in array
-      if (primaryId && !selectedIds.includes(primaryId)) {
-        selectedIds = [primaryId, ...selectedIds];
-      }
-
-      // If array is not empty but primary is null, set primary to first
-      if (selectedIds.length > 0 && !primaryId) {
-        primaryId = selectedIds[0];
+      const primaryId = formData.plant_subcategory_id;
+      
+      // Resolve subcategory code from ID
+      let primaryCode = null;
+      if (primaryId) {
+        const subcat = subCategories.find(s => s.id === primaryId);
+        primaryCode = subcat?.subcat_code || null;
       }
 
       const scovilleMin = formData.scoville_min || formData.heat_scoville_min;
       const scovilleMax = formData.scoville_max || formData.heat_scoville_max;
 
-      console.log('[EditVariety] Saving subcategories:', {
-        primary: primaryId,
-        array: selectedIds,
+      console.log('[EditVariety] Saving single subcategory (new system):', {
+        primary_id: primaryId,
+        primary_code: primaryCode,
         variety: formData.variety_name
       });
 
-      // Build update object - only include non-empty values to avoid wiping data
+      // Build update object - write primary ID, sync arrays automatically
       const updateData = {
         variety_name: formData.variety_name,
-        plant_subcategory_id: formData.plant_subcategory_id || null,
-        plant_subcategory_ids: formData.plant_subcategory_id ? [formData.plant_subcategory_id] : []
+        plant_subcategory_id: primaryId || null,
+        plant_subcategory_ids: primaryId ? [primaryId] : [],
+        plant_subcategory_code: primaryCode || null,
+        plant_subcategory_codes: primaryCode ? [primaryCode] : []
       };
       
       // Only update fields if they have values
