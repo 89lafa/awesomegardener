@@ -101,25 +101,6 @@ Return ONLY the structured data, no preamble.`,
           first_frost_date: result.firstFrost
         });
         
-        // Update user settings with ALL required fields including frost dates
-        const userEmail = (await base44.auth.me()).email;
-        const userSettings = await base44.entities.UserSettings.filter({ user_email: userEmail });
-        if (userSettings.length > 0) {
-          await base44.entities.UserSettings.update(userSettings[0].id, {
-            usda_zone: result.zone,
-            last_frost_date: result.lastFrost,
-            first_frost_date: result.firstFrost
-          });
-        } else {
-          await base44.entities.UserSettings.create({
-            user_email: userEmail,
-            usda_zone: result.zone,
-            last_frost_date: result.lastFrost,
-            first_frost_date: result.firstFrost
-          });
-        }
-        
-        // Also update user profile for backward compatibility
         await base44.auth.updateMe({
           usda_zone: result.zone,
           last_frost_date: result.lastFrost,

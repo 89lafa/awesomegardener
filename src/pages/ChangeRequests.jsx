@@ -11,7 +11,7 @@ import {
   DialogTitle,
   DialogFooter,
 } from '@/components/ui/dialog';
-import { Loader2, CheckCircle, XCircle, Eye, Sparkles } from 'lucide-react';
+import { Loader2, CheckCircle, XCircle, Eye } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 
@@ -24,7 +24,6 @@ export default function ChangeRequests() {
   const [showReviewDialog, setShowReviewDialog] = useState(false);
   const [reviewNotes, setReviewNotes] = useState('');
   const [reviewing, setReviewing] = useState(false);
-  const [aiChecking, setAiChecking] = useState({});
 
   useEffect(() => {
     loadData();
@@ -90,54 +89,6 @@ export default function ChangeRequests() {
     }
   };
 
-  const handleAICheck = async (request) => {
-    setAiChecking({ ...aiChecking, [request.id]: true });
-    try {
-      const variety = varieties[request.variety_id];
-      const result = await base44.integrations.Core.InvokeLLM({
-        prompt: `Review this variety change request for content moderation.
-        
-Variety: ${variety?.variety_name}
-Reason: ${request.reason}
-Requested Changes: ${JSON.stringify(request.requested_changes || {})}
-
-Check for:
-- Inappropriate language or offensive content
-- Spam or unrelated content
-- Reasonable and helpful changes
-
-Return ONLY:
-- "PASS" if request is appropriate and reasonable
-- "FAIL" if request contains inappropriate content (provide brief reason)`,
-        response_json_schema: {
-          type: "object",
-          properties: {
-            status: { type: "string", enum: ["PASS", "FAIL"] },
-            reason: { type: "string" }
-          }
-        }
-      });
-
-      await base44.entities.VarietyChangeRequest.update(request.id, {
-        ai_check_status: result.status,
-        ai_check_reason: result.reason || null
-      });
-
-      setRequests(requests.map(r => 
-        r.id === request.id 
-          ? { ...r, ai_check_status: result.status, ai_check_reason: result.reason }
-          : r
-      ));
-
-      toast.success(`AI Check: ${result.status}`);
-    } catch (error) {
-      console.error('Error running AI check:', error);
-      toast.error('AI check failed');
-    } finally {
-      setAiChecking({ ...aiChecking, [request.id]: false });
-    }
-  };
-
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -176,14 +127,7 @@ Return ONLY:
                         Requested by {request.created_by} • {format(new Date(request.created_date), 'MMM d, yyyy')}
                       </p>
                     </div>
-                    <div className="flex flex-col gap-2">
-                      <Badge>Pending</Badge>
-                      {request.ai_check_status && (
-                        <Badge className={request.ai_check_status === 'PASS' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}>
-                          AI: {request.ai_check_status}
-                        </Badge>
-                      )}
-                    </div>
+                    <Badge>Pending</Badge>
                   </div>
                 </CardHeader>
                 <CardContent className="space-y-3">
@@ -195,27 +139,6 @@ Return ONLY:
                   )}
 
                   <div className="flex gap-2">
-                    {!request.ai_check_status && (
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => handleAICheck(request)}
-                        disabled={aiChecking[request.id]}
-                        className="gap-2 bg-purple-50 hover:bg-purple-100 text-purple-700 border-purple-300"
-                      >
-                        {aiChecking[request.id] ? (
-                          <>
-                            <Loader2 className="w-4 h-4 animate-spin" />
-                            Checking...
-                          </>
-                        ) : (
-                          <>
-                            <Sparkles className="w-4 h-4" />
-                            AI Check
-                          </>
-                        )}
-                      </Button>
-                    )}
                     <Button
                       size="sm"
                       variant="outline"

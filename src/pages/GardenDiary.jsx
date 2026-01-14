@@ -47,7 +47,6 @@ export default function GardenDiary() {
   const [saving, setSaving] = useState(false);
   const [filterGarden, setFilterGarden] = useState('all');
   const [filterTag, setFilterTag] = useState('all');
-  const [filterSeason, setFilterSeason] = useState('all');
   const [myPlants, setMyPlants] = useState([]);
   const [seasons, setSeasons] = useState([]);
   const [profiles, setProfiles] = useState({});
@@ -190,7 +189,6 @@ export default function GardenDiary() {
   const filteredEntries = entries.filter(e => {
     if (filterGarden !== 'all' && e.garden_id !== filterGarden) return false;
     if (filterTag !== 'all' && !e.tags?.includes(filterTag)) return false;
-    if (filterSeason !== 'all' && e.garden_season_id !== filterSeason) return false;
     return true;
   });
 
@@ -219,8 +217,8 @@ export default function GardenDiary() {
       </div>
 
       {/* Filters */}
-      <div className="flex gap-4 flex-wrap">
-        {gardens.length > 1 && (
+      {gardens.length > 1 && (
+        <div className="flex gap-4">
           <Select value={filterGarden} onValueChange={setFilterGarden}>
             <SelectTrigger className="w-48">
               <SelectValue placeholder="All Gardens" />
@@ -232,30 +230,19 @@ export default function GardenDiary() {
               ))}
             </SelectContent>
           </Select>
-        )}
-        <Select value={filterTag} onValueChange={setFilterTag}>
-          <SelectTrigger className="w-48">
-            <SelectValue placeholder="All Tags" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Tags</SelectItem>
-            {DIARY_TAGS.map(tag => (
-              <SelectItem key={tag} value={tag}>{tag}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <Select value={filterSeason} onValueChange={setFilterSeason}>
-          <SelectTrigger className="w-48">
-            <SelectValue placeholder="All Seasons" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Seasons</SelectItem>
-            {seasons.map(s => (
-              <SelectItem key={s.id} value={s.id}>{s.year} {s.season}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
+          <Select value={filterTag} onValueChange={setFilterTag}>
+            <SelectTrigger className="w-48">
+              <SelectValue placeholder="All Tags" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Tags</SelectItem>
+              {DIARY_TAGS.map(tag => (
+                <SelectItem key={tag} value={tag}>{tag}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      )}
 
       {/* Entries */}
       {filteredEntries.length === 0 ? (
