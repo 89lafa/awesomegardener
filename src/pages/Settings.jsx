@@ -29,6 +29,7 @@ import {
 } from '@/components/ui/select';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { toast } from 'sonner';
+import FrostDateLookup from '@/components/ai/FrostDateLookup';
 
 const USDA_ZONES = ['1a', '1b', '2a', '2b', '3a', '3b', '4a', '4b', '5a', '5b', '6a', '6b', '7a', '7b', '8a', '8b', '9a', '9b', '10a', '10b', '11a', '11b', '12a', '12b', '13a', '13b'];
 
@@ -382,10 +383,28 @@ export default function Settings() {
               </div>
 
               <div className="pt-4 border-t">
-                <h4 className="font-medium text-gray-900 mb-4 flex items-center gap-2">
-                  <Thermometer className="w-4 h-4" />
-                  Frost Dates
-                </h4>
+                <div className="flex items-center justify-between mb-4">
+                  <h4 className="font-medium text-gray-900 flex items-center gap-2">
+                    <Thermometer className="w-4 h-4" />
+                    Frost Dates
+                  </h4>
+                  <FrostDateLookup
+                    zip={formData.location_zip}
+                    city={formData.location_city}
+                    state={formData.location_state}
+                    currentZone={formData.usda_zone}
+                    currentLastFrost={formData.last_frost_date}
+                    currentFirstFrost={formData.first_frost_date}
+                    onApply={(values) => {
+                      setFormData({ 
+                        ...formData, 
+                        usda_zone: values.usda_zone || formData.usda_zone,
+                        last_frost_date: values.last_frost_date || formData.last_frost_date,
+                        first_frost_date: values.first_frost_date || formData.first_frost_date
+                      });
+                    }}
+                  />
+                </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <Label htmlFor="lastFrost">Last Frost (Spring)</Label>

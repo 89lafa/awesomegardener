@@ -25,6 +25,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { motion, AnimatePresence } from 'framer-motion';
+import FrostDateLookup from '@/components/ai/FrostDateLookup';
 
 const USDA_ZONES = ['1a', '1b', '2a', '2b', '3a', '3b', '4a', '4b', '5a', '5b', '6a', '6b', '7a', '7b', '8a', '8b', '9a', '9b', '10a', '10b', '11a', '11b', '12a', '12b', '13a', '13b'];
 
@@ -247,13 +248,39 @@ export default function Onboarding() {
       case 'frost':
         return (
           <div className="space-y-6">
+            <div className="p-4 bg-purple-50 rounded-xl border border-purple-200">
+              <h4 className="font-semibold text-purple-900 mb-2 flex items-center gap-2">
+                <Sparkles className="w-4 h-4" />
+                Let AI find your frost dates & zone
+              </h4>
+              <p className="text-sm text-purple-800 mb-3">
+                We'll use your ZIP code to automatically detect your USDA zone and frost dates.
+              </p>
+              <FrostDateLookup
+                zip={formData.location_zip}
+                city={formData.location_city}
+                state={formData.location_state}
+                currentZone={formData.usda_zone}
+                currentLastFrost={formData.last_frost_date}
+                currentFirstFrost={formData.first_frost_date}
+                onApply={(values) => {
+                  setFormData({ 
+                    ...formData, 
+                    usda_zone: values.usda_zone || formData.usda_zone,
+                    last_frost_date: values.last_frost_date || formData.last_frost_date,
+                    first_frost_date: values.first_frost_date || formData.first_frost_date
+                  });
+                }}
+              />
+            </div>
+            
             <div className="p-4 bg-blue-50 rounded-xl border border-blue-200">
               <h4 className="font-semibold text-blue-900 mb-2 flex items-center gap-2">
                 <Thermometer className="w-4 h-4" />
-                Don't know your frost dates?
+                Or look them up manually
               </h4>
               <p className="text-sm text-blue-800 mb-3">
-                Most gardeners don't. Use this free tool to look them up, then return here and enter the dates.
+                Use the Almanac tool to find your frost dates, then enter them below.
               </p>
               <a
                 href="https://www.almanac.com/gardening/frostdates"
@@ -263,9 +290,6 @@ export default function Onboarding() {
               >
                 Open Almanac Frost Dates Lookup →
               </a>
-              <p className="text-xs text-blue-600 mt-2">
-                Tip: Use your ZIP or city on that page to get your average last spring frost and first fall frost
-              </p>
             </div>
             <div>
               <Label htmlFor="last_frost">Last Spring Frost Date (32°F) *</Label>

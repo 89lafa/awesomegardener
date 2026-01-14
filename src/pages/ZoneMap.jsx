@@ -7,6 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
+import FrostDateLookup from '@/components/ai/FrostDateLookup';
 
 const ZONE_INFO = {
   '3a': { min: -40, max: -35, description: 'Very cold winters' },
@@ -191,6 +192,42 @@ export default function ZoneMap() {
           </p>
         </CardHeader>
         <CardContent className="space-y-4">
+          <div className="p-4 bg-purple-50 rounded-lg border border-purple-200">
+            <h4 className="font-semibold text-purple-900 mb-2 flex items-center gap-2">
+              <Sparkles className="w-4 h-4" />
+              AI Auto-Detect Zone & Frost Dates
+            </h4>
+            <p className="text-sm text-purple-800 mb-3">
+              Let AI automatically detect your USDA zone and frost dates based on your location.
+            </p>
+            <FrostDateLookup
+              zip={user?.location_zip}
+              city={user?.location_city}
+              state={user?.location_state}
+              currentZone={selectedZone}
+              currentLastFrost={user?.last_frost_date}
+              currentFirstFrost={user?.first_frost_date}
+              onApply={async (values) => {
+                try {
+                  await base44.auth.updateMe({
+                    usda_zone: values.usda_zone,
+                    last_frost_date: values.last_frost_date,
+                    first_frost_date: values.first_frost_date
+                  });
+                  setSelectedZone(values.usda_zone);
+                  setUser({ ...user, ...values });
+                  toast.success('Zone and frost dates updated!');
+                } catch (error) {
+                  console.error('Error saving:', error);
+                  toast.error('Failed to save');
+                }
+              }}
+            />
+            <p className="text-xs text-purple-600 mt-2">
+              Results are based on USDA data and historical weather patterns
+            </p>
+          </div>
+          
           <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
             <h4 className="font-semibold text-blue-900 mb-2">📍 Find Your Zone Online</h4>
             <p className="text-sm text-blue-800 mb-3">
