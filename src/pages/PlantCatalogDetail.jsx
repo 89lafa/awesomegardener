@@ -1165,7 +1165,17 @@ export default function PlantCatalogDetail() {
                         <div className="flex flex-wrap gap-2">
                          {(() => {
                           // Display single primary subcategory NAME (no arrays, no codes)
-                          if (!variety.plant_subcategory_id) {
+                          // NEVER render junk values
+                          const isJunkValue = (val) => {
+                            if (!val) return true;
+                            if (typeof val !== 'string') return true;
+                            const str = val.trim();
+                            if (str === '' || str === '[]') return true;
+                            if (str.includes('[') || str.includes('"psc') || str.includes('PSC_')) return true;
+                            return false;
+                          };
+
+                          if (!variety.plant_subcategory_id || isJunkValue(variety.plant_subcategory_id)) {
                             return (
                               <Badge variant="outline" className="text-xs text-gray-500">
                                 Uncategorized
@@ -1178,7 +1188,11 @@ export default function PlantCatalogDetail() {
                               {subcat.icon && <span className="mr-1">{subcat.icon}</span>}
                               {subcat.name}
                             </Badge>
-                          ) : null;
+                          ) : (
+                            <Badge variant="outline" className="text-xs text-gray-500">
+                              Uncategorized
+                            </Badge>
+                          );
                          })()}
                          {(variety.days_to_maturity || variety.days_to_maturity_seed) && (
                            <Badge variant="outline" className="text-xs">

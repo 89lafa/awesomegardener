@@ -256,13 +256,18 @@ export default function EditVariety() {
                   </SelectTrigger>
                   <SelectContent className="max-h-64">
                     <SelectItem value={null}>Uncategorized</SelectItem>
-                    {subCategories.map(subcat => (
-                      <SelectItem key={subcat.id} value={subcat.id}>
-                        {subcat.icon && <span className="mr-2">{subcat.icon}</span>}
-                        {subcat.name}
-                        {!subcat.is_active && <span className="ml-2 text-xs text-gray-400">(inactive)</span>}
-                      </SelectItem>
-                    ))}
+                    {subCategories
+                      .filter(subcat => {
+                        // Only show active subcategories or the currently selected one
+                        return subcat.is_active || subcat.id === formData.plant_subcategory_id;
+                      })
+                      .map(subcat => (
+                        <SelectItem key={subcat.id} value={subcat.id}>
+                          {subcat.icon && <span className="mr-2">{subcat.icon}</span>}
+                          {subcat.name}
+                          {!subcat.is_active && <span className="ml-2 text-xs text-gray-400">(inactive)</span>}
+                        </SelectItem>
+                      ))}
                   </SelectContent>
                 </Select>
                 <p className="text-xs text-gray-500 mt-1">

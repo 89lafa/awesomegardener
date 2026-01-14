@@ -55,7 +55,22 @@ export default function VarietyListView({
 
   const getSubCategoryName = (variety) => {
     // NEW SYSTEM: Display ONLY the primary subcategory name
-    if (!variety.plant_subcategory_id) return 'Uncategorized';
+    // NEVER display arrays or junk values
+    
+    // Filter out junk values
+    const isJunkValue = (val) => {
+      if (!val) return true;
+      if (typeof val !== 'string') return true;
+      const str = val.trim();
+      if (str === '' || str === '[]') return true;
+      if (str.includes('[') || str.includes('"psc') || str.includes('PSC_')) return true;
+      return false;
+    };
+    
+    // Use ONLY plant_subcategory_id
+    if (!variety.plant_subcategory_id || isJunkValue(variety.plant_subcategory_id)) {
+      return 'Uncategorized';
+    }
     
     const subcat = subCategories.find(s => s.id === variety.plant_subcategory_id);
     return subcat?.name || 'Uncategorized';
