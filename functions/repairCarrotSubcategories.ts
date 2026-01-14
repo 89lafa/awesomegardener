@@ -10,54 +10,89 @@ Deno.serve(async (req) => {
     }
     
     const CARROT_PLANT_TYPE_ID = '69575e5ecdbb16ee56fa750c';
-    const CANONICAL_CARROT_CODES = [
-      'PSC_CARROT_STORAGE',
-      'PSC_CARROT_COLOR',
-      'PSC_CARROT_KURODA',
-      'PSC_CARROT_ROUND',
-      'PSC_CARROT_CHANTENAY',
-      'PSC_CARROT_DANVERS',
-      'PSC_CARROT_IMPERATOR',
-      'PSC_CARROT_NANTES'
+    const CANONICAL_CARROT_SUBCATS = [
+      { code: 'PSC_CARROT_STORAGE', name: 'Storage / Winter' },
+      { code: 'PSC_CARROT_COLOR', name: 'Color / Specialty' },
+      { code: 'PSC_CARROT_KURODA', name: 'Kuroda (Asian-Type)' },
+      { code: 'PSC_CARROT_ROUND', name: 'Round / Parisian' },
+      { code: 'PSC_CARROT_CHANTENAY', name: 'Chantenay (Short, Broad-Shouldered)' },
+      { code: 'PSC_CARROT_DANVERS', name: 'Danvers (Tapered, Versatile)' },
+      { code: 'PSC_CARROT_IMPERATOR', name: 'Imperator (Long, Tapered)' },
+      { code: 'PSC_CARROT_NANTES', name: 'Nantes (Cylindrical, Sweet)' }
     ];
     
     const results = {
-      step1_activated: 0,
-      step2_normalized: 0,
-      step3_cleared_junk: 0,
+      step1_subcats_cleaned: 0,
+      step2_subcats_activated: 0,
+      step3_varieties_normalized: 0,
+      step4_cleared_junk_arrays: 0,
       errors: []
     };
     
-    console.log('[REPAIR] Step 1: Activating canonical carrot subcategories...');
+    console.log('[REPAIR] Step 1: Cleaning up malformed carrot subcategories...');
     
-    // Step 1: Activate canonical carrot subcategories
+    // Step 1: Find and clean malformed canonical subcategories
     const allSubcats = await base44.asServiceRole.entities.PlantSubCategory.filter({
       plant_type_id: CARROT_PLANT_TYPE_ID
     });
     
-    for (const subcat of allSubcats) {
-      if (CANONICAL_CARROT_CODES.includes(subcat.subcat_code)) {
-        if (!subcat.is_active) {
-          await base44.asServiceRole.entities.PlantSubCategory.update(subcat.id, {
+    for (const canonical of CANONICAL_CARROT_SUBCATS) {
+      const malformedSubcat = allSubcats.find(s =>
+        s.plant_type_id === CARROT_PLANT_TYPE_ID &&
+        (
+          (typeof s.name === 'string' && s.name.includes(canonical.name.split(' ')[0]) && s.name.includes('[')) ||
+          (typeof s.subcat_code === 'string' && s.subcat_code.includes(canonical.code) && s.subcat_code.includes('['))
+        )
+      );
+
+      if (malformedSubcat) {
+        if (malformedSubcat.subcat_code !== canonical.code || malformedSubcat.name !== canonical.name || !malformedSubcat.is_active) {
+          await base44.asServiceRole.entities.PlantSubCategory.update(malformedSubcat.id, {
+            subcat_code: canonical.code,
+            name: canonical.name,
             is_active: true
           });
-          results.step1_activated++;
-          console.log(`[REPAIR] Activated: ${subcat.name} (${subcat.subcat_code})`);
+          results.step1_subcats_cleaned++;
+          console.log(`[REPAIR] Cleaned and activated malformed subcategory: ${canonical.name}`);
         }
       }
     }
     
+    console.log('[REPAIR] Step 2: Ensuring canonical carrot subcategories are active...');
+    
+    // Step 2: Ensure canonical subcategories exist and are active
+    let currentCanonicalSubcats = await base44.asServiceRole.entities.PlantSubCategory.filter({
+      plant_type_id: CARROT_PLANT_TYPE_ID,
+    });
+    
     // Build lookup map: code -> id
     const codeToIdMap = {};
-    for (const subcat of allSubcats) {
-      if (CANONICAL_CARROT_CODES.includes(subcat.subcat_code)) {
-        codeToIdMap[subcat.subcat_code] = subcat.id;
+    currentCanonicalSubcats.forEach(s => codeToIdMap[s.subcat_code] = s.id);
+
+    for (const canonical of CANONICAL_CARROT_SUBCATS) {
+      let subcat = currentCanonicalSubcats.find(s => s.subcat_code === canonical.code);
+      if (!subcat) {
+        // Create if missing
+        subcat = await base44.asServiceRole.entities.PlantSubCategory.create({
+          plant_type_id: CARROT_PLANT_TYPE_ID,
+          subcat_code: canonical.code,
+          name: canonical.name,
+          is_active: true
+        });
+        results.step2_subcats_activated++;
+        console.log(`[REPAIR] Created missing canonical subcategory: ${canonical.name}`);
+        codeToIdMap[canonical.code] = subcat.id;
+      } else if (!subcat.is_active) {
+        // Activate if inactive
+        await base44.asServiceRole.entities.PlantSubCategory.update(subcat.id, { is_active: true });
+        results.step2_subcats_activated++;
+        console.log(`[REPAIR] Activated inactive canonical subcategory: ${canonical.name}`);
       }
     }
     
-    console.log('[REPAIR] Step 2: Normalizing carrot varieties...');
+    console.log('[REPAIR] Step 3: Normalizing carrot varieties...');
     
-    // Step 2: Normalize all carrot varieties
+    // Step 3: Normalize all carrot varieties
     const carrotVarieties = await base44.asServiceRole.entities.Variety.filter({
       plant_type_id: CARROT_PLANT_TYPE_ID
     });
@@ -67,72 +102,58 @@ Deno.serve(async (req) => {
     for (const variety of carrotVarieties) {
       let needsUpdate = false;
       const updateData = {};
-      
-      // Case 1: plant_subcategory_id is null BUT plant_subcategory_code exists
-      if (!variety.plant_subcategory_id && variety.plant_subcategory_code) {
-        const resolvedId = codeToIdMap[variety.plant_subcategory_code];
-        if (resolvedId) {
-          updateData.plant_subcategory_id = resolvedId;
-          updateData.plant_subcategory_ids = [resolvedId];
-          updateData.plant_subcategory_codes = [variety.plant_subcategory_code];
+
+      let primarySubcatId = variety.plant_subcategory_id;
+      let primarySubcatCode = variety.plant_subcategory_code;
+      let legacySubcatIds = Array.isArray(variety.plant_subcategory_ids) ? variety.plant_subcategory_ids : [];
+      let legacySubcatCodes = Array.isArray(variety.plant_subcategory_codes) ? variety.plant_subcategory_codes : [];
+
+      // Attempt to resolve from existing code in variety if primary ID is missing or malformed
+      if (!primarySubcatId || !codeToIdMap[primarySubcatCode]) {
+        // Try to resolve from variety's plant_subcategory_code
+        if (primarySubcatCode && codeToIdMap[primarySubcatCode]) {
+          primarySubcatId = codeToIdMap[primarySubcatCode];
           needsUpdate = true;
-          console.log(`[REPAIR] Normalizing ${variety.variety_name}: code=${variety.plant_subcategory_code} -> id=${resolvedId}`);
+        }
+        // Try to resolve from legacy codes (e.g., from extended_data.import_subcat_code)
+        else if (variety.extended_data?.import_subcat_code && codeToIdMap[variety.extended_data.import_subcat_code]) {
+          primarySubcatCode = variety.extended_data.import_subcat_code;
+          primarySubcatId = codeToIdMap[primarySubcatCode];
+          needsUpdate = true;
         }
       }
-      
-      // Case 2: Check for junk values in arrays
-      const hasJunkIds = Array.isArray(variety.plant_subcategory_ids) && 
-                         variety.plant_subcategory_ids.some(v => 
-                           typeof v === 'string' && (
-                             v.includes('[') || 
-                             v.includes('"psc') || 
-                             v.includes('PSC_') ||
-                             v === '[]' ||
-                             v.trim() === ''
-                           )
-                         );
-      
-      const hasJunkCodes = Array.isArray(variety.plant_subcategory_codes) && 
-                           variety.plant_subcategory_codes.some(v => 
-                             typeof v === 'string' && (
-                               v.includes('[') || 
-                               v.includes('"') ||
-                               v === '[]' ||
-                               v.trim() === ''
-                             )
-                           );
-      
-      // Case 3: plant_subcategory_id is null AND arrays have junk
-      if (!variety.plant_subcategory_id && (hasJunkIds || hasJunkCodes)) {
-        updateData.plant_subcategory_ids = [];
-        updateData.plant_subcategory_codes = [];
-        updateData.plant_subcategory_code = null;
+
+      // Clean up junk values in arrays or set based on primary
+      // Always ensure the arrays reflect the primary ID and code
+      const expectedSubcatIds = primarySubcatId ? [primarySubcatId] : [];
+      const expectedSubcatCodes = primarySubcatCode ? [primarySubcatCode] : [];
+
+      if (JSON.stringify(legacySubcatIds.sort()) !== JSON.stringify(expectedSubcatIds.sort())) {
+        updateData.plant_subcategory_ids = expectedSubcatIds;
         needsUpdate = true;
-        results.step3_cleared_junk++;
-        console.log(`[REPAIR] Clearing junk from ${variety.variety_name}`);
+        if (legacySubcatIds.length > 0 && expectedSubcatIds.length === 0) results.step4_cleared_junk_arrays++;
+      }
+      if (JSON.stringify(legacySubcatCodes.sort()) !== JSON.stringify(expectedSubcatCodes.sort())) {
+        updateData.plant_subcategory_codes = expectedSubcatCodes;
+        needsUpdate = true;
+        if (legacySubcatCodes.length > 0 && expectedSubcatCodes.length === 0) results.step4_cleared_junk_arrays++;
       }
       
-      // Case 4: Ensure arrays are synced if primary ID exists
-      if (variety.plant_subcategory_id && !needsUpdate) {
-        const correctIds = [variety.plant_subcategory_id];
-        const currentCode = variety.plant_subcategory_code;
-        const correctCodes = currentCode ? [currentCode] : [];
-        
-        const idsMatch = JSON.stringify(variety.plant_subcategory_ids || []) === JSON.stringify(correctIds);
-        const codesMatch = JSON.stringify(variety.plant_subcategory_codes || []) === JSON.stringify(correctCodes);
-        
-        if (!idsMatch || !codesMatch) {
-          updateData.plant_subcategory_ids = correctIds;
-          updateData.plant_subcategory_codes = correctCodes;
-          needsUpdate = true;
-          console.log(`[REPAIR] Syncing arrays for ${variety.variety_name}`);
-        }
+      // Only update primary if it actually changed or needed fixing
+      if (primarySubcatId !== variety.plant_subcategory_id) {
+        updateData.plant_subcategory_id = primarySubcatId;
+        needsUpdate = true;
       }
-      
+      if (primarySubcatCode !== variety.plant_subcategory_code) {
+        updateData.plant_subcategory_code = primarySubcatCode;
+        needsUpdate = true;
+      }
+
       if (needsUpdate) {
         try {
           await base44.asServiceRole.entities.Variety.update(variety.id, updateData);
-          results.step2_normalized++;
+          results.step3_varieties_normalized++;
+          console.log(`[REPAIR] Normalized variety: ${variety.variety_name} (ID: ${variety.id}) to primary subcat ID: ${primarySubcatId}`);
         } catch (error) {
           results.errors.push(`Failed to update ${variety.variety_name}: ${error.message}`);
           console.error(`[REPAIR] Error updating ${variety.variety_name}:`, error);
