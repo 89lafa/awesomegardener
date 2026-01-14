@@ -54,6 +54,7 @@ Deno.serve(async (req) => {
           });
           results.step1_subcats_cleaned++;
           console.log(`[REPAIR] Cleaned and activated malformed subcategory: ${canonical.name}`);
+          await new Promise(resolve => setTimeout(resolve, 100));
         }
       }
     }
@@ -87,6 +88,7 @@ Deno.serve(async (req) => {
         await base44.asServiceRole.entities.PlantSubCategory.update(subcat.id, { is_active: true });
         results.step2_subcats_activated++;
         console.log(`[REPAIR] Activated inactive canonical subcategory: ${canonical.name}`);
+        await new Promise(resolve => setTimeout(resolve, 100));
       }
     }
     
@@ -154,6 +156,7 @@ Deno.serve(async (req) => {
           await base44.asServiceRole.entities.Variety.update(variety.id, updateData);
           results.step3_varieties_normalized++;
           console.log(`[REPAIR] Normalized variety: ${variety.variety_name} (ID: ${variety.id}) to primary subcat ID: ${primarySubcatId}`);
+          await new Promise(resolve => setTimeout(resolve, 150));
         } catch (error) {
           results.errors.push(`Failed to update ${variety.variety_name}: ${error.message}`);
           console.error(`[REPAIR] Error updating ${variety.variety_name}:`, error);
