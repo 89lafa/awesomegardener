@@ -271,9 +271,9 @@ Return structured data.`,
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="low">Low (< 3 hrs/week)</SelectItem>
+                    <SelectItem value="low">Low (less than 3 hrs/week)</SelectItem>
                     <SelectItem value="moderate">Moderate (3-7 hrs/week)</SelectItem>
-                    <SelectItem value="high">High (> 7 hrs/week)</SelectItem>
+                    <SelectItem value="high">High (7+ hrs/week)</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
