@@ -762,6 +762,12 @@ export default function GrowLists() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      
+      <PlantRecommendations
+        open={showAIRecommendations}
+        onOpenChange={setShowAIRecommendations}
+        context="growlist"
+      />
     </div>
   );
 }
