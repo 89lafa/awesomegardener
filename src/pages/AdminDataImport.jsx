@@ -466,8 +466,8 @@ export default function AdminDataImport() {
                   seasonTiming = 'unknown';
                 }
 
-                // Build subcategory ids array - use ALL resolved IDs
-                const subcatIds = resolvedSubcategoryIds.length > 0 ? resolvedSubcategoryIds : [];
+                // Build subcategory ids array from single resolved ID
+                // No longer needed here - handled below in varietyData construction
 
                 // Parse SHU fields (support both old and new)
                 const scovilleMin = row.scoville_min || row.heat_scoville_min || null;
