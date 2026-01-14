@@ -42,6 +42,8 @@ export default function HarvestLog() {
   const [editing, setEditing] = useState(null);
   const [saving, setSaving] = useState(false);
   const [filterGarden, setFilterGarden] = useState('all');
+  const [filterSeason, setFilterSeason] = useState('all');
+  const [seasons, setSeasons] = useState([]);
   const [myPlants, setMyPlants] = useState([]);
   const [profiles, setProfiles] = useState({});
   
@@ -75,18 +77,20 @@ export default function HarvestLog() {
   const loadData = async () => {
     try {
       const userData = await base44.auth.me();
-      const [gardensData, harvestsData, plantingsData, plantsData, profilesData] = await Promise.all([
+      const [gardensData, harvestsData, plantingsData, plantsData, profilesData, seasonsData] = await Promise.all([
         base44.entities.Garden.filter({ archived: false, created_by: userData.email }),
         base44.entities.HarvestLog.filter({ created_by: userData.email }, '-harvest_date'),
         base44.entities.PlantInstance.filter({ created_by: userData.email }, 'display_name'),
         base44.entities.MyPlant.filter({ created_by: userData.email }),
-        base44.entities.PlantProfile.list('variety_name', 500)
+        base44.entities.PlantProfile.list('variety_name', 500),
+        base44.entities.GardenSeason.filter({ created_by: userData.email }, '-year')
       ]);
       
       setGardens(gardensData);
       setHarvests(harvestsData);
       setPlantings(plantingsData);
       setMyPlants(plantsData);
+      setSeasons(seasonsData);
       
       const profilesMap = {};
       profilesData.forEach(p => { profilesMap[p.id] = p; });
@@ -148,6 +152,7 @@ export default function HarvestLog() {
 
   const filteredHarvests = harvests.filter(h => {
     if (filterGarden !== 'all' && h.garden_id !== filterGarden) return false;
+    if (filterSeason !== 'all' && h.garden_season_id !== filterSeason) return false;
     return true;
   });
 
@@ -181,19 +186,34 @@ export default function HarvestLog() {
       </div>
 
       {/* Filters */}
-      {gardens.length > 1 && (
-        <Select value={filterGarden} onValueChange={setFilterGarden}>
-          <SelectTrigger className="w-48">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Gardens</SelectItem>
-            {gardens.map(g => (
-              <SelectItem key={g.id} value={g.id}>{g.name}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      )}
+      <div className="flex gap-4">
+        {gardens.length > 1 && (
+          <Select value={filterGarden} onValueChange={setFilterGarden}>
+            <SelectTrigger className="w-48">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Gardens</SelectItem>
+              {gardens.map(g => (
+                <SelectItem key={g.id} value={g.id}>{g.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
+        {seasons.length > 0 && (
+          <Select value={filterSeason} onValueChange={setFilterSeason}>
+            <SelectTrigger className="w-48">
+              <SelectValue placeholder="All Seasons" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Seasons</SelectItem>
+              {seasons.map(s => (
+                <SelectItem key={s.id} value={s.id}>{s.year} {s.season}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
+      </div>
 
       {/* Harvests List */}
       {filteredHarvests.length === 0 ? (

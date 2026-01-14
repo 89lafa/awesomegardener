@@ -47,6 +47,7 @@ export default function IssuesLog() {
   const [saving, setSaving] = useState(false);
   const [filterType, setFilterType] = useState('all');
   const [filterGarden, setFilterGarden] = useState('all');
+  const [filterSeason, setFilterSeason] = useState('all');
   const [myPlants, setMyPlants] = useState([]);
   const [seasons, setSeasons] = useState([]);
   const [profiles, setProfiles] = useState({});
@@ -159,6 +160,7 @@ export default function IssuesLog() {
   const filteredIssues = issues.filter(i => {
     if (filterGarden !== 'all' && i.garden_id !== filterGarden) return false;
     if (filterType !== 'all' && i.issue_type !== filterType) return false;
+    if (filterSeason !== 'all' && i.garden_season_id !== filterSeason) return false;
     return true;
   });
 
@@ -201,7 +203,7 @@ export default function IssuesLog() {
       </div>
 
       {/* Filters */}
-      <div className="flex gap-4">
+      <div className="flex gap-4 flex-wrap">
         {gardens.length > 1 && (
           <Select value={filterGarden} onValueChange={setFilterGarden}>
             <SelectTrigger className="w-48">
@@ -228,6 +230,19 @@ export default function IssuesLog() {
             <SelectItem value="other">Other</SelectItem>
           </SelectContent>
         </Select>
+        {seasons.length > 0 && (
+          <Select value={filterSeason} onValueChange={setFilterSeason}>
+            <SelectTrigger className="w-48">
+              <SelectValue placeholder="All Seasons" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Seasons</SelectItem>
+              {seasons.map(s => (
+                <SelectItem key={s.id} value={s.id}>{s.year} {s.season}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
       </div>
 
       {/* Issues List */}
