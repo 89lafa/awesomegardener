@@ -200,19 +200,17 @@ export default function HarvestLog() {
             </SelectContent>
           </Select>
         )}
-        {seasons.length > 0 && (
-          <Select value={filterSeason} onValueChange={setFilterSeason}>
-            <SelectTrigger className="w-48">
-              <SelectValue placeholder="All Seasons" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Seasons</SelectItem>
-              {seasons.map(s => (
-                <SelectItem key={s.id} value={s.id}>{s.year} {s.season}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        )}
+        <Select value={filterSeason} onValueChange={setFilterSeason}>
+          <SelectTrigger className="w-48">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Seasons</SelectItem>
+            {seasons.map(s => (
+              <SelectItem key={s.id} value={s.id}>{s.year} {s.season}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
 
       {/* Harvests List */}

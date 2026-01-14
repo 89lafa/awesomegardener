@@ -1,18 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Label } from '@/components/ui/label';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Loader2, Wrench, CheckCircle, AlertCircle } from 'lucide-react';
+import { Loader2, Wrench, AlertCircle } from 'lucide-react';
 import { toast } from 'sonner';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 
 export default function AdminDataMaintenance() {
   const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
   const [plantTypes, setPlantTypes] = useState([]);
   const [selectedPlantType, setSelectedPlantType] = useState('');
-  const [loading, setLoading] = useState(true);
   const [repairing, setRepairing] = useState(false);
   const [results, setResults] = useState(null);
 
@@ -49,120 +48,14 @@ export default function AdminDataMaintenance() {
     setResults(null);
 
     try {
-      const selectedType = plantTypes.find(pt => pt.id === selectedPlantType);
-      
-      // Step 1: Activate all subcategories for this plant type
-      const subcats = await base44.entities.PlantSubCategory.filter({
+      const response = await base44.functions.invoke('repairPlantTypeSubcategories', {
         plant_type_id: selectedPlantType
       });
 
-      let subcatsActivated = 0;
-      for (const subcat of subcats) {
-        if (!subcat.is_active) {
-          await base44.entities.PlantSubCategory.update(subcat.id, { is_active: true });
-          subcatsActivated++;
-          await new Promise(resolve => setTimeout(resolve, 100));
-        }
-      }
-
-      // Step 2: Get all varieties for this plant type
-      const varieties = await base44.entities.Variety.filter({
-        plant_type_id: selectedPlantType
-      });
-
-      let varietiesRepaired = 0;
-      let varietiesSkipped = 0;
-      let varietiesMissingCode = 0;
-      const errors = [];
-
-      // Build subcat lookup
-      const subcatLookup = {};
-      subcats.forEach(sc => {
-        subcatLookup[sc.subcat_code] = sc;
-      });
-
-      // Step 3: Repair each variety
-      for (const variety of varieties) {
-        let needsUpdate = false;
-        const updateData = {};
-
-        // Get the subcategory code
-        let subcatCode = variety.plant_subcategory_code || 
-                        variety.extended_data?.import_subcat_code || 
-                        null;
-
-        // Clean junk stringified arrays
-        if (typeof subcatCode === 'string' && (subcatCode.startsWith('[') || subcatCode.includes('['))) {
-          try {
-            const parsed = JSON.parse(subcatCode);
-            if (Array.isArray(parsed) && parsed.length > 0) {
-              subcatCode = parsed[0];
-            }
-          } catch {
-            // Remove brackets and quotes
-            subcatCode = subcatCode.replace(/[\[\]"']/g, '').trim();
-          }
-        }
-
-        if (subcatCode && subcatLookup[subcatCode]) {
-          const subcat = subcatLookup[subcatCode];
-          
-          // Set primary
-          if (variety.plant_subcategory_id !== subcat.id) {
-            updateData.plant_subcategory_id = subcat.id;
-            needsUpdate = true;
-          }
-
-          // Sync arrays
-          const expectedIds = [subcat.id];
-          const expectedCodes = [subcat.subcat_code];
-
-          if (JSON.stringify(variety.plant_subcategory_ids || []) !== JSON.stringify(expectedIds)) {
-            updateData.plant_subcategory_ids = expectedIds;
-            needsUpdate = true;
-          }
-
-          if (JSON.stringify(variety.plant_subcategory_codes || []) !== JSON.stringify(expectedCodes)) {
-            updateData.plant_subcategory_codes = expectedCodes;
-            needsUpdate = true;
-          }
-
-          if (variety.plant_subcategory_code !== subcat.subcat_code) {
-            updateData.plant_subcategory_code = subcat.subcat_code;
-            needsUpdate = true;
-          }
-
-          if (needsUpdate) {
-            try {
-              await base44.entities.Variety.update(variety.id, updateData);
-              varietiesRepaired++;
-              await new Promise(resolve => setTimeout(resolve, 150));
-            } catch (err) {
-              errors.push(`${variety.variety_name}: ${err.message}`);
-            }
-          } else {
-            varietiesSkipped++;
-          }
-        } else if (!subcatCode) {
-          varietiesMissingCode++;
-        } else {
-          errors.push(`${variety.variety_name}: Unknown subcat code "${subcatCode}"`);
-        }
-      }
-
-      setResults({
-        plantType: selectedType.common_name,
-        subcatsActivated,
-        totalVarieties: varieties.length,
-        varietiesRepaired,
-        varietiesSkipped,
-        varietiesMissingCode,
-        errors: errors.slice(0, 20)
-      });
-
-      toast.success('Repair completed!');
+      setResults(response.data.results);
+      toast.success('Repair completed successfully');
     } catch (error) {
-      console.error('Error repairing:', error);
+      console.error('Error running repair:', error);
       toast.error('Repair failed: ' + error.message);
     } finally {
       setRepairing(false);
@@ -177,60 +70,70 @@ export default function AdminDataMaintenance() {
     );
   }
 
+  const selectedType = plantTypes.find(pt => pt.id === selectedPlantType);
+
   return (
     <div className="max-w-3xl space-y-6">
       <div>
         <h1 className="text-2xl lg:text-3xl font-bold text-gray-900">Data Maintenance</h1>
-        <p className="text-gray-600 mt-1">Repair subcategories and varieties for any plant type</p>
+        <p className="text-gray-600 mt-1">Repair subcategories and variety classifications</p>
       </div>
 
-      <Alert className="bg-amber-50 border-amber-200">
-        <AlertCircle className="w-4 h-4 text-amber-600" />
-        <AlertDescription className="text-amber-800">
-          <strong>What this tool does:</strong>
-          <ul className="list-disc list-inside mt-2 space-y-1">
-            <li>Activates all subcategories for the selected plant type</li>
-            <li>Canonicalizes variety subcategories (single primary + synced arrays)</li>
-            <li>Cleans junk stringified arrays</li>
-            <li>Reports varieties with missing or invalid subcategory codes</li>
-          </ul>
+      <Alert>
+        <AlertCircle className="w-4 h-4" />
+        <AlertDescription>
+          This tool will activate all subcategories for a plant type and normalize variety assignments.
+          It's useful after CSV imports or when subcategory data gets out of sync.
         </AlertDescription>
       </Alert>
 
       <Card>
         <CardHeader>
-          <CardTitle>Select Plant Type</CardTitle>
+          <CardTitle>Repair Subcategories & Varieties</CardTitle>
+          <CardDescription>
+            Select a plant type to repair its subcategory assignments
+          </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div>
-            <Label>Plant Type *</Label>
+            <label className="text-sm font-medium text-gray-700 mb-2 block">
+              Plant Type
+            </label>
             <Select value={selectedPlantType} onValueChange={setSelectedPlantType}>
-              <SelectTrigger className="mt-2">
-                <SelectValue placeholder="Select a plant type" />
+              <SelectTrigger>
+                <SelectValue placeholder="Select plant type" />
               </SelectTrigger>
               <SelectContent className="max-h-64">
                 {plantTypes.map(pt => (
                   <SelectItem key={pt.id} value={pt.id}>
-                    {pt.common_name} ({pt.plant_type_code || pt.id})
+                    {pt.common_name}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
           </div>
 
+          {selectedType && (
+            <Alert className="bg-blue-50 border-blue-200">
+              <AlertDescription className="text-sm text-blue-800">
+                Selected: <strong>{selectedType.common_name}</strong>
+              </AlertDescription>
+            </Alert>
+          )}
+
           <Button
             onClick={handleRepair}
             disabled={!selectedPlantType || repairing}
-            className="w-full bg-emerald-600 hover:bg-emerald-700 gap-2"
+            className="w-full bg-emerald-600 hover:bg-emerald-700"
           >
             {repairing ? (
               <>
-                <Loader2 className="w-4 h-4 animate-spin" />
+                <Loader2 className="w-4 h-4 animate-spin mr-2" />
                 Repairing...
               </>
             ) : (
               <>
-                <Wrench className="w-4 h-4" />
+                <Wrench className="w-4 h-4 mr-2" />
                 Repair Subcategories & Varieties
               </>
             )}
@@ -241,49 +144,40 @@ export default function AdminDataMaintenance() {
       {results && (
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <CheckCircle className="w-5 h-5 text-green-600" />
-              Repair Results: {results.plantType}
-            </CardTitle>
+            <CardTitle>Repair Results</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
+          <CardContent className="space-y-3">
+            <div className="grid grid-cols-2 gap-4 text-sm">
               <div>
-                <p className="text-sm text-gray-600">Subcategories Activated</p>
-                <p className="text-2xl font-bold text-green-600">{results.subcatsActivated}</p>
+                <span className="text-gray-600">Subcategories Activated:</span>
+                <p className="font-semibold text-lg">{results.subcats_activated}</p>
               </div>
               <div>
-                <p className="text-sm text-gray-600">Total Varieties</p>
-                <p className="text-2xl font-bold text-gray-900">{results.totalVarieties}</p>
+                <span className="text-gray-600">Varieties Normalized:</span>
+                <p className="font-semibold text-lg">{results.varieties_normalized}</p>
               </div>
               <div>
-                <p className="text-sm text-gray-600">Varieties Repaired</p>
-                <p className="text-2xl font-bold text-blue-600">{results.varietiesRepaired}</p>
+                <span className="text-gray-600">Junk Arrays Cleared:</span>
+                <p className="font-semibold text-lg">{results.junk_cleared}</p>
               </div>
               <div>
-                <p className="text-sm text-gray-600">Varieties Skipped (OK)</p>
-                <p className="text-2xl font-bold text-gray-500">{results.varietiesSkipped}</p>
+                <span className="text-gray-600">Missing Code:</span>
+                <p className="font-semibold text-lg">{results.missing_code || 0}</p>
               </div>
             </div>
 
-            {results.varietiesMissingCode > 0 && (
-              <Alert className="bg-yellow-50 border-yellow-200">
-                <AlertCircle className="w-4 h-4 text-yellow-600" />
-                <AlertDescription className="text-yellow-800">
-                  <strong>{results.varietiesMissingCode} varieties</strong> have no subcategory code set
+            {results.errors && results.errors.length > 0 && (
+              <Alert className="bg-red-50 border-red-200">
+                <AlertCircle className="w-4 h-4 text-red-600" />
+                <AlertDescription className="text-sm text-red-800">
+                  <p className="font-semibold mb-1">Errors:</p>
+                  <ul className="list-disc list-inside space-y-1">
+                    {results.errors.map((err, idx) => (
+                      <li key={idx}>{err}</li>
+                    ))}
+                  </ul>
                 </AlertDescription>
               </Alert>
-            )}
-
-            {results.errors.length > 0 && (
-              <div>
-                <p className="text-sm font-semibold text-red-600 mb-2">Errors ({results.errors.length}):</p>
-                <div className="bg-red-50 p-3 rounded-lg max-h-64 overflow-auto">
-                  {results.errors.map((err, idx) => (
-                    <p key={idx} className="text-xs text-red-700">{err}</p>
-                  ))}
-                </div>
-              </div>
             )}
           </CardContent>
         </Card>
