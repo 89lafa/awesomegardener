@@ -53,6 +53,8 @@ export default function Settings() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [formData, setFormData] = useState({
+    nickname: '',
+    profile_logo_url: '',
     full_name: '',
     avatar_url: '',
     location_zip: '',
@@ -69,6 +71,7 @@ export default function Settings() {
     community_bio: '',
     community_interests: ''
   });
+  const [uploadingLogo, setUploadingLogo] = useState(false);
 
   useEffect(() => {
     loadUser();
@@ -80,6 +83,8 @@ export default function Settings() {
       const userData = await base44.auth.me();
       setUser(userData);
       setFormData({
+        nickname: userData.nickname || '',
+        profile_logo_url: userData.profile_logo_url || '',
         full_name: userData.full_name || '',
         avatar_url: userData.avatar_url || '',
         location_zip: userData.location_zip || '',
@@ -119,6 +124,8 @@ export default function Settings() {
     setSaving(true);
     try {
       await base44.auth.updateMe({
+        nickname: formData.nickname,
+        profile_logo_url: formData.profile_logo_url,
         avatar_url: formData.avatar_url,
         location_zip: formData.location_zip,
         location_city: formData.location_city,
@@ -226,6 +233,76 @@ export default function Settings() {
             </CardHeader>
             <CardContent className="space-y-4">
               <div>
+                <Label htmlFor="nickname">Nickname / Display Name</Label>
+                <Input
+                  id="nickname"
+                  placeholder="Your public display name"
+                  value={formData.nickname}
+                  onChange={(e) => setFormData({ ...formData, nickname: e.target.value })}
+                  className="mt-2"
+                />
+                <p className="text-xs text-gray-500 mt-1">Shown on your public gardens and forum posts</p>
+              </div>
+              
+              <div>
+                <Label htmlFor="logo">Profile Logo</Label>
+                <div className="mt-2 space-y-3">
+                  {formData.profile_logo_url && (
+                    <div className="flex items-center gap-4 p-3 bg-gray-50 rounded-lg border">
+                      <img 
+                        src={formData.profile_logo_url} 
+                        alt="Logo preview" 
+                        className="w-16 h-16 rounded-full object-cover border-2 border-gray-200" 
+                      />
+                      <div className="flex-1">
+                        <p className="text-sm font-medium text-gray-900">Current Logo</p>
+                        <p className="text-xs text-gray-500">Appears on public garden cards</p>
+                      </div>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setFormData({ ...formData, profile_logo_url: '' })}
+                      >
+                        Remove
+                      </Button>
+                    </div>
+                  )}
+                  <Button
+                    type="button"
+                    variant="outline"
+                    disabled={uploadingLogo}
+                    onClick={() => document.getElementById('logo-upload-settings').click()}
+                    className="w-full"
+                  >
+                    {uploadingLogo ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Upload className="w-4 h-4 mr-2" />}
+                    {formData.profile_logo_url ? 'Replace Logo' : 'Upload Logo'}
+                  </Button>
+                  <input
+                    id="logo-upload-settings"
+                    type="file"
+                    accept="image/*"
+                    onChange={async (e) => {
+                      const file = e.target.files?.[0];
+                      if (!file) return;
+                      setUploadingLogo(true);
+                      try {
+                        const { file_url } = await base44.integrations.Core.UploadFile({ file });
+                        setFormData({ ...formData, profile_logo_url: file_url });
+                        toast.success('Logo uploaded! Click Save to apply.');
+                      } catch (error) {
+                        console.error('Error uploading logo:', error);
+                        toast.error('Failed to upload logo');
+                      } finally {
+                        setUploadingLogo(false);
+                      }
+                    }}
+                    className="hidden"
+                  />
+                </div>
+              </div>
+              
+              <div>
                 <Label htmlFor="name">Full Name</Label>
                 <Input
                   id="name"
@@ -242,17 +319,6 @@ export default function Settings() {
                   value={user?.email || ''}
                   disabled
                   className="mt-2 bg-gray-50"
-                />
-              </div>
-              <div>
-                <Label htmlFor="avatar">Avatar URL</Label>
-                <Input
-                  id="avatar"
-                  type="url"
-                  placeholder="https://example.com/photo.jpg"
-                  value={formData.avatar_url}
-                  onChange={(e) => setFormData({ ...formData, avatar_url: e.target.value })}
-                  className="mt-2"
                 />
               </div>
             </CardContent>

@@ -21,6 +21,8 @@ import { Skeleton } from '@/components/ui/skeleton';
 import AdBanner from '@/components/monetization/AdBanner';
 import { format, isToday, isTomorrow, addDays, isBefore } from 'date-fns';
 import { motion } from 'framer-motion';
+import { smartQuery } from '@/components/utils/smartQuery';
+import RateLimitBanner from '@/components/common/RateLimitBanner';
 
 export default function Dashboard() {
   const [user, setUser] = useState(null);
@@ -29,30 +31,47 @@ export default function Dashboard() {
   const [seedCount, setSeedCount] = useState(0);
   const [growListCount, setGrowListCount] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [rateLimitError, setRateLimitError] = useState(null);
+  const [retrying, setRetrying] = useState(false);
 
   useEffect(() => {
     loadDashboardData();
   }, []);
 
-  const loadDashboardData = async () => {
+  const loadDashboardData = async (isRetry = false) => {
+    if (isRetry) setRetrying(true);
+    
     try {
       const userData = await base44.auth.me();
+      setUser(userData);
+      
       const [gardensData, tasksData, seedsData, growListsData] = await Promise.all([
-        base44.entities.Garden.filter({ archived: false, created_by: userData.email }, '-updated_date', 5),
-        base44.entities.Task.filter({ status: 'open', created_by: userData.email }, 'due_date', 10),
-        base44.entities.SeedLot.filter({ is_wishlist: false, created_by: userData.email }),
-        base44.entities.GrowList.filter({ status: 'active', created_by: userData.email })
+        smartQuery(base44, 'Garden', { archived: false, created_by: userData.email }, '-updated_date', 5),
+        smartQuery(base44, 'Task', { status: 'open', created_by: userData.email }, 'due_date', 10),
+        smartQuery(base44, 'SeedLot', { is_wishlist: false, created_by: userData.email }),
+        smartQuery(base44, 'GrowList', { status: 'active', created_by: userData.email })
       ]);
 
-      setUser(userData);
       setGardens(gardensData);
       setTasks(tasksData);
       setSeedCount(seedsData.length);
       setGrowListCount(growListsData.length);
+      setRateLimitError(null); // Clear any rate limit errors on success
     } catch (error) {
       console.error('Error loading dashboard:', error);
+      
+      // Handle rate limit errors differently - don't clear existing data
+      if (error.code === 'RATE_LIMIT') {
+        setRateLimitError(error);
+        // Schedule automatic retry
+        setTimeout(() => {
+          if (rateLimitError) loadDashboardData(true);
+        }, error.retryInMs || 5000);
+      }
+      // For other errors, keep existing data visible (don't set to empty arrays)
     } finally {
       setLoading(false);
+      setRetrying(false);
     }
   };
 
@@ -109,6 +128,15 @@ export default function Dashboard() {
 
   return (
     <div className="space-y-6">
+      {/* Rate Limit Banner */}
+      {rateLimitError && (
+        <RateLimitBanner 
+          retryInMs={rateLimitError.retryInMs || 5000} 
+          onRetry={() => loadDashboardData(true)}
+          retrying={retrying}
+        />
+      )}
+      
       {/* Header */}
       <div>
         <h1 className="text-2xl lg:text-3xl font-bold text-gray-900">
@@ -215,7 +243,7 @@ export default function Dashboard() {
             {gardens.length === 0 ? (
               <div className="text-center py-8">
                 <Sprout className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-                <p className="text-gray-600 mb-4">No gardens yet</p>
+                <p className="text-gray-600 mb-4">{rateLimitError ? 'Loading...' : 'No gardens yet'}</p>
                 <Link to={createPageUrl('Gardens') + '?action=new'}>
                   <Button size="sm" className="bg-emerald-600 hover:bg-emerald-700">
                     <Plus className="w-4 h-4 mr-2" />

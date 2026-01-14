@@ -4,6 +4,7 @@ import AdminDataCleanup from './pages/AdminDataCleanup';
 import AdminDataImport from './pages/AdminDataImport';
 import AdminDataMaintenance from './pages/AdminDataMaintenance';
 import AdminDeduplicateVarieties from './pages/AdminDeduplicateVarieties';
+import AdminHub from './pages/AdminHub';
 import AdminLog from './pages/AdminLog';
 import BrowseCategoryConfig from './pages/BrowseCategoryConfig';
 import BrowseGardens from './pages/BrowseGardens';
@@ -59,7 +60,6 @@ import Users from './pages/Users';
 import VarietyReviewQueue from './pages/VarietyReviewQueue';
 import ViewVariety from './pages/ViewVariety';
 import ZoneMap from './pages/ZoneMap';
-import AdminHub from './pages/AdminHub';
 import __Layout from './Layout.jsx';
 
 
@@ -70,6 +70,7 @@ export const PAGES = {
     "AdminDataImport": AdminDataImport,
     "AdminDataMaintenance": AdminDataMaintenance,
     "AdminDeduplicateVarieties": AdminDeduplicateVarieties,
+    "AdminHub": AdminHub,
     "AdminLog": AdminLog,
     "BrowseCategoryConfig": BrowseCategoryConfig,
     "BrowseGardens": BrowseGardens,
@@ -125,7 +126,6 @@ export const PAGES = {
     "VarietyReviewQueue": VarietyReviewQueue,
     "ViewVariety": ViewVariety,
     "ZoneMap": ZoneMap,
-    "AdminHub": AdminHub,
 }
 
 export const pagesConfig = {
