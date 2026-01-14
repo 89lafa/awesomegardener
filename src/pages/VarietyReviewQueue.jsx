@@ -5,14 +5,14 @@ import {
   XCircle, 
   Loader2,
   AlertCircle,
-  ExternalLink
+  ExternalLink,
+  Sparkles
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
-import { Sparkles } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -38,7 +38,6 @@ export default function VarietyReviewQueue() {
   const [selectedSuggestion, setSelectedSuggestion] = useState(null);
   const [reviewNotes, setReviewNotes] = useState('');
   const [reviewing, setReviewing] = useState(false);
-  const [checkingAI, setCheckingAI] = useState({});
   const [checkingAI, setCheckingAI] = useState({});
 
   useEffect(() => {
@@ -128,45 +127,6 @@ export default function VarietyReviewQueue() {
       toast.error('Failed to review suggestion');
     } finally {
       setReviewing(false);
-    }
-  };
-
-  const handleAICheck = async (suggestion) => {
-    setCheckingAI({ ...checkingAI, [suggestion.id]: true });
-    try {
-      const textToCheck = `${suggestion.variety_name}\n${suggestion.grower_notes || ''}\n${suggestion.submitter_notes || ''}`;
-      const response = await base44.integrations.Core.InvokeLLM({
-        prompt: `Analyze this text for inappropriate content:
-
-"${textToCheck}"
-
-Check for profanity, offensive language, or hateful content. Return assessment.`,
-        response_json_schema: {
-          type: "object",
-          properties: {
-            is_appropriate: { type: "boolean" },
-            issues_found: { type: "array", items: { type: "string" } },
-            confidence: { type: "string" }
-          }
-        }
-      });
-
-      const aiResult = response.is_appropriate ? 'pass' : 'fail';
-      await base44.entities.VarietySuggestion.update(suggestion.id, {
-        ai_check_result: aiResult,
-        ai_check_details: JSON.stringify(response)
-      });
-
-      setSuggestions(suggestions.map(s => 
-        s.id === suggestion.id ? { ...s, ai_check_result: aiResult, ai_check_details: JSON.stringify(response) } : s
-      ));
-
-      toast.success(`AI Check: ${aiResult === 'pass' ? 'PASS ✓' : 'FAIL ✗'}`);
-    } catch (error) {
-      console.error('AI check error:', error);
-      toast.error('AI check failed');
-    } finally {
-      setCheckingAI({ ...checkingAI, [suggestion.id]: false });
     }
   };
 
@@ -322,25 +282,14 @@ Return PASS if safe, FAIL if inappropriate.`,
                 )}
 
                 {suggestion.ai_check_result && (
-                  <Badge className={suggestion.ai_check_result === 'pass' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}>
-                    AI Check: {suggestion.ai_check_result === 'pass' ? 'PASS ✓' : 'FAIL ✗'}
-                  </Badge>
-                )}
-
-                {!suggestion.ai_check_result && suggestion.status === 'pending' && (
-                  <Button
-                    onClick={() => handleAICheck(suggestion)}
-                    disabled={checkingAI[suggestion.id]}
-                    variant="outline"
-                    size="sm"
-                    className="gap-2"
-                  >
-                    {checkingAI[suggestion.id] ? (
-                      <><Loader2 className="w-3 h-3 animate-spin" />Checking...</>
-                    ) : (
-                      <><Sparkles className="w-3 h-3" />Run AI Check</>
+                  <div className="flex items-center gap-2">
+                    <Badge className={suggestion.ai_check_result === 'PASS' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}>
+                      AI Check: {suggestion.ai_check_result}
+                    </Badge>
+                    {suggestion.ai_check_reason && (
+                      <span className="text-xs text-gray-600">{suggestion.ai_check_reason}</span>
                     )}
-                  </Button>
+                  </div>
                 )}
 
                 {suggestion.source_url && (

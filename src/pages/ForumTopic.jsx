@@ -24,7 +24,6 @@ import ReactMarkdown from 'react-markdown';
 import PostCard from '@/components/forum/PostCard';
 import ErrorBoundary from '@/components/common/ErrorBoundary';
 import ReportButton from '@/components/forum/ReportButton';
-import ReportButton from '@/components/forum/ReportButton';
 
 export default function ForumTopic() {
   const [searchParams] = useSearchParams();
@@ -248,13 +247,6 @@ export default function ForumTopic() {
       {topic.body && (
         <Card>
           <CardContent className="p-6">
-            <div className="flex justify-end mb-2">
-              <ReportButton 
-                reportType="forum_topic" 
-                targetId={topic.id} 
-                targetPreview={topic.body} 
-              />
-            </div>
             <div className="prose prose-sm max-w-none">
               <ReactMarkdown>{topic.body}</ReactMarkdown>
             </div>
