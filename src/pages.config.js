@@ -60,6 +60,7 @@ import ImageSubmissions from './pages/ImageSubmissions';
 import IssuesLog from './pages/IssuesLog';
 import AdminDataMaintenance from './pages/AdminDataMaintenance';
 import AdminDataImport from './pages/AdminDataImport';
+import UserReports from './pages/UserReports';
 import __Layout from './Layout.jsx';
 
 
@@ -126,6 +127,7 @@ export const PAGES = {
     "IssuesLog": IssuesLog,
     "AdminDataMaintenance": AdminDataMaintenance,
     "AdminDataImport": AdminDataImport,
+    "UserReports": UserReports,
 }
 
 export const pagesConfig = {
