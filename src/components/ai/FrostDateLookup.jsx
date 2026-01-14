@@ -101,6 +101,24 @@ Return ONLY the structured data, no preamble.`,
           first_frost_date: result.firstFrost
         });
         
+        // Update user settings (check UserSettings entity for actual fields)
+        const userSettings = await base44.entities.UserSettings.filter({ user_email: user.email });
+        if (userSettings.length > 0) {
+          await base44.entities.UserSettings.update(userSettings[0].id, {
+            usda_zone: result.zone,
+            last_frost_date: result.lastFrost,
+            first_frost_date: result.firstFrost
+          });
+        } else {
+          await base44.entities.UserSettings.create({
+            user_email: user.email,
+            usda_zone: result.zone,
+            last_frost_date: result.lastFrost,
+            first_frost_date: result.firstFrost
+          });
+        }
+        
+        // Also update user profile for backward compatibility
         await base44.auth.updateMe({
           usda_zone: result.zone,
           last_frost_date: result.lastFrost,
