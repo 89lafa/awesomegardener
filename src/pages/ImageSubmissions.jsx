@@ -13,7 +13,6 @@ export default function ImageSubmissions() {
   const [varieties, setVarieties] = useState({});
   const [loading, setLoading] = useState(true);
   const [checkingAI, setCheckingAI] = useState({});
-  const [checkingAI, setCheckingAI] = useState({});
 
   useEffect(() => {
     loadData();
@@ -89,46 +88,6 @@ export default function ImageSubmissions() {
     } catch (error) {
       console.error('Error rejecting image:', error);
       toast.error('Failed to reject image');
-    }
-  };
-
-  const handleAICheck = async (submission) => {
-    setCheckingAI({ ...checkingAI, [submission.id]: true });
-    try {
-      const response = await base44.integrations.Core.InvokeLLM({
-        prompt: `Analyze this image for inappropriate content. Check for:
-1. Pornographic or sexual content
-2. Graphic violence
-3. Hateful symbols or imagery
-
-Return only a simple assessment.`,
-        file_urls: [submission.image_url],
-        response_json_schema: {
-          type: "object",
-          properties: {
-            is_appropriate: { type: "boolean" },
-            issues_found: { type: "array", items: { type: "string" } },
-            confidence: { type: "string", enum: ["high", "medium", "low"] }
-          }
-        }
-      });
-
-      const aiResult = response.is_appropriate ? 'pass' : 'fail';
-      await base44.entities.VarietyImageSubmission.update(submission.id, {
-        ai_check_result: aiResult,
-        ai_check_details: JSON.stringify(response)
-      });
-
-      setSubmissions(submissions.map(s => 
-        s.id === submission.id ? { ...s, ai_check_result: aiResult, ai_check_details: JSON.stringify(response) } : s
-      ));
-
-      toast.success(`AI Check: ${aiResult === 'pass' ? 'PASS ✓' : 'FAIL ✗'}`);
-    } catch (error) {
-      console.error('AI check error:', error);
-      toast.error('AI check failed');
-    } finally {
-      setCheckingAI({ ...checkingAI, [submission.id]: false });
     }
   };
 
