@@ -40,6 +40,9 @@ import CropEditModal from '@/components/calendar/CropEditModal';
 import DayTasksPanel from '@/components/calendar/DayTasksPanel';
 import CalendarGuide from '@/components/help/CalendarGuide';
 import { cn } from '@/lib/utils';
+import { smartQuery } from '@/components/utils/smartQuery';
+import RateLimitBanner from '@/components/common/RateLimitBanner';
+import BuildCalendarWizard from '@/components/ai/BuildCalendarWizard';
 
 export default function Calendar() {
   const [searchParams] = useSearchParams();
@@ -64,6 +67,9 @@ export default function Calendar() {
   const [sortBy, setSortBy] = useState('date');
   const [timelineMonths, setTimelineMonths] = useState(12);
   const [viewMode, setViewMode] = useState('calendar'); // 'calendar' or 'timeline'
+  const [rateLimitError, setRateLimitError] = useState(null);
+  const [retrying, setRetrying] = useState(false);
+  const [showAIWizard, setShowAIWizard] = useState(false);
   
   useEffect(() => {
     loadData();
@@ -105,16 +111,19 @@ export default function Calendar() {
     return startOfYear(new Date(season.year, 0, 1));
   };
   
-  const loadData = async () => {
+  const loadData = async (isRetry = false) => {
+    if (isRetry) setRetrying(true);
+    
     try {
       const userData = await base44.auth.me();
       setUser(userData);
       
-      const gardensData = await base44.entities.Garden.filter({ 
+      const gardensData = await smartQuery(base44, 'Garden', { 
         archived: false, 
         created_by: userData.email 
       }, '-updated_date');
       setGardens(gardensData);
+      setRateLimitError(null);
       
       // Load saved state
       const savedGardenId = localStorage.getItem('calendar_active_garden');
@@ -126,7 +135,7 @@ export default function Calendar() {
           : gardensData[0];
         setActiveGarden(garden);
         
-        const seasonsData = await base44.entities.GardenSeason.filter({ 
+        const seasonsData = await smartQuery(base44, 'GardenSeason', { 
           garden_id: garden.id 
         }, '-year');
         setSeasons(seasonsData);
@@ -145,8 +154,13 @@ export default function Calendar() {
       }
     } catch (error) {
       console.error('Error loading data:', error);
+      if (error.code === 'RATE_LIMIT') {
+        setRateLimitError(error);
+        setTimeout(() => loadData(true), error.retryInMs || 5000);
+      }
     } finally {
       setLoading(false);
+      setRetrying(false);
     }
   };
   
@@ -155,8 +169,8 @@ export default function Calendar() {
     
     try {
       const [plansData, tasksData] = await Promise.all([
-        base44.entities.CropPlan.filter({ garden_season_id: activeSeasonId }),
-        base44.entities.CropTask.filter({ garden_season_id: activeSeasonId }, 'start_date')
+        smartQuery(base44, 'CropPlan', { garden_season_id: activeSeasonId }),
+        smartQuery(base44, 'CropTask', { garden_season_id: activeSeasonId }, 'start_date')
       ]);
       console.log('[Calendar] Loaded', plansData.length, 'plans and', tasksData.length, 'tasks for season', activeSeasonId);
       console.log('[Calendar] Tasks breakdown:', {
@@ -310,7 +324,16 @@ export default function Calendar() {
   }
   
   return (
-    <div className="flex h-[calc(100vh-8rem)]">
+    <div className="flex h-[calc(100vh-8rem)] flex-col">
+      {rateLimitError && (
+        <RateLimitBanner 
+          retryInMs={rateLimitError.retryInMs || 5000} 
+          onRetry={() => loadData(true)}
+          retrying={retrying}
+        />
+      )}
+      
+      <div className="flex flex-1">
       {/* Left Sidebar - My Crops */}
       <div className="w-80 border-r bg-white flex flex-col">
         <div className="p-4 border-b space-y-2">
@@ -392,6 +415,14 @@ export default function Calendar() {
           >
             <Download className="w-4 h-4" />
             Import from Grow List
+          </Button>
+          <Button
+            onClick={() => setShowAIWizard(true)}
+            variant="outline"
+            size="sm"
+            className="w-full gap-2 bg-purple-50 hover:bg-purple-100 text-purple-700 border-purple-300"
+          >
+            ✨ AI Build My Calendar
           </Button>
           <Button
             onClick={() => setShowGuide(true)}
@@ -692,6 +723,17 @@ export default function Calendar() {
         open={showGuide}
         onOpenChange={setShowGuide}
       />
+      
+      {/* AI Calendar Builder */}
+      <BuildCalendarWizard
+        open={showAIWizard}
+        onOpenChange={setShowAIWizard}
+        onComplete={() => {
+          loadPlansAndTasks();
+          toast.success('AI crop plans created! Review them in the sidebar.');
+        }}
+      />
+      </div>
     </div>
   );
 }

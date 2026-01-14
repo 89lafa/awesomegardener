@@ -46,6 +46,8 @@ import {
 import { toast } from 'sonner';
 import { motion } from 'framer-motion';
 import AdBanner from '@/components/monetization/AdBanner';
+import PlantRecommendations from '@/components/ai/PlantRecommendations';
+import { Sparkles } from 'lucide-react';
 
 export default function GrowLists() {
   const [searchParams] = useSearchParams();
@@ -58,6 +60,7 @@ export default function GrowLists() {
   const [selectedList, setSelectedList] = useState(null);
   const [showNewDialog, setShowNewDialog] = useState(searchParams.get('action') === 'new');
   const [showAddItemDialog, setShowAddItemDialog] = useState(false);
+  const [showAIRecommendations, setShowAIRecommendations] = useState(false);
 
   const [seasons, setSeasons] = useState([]);
   const [newList, setNewList] = useState({
@@ -564,6 +567,12 @@ export default function GrowLists() {
             </DialogFooter>
           </DialogContent>
         </Dialog>
+        
+        <PlantRecommendations
+          open={showAIRecommendations}
+          onOpenChange={setShowAIRecommendations}
+          context="growlist"
+        />
       </div>
     );
   }
@@ -576,13 +585,23 @@ export default function GrowLists() {
           <h1 className="text-2xl lg:text-3xl font-bold text-gray-900">Grow Lists</h1>
           <p className="text-gray-600 mt-1">Plan what you want to grow each season</p>
         </div>
-        <Button 
-          onClick={() => setShowNewDialog(true)}
-          className="bg-emerald-600 hover:bg-emerald-700 gap-2"
-        >
-          <Plus className="w-4 h-4" />
-          New Grow List
-        </Button>
+        <div className="flex gap-2">
+          <Button 
+            onClick={() => setShowAIRecommendations(true)}
+            variant="outline"
+            className="gap-2 bg-purple-50 hover:bg-purple-100 text-purple-700 border-purple-300"
+          >
+            <Sparkles className="w-4 h-4" />
+            AI Suggest
+          </Button>
+          <Button 
+            onClick={() => setShowNewDialog(true)}
+            className="bg-emerald-600 hover:bg-emerald-700 gap-2"
+          >
+            <Plus className="w-4 h-4" />
+            New Grow List
+          </Button>
+        </div>
       </div>
 
       <AdBanner placement="top_banner" pageType="grow_list" />

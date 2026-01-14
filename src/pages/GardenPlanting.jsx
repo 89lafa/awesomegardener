@@ -37,6 +37,8 @@ import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import ErrorBoundary from '@/components/common/ErrorBoundary';
 import PlantingModal from '@/components/garden/PlantingModal';
+import { smartQuery } from '@/components/utils/smartQuery';
+import RateLimitBanner from '@/components/common/RateLimitBanner';
 
 function SpaceCard({ space, garden, activeSeason, seasonId }) {
   const [plantings, setPlantings] = useState([]);
@@ -269,6 +271,8 @@ export default function GardenPlanting() {
   const [syncResult, setSyncResult] = useState(null);
   const [spaceTypeFilter, setSpaceTypeFilter] = useState('all');
   const [showAddSeason, setShowAddSeason] = useState(false);
+  const [rateLimitError, setRateLimitError] = useState(null);
+  const [retrying, setRetrying] = useState(false);
   const [newSeasonData, setNewSeasonData] = useState({
     year: new Date().getFullYear() + 1,
     season: 'Spring'
@@ -293,17 +297,20 @@ export default function GardenPlanting() {
     }
   }, [activeSeason]);
 
-  const loadData = async () => {
+  const loadData = async (isRetry = false) => {
+    if (isRetry) setRetrying(true);
+    
     try {
       console.log('[GardenPlanting] Loading data...');
       const userData = await base44.auth.me();
-      const gardensData = await base44.entities.Garden.filter({ 
+      const gardensData = await smartQuery(base44, 'Garden', { 
         archived: false, 
         created_by: userData.email 
       }, '-updated_date');
       
       setUser(userData);
       setGardens(gardensData);
+      setRateLimitError(null);
 
       if (gardensData.length === 0) {
         setLoading(false);
@@ -326,9 +333,15 @@ export default function GardenPlanting() {
       setActiveGarden(selectedGarden);
     } catch (error) {
       console.error('Error loading data:', error);
-      toast.error('Failed to load gardens');
+      if (error.code === 'RATE_LIMIT') {
+        setRateLimitError(error);
+        setTimeout(() => loadData(true), error.retryInMs || 5000);
+      } else {
+        toast.error('Failed to load gardens');
+      }
     } finally {
       setLoading(false);
+      setRetrying(false);
     }
   };
   
@@ -606,6 +619,14 @@ export default function GardenPlanting() {
   return (
     <ErrorBoundary fallbackTitle="My Garden Error">
       <div className="space-y-6 max-w-7xl">
+        {rateLimitError && (
+          <RateLimitBanner 
+            retryInMs={rateLimitError.retryInMs || 5000} 
+            onRetry={() => loadData(true)}
+            retrying={retrying}
+          />
+        )}
+        
         {/* Header */}
         <div className="flex flex-col gap-4">
           <div className="flex items-center justify-between">

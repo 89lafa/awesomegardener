@@ -48,6 +48,8 @@ import { toast } from 'sonner';
 import { motion, AnimatePresence } from 'framer-motion';
 import AdBanner from '@/components/monetization/AdBanner';
 import ErrorBoundary from '@/components/common/ErrorBoundary';
+import PlantRecommendations from '@/components/ai/PlantRecommendations';
+import { Sparkles } from 'lucide-react';
 
 const CATEGORIES = ['vegetable', 'fruit', 'herb', 'flower', 'other'];
 
@@ -66,6 +68,7 @@ export default function PlantCatalog() {
   const [selectedType, setSelectedType] = useState(null);
   const [selectedVariety, setSelectedVariety] = useState(null);
   const [showAddVariety, setShowAddVariety] = useState(false);
+  const [showAIRecommendations, setShowAIRecommendations] = useState(false);
   const [newVariety, setNewVariety] = useState({
     variety_name: '',
     days_to_maturity: '',
@@ -692,9 +695,18 @@ export default function PlantCatalog() {
   return (
     <ErrorBoundary fallbackTitle="Plant Catalog Error" fallbackMessage="Unable to load plant catalog. Please refresh the page.">
       <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl lg:text-3xl font-bold text-gray-900">Plant Catalog</h1>
-        <p className="text-gray-600 mt-1">Browse plants and varieties for your garden</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl lg:text-3xl font-bold text-gray-900">Plant Catalog</h1>
+          <p className="text-gray-600 mt-1">Browse plants and varieties for your garden</p>
+        </div>
+        <Button
+          onClick={() => setShowAIRecommendations(true)}
+          className="gap-2 bg-purple-600 hover:bg-purple-700"
+        >
+          <Sparkles className="w-4 h-4" />
+          AI Recommendations
+        </Button>
       </div>
 
       {/* Search & Filter */}
@@ -834,6 +846,12 @@ export default function PlantCatalog() {
           <p className="text-gray-600">Try adjusting your search or filters</p>
         </div>
       )}
+      
+      <PlantRecommendations
+        open={showAIRecommendations}
+        onOpenChange={setShowAIRecommendations}
+        context="catalog"
+      />
       </div>
     </ErrorBoundary>
   );

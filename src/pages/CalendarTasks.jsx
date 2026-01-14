@@ -31,6 +31,8 @@ import { format, parseISO, isBefore, isAfter, addDays } from 'date-fns';
 import { cn } from '@/lib/utils';
 import DayTasksPanel from '@/components/calendar/DayTasksPanel';
 import { format as formatDate, getDaysInMonth, startOfMonth } from 'date-fns';
+import { smartQuery } from '@/components/utils/smartQuery';
+import RateLimitBanner from '@/components/common/RateLimitBanner';
 
 const TASK_TYPE_CONFIG = {
   seed: { icon: Sprout, color: 'bg-purple-100 text-purple-700 border-purple-200', label: 'Start Seeds' },
@@ -54,6 +56,8 @@ export default function CalendarTasks() {
   const [statusFilter, setStatusFilter] = useState('all');
   const [cropFilter, setCropFilter] = useState('all');
   const [viewMode, setViewMode] = useState('list'); // 'list' or 'calendar'
+  const [rateLimitError, setRateLimitError] = useState(null);
+  const [retrying, setRetrying] = useState(false);
 
   useEffect(() => {
     loadData();
@@ -71,16 +75,19 @@ export default function CalendarTasks() {
     }
   }, [activeSeason]);
 
-  const loadData = async () => {
+  const loadData = async (isRetry = false) => {
+    if (isRetry) setRetrying(true);
+    
     try {
       const userData = await base44.auth.me();
       setUser(userData);
 
-      const gardensData = await base44.entities.Garden.filter({ 
+      const gardensData = await smartQuery(base44, 'Garden', { 
         archived: false, 
         created_by: userData.email 
       }, '-updated_date');
       setGardens(gardensData);
+      setRateLimitError(null);
 
       if (gardensData.length > 0) {
         const savedGardenId = localStorage.getItem('tasks_active_garden');
@@ -91,8 +98,13 @@ export default function CalendarTasks() {
       }
     } catch (error) {
       console.error('Error loading data:', error);
+      if (error.code === 'RATE_LIMIT') {
+        setRateLimitError(error);
+        setTimeout(() => loadData(true), error.retryInMs || 5000);
+      }
     } finally {
       setLoading(false);
+      setRetrying(false);
     }
   };
 
@@ -125,8 +137,8 @@ export default function CalendarTasks() {
 
     try {
       const [cropsData, tasksData] = await Promise.all([
-        base44.entities.CropPlan.filter({ garden_season_id: activeSeason.id }),
-        base44.entities.CropTask.filter({ garden_season_id: activeSeason.id }, 'start_date')
+        smartQuery(base44, 'CropPlan', { garden_season_id: activeSeason.id }),
+        smartQuery(base44, 'CropTask', { garden_season_id: activeSeason.id }, 'start_date')
       ]);
 
       setCropPlans(cropsData);
@@ -294,6 +306,14 @@ export default function CalendarTasks() {
 
   return (
     <div className="space-y-6 max-w-6xl">
+      {rateLimitError && (
+        <RateLimitBanner 
+          retryInMs={rateLimitError.retryInMs || 5000} 
+          onRetry={() => loadData(true)}
+          retrying={retrying}
+        />
+      )}
+      
       <div className="flex flex-col gap-4">
         <div>
           <h1 className="text-2xl lg:text-3xl font-bold text-gray-900">Tasks</h1>
