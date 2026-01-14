@@ -102,9 +102,10 @@ export default function AddToStashModal({ open, onOpenChange, variety, plantType
         
         console.log('[AddToStashModal] Creating new PlantProfile');
         
-        // Create new PlantProfile from Variety data with null-safe defaults
+        // Create new PlantProfile from Variety data with CRITICAL linkage
         const newProfile = await base44.entities.PlantProfile.create({
           plant_type_id: variety.plant_type_id,
+          variety_id: variety.id, // CRITICAL: Link back to Variety for rich catalog data
           plant_subcategory_id: variety.plant_subcategory_id || null,
           plant_family: plantTypeData?.plant_family_id || null,
           common_name: plantTypeData?.common_name || plantType?.common_name || 'Unknown',
@@ -115,13 +116,14 @@ export default function AddToStashModal({ open, onOpenChange, variety, plantType
           height_in_min: variety.height_min || null,
           height_in_max: variety.height_max || null,
           sun_requirement: variety.sun_requirement || null,
+          water_requirement: variety.water_requirement || null,
           trellis_required: variety.trellis_required || false,
           container_friendly: variety.container_friendly || false,
           notes_public: variety.grower_notes || null,
           source_type: 'user_private'
         });
         profileId = newProfile.id;
-        console.log('[AddToStashModal] Created new PlantProfile:', profileId);
+        console.log('[AddToStashModal] Created PlantProfile with variety_id linkage:', { profileId, varietyId: variety.id });
       }
 
       // Check for duplicate SeedLots before creating
@@ -154,9 +156,13 @@ export default function AddToStashModal({ open, onOpenChange, variety, plantType
         is_wishlist: false
       };
       
-      console.log('[AddToStashModal] Creating SeedLot with:', seedLotData);
+      console.log('[AddToStashModal] Creating SeedLot with:', { ...seedLotData, profileId });
       const seedLot = await base44.entities.SeedLot.create(seedLotData);
-      console.log('[AddToStashModal] Created SeedLot:', seedLot.id);
+      console.log('[AddToStashModal] SeedLot created successfully:', { 
+        seedLotId: seedLot.id, 
+        plant_profile_id: seedLot.plant_profile_id,
+        linkage_chain: `SeedLot -> PlantProfile(${profileId}) -> Variety(${variety.id})`
+      });
 
       toast.success('Added to seed stash!');
       onOpenChange(false);
