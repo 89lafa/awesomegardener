@@ -471,6 +471,52 @@ export default function AdminDataMaintenance() {
         </CardContent>
       </Card>
 
+      {/* Carrot Subcategory Repair */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            🥕 Carrot Subcategory Repair (CRITICAL FIX)
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
+            <h3 className="font-semibold text-red-900 mb-2">🔴 Production Bug Fix - Run This First</h3>
+            <p className="text-sm text-red-800 mb-3">
+              This will activate canonical carrot subcategories, normalize all carrot variety data to use single plant_subcategory_id, and clear junk array values forever.
+            </p>
+            <div className="bg-white border border-red-200 rounded p-3 text-xs text-red-800 mb-3">
+              <div className="font-semibold mb-1">What this does:</div>
+              <ul className="space-y-1 list-disc ml-4">
+                <li>Activates 8 canonical Carrot subcategories (Storage, Color, Kuroda, Round, Chantenay, Danvers, Imperator, Nantes)</li>
+                <li>For each carrot variety: resolves plant_subcategory_code → plant_subcategory_id</li>
+                <li>Syncs arrays (plant_subcategory_ids, plant_subcategory_codes) from primary ID</li>
+                <li>Clears junk values like ["psc..."], "[]", or stringified JSON</li>
+                <li>Sets uncategorized varieties to empty arrays (shows as "Uncategorized" in UI)</li>
+              </ul>
+            </div>
+            <Button
+              onClick={async () => {
+                if (!confirm('This will normalize ALL carrot varieties. Continue?')) return;
+                try {
+                  toast.info('Starting carrot repair...');
+                  const result = await base44.functions.invoke('repairCarrotSubcategories');
+                  if (result.data.success) {
+                    toast.success(`✅ Carrot repair complete!\n\nActivated: ${result.data.results.step1_activated}\nNormalized: ${result.data.results.step2_normalized}\nJunk cleared: ${result.data.results.step3_cleared_junk}`);
+                  } else {
+                    toast.error('Repair failed');
+                  }
+                } catch (error) {
+                  toast.error('Error: ' + error.message);
+                }
+              }}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              🔧 Run Carrot Repair Now
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Subcategory Health & Fixes */}
       <Card>
         <CardHeader>
