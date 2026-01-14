@@ -321,6 +321,28 @@ Return PASS if safe, FAIL if inappropriate.`,
                   </div>
                 )}
 
+                {suggestion.ai_check_result && (
+                  <Badge className={suggestion.ai_check_result === 'pass' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}>
+                    AI Check: {suggestion.ai_check_result === 'pass' ? 'PASS ✓' : 'FAIL ✗'}
+                  </Badge>
+                )}
+
+                {!suggestion.ai_check_result && suggestion.status === 'pending' && (
+                  <Button
+                    onClick={() => handleAICheck(suggestion)}
+                    disabled={checkingAI[suggestion.id]}
+                    variant="outline"
+                    size="sm"
+                    className="gap-2"
+                  >
+                    {checkingAI[suggestion.id] ? (
+                      <><Loader2 className="w-3 h-3 animate-spin" />Checking...</>
+                    ) : (
+                      <><Sparkles className="w-3 h-3" />Run AI Check</>
+                    )}
+                  </Button>
+                )}
+
                 {suggestion.source_url && (
                   <a 
                     href={suggestion.source_url} 
