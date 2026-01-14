@@ -9,9 +9,10 @@ import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 
-export default function FrostDateLookup({ zip, city, state, currentZone, currentLastFrost, currentFirstFrost, onApply }) {
+export default function FrostDateLookup({ zip, city, state, currentZone, currentLastFrost, currentFirstFrost, onApply, autoSave = false }) {
   const [open, setOpen] = useState(false);
   const [analyzing, setAnalyzing] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [result, setResult] = useState(null);
   const [error, setError] = useState(null);
 
@@ -81,16 +82,67 @@ Return ONLY the structured data, no preamble.`,
     }
   };
 
-  const handleApply = () => {
+  const handleApply = async () => {
     if (!result) return;
-    onApply({
-      usda_zone: result.zone,
-      last_frost_date: result.lastFrost,
-      first_frost_date: result.firstFrost
+    
+    console.debug('[FROST_AI] apply_clicked', { 
+      zone: result.zone, 
+      lastFrost: result.lastFrost, 
+      firstFrost: result.firstFrost 
     });
-    setOpen(false);
-    setResult(null);
-    toast.success('Frost dates applied! Click Save Changes to persist.');
+    
+    if (autoSave) {
+      // Save directly to user profile (used in Onboarding/standalone contexts)
+      setSaving(true);
+      try {
+        console.debug('[FROST_AI] saving_to_fields', { 
+          usda_zone: result.zone,
+          last_frost_date: result.lastFrost,
+          first_frost_date: result.firstFrost
+        });
+        
+        await base44.auth.updateMe({
+          usda_zone: result.zone,
+          last_frost_date: result.lastFrost,
+          first_frost_date: result.firstFrost
+        });
+        
+        console.debug('[FROST_AI] save_success');
+        
+        // Force user state refresh
+        const refreshedUser = await base44.auth.me();
+        console.debug('[FROST_AI] user_state_refreshed', refreshedUser);
+        
+        toast.success('Profile updated with AI frost dates!');
+        setOpen(false);
+        setResult(null);
+        
+        // Trigger callback if provided (for parent component refresh)
+        if (onApply) {
+          onApply({
+            usda_zone: result.zone,
+            last_frost_date: result.lastFrost,
+            first_frost_date: result.firstFrost
+          });
+        }
+      } catch (err) {
+        console.error('[FROST_AI] save_error', err);
+        toast.error('Failed to save: ' + err.message);
+      } finally {
+        setSaving(false);
+      }
+    } else {
+      // Just update form state (used in Settings where user clicks Save button)
+      console.debug('[FROST_AI] updating_form_state_only (parent will save)');
+      onApply({
+        usda_zone: result.zone,
+        last_frost_date: result.lastFrost,
+        first_frost_date: result.firstFrost
+      });
+      setOpen(false);
+      setResult(null);
+      toast.success('Frost dates applied! Click Save Changes to persist.');
+    }
   };
 
   const handleClose = () => {
@@ -203,8 +255,19 @@ Return ONLY the structured data, no preamble.`,
               {result ? 'Cancel' : 'Close'}
             </Button>
             {result && (
-              <Button onClick={handleApply} className="bg-purple-600 hover:bg-purple-700">
-                Apply to Profile
+              <Button 
+                onClick={handleApply} 
+                disabled={saving}
+                className="bg-purple-600 hover:bg-purple-700"
+              >
+                {saving ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                    Saving...
+                  </>
+                ) : (
+                  autoSave ? 'Save to Profile' : 'Apply to Form'
+                )}
               </Button>
             )}
             {error && (

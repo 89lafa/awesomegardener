@@ -263,12 +263,16 @@ export default function Onboarding() {
                 currentZone={formData.usda_zone}
                 currentLastFrost={formData.last_frost_date}
                 currentFirstFrost={formData.first_frost_date}
-                onApply={(values) => {
+                autoSave={true}
+                onApply={async (values) => {
+                  console.debug('[Onboarding] AI_frost_applied_and_saved', values);
+                  // Reload user data to reflect the saved changes
+                  const refreshedUser = await base44.auth.me();
                   setFormData({ 
                     ...formData, 
-                    usda_zone: values.usda_zone || formData.usda_zone,
-                    last_frost_date: values.last_frost_date || formData.last_frost_date,
-                    first_frost_date: values.first_frost_date || formData.first_frost_date
+                    usda_zone: refreshedUser.usda_zone || values.usda_zone,
+                    last_frost_date: refreshedUser.last_frost_date || values.last_frost_date,
+                    first_frost_date: refreshedUser.first_frost_date || values.first_frost_date
                   });
                 }}
               />

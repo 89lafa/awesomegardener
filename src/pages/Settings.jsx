@@ -73,6 +73,7 @@ export default function Settings() {
     community_interests: ''
   });
   const [uploadingLogo, setUploadingLogo] = useState(false);
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
 
   useEffect(() => {
     loadUser();
@@ -82,6 +83,11 @@ export default function Settings() {
   const loadUser = async () => {
     try {
       const userData = await base44.auth.me();
+      console.debug('[Settings] user_loaded', { 
+        usda_zone: userData.usda_zone,
+        last_frost_date: userData.last_frost_date,
+        first_frost_date: userData.first_frost_date
+      });
       setUser(userData);
       setFormData({
         nickname: userData.nickname || '',
@@ -395,7 +401,9 @@ export default function Settings() {
                     currentZone={formData.usda_zone}
                     currentLastFrost={formData.last_frost_date}
                     currentFirstFrost={formData.first_frost_date}
+                    autoSave={false}
                     onApply={(values) => {
+                      console.debug('[Settings] AI_frost_dates_applied_to_form', values);
                       setFormData({ 
                         ...formData, 
                         usda_zone: values.usda_zone || formData.usda_zone,

@@ -8,9 +8,17 @@
 
 const cache = new Map();
 const inflightRequests = new Map();
-const TTL_MS = 15000; // 15 seconds
 
 const isDev = import.meta.env.DEV;
+
+// Dynamic TTL based on entity type (reference data cached longer)
+const REFERENCE_ENTITIES = ['PlantType', 'PlantFamily', 'PlantGroup', 'BrowseCategory', 'PlantSubCategory', 'Facet', 'FacetGroup'];
+const REFERENCE_TTL_MS = 5 * 60 * 1000; // 5 minutes for reference data
+const DEFAULT_TTL_MS = 30000; // 30 seconds for user data
+
+function getTTL(entityName) {
+  return REFERENCE_ENTITIES.includes(entityName) ? REFERENCE_TTL_MS : DEFAULT_TTL_MS;
+}
 
 function generateKey(entityName, query, sort, limit) {
   return `${entityName}:${JSON.stringify({ q: query, s: sort, l: limit })}`;
@@ -33,11 +41,12 @@ async function sleep(ms) {
 export async function smartQuery(base44, entityName, query = {}, sort = '', limit = 100) {
   const key = generateKey(entityName, query, sort, limit);
   const now = Date.now();
+  const ttl = getTTL(entityName);
   
   // Check cache first
   const cached = cache.get(key);
-  if (cached && (now - cached.timestamp) < TTL_MS) {
-    if (isDev) console.debug('[API] request_cache_hit', { entity: entityName, age: Math.round((now - cached.timestamp) / 1000) + 's' });
+  if (cached && (now - cached.timestamp) < ttl) {
+    if (isDev) console.debug('[API] cache_hit', { entity: entityName, age: Math.round((now - cached.timestamp) / 1000) + 's', ttl: ttl/1000 + 's' });
     return cached.data;
   }
   
@@ -54,11 +63,13 @@ export async function smartQuery(base44, entityName, query = {}, sort = '', limi
   try {
     const result = await requestPromise;
     
+    const ttl = getTTL(entityName);
+    
     // Cache successful result
     cache.set(key, { data: result, timestamp: now });
     
     // Schedule cache cleanup
-    setTimeout(() => cache.delete(key), TTL_MS);
+    setTimeout(() => cache.delete(key), ttl);
     
     return result;
   } finally {

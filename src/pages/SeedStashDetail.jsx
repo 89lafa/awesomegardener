@@ -56,6 +56,8 @@ export default function SeedStashDetail() {
   const [subCategory, setSubCategory] = useState(null);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
+  
+  console.debug('[SeedStashDetail] Component mounted, seedId=', seedId);
   const [settings, setSettings] = useState({ aging_threshold_years: 2, old_threshold_years: 3 });
   const [showEditProfile, setShowEditProfile] = useState(false);
   const [showEditLot, setShowEditLot] = useState(false);
@@ -99,6 +101,12 @@ export default function SeedStashDetail() {
       const seedLot = seedData[0];
       setSeed(seedLot);
       setLotForm(seedLot);
+      
+      console.debug('[SeedStashDetail] SeedLot loaded', { 
+        id: seedLot.id,
+        plant_profile_id: seedLot.plant_profile_id,
+        from_catalog: seedLot.from_catalog
+      });
 
       if (seedLot.plant_profile_id) {
         const profileData = await smartQuery(base44, 'PlantProfile', { id: seedLot.plant_profile_id });
@@ -107,30 +115,51 @@ export default function SeedStashDetail() {
           setProfile(prof);
           setProfileForm(prof);
           
+          console.debug('[SeedStashDetail] PlantProfile loaded', { 
+            id: prof.id,
+            variety_id: prof.variety_id,
+            plant_type_id: prof.plant_type_id
+          });
+          
           // Fetch linked Variety data for rich catalog info
           if (prof.variety_id) {
             const varietyData = await smartQuery(base44, 'Variety', { id: prof.variety_id });
             if (varietyData.length > 0) {
-              setVariety(varietyData[0]);
+              const varietyRecord = varietyData[0];
+              setVariety(varietyRecord);
+              console.debug('[SeedStashDetail] Variety loaded', { id: varietyRecord.id, name: varietyRecord.variety_name });
               
               // Fetch PlantType
-              if (varietyData[0].plant_type_id) {
-                const typeData = await smartQuery(base44, 'PlantType', { id: varietyData[0].plant_type_id });
-                if (typeData.length > 0) setPlantType(typeData[0]);
+              if (varietyRecord.plant_type_id) {
+                const typeData = await smartQuery(base44, 'PlantType', { id: varietyRecord.plant_type_id });
+                if (typeData.length > 0) {
+                  setPlantType(typeData[0]);
+                  console.debug('[SeedStashDetail] PlantType loaded', typeData[0].common_name);
+                }
               }
               
               // Fetch SubCategory
-              if (varietyData[0].plant_subcategory_id) {
-                const subcatData = await smartQuery(base44, 'PlantSubCategory', { id: varietyData[0].plant_subcategory_id });
-                if (subcatData.length > 0) setSubCategory(subcatData[0]);
+              if (varietyRecord.plant_subcategory_id) {
+                const subcatData = await smartQuery(base44, 'PlantSubCategory', { id: varietyRecord.plant_subcategory_id });
+                if (subcatData.length > 0) {
+                  setSubCategory(subcatData[0]);
+                  console.debug('[SeedStashDetail] SubCategory loaded', subcatData[0].name);
+                }
               }
             }
           } else if (prof.plant_type_id) {
             // Fallback: fetch PlantType directly from profile
             const typeData = await smartQuery(base44, 'PlantType', { id: prof.plant_type_id });
-            if (typeData.length > 0) setPlantType(typeData[0]);
+            if (typeData.length > 0) {
+              setPlantType(typeData[0]);
+              console.debug('[SeedStashDetail] PlantType loaded (fallback)', typeData[0].common_name);
+            }
           }
+        } else {
+          console.warn('[SeedStashDetail] PlantProfile not found for id', seedLot.plant_profile_id);
         }
+      } else {
+        console.warn('[SeedStashDetail] No plant_profile_id on SeedLot', seedLot.id);
       }
     } catch (error) {
       console.error('Error loading seed:', error);

@@ -50,6 +50,8 @@ import AdBanner from '@/components/monetization/AdBanner';
 import ErrorBoundary from '@/components/common/ErrorBoundary';
 import PlantRecommendations from '@/components/ai/PlantRecommendations';
 import { Sparkles } from 'lucide-react';
+import { smartQuery } from '@/components/utils/smartQuery';
+import RateLimitBanner from '@/components/common/RateLimitBanner';
 
 const CATEGORIES = ['vegetable', 'fruit', 'herb', 'flower', 'other'];
 
@@ -69,6 +71,8 @@ export default function PlantCatalog() {
   const [selectedVariety, setSelectedVariety] = useState(null);
   const [showAddVariety, setShowAddVariety] = useState(false);
   const [showAIRecommendations, setShowAIRecommendations] = useState(false);
+  const [rateLimitError, setRateLimitError] = useState(null);
+  const [retrying, setRetrying] = useState(false);
   const [newVariety, setNewVariety] = useState({
     variety_name: '',
     days_to_maturity: '',
@@ -96,12 +100,16 @@ export default function PlantCatalog() {
     }
   }, [selectedType]);
 
-  const loadPlantTypes = async () => {
+  const loadPlantTypes = async (isRetry = false) => {
+    if (isRetry) setRetrying(true);
+    
     try {
+      console.debug('[PlantCatalog] fetch_start PlantType');
       const [types, browseCats] = await Promise.all([
-        base44.entities.PlantType.list('common_name'),
-        base44.entities.BrowseCategory.filter({ is_active: true }, 'sort_order')
+        smartQuery(base44, 'PlantType', {}, 'common_name', 5000),
+        smartQuery(base44, 'BrowseCategory', { is_active: true }, 'sort_order')
       ]);
+      console.debug('[PlantCatalog] fetch_success PlantType count=', types.length);
       
       // Filter out inactive, invalid, and deprecated plant types
       const validTypes = types.filter(type => 
@@ -124,45 +132,52 @@ export default function PlantCatalog() {
       }));
       
       setPlantTypes([...browseTypes, ...validTypes]);
+      setRateLimitError(null);
     } catch (error) {
-      console.error('Error loading plant types:', error);
+      console.error('[PlantCatalog] Error loading plant types:', error);
+      if (error.code === 'RATE_LIMIT') {
+        console.debug('[PlantCatalog] 429 retryInMs=', error.retryInMs);
+        setRateLimitError(error);
+        setTimeout(() => loadPlantTypes(true), error.retryInMs || 5000);
+      }
     } finally {
       setLoading(false);
+      setRetrying(false);
     }
   };
 
   const loadAllVarieties = async () => {
     try {
-      const vars = await base44.entities.Variety.filter({ 
+      const vars = await smartQuery(base44, 'Variety', { 
         status: 'active'
       }, 'variety_name', 5000);
       setAllVarieties(vars);
     } catch (error) {
-      console.error('Error loading all varieties:', error);
+      console.error('[PlantCatalog] Error loading varieties:', error);
     }
   };
 
   const loadVarieties = async (typeId) => {
     try {
-      const vars = await base44.entities.Variety.filter({ 
+      const vars = await smartQuery(base44, 'Variety', { 
         plant_type_id: typeId,
         status: 'active'
       }, 'variety_name');
       setVarieties(vars);
     } catch (error) {
-      console.error('Error loading varieties:', error);
+      console.error('[PlantCatalog] Error loading varieties:', error);
     }
   };
 
   const loadSubCategories = async (typeId) => {
     try {
-      const subcats = await base44.entities.PlantSubCategory.filter({ 
+      const subcats = await smartQuery(base44, 'PlantSubCategory', { 
         plant_type_id: typeId,
         is_active: true
       }, 'sort_order');
       setSubCategories(subcats);
     } catch (error) {
-      console.error('Error loading subcategories:', error);
+      console.error('[PlantCatalog] Error loading subcategories:', error);
       setSubCategories([]);
     }
   };
@@ -695,6 +710,14 @@ export default function PlantCatalog() {
   return (
     <ErrorBoundary fallbackTitle="Plant Catalog Error" fallbackMessage="Unable to load plant catalog. Please refresh the page.">
       <div className="space-y-6">
+      {rateLimitError && (
+        <RateLimitBanner 
+          retryInMs={rateLimitError.retryInMs || 5000} 
+          onRetry={() => loadPlantTypes(true)}
+          retrying={retrying}
+        />
+      )}
+      
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl lg:text-3xl font-bold text-gray-900">Plant Catalog</h1>
