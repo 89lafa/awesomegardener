@@ -98,13 +98,18 @@ Return ONLY the structured data, no preamble.`,
         console.debug('[FROST_AI] saving_to_fields', { 
           usda_zone: result.zone,
           last_frost_date: result.lastFrost,
-          first_frost_date: result.firstFrost
+          first_frost_date: result.firstFrost,
+          last_frost_override: result.lastFrost,
+          first_frost_override: result.firstFrost
         });
         
         await base44.auth.updateMe({
           usda_zone: result.zone,
+          usda_zone_override: result.zone,
           last_frost_date: result.lastFrost,
-          first_frost_date: result.firstFrost
+          last_frost_override: result.lastFrost,
+          first_frost_date: result.firstFrost,
+          first_frost_override: result.firstFrost
         });
         
         console.debug('[FROST_AI] save_success');

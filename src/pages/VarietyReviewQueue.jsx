@@ -12,6 +12,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
+import { Sparkles } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -37,6 +38,7 @@ export default function VarietyReviewQueue() {
   const [selectedSuggestion, setSelectedSuggestion] = useState(null);
   const [reviewNotes, setReviewNotes] = useState('');
   const [reviewing, setReviewing] = useState(false);
+  const [checkingAI, setCheckingAI] = useState({});
   const [checkingAI, setCheckingAI] = useState({});
 
   useEffect(() => {
@@ -126,6 +128,45 @@ export default function VarietyReviewQueue() {
       toast.error('Failed to review suggestion');
     } finally {
       setReviewing(false);
+    }
+  };
+
+  const handleAICheck = async (suggestion) => {
+    setCheckingAI({ ...checkingAI, [suggestion.id]: true });
+    try {
+      const textToCheck = `${suggestion.variety_name}\n${suggestion.grower_notes || ''}\n${suggestion.submitter_notes || ''}`;
+      const response = await base44.integrations.Core.InvokeLLM({
+        prompt: `Analyze this text for inappropriate content:
+
+"${textToCheck}"
+
+Check for profanity, offensive language, or hateful content. Return assessment.`,
+        response_json_schema: {
+          type: "object",
+          properties: {
+            is_appropriate: { type: "boolean" },
+            issues_found: { type: "array", items: { type: "string" } },
+            confidence: { type: "string" }
+          }
+        }
+      });
+
+      const aiResult = response.is_appropriate ? 'pass' : 'fail';
+      await base44.entities.VarietySuggestion.update(suggestion.id, {
+        ai_check_result: aiResult,
+        ai_check_details: JSON.stringify(response)
+      });
+
+      setSuggestions(suggestions.map(s => 
+        s.id === suggestion.id ? { ...s, ai_check_result: aiResult, ai_check_details: JSON.stringify(response) } : s
+      ));
+
+      toast.success(`AI Check: ${aiResult === 'pass' ? 'PASS ✓' : 'FAIL ✗'}`);
+    } catch (error) {
+      console.error('AI check error:', error);
+      toast.error('AI check failed');
+    } finally {
+      setCheckingAI({ ...checkingAI, [suggestion.id]: false });
     }
   };
 
