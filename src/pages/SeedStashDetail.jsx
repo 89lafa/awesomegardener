@@ -44,12 +44,16 @@ import {
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import ShareButton from '@/components/common/ShareButton';
+import { smartQuery } from '@/components/utils/smartQuery';
 
 export default function SeedStashDetail() {
   const [searchParams] = useSearchParams();
   const seedId = searchParams.get('id');
   const [seed, setSeed] = useState(null);
   const [profile, setProfile] = useState(null);
+  const [variety, setVariety] = useState(null);
+  const [plantType, setPlantType] = useState(null);
+  const [subCategory, setSubCategory] = useState(null);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
   const [settings, setSettings] = useState({ aging_threshold_years: 2, old_threshold_years: 3 });
@@ -97,12 +101,35 @@ export default function SeedStashDetail() {
       setLotForm(seedLot);
 
       if (seedLot.plant_profile_id) {
-        const profileData = await base44.entities.PlantProfile.filter({
-          id: seedLot.plant_profile_id
-        });
+        const profileData = await smartQuery(base44, 'PlantProfile', { id: seedLot.plant_profile_id });
         if (profileData.length > 0) {
-          setProfile(profileData[0]);
-          setProfileForm(profileData[0]);
+          const prof = profileData[0];
+          setProfile(prof);
+          setProfileForm(prof);
+          
+          // Fetch linked Variety data for rich catalog info
+          if (prof.variety_id) {
+            const varietyData = await smartQuery(base44, 'Variety', { id: prof.variety_id });
+            if (varietyData.length > 0) {
+              setVariety(varietyData[0]);
+              
+              // Fetch PlantType
+              if (varietyData[0].plant_type_id) {
+                const typeData = await smartQuery(base44, 'PlantType', { id: varietyData[0].plant_type_id });
+                if (typeData.length > 0) setPlantType(typeData[0]);
+              }
+              
+              // Fetch SubCategory
+              if (varietyData[0].plant_subcategory_id) {
+                const subcatData = await smartQuery(base44, 'PlantSubCategory', { id: varietyData[0].plant_subcategory_id });
+                if (subcatData.length > 0) setSubCategory(subcatData[0]);
+              }
+            }
+          } else if (prof.plant_type_id) {
+            // Fallback: fetch PlantType directly from profile
+            const typeData = await smartQuery(base44, 'PlantType', { id: prof.plant_type_id });
+            if (typeData.length > 0) setPlantType(typeData[0]);
+          }
         }
       }
     } catch (error) {
@@ -227,8 +254,19 @@ export default function SeedStashDetail() {
   const ageStatus = getAgeStatus();
   const age = getAge();
 
+  const catalogData = variety || plantType || {};
+  const hasRichData = variety || plantType;
+
   return (
     <div className="space-y-6 max-w-6xl mx-auto">
+      {!hasRichData && seed && (
+        <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+          <p className="text-sm text-yellow-800">
+            <strong>Note:</strong> This seed isn't linked to a catalog variety yet. You can still track it here, but catalog details are unavailable.
+          </p>
+        </div>
+      )}
+      
       <div className="flex items-center gap-3">
         <Link to={createPageUrl('SeedStash')}>
           <Button variant="ghost">
@@ -259,6 +297,14 @@ export default function SeedStashDetail() {
           )}
         </div>
         <div className="flex gap-2">
+          {variety && (
+            <Link to={createPageUrl('ViewVariety') + `?id=${variety.id}`}>
+              <Button variant="outline" className="gap-2">
+                <ExternalLink className="w-4 h-4" />
+                View in Catalog
+              </Button>
+            </Link>
+          )}
           {profile && (
             <>
               <ShareButton
@@ -327,61 +373,143 @@ export default function SeedStashDetail() {
       )}
 
       <div className="grid lg:grid-cols-3 gap-6">
-        {/* Variety Attributes */}
-        {profile && (
+        {/* Catalog Data Section */}
+        {hasRichData && (
           <Card className="lg:col-span-2">
             <CardHeader className="flex flex-row items-center justify-between">
-              <CardTitle className="text-xl">Variety Profile</CardTitle>
+              <CardTitle className="text-xl">📖 Variety Profile {variety && <span className="text-sm font-normal text-gray-500">(Public Catalog Data)</span>}</CardTitle>
               <Button variant="outline" size="sm" onClick={() => setShowEditProfile(true)}>
                 <Edit className="w-4 h-4 mr-2" />
                 Edit Attributes
               </Button>
             </CardHeader>
             <CardContent className="space-y-6">
+              {/* Variety Info Banner */}
+              {variety && (
+                <div className="p-4 bg-gradient-to-r from-emerald-50 to-green-50 rounded-lg border border-emerald-200">
+                  <div className="grid sm:grid-cols-2 gap-4 text-sm">
+                    {variety.variety_name && (
+                      <div>
+                        <span className="text-emerald-700 font-medium">Variety:</span>
+                        <span className="ml-2 text-emerald-900 font-semibold">{variety.variety_name}</span>
+                      </div>
+                    )}
+                    {plantType?.common_name && (
+                      <div>
+                        <span className="text-emerald-700 font-medium">Type:</span>
+                        <span className="ml-2 text-emerald-900">{plantType.common_name}</span>
+                      </div>
+                    )}
+                    {subCategory?.name && (
+                      <div>
+                        <span className="text-emerald-700 font-medium">Category:</span>
+                        <span className="ml-2 text-emerald-900">{subCategory.name}</span>
+                      </div>
+                    )}
+                    {variety.seed_line_type && (
+                      <div>
+                        <span className="text-emerald-700 font-medium">Seed Type:</span>
+                        <span className="ml-2 text-emerald-900 capitalize">{variety.seed_line_type.replace(/_/g, ' ')}</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+              
               {/* Key Growing Stats - Hero Section */}
               <div className="grid sm:grid-cols-2 md:grid-cols-4 gap-3">
-                {profile.days_to_maturity_seed && (
+                {(profile?.days_to_maturity_seed || variety?.days_to_maturity) && (
                   <div className="flex flex-col items-center p-4 bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl border border-blue-200">
                     <Calendar className="w-6 h-6 text-blue-600 mb-2" />
                     <p className="text-xs text-blue-700 mb-1">Days to Maturity</p>
-                    <p className="text-2xl font-bold text-blue-900">{profile.days_to_maturity_seed}</p>
+                    <p className="text-2xl font-bold text-blue-900">{profile?.days_to_maturity_seed || variety?.days_to_maturity}</p>
                   </div>
                 )}
-                {profile.sun_requirement && (
+                {(profile?.sun_requirement || variety?.sun_requirement) && (
                   <div className="flex flex-col items-center p-4 bg-gradient-to-br from-yellow-50 to-amber-100 rounded-xl border border-yellow-200">
                     <Sun className="w-6 h-6 text-yellow-600 mb-2" />
                     <p className="text-xs text-yellow-700 mb-1">Sun Exposure</p>
                     <p className="text-sm font-bold text-yellow-900 capitalize">
-                      {profile.sun_requirement.replace(/_/g, ' ')}
+                      {(profile?.sun_requirement || variety?.sun_requirement).replace(/_/g, ' ')}
                     </p>
                   </div>
                 )}
-                {(profile.spacing_in_min || profile.spacing_in_max) && (
+                {(profile?.spacing_in_min || profile?.spacing_in_max || variety?.spacing_recommended) && (
                   <div className="flex flex-col items-center p-4 bg-gradient-to-br from-green-50 to-emerald-100 rounded-xl border border-green-200">
                     <Ruler className="w-6 h-6 text-green-600 mb-2" />
                     <p className="text-xs text-green-700 mb-1">Spacing</p>
                     <p className="text-lg font-bold text-green-900">
-                      {profile.spacing_in_min && profile.spacing_in_max
+                      {profile?.spacing_in_min && profile?.spacing_in_max
                         ? `${profile.spacing_in_min}-${profile.spacing_in_max}"`
-                        : `${profile.spacing_in_min || profile.spacing_in_max}"`}
+                        : variety?.spacing_recommended 
+                          ? `${variety.spacing_recommended}"`
+                          : `${profile?.spacing_in_min || profile?.spacing_in_max}"`}
                     </p>
                   </div>
                 )}
-                {profile.water_requirement && (
+                {(profile?.water_requirement || variety?.water_requirement) && (
                   <div className="flex flex-col items-center p-4 bg-gradient-to-br from-cyan-50 to-blue-100 rounded-xl border border-cyan-200">
                     <Droplets className="w-6 h-6 text-cyan-600 mb-2" />
                     <p className="text-xs text-cyan-700 mb-1">Water Needs</p>
                     <p className="text-sm font-bold text-cyan-900 capitalize">
-                      {profile.water_requirement}
+                      {profile?.water_requirement || variety?.water_requirement}
                     </p>
                   </div>
                 )}
               </div>
 
+              {/* Extended Variety Data from Catalog */}
+              {variety && (
+                <div className="space-y-4">
+                  {variety.description && (
+                    <div className="p-4 bg-gray-50 rounded-lg border">
+                      <p className="font-semibold text-gray-900 mb-2">Description</p>
+                      <p className="text-gray-700 leading-relaxed">{variety.description}</p>
+                    </div>
+                  )}
+                  
+                  {(variety.flavor_profile || variety.uses || variety.fruit_color || variety.growth_habit) && (
+                    <div className="grid sm:grid-cols-2 gap-4">
+                      {variety.flavor_profile && (
+                        <div className="p-3 bg-purple-50 rounded-lg border border-purple-200">
+                          <p className="text-xs font-semibold text-purple-700 mb-1">Flavor</p>
+                          <p className="text-sm text-purple-900">{variety.flavor_profile}</p>
+                        </div>
+                      )}
+                      {variety.uses && (
+                        <div className="p-3 bg-blue-50 rounded-lg border border-blue-200">
+                          <p className="text-xs font-semibold text-blue-700 mb-1">Uses</p>
+                          <p className="text-sm text-blue-900">{variety.uses}</p>
+                        </div>
+                      )}
+                      {variety.fruit_color && (
+                        <div className="p-3 bg-pink-50 rounded-lg border border-pink-200">
+                          <p className="text-xs font-semibold text-pink-700 mb-1">Fruit Color</p>
+                          <p className="text-sm text-pink-900">{variety.fruit_color}</p>
+                        </div>
+                      )}
+                      {variety.growth_habit && (
+                        <div className="p-3 bg-green-50 rounded-lg border border-green-200">
+                          <p className="text-xs font-semibold text-green-700 mb-1">Growth Habit</p>
+                          <p className="text-sm text-green-900 capitalize">{variety.growth_habit}</p>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                  
+                  {variety.breeder_or_origin && (
+                    <div className="p-4 bg-amber-50 rounded-lg border border-amber-200">
+                      <p className="text-xs font-semibold text-amber-700 mb-1">Breeder / Origin</p>
+                      <p className="text-sm text-amber-900">{variety.breeder_or_origin}</p>
+                    </div>
+                  )}
+                </div>
+              )}
+
               {/* Additional Details */}
-              {(profile.height_in_min || profile.height_in_max || (profile.heat_scoville_min || profile.heat_scoville_max)) && (
+              {(profile?.height_in_min || profile?.height_in_max || variety?.scoville_min || variety?.scoville_max) && (
                 <div className="grid sm:grid-cols-2 gap-4">
-                  {(profile.height_in_min || profile.height_in_max) && (
+                  {(profile?.height_in_min || profile?.height_in_max) && (
                     <div className="p-4 bg-gray-50 rounded-lg border">
                       <div className="flex items-center gap-2 mb-2">
                         <TrendingUp className="w-5 h-5 text-gray-600" />
@@ -394,16 +522,16 @@ export default function SeedStashDetail() {
                       </p>
                     </div>
                   )}
-                  {(profile.heat_scoville_min || profile.heat_scoville_max) && (
+                  {(variety?.scoville_min || variety?.scoville_max) && (
                     <div className="p-4 bg-gradient-to-br from-red-50 to-orange-50 rounded-lg border border-red-200">
                       <div className="flex items-center gap-2 mb-2">
                         <div className="text-2xl">🌶️</div>
                         <p className="font-semibold text-red-900">Heat Level</p>
                       </div>
                       <p className="text-lg font-bold text-red-700">
-                        {profile.heat_scoville_min && profile.heat_scoville_max
-                          ? `${profile.heat_scoville_min.toLocaleString()}-${profile.heat_scoville_max.toLocaleString()}`
-                          : (profile.heat_scoville_min || profile.heat_scoville_max).toLocaleString()} SHU
+                        {variety.scoville_min && variety.scoville_max
+                          ? `${variety.scoville_min.toLocaleString()}-${variety.scoville_max.toLocaleString()}`
+                          : (variety.scoville_min || variety.scoville_max).toLocaleString()} SHU
                       </p>
                     </div>
                   )}
@@ -411,17 +539,17 @@ export default function SeedStashDetail() {
               )}
 
               {/* Growing Characteristics */}
-              {(profile.container_friendly || profile.trellis_required || profile.perennial) && (
+              {(profile?.container_friendly || profile?.trellis_required || profile?.perennial || variety?.container_friendly || variety?.trellis_required) && (
                 <div>
                   <p className="text-sm font-semibold text-gray-700 mb-3">Growing Characteristics</p>
                   <div className="flex flex-wrap gap-2">
-                    {profile.container_friendly && (
+                    {(profile?.container_friendly || variety?.container_friendly) && (
                       <Badge className="bg-blue-100 text-blue-800 px-3 py-1">📦 Container Friendly</Badge>
                     )}
-                    {profile.trellis_required && (
+                    {(profile?.trellis_required || variety?.trellis_required) && (
                       <Badge className="bg-green-100 text-green-800 px-3 py-1">🌿 Needs Trellis</Badge>
                     )}
-                    {profile.perennial && (
+                    {(profile?.perennial || plantType?.is_perennial) && (
                       <Badge className="bg-purple-100 text-purple-800 px-3 py-1">🔄 Perennial</Badge>
                     )}
                   </div>
@@ -429,13 +557,13 @@ export default function SeedStashDetail() {
               )}
 
               {/* Traits */}
-              {profile.traits && Array.isArray(profile.traits) && profile.traits.length > 0 && (
+              {((profile?.traits && Array.isArray(profile.traits) && profile.traits.length > 0) || variety?.traits) && (
                 <div className="p-4 bg-emerald-50 rounded-lg border border-emerald-200">
                   <p className="font-semibold text-emerald-900 mb-3">Variety Traits</p>
                   <div className="flex flex-wrap gap-2">
-                    {profile.traits.map((trait, idx) => (
+                    {(profile?.traits || []).map((trait, idx) => (
                       <Badge key={idx} className="bg-emerald-600 text-white px-3 py-1">
-                        {trait}
+                        {typeof trait === 'string' ? trait : trait.name || trait}
                       </Badge>
                     ))}
                   </div>
@@ -443,10 +571,10 @@ export default function SeedStashDetail() {
               )}
 
               {/* Growing Notes */}
-              {profile.notes_public && (
+              {(profile?.notes_public || variety?.grower_notes) && (
                 <div className="p-4 bg-gray-50 rounded-lg border">
                   <p className="font-semibold text-gray-900 mb-2">Growing Notes</p>
-                  <p className="text-gray-700 whitespace-pre-wrap leading-relaxed">{profile.notes_public}</p>
+                  <p className="text-gray-700 whitespace-pre-wrap leading-relaxed">{profile?.notes_public || variety?.grower_notes}</p>
                 </div>
               )}
             </CardContent>
@@ -456,7 +584,7 @@ export default function SeedStashDetail() {
         {/* Lot Details Card */}
         <Card className="bg-gradient-to-br from-white to-gray-50">
           <CardHeader className="flex flex-row items-center justify-between border-b">
-            <CardTitle className="text-xl">My Stash Info</CardTitle>
+            <CardTitle className="text-xl">🔒 My Stash Info <span className="text-sm font-normal text-gray-500">(Private to me)</span></CardTitle>
             <Button variant="outline" size="sm" onClick={() => setShowEditLot(true)}>
               <Edit className="w-4 h-4 mr-2" />
               Edit

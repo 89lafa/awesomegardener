@@ -64,6 +64,8 @@ import { cn } from '@/lib/utils';
 import AddCustomSeedDialog from '@/components/seedstash/AddCustomSeedDialog';
 import AddFromCatalogDialog from '@/components/seedstash/AddFromCatalogDialog';
 import ImportFromURLDialog from '@/components/seedstash/ImportFromURLDialog';
+import { smartQuery } from '@/components/utils/smartQuery';
+import RateLimitBanner from '@/components/common/RateLimitBanner';
 
 const TAGS = [
   { value: 'favorite', label: 'Favorite', icon: Star, color: 'text-yellow-500' },
@@ -105,6 +107,8 @@ export default function SeedStash() {
   const [showColumnChooser, setShowColumnChooser] = useState(false);
   const [settings, setSettings] = useState({ aging_threshold_years: 2, old_threshold_years: 3 });
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const [rateLimitError, setRateLimitError] = useState(null);
+  const [retrying, setRetrying] = useState(false);
 
   const [formData, setFormData] = useState({
     plant_profile_id: '',
@@ -179,14 +183,16 @@ export default function SeedStash() {
     return { status: 'OK', color: 'green', icon: null };
   };
 
-  const loadData = async () => {
+  const loadData = async (isRetry = false) => {
+    if (isRetry) setRetrying(true);
+    
     try {
       console.log('[SeedStash] Loading data...');
       const user = await base44.auth.me();
       const [seedsData, profilesData, typesData] = await Promise.all([
-        base44.entities.SeedLot.filter({ created_by: user.email }, '-created_date'),
-        base44.entities.PlantProfile.list('variety_name', 500),
-        base44.entities.PlantType.list('common_name')
+        smartQuery(base44, 'SeedLot', { created_by: user.email }, '-created_date'),
+        smartQuery(base44, 'PlantProfile', {}, 'variety_name', 500),
+        smartQuery(base44, 'PlantType', {}, 'common_name')
       ]);
       
       console.log('[SeedStash] Loaded:', seedsData.length, 'lots,', profilesData.length, 'profiles');
@@ -198,17 +204,16 @@ export default function SeedStash() {
         profilesMap[p.id] = p;
       });
       setProfiles(profilesMap);
-      
-      // Log any lots without profiles
-      seedsData.forEach(lot => {
-        if (lot.plant_profile_id && !profilesMap[lot.plant_profile_id]) {
-          console.warn('[SeedStash] SeedLot missing profile:', lot.id, 'profile_id:', lot.plant_profile_id);
-        }
-      });
+      setRateLimitError(null);
     } catch (error) {
       console.error('Error loading seed stash:', error);
+      if (error.code === 'RATE_LIMIT') {
+        setRateLimitError(error);
+        setTimeout(() => loadData(true), error.retryInMs || 5000);
+      }
     } finally {
       setLoading(false);
+      setRetrying(false);
     }
   };
 
@@ -511,6 +516,14 @@ export default function SeedStash() {
 
   return (
     <div className="space-y-6">
+      {rateLimitError && (
+        <RateLimitBanner 
+          retryInMs={rateLimitError.retryInMs || 5000} 
+          onRetry={() => loadData(true)}
+          retrying={retrying}
+        />
+      )}
+      
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-2xl lg:text-3xl font-bold text-gray-900">Seed Stash</h1>
