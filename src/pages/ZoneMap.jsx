@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
-import { MapPin, Loader2, Save } from 'lucide-react';
+import { MapPin, Loader2, Save, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -201,26 +201,18 @@ export default function ZoneMap() {
               Let AI automatically detect your USDA zone and frost dates based on your location.
             </p>
             <FrostDateLookup
-              zip={user?.location_zip}
-              city={user?.location_city}
-              state={user?.location_state}
-              currentZone={selectedZone}
+              zip={formData.location_zip}
+              city={formData.location_city}
+              state={formData.location_state}
+              currentZone={formData.usda_zone}
               currentLastFrost={user?.last_frost_date}
               currentFirstFrost={user?.first_frost_date}
-              onApply={async (values) => {
-                try {
-                  await base44.auth.updateMe({
-                    usda_zone: values.usda_zone,
-                    last_frost_date: values.last_frost_date,
-                    first_frost_date: values.first_frost_date
-                  });
-                  setSelectedZone(values.usda_zone);
-                  setUser({ ...user, ...values });
-                  toast.success('Zone and frost dates updated!');
-                } catch (error) {
-                  console.error('Error saving:', error);
-                  toast.error('Failed to save');
-                }
+              onApply={(values) => {
+                setFormData({ 
+                  ...formData, 
+                  usda_zone: values.usda_zone || formData.usda_zone
+                });
+                toast.success('Zone and frost dates applied! Click Save Zone Settings to persist.');
               }}
             />
             <p className="text-xs text-purple-600 mt-2">
