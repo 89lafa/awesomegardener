@@ -37,6 +37,7 @@ const ADMIN_TOOLS = {
     { name: 'Data Cleanup', route: 'AdminDataCleanup', icon: Trash2, description: 'Remove invalid records and orphaned data' },
   ],
   'Community Moderation': [
+    { name: 'User Reports', route: 'UserReports', icon: Shield, description: 'Review reported content from users' },
     { name: 'Variety Reviews', route: 'VarietyReviewQueue', icon: Shield, description: 'Review user-submitted variety reviews' },
     { name: 'Change Requests', route: 'ChangeRequests', icon: Edit, description: 'Review user requests to edit varieties' },
     { name: 'Image Submissions', route: 'ImageSubmissions', icon: ImageIcon, description: 'Review user-submitted variety photos' },
