@@ -10,7 +10,6 @@ import { cn } from '@/lib/utils';
 import ReactMarkdown from 'react-markdown';
 import ReportButton from '@/components/forum/ReportButton';
 import { toast } from 'sonner';
-import ReportButton from '@/components/forum/ReportButton';
 
 export default function PostCard({ post, user, onVote, onDelete, userVote, showSignature = true }) {
   console.debug('[PostCard] Rendering post', { 
@@ -126,24 +125,17 @@ export default function PostCard({ post, user, onVote, onDelete, userVote, showS
                   targetId={post.id}
                   targetPreview={post.body}
                 />
-                <div className="flex gap-1">
-                  <ReportButton 
-                    reportType="forum_post" 
-                    targetId={post.id} 
-                    targetPreview={post.body} 
-                  />
-                  {canDelete && (
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={handleDelete}
-                      disabled={deleting}
-                      className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </Button>
-                  )}
-                </div>
+                {canDelete && (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={handleDelete}
+                    disabled={deleting}
+                    className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </Button>
+                )}
               </div>
             </div>
 
