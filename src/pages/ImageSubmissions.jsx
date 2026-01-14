@@ -3,7 +3,7 @@ import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, Check, X } from 'lucide-react';
+import { Loader2, Check, X, Sparkles, AlertTriangle } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 
@@ -12,6 +12,7 @@ export default function ImageSubmissions() {
   const [submissions, setSubmissions] = useState([]);
   const [varieties, setVarieties] = useState({});
   const [loading, setLoading] = useState(true);
+  const [checkingAI, setCheckingAI] = useState({});
 
   useEffect(() => {
     loadData();
@@ -90,6 +91,47 @@ export default function ImageSubmissions() {
     }
   };
 
+  const handleAICheck = async (submission) => {
+    setCheckingAI({ ...checkingAI, [submission.id]: true });
+    try {
+      const result = await base44.integrations.Core.InvokeLLM({
+        prompt: `You are a content moderation AI. Analyze this image for inappropriate content:
+        
+- Pornographic or sexual content
+- Graphic violence
+- Hateful symbols or imagery
+
+Return PASS if the image is safe, FAIL if it contains inappropriate content.`,
+        file_urls: [submission.image_url],
+        response_json_schema: {
+          type: "object",
+          properties: {
+            result: { type: "string", enum: ["PASS", "FAIL"] },
+            reason: { type: "string" }
+          }
+        }
+      });
+
+      await base44.entities.VarietyImageSubmission.update(submission.id, {
+        ai_check_result: result.result,
+        ai_check_reason: result.reason
+      });
+
+      setSubmissions(submissions.map(s => 
+        s.id === submission.id 
+          ? { ...s, ai_check_result: result.result, ai_check_reason: result.reason }
+          : s
+      ));
+
+      toast.success(`AI Check: ${result.result}`);
+    } catch (error) {
+      console.error('Error running AI check:', error);
+      toast.error('AI check failed');
+    } finally {
+      setCheckingAI({ ...checkingAI, [submission.id]: false });
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -134,28 +176,51 @@ export default function ImageSubmissions() {
                     className="w-full h-64 object-cover rounded-lg"
                   />
                   
-                  {submission.ownership_confirmed && (
-                    <Badge className="bg-green-100 text-green-800">
-                      Ownership Confirmed
-                    </Badge>
-                  )}
+                  <div className="flex gap-2 flex-wrap">
+                    {submission.ownership_confirmed && (
+                      <Badge className="bg-green-100 text-green-800">
+                        Ownership Confirmed
+                      </Badge>
+                    )}
+                    {submission.ai_check_result && (
+                      <Badge className={submission.ai_check_result === 'PASS' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}>
+                        AI: {submission.ai_check_result}
+                      </Badge>
+                    )}
+                  </div>
 
-                  <div className="flex gap-2">
-                    <Button
-                      onClick={() => handleApprove(submission)}
-                      className="flex-1 bg-green-600 hover:bg-green-700 gap-2"
-                    >
-                      <Check className="w-4 h-4" />
-                      Approve
-                    </Button>
-                    <Button
-                      onClick={() => handleReject(submission)}
-                      variant="outline"
-                      className="flex-1 gap-2 text-red-600 hover:text-red-700"
-                    >
-                      <X className="w-4 h-4" />
-                      Reject
-                    </Button>
+                  <div className="space-y-2">
+                    {!submission.ai_check_result && (
+                      <Button
+                        onClick={() => handleAICheck(submission)}
+                        disabled={checkingAI[submission.id]}
+                        variant="outline"
+                        className="w-full gap-2 bg-purple-50 hover:bg-purple-100 text-purple-700 border-purple-300"
+                      >
+                        {checkingAI[submission.id] ? (
+                          <><Loader2 className="w-4 h-4 animate-spin" />Checking...</>
+                        ) : (
+                          <><Sparkles className="w-4 h-4" />Run AI Check</>
+                        )}
+                      </Button>
+                    )}
+                    <div className="flex gap-2">
+                      <Button
+                        onClick={() => handleApprove(submission)}
+                        className="flex-1 bg-green-600 hover:bg-green-700 gap-2"
+                      >
+                        <Check className="w-4 h-4" />
+                        Approve
+                      </Button>
+                      <Button
+                        onClick={() => handleReject(submission)}
+                        variant="outline"
+                        className="flex-1 gap-2 text-red-600 hover:text-red-700"
+                      >
+                        <X className="w-4 h-4" />
+                        Reject
+                      </Button>
+                    </div>
                   </div>
                 </CardContent>
               </Card>

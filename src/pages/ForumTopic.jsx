@@ -23,6 +23,7 @@ import { cn } from '@/lib/utils';
 import ReactMarkdown from 'react-markdown';
 import PostCard from '@/components/forum/PostCard';
 import ErrorBoundary from '@/components/common/ErrorBoundary';
+import ReportButton from '@/components/forum/ReportButton';
 
 export default function ForumTopic() {
   const [searchParams] = useSearchParams();
@@ -228,6 +229,11 @@ export default function ForumTopic() {
             {topic.pinned && <Pin className="w-4 h-4 text-emerald-600" />}
             {isLocked && <Lock className="w-4 h-4 text-gray-400" />}
             <h1 className="text-xl lg:text-2xl font-bold text-gray-900">{topic.title}</h1>
+            <ReportButton
+              reportType="forum_topic"
+              targetId={topic.id}
+              targetPreview={topic.title + ' - ' + (topic.body || '')}
+            />
           </div>
           <div className="flex items-center gap-3 text-sm text-gray-500">
             <span>by {topic.created_by}</span>

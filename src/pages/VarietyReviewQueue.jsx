@@ -37,6 +37,7 @@ export default function VarietyReviewQueue() {
   const [selectedSuggestion, setSelectedSuggestion] = useState(null);
   const [reviewNotes, setReviewNotes] = useState('');
   const [reviewing, setReviewing] = useState(false);
+  const [checkingAI, setCheckingAI] = useState({});
 
   useEffect(() => {
     checkAccess();
@@ -125,6 +126,51 @@ export default function VarietyReviewQueue() {
       toast.error('Failed to review suggestion');
     } finally {
       setReviewing(false);
+    }
+  };
+
+  const handleAICheck = async (suggestion) => {
+    setCheckingAI({ ...checkingAI, [suggestion.id]: true });
+    try {
+      const textToCheck = `Variety Name: ${suggestion.variety_name}\nDescription: ${suggestion.grower_notes || ''}\nNotes: ${suggestion.submitter_notes || ''}`;
+      
+      const result = await base44.integrations.Core.InvokeLLM({
+        prompt: `You are a content moderation AI. Check this plant variety submission for inappropriate content:
+
+${textToCheck}
+
+Check for:
+- Profanity or offensive language
+- Hateful or discriminatory content
+- Spam or promotional content
+
+Return PASS if safe, FAIL if inappropriate.`,
+        response_json_schema: {
+          type: "object",
+          properties: {
+            result: { type: "string", enum: ["PASS", "FAIL"] },
+            reason: { type: "string" }
+          }
+        }
+      });
+
+      await base44.entities.VarietySuggestion.update(suggestion.id, {
+        ai_check_result: result.result,
+        ai_check_reason: result.reason
+      });
+
+      setSuggestions(suggestions.map(s => 
+        s.id === suggestion.id 
+          ? { ...s, ai_check_result: result.result, ai_check_reason: result.reason }
+          : s
+      ));
+
+      toast.success(`AI Check: ${result.result}`);
+    } catch (error) {
+      console.error('Error running AI check:', error);
+      toast.error('AI check failed');
+    } finally {
+      setCheckingAI({ ...checkingAI, [suggestion.id]: false });
     }
   };
 
@@ -246,25 +292,42 @@ export default function VarietyReviewQueue() {
                 )}
 
                 {suggestion.status === 'pending' && (
-                  <div className="flex gap-2 pt-2">
-                    <Button 
-                      onClick={() => setSelectedSuggestion(suggestion)}
-                      className="bg-emerald-600 hover:bg-emerald-700 gap-2"
-                    >
-                      <CheckCircle2 className="w-4 h-4" />
-                      Approve
-                    </Button>
-                    <Button 
-                      variant="outline"
-                      onClick={() => {
-                        setSelectedSuggestion(suggestion);
-                        setReviewNotes('');
-                      }}
-                      className="text-red-600 gap-2"
-                    >
-                      <XCircle className="w-4 h-4" />
-                      Reject
-                    </Button>
+                  <div className="space-y-2 pt-2">
+                    {!suggestion.ai_check_result && (
+                      <Button
+                        onClick={() => handleAICheck(suggestion)}
+                        disabled={checkingAI[suggestion.id]}
+                        variant="outline"
+                        className="w-full gap-2 bg-purple-50 hover:bg-purple-100 text-purple-700 border-purple-300"
+                        size="sm"
+                      >
+                        {checkingAI[suggestion.id] ? (
+                          <><Loader2 className="w-4 h-4 animate-spin" />Checking...</>
+                        ) : (
+                          <><Sparkles className="w-4 h-4" />Run AI Check</>
+                        )}
+                      </Button>
+                    )}
+                    <div className="flex gap-2">
+                      <Button 
+                        onClick={() => setSelectedSuggestion(suggestion)}
+                        className="bg-emerald-600 hover:bg-emerald-700 gap-2"
+                      >
+                        <CheckCircle2 className="w-4 h-4" />
+                        Approve
+                      </Button>
+                      <Button 
+                        variant="outline"
+                        onClick={() => {
+                          setSelectedSuggestion(suggestion);
+                          setReviewNotes('');
+                        }}
+                        className="text-red-600 gap-2"
+                      >
+                        <XCircle className="w-4 h-4" />
+                        Reject
+                      </Button>
+                    </div>
                   </div>
                 )}
 

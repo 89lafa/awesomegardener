@@ -137,7 +137,9 @@ Return ONLY the structured data, no preamble.`,
       onApply({
         usda_zone: result.zone,
         last_frost_date: result.lastFrost,
-        first_frost_date: result.firstFrost
+        last_frost_override: result.lastFrost,
+        first_frost_date: result.firstFrost,
+        first_frost_override: result.firstFrost
       });
       setOpen(false);
       setResult(null);
