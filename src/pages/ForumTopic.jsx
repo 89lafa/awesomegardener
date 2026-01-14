@@ -229,11 +229,6 @@ export default function ForumTopic() {
             {topic.pinned && <Pin className="w-4 h-4 text-emerald-600" />}
             {isLocked && <Lock className="w-4 h-4 text-gray-400" />}
             <h1 className="text-xl lg:text-2xl font-bold text-gray-900">{topic.title}</h1>
-            <ReportButton
-              reportType="forum_topic"
-              targetId={topic.id}
-              targetPreview={topic.title + ' - ' + (topic.body || '')}
-            />
           </div>
           <div className="flex items-center gap-3 text-sm text-gray-500">
             <span>by {topic.created_by}</span>
@@ -247,6 +242,13 @@ export default function ForumTopic() {
       {topic.body && (
         <Card>
           <CardContent className="p-6">
+            <div className="flex justify-end mb-2">
+              <ReportButton 
+                reportType="forum_topic" 
+                targetId={topic.id} 
+                targetPreview={topic.body} 
+              />
+            </div>
             <div className="prose prose-sm max-w-none">
               <ReactMarkdown>{topic.body}</ReactMarkdown>
             </div>
