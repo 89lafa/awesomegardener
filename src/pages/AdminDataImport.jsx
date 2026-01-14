@@ -466,9 +466,6 @@ export default function AdminDataImport() {
                   seasonTiming = 'unknown';
                 }
 
-                // Build subcategory ids array - use ALL resolved IDs
-                const subcatIds = resolvedSubcategoryIds.length > 0 ? resolvedSubcategoryIds : [];
-
                 // Parse SHU fields (support both old and new)
                 const scovilleMin = row.scoville_min || row.heat_scoville_min || null;
                 const scovilleMax = row.scoville_max || row.heat_scoville_max || null;

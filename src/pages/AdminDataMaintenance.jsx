@@ -25,6 +25,7 @@ import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 import { Link } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
+import RepairSubcategoriesCard from '@/components/admin/RepairSubcategoriesCard';
 
 export default function AdminDataMaintenance() {
   const [user, setUser] = useState(null);
@@ -732,6 +733,9 @@ export default function AdminDataMaintenance() {
           )}
         </CardContent>
       </Card>
+
+      {/* Repair Subcategories & Varieties Tool */}
+      <RepairSubcategoriesCard />
 
       {/* Subcategory Health by Plant Type */}
       <SubcategoryHealthByPlantType />

@@ -1,17 +1,13 @@
 import AdminAuditLog from './pages/AdminAuditLog';
 import AdminBulkEdit from './pages/AdminBulkEdit';
 import AdminDataCleanup from './pages/AdminDataCleanup';
-import AdminDataImport from './pages/AdminDataImport';
-import AdminDataMaintenance from './pages/AdminDataMaintenance';
 import AdminDeduplicateVarieties from './pages/AdminDeduplicateVarieties';
-import AdminHub from './pages/AdminHub';
 import AdminLog from './pages/AdminLog';
 import BrowseCategoryConfig from './pages/BrowseCategoryConfig';
 import BrowseGardens from './pages/BrowseGardens';
 import Calendar from './pages/Calendar';
 import CalendarPlanner from './pages/CalendarPlanner';
 import CalendarTasks from './pages/CalendarTasks';
-import ChangeRequests from './pages/ChangeRequests';
 import Community from './pages/Community';
 import CommunityBoard from './pages/CommunityBoard';
 import CompanionPlanner from './pages/CompanionPlanner';
@@ -28,15 +24,11 @@ import ForumCategory from './pages/ForumCategory';
 import ForumTopic from './pages/ForumTopic';
 import GardenBuilder from './pages/GardenBuilder';
 import GardenCare from './pages/GardenCare';
-import GardenDiary from './pages/GardenDiary';
 import GardenPlanting from './pages/GardenPlanting';
 import GardeningBasics from './pages/GardeningBasics';
 import Gardens from './pages/Gardens';
 import GrowLists from './pages/GrowLists';
 import GrowingProfile from './pages/GrowingProfile';
-import HarvestLog from './pages/HarvestLog';
-import ImageSubmissions from './pages/ImageSubmissions';
-import IssuesLog from './pages/IssuesLog';
 import Landing from './pages/Landing';
 import MyGarden from './pages/MyGarden';
 import MyPlants from './pages/MyPlants';
@@ -60,6 +52,14 @@ import Users from './pages/Users';
 import VarietyReviewQueue from './pages/VarietyReviewQueue';
 import ViewVariety from './pages/ViewVariety';
 import ZoneMap from './pages/ZoneMap';
+import AdminHub from './pages/AdminHub';
+import ChangeRequests from './pages/ChangeRequests';
+import GardenDiary from './pages/GardenDiary';
+import HarvestLog from './pages/HarvestLog';
+import ImageSubmissions from './pages/ImageSubmissions';
+import IssuesLog from './pages/IssuesLog';
+import AdminDataMaintenance from './pages/AdminDataMaintenance';
+import AdminDataImport from './pages/AdminDataImport';
 import __Layout from './Layout.jsx';
 
 
@@ -67,17 +67,13 @@ export const PAGES = {
     "AdminAuditLog": AdminAuditLog,
     "AdminBulkEdit": AdminBulkEdit,
     "AdminDataCleanup": AdminDataCleanup,
-    "AdminDataImport": AdminDataImport,
-    "AdminDataMaintenance": AdminDataMaintenance,
     "AdminDeduplicateVarieties": AdminDeduplicateVarieties,
-    "AdminHub": AdminHub,
     "AdminLog": AdminLog,
     "BrowseCategoryConfig": BrowseCategoryConfig,
     "BrowseGardens": BrowseGardens,
     "Calendar": Calendar,
     "CalendarPlanner": CalendarPlanner,
     "CalendarTasks": CalendarTasks,
-    "ChangeRequests": ChangeRequests,
     "Community": Community,
     "CommunityBoard": CommunityBoard,
     "CompanionPlanner": CompanionPlanner,
@@ -94,15 +90,11 @@ export const PAGES = {
     "ForumTopic": ForumTopic,
     "GardenBuilder": GardenBuilder,
     "GardenCare": GardenCare,
-    "GardenDiary": GardenDiary,
     "GardenPlanting": GardenPlanting,
     "GardeningBasics": GardeningBasics,
     "Gardens": Gardens,
     "GrowLists": GrowLists,
     "GrowingProfile": GrowingProfile,
-    "HarvestLog": HarvestLog,
-    "ImageSubmissions": ImageSubmissions,
-    "IssuesLog": IssuesLog,
     "Landing": Landing,
     "MyGarden": MyGarden,
     "MyPlants": MyPlants,
@@ -126,6 +118,14 @@ export const PAGES = {
     "VarietyReviewQueue": VarietyReviewQueue,
     "ViewVariety": ViewVariety,
     "ZoneMap": ZoneMap,
+    "AdminHub": AdminHub,
+    "ChangeRequests": ChangeRequests,
+    "GardenDiary": GardenDiary,
+    "HarvestLog": HarvestLog,
+    "ImageSubmissions": ImageSubmissions,
+    "IssuesLog": IssuesLog,
+    "AdminDataMaintenance": AdminDataMaintenance,
+    "AdminDataImport": AdminDataImport,
 }
 
 export const pagesConfig = {
