@@ -407,8 +407,11 @@ export default function Settings() {
                       setFormData({ 
                         ...formData, 
                         usda_zone: values.usda_zone || formData.usda_zone,
+                        usda_zone_override: values.usda_zone_override || values.usda_zone || formData.usda_zone_override,
                         last_frost_date: values.last_frost_date || formData.last_frost_date,
-                        first_frost_date: values.first_frost_date || formData.first_frost_date
+                        last_frost_override: values.last_frost_override || values.last_frost_date || formData.last_frost_override,
+                        first_frost_date: values.first_frost_date || formData.first_frost_date,
+                        first_frost_override: values.first_frost_override || values.first_frost_date || formData.first_frost_override
                       });
                     }}
                   />

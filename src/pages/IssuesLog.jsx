@@ -320,33 +320,48 @@ export default function IssuesLog() {
             <DialogTitle>{editing ? 'Edit Issue' : 'Log New Issue'}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 max-h-[60vh] overflow-y-auto">
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label>Garden *</Label>
-                <Select 
-                  value={formData.garden_id} 
-                  onValueChange={(v) => setFormData({ ...formData, garden_id: v })}
-                >
-                  <SelectTrigger className="mt-2">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {gardens.map(g => (
-                      <SelectItem key={g.id} value={g.id}>{g.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <Label htmlFor="date">Date *</Label>
-                <Input
-                  id="date"
-                  type="date"
-                  value={formData.date}
-                  onChange={(e) => setFormData({ ...formData, date: e.target.value })}
-                  className="mt-2"
-                />
-              </div>
+            <div>
+              <Label>Garden *</Label>
+              <Select 
+                value={formData.garden_id} 
+                onValueChange={(v) => setFormData({ ...formData, garden_id: v })}
+              >
+                <SelectTrigger className="mt-2">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {gardens.map(g => (
+                    <SelectItem key={g.id} value={g.id}>{g.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label>Season (optional)</Label>
+              <Select 
+                value={formData.garden_season_id || ''} 
+                onValueChange={(v) => setFormData({ ...formData, garden_season_id: v || null })}
+              >
+                <SelectTrigger className="mt-2">
+                  <SelectValue placeholder="Select season" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={null}>None</SelectItem>
+                  {seasons.map(s => (
+                    <SelectItem key={s.id} value={s.id}>{s.year} {s.season_type}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label htmlFor="date">Date *</Label>
+              <Input
+                id="date"
+                type="date"
+                value={formData.date}
+                onChange={(e) => setFormData({ ...formData, date: e.target.value })}
+                className="mt-2"
+              />
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div>

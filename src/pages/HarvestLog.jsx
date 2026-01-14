@@ -324,6 +324,23 @@ export default function HarvestLog() {
               </Select>
             </div>
             <div>
+              <Label>Season (optional)</Label>
+              <Select 
+                value={formData.garden_season_id || ''} 
+                onValueChange={(v) => setFormData({ ...formData, garden_season_id: v || null })}
+              >
+                <SelectTrigger className="mt-2">
+                  <SelectValue placeholder="Select season" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={null}>None</SelectItem>
+                  {seasons.map(s => (
+                    <SelectItem key={s.id} value={s.id}>{s.year} {s.season_type}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
               <Label>Plant (optional)</Label>
               <Select 
                 value={formData.plant_instance_id || ''} 

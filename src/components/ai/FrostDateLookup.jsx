@@ -139,13 +139,16 @@ Return ONLY the structured data, no preamble.`,
     } else {
       // Just update form state (used in Settings where user clicks Save button)
       console.debug('[FROST_AI] updating_form_state_only (parent will save)');
-      onApply({
-        usda_zone: result.zone,
-        last_frost_date: result.lastFrost,
-        last_frost_override: result.lastFrost,
-        first_frost_date: result.firstFrost,
-        first_frost_override: result.firstFrost
-      });
+      if (onApply) {
+        onApply({
+          usda_zone: result.zone,
+          usda_zone_override: result.zone,
+          last_frost_date: result.lastFrost,
+          last_frost_override: result.lastFrost,
+          first_frost_date: result.firstFrost,
+          first_frost_override: result.firstFrost
+        });
+      }
       setOpen(false);
       setResult(null);
       toast.success('Frost dates applied! Click Save Changes to persist.');

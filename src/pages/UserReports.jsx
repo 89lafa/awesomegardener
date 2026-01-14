@@ -14,6 +14,7 @@ export default function UserReports() {
   const [loading, setLoading] = useState(true);
   const [selectedReport, setSelectedReport] = useState(null);
   const [viewContent, setViewContent] = useState(null);
+  const [contentCreators, setContentCreators] = useState({});
 
   useEffect(() => {
     checkAdmin();
@@ -37,6 +38,37 @@ export default function UserReports() {
     try {
       const data = await base44.entities.ContentReport.list('-created_date');
       setReports(data);
+      
+      // Load content creators for each report
+      const creatorsMap = {};
+      for (const report of data) {
+        try {
+          let content = null;
+          if (report.report_type === 'forum_post') {
+            const posts = await base44.entities.ForumPost.filter({ id: report.target_id });
+            content = posts[0];
+          } else if (report.report_type === 'forum_topic') {
+            const topics = await base44.entities.ForumTopic.filter({ id: report.target_id });
+            content = topics[0];
+          } else if (report.report_type === 'forum_comment') {
+            const comments = await base44.entities.ForumComment.filter({ id: report.target_id });
+            content = comments[0];
+          } else if (report.report_type === 'variety_suggestion') {
+            const suggestions = await base44.entities.VarietySuggestion.filter({ id: report.target_id });
+            content = suggestions[0];
+          } else if (report.report_type === 'image_submission') {
+            const submissions = await base44.entities.VarietyImageSubmission.filter({ id: report.target_id });
+            content = submissions[0];
+          }
+          
+          if (content) {
+            creatorsMap[report.id] = content.created_by || content.submitted_by || 'Unknown';
+          }
+        } catch (error) {
+          console.error('Error loading content creator:', error);
+        }
+      }
+      setContentCreators(creatorsMap);
     } catch (error) {
       console.error('Error loading reports:', error);
     } finally {
@@ -148,8 +180,13 @@ export default function UserReports() {
                       </span>
                     </div>
                     <p className="text-sm text-gray-600">
-                      Reported by: {report.reporter_email}
+                      Reported by: <span className="font-medium">{report.reporter_email}</span>
                     </p>
+                    {contentCreators[report.id] && (
+                      <p className="text-sm text-gray-600">
+                        Content by: <span className="font-medium text-red-600">{contentCreators[report.id]}</span>
+                      </p>
+                    )}
                   </div>
                 </div>
 
