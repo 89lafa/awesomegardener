@@ -258,46 +258,34 @@ export default function ViewVariety() {
         </Card>
       )}
 
-      <Card>
+      {/* Images */}
+      {variety?.images && variety.images.length > 0 && (
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+          {variety.images.map((url, idx) => (
+            <img 
+              key={idx}
+              src={url} 
+              alt={`${variety.variety_name} ${idx + 1}`}
+              className="w-full aspect-square object-cover rounded-xl shadow-md"
+              onError={(e) => {
+                e.target.style.display = 'none';
+              }}
+            />
+          ))}
+        </div>
+      )}
+
+      {/* Overview Card */}
+      <Card className="bg-gradient-to-br from-emerald-50 to-green-50 border-emerald-200">
         <CardHeader>
-          <CardTitle>Variety Details</CardTitle>
+          <CardTitle className="flex items-center gap-2">
+            📖 Overview
+          </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          {/* Images */}
-          {variety?.images && variety.images.length > 0 ? (
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-4">
-              {variety.images.map((url, idx) => (
-                <img 
-                  key={idx}
-                  src={url} 
-                  alt={`${variety.variety_name} ${idx + 1}`}
-                  className="w-full h-32 object-cover rounded-lg border"
-                  onError={(e) => {
-                    e.target.style.display = 'none';
-                  }}
-                />
-              ))}
-            </div>
-          ) : (
-            <div className="mb-4 p-4 bg-gray-50 rounded-lg text-center">
-              <ImageIcon className="w-8 h-8 text-gray-400 mx-auto mb-2" />
-              <p className="text-sm text-gray-500">No images yet</p>
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => setShowAddImage(true)}
-                className="mt-2 gap-2"
-              >
-                <Plus className="w-3 h-3" />
-                Add First Image
-              </Button>
-            </div>
-          )}
-
           {variety?.description && (
-            <div className="mb-4">
-              <Label className="text-gray-600">Description</Label>
-              <p className="mt-1 text-gray-900">{variety.description}</p>
+            <div className="p-4 bg-white rounded-lg border">
+              <p className="text-gray-700 leading-relaxed">{variety.description}</p>
             </div>
           )}
 
@@ -330,9 +318,9 @@ export default function ViewVariety() {
               );
             })()}
             {(variety?.days_to_maturity || variety?.days_to_maturity_min) && (
-              <div>
-                <Label className="text-gray-600">Days to Maturity</Label>
-                <p className="font-medium mt-1">
+              <div className="p-3 bg-white rounded-lg border">
+                <Label className="text-gray-600 text-xs">Days to Maturity</Label>
+                <p className="font-semibold text-lg mt-1">
                   {variety.days_to_maturity || 
                    (variety.days_to_maturity_min && variety.days_to_maturity_max 
                      ? `${variety.days_to_maturity_min}-${variety.days_to_maturity_max}`
@@ -341,124 +329,198 @@ export default function ViewVariety() {
               </div>
             )}
           </div>
+        </CardContent>
+      </Card>
 
-          <div className="grid grid-cols-2 gap-4">
-            {(variety?.spacing_recommended || variety?.spacing_min) && (
-              <div>
-                <Label className="text-gray-600">Spacing</Label>
-                <p className="font-medium mt-1">
-                  {variety.spacing_recommended || 
-                   (variety.spacing_min && variety.spacing_max 
-                     ? `${variety.spacing_min}-${variety.spacing_max}"`
-                     : `${variety.spacing_min}"`)}
-                </p>
-              </div>
-            )}
-            {(variety?.plant_height_typical || variety?.height_min) && (
-              <div>
-                <Label className="text-gray-600">Height</Label>
-                <p className="font-medium mt-1">
-                  {variety.plant_height_typical || 
-                   (variety.height_min && variety.height_max 
-                     ? `${variety.height_min}-${variety.height_max}"`
-                     : variety.height_min)}
-                </p>
-              </div>
-            )}
-            {variety?.sun_requirement && (
-              <div>
-                <Label className="text-gray-600">Sun Requirement</Label>
-                <p className="font-medium mt-1 capitalize">{variety.sun_requirement.replace(/_/g, ' ')}</p>
-              </div>
-            )}
-            {variety?.water_requirement && (
-              <div>
-                <Label className="text-gray-600">Water Requirement</Label>
-                <p className="font-medium mt-1 capitalize">{variety.water_requirement}</p>
-              </div>
-            )}
-            {variety?.growth_habit && (
-              <div>
-                <Label className="text-gray-600">Growth Habit</Label>
-                <p className="font-medium mt-1 capitalize">{variety.growth_habit.replace(/_/g, ' ')}</p>
-              </div>
-            )}
-            {(variety?.scoville_min || variety?.scoville_max) && (
-              <div>
-                <Label className="text-gray-600">Heat Level (SHU)</Label>
-                <p className="font-medium mt-1">
-                  {variety.scoville_min && variety.scoville_max 
-                    ? `${variety.scoville_min.toLocaleString()}-${variety.scoville_max.toLocaleString()}`
-                    : variety.scoville_min?.toLocaleString() || variety.scoville_max?.toLocaleString()}
-                </p>
-              </div>
-            )}
-            {variety?.start_indoors_weeks && (
-              <div>
-                <Label className="text-gray-600">Start Indoors</Label>
-                <p className="font-medium mt-1">{variety.start_indoors_weeks} weeks before frost</p>
-              </div>
-            )}
-            {variety?.transplant_weeks_after_last_frost_min !== undefined && (
-              <div>
-                <Label className="text-gray-600">Transplant</Label>
-                <p className="font-medium mt-1">
-                  {variety.transplant_weeks_after_last_frost_min} weeks after frost
-                </p>
-              </div>
-            )}
-            {variety?.direct_sow_weeks_min !== undefined && (
-              <div>
-                <Label className="text-gray-600">Direct Sow</Label>
-                <p className="font-medium mt-1">
-                  {variety.direct_sow_weeks_min} weeks after frost
-                </p>
-              </div>
-            )}
-            {variety?.flavor_profile && (
-              <div className="col-span-2">
-                <Label className="text-gray-600">Flavor Profile</Label>
-                <p className="font-medium mt-1">{variety.flavor_profile}</p>
-              </div>
-            )}
-            {variety?.uses && (
-              <div className="col-span-2">
-                <Label className="text-gray-600">Uses</Label>
-                <p className="font-medium mt-1">{variety.uses}</p>
-              </div>
-            )}
-            {variety?.fruit_color && (
-              <div>
-                <Label className="text-gray-600">Fruit Color</Label>
-                <p className="font-medium mt-1 capitalize">{variety.fruit_color}</p>
-              </div>
-            )}
-            {variety?.fruit_shape && (
-              <div>
-                <Label className="text-gray-600">Fruit Shape</Label>
-                <p className="font-medium mt-1 capitalize">{variety.fruit_shape}</p>
-              </div>
-            )}
-            {variety?.disease_resistance && (
-              <div className="col-span-2">
-                <Label className="text-gray-600">Disease Resistance</Label>
-                <p className="font-medium mt-1">{variety.disease_resistance}</p>
-              </div>
-            )}
-            {variety?.breeder_or_origin && (
-              <div className="col-span-2">
-                <Label className="text-gray-600">Breeder / Origin</Label>
-                <p className="font-medium mt-1">{variety.breeder_or_origin}</p>
-              </div>
-            )}
+      {/* Growing Conditions Card */}
+      {(variety?.spacing_recommended || variety?.spacing_min || variety?.sun_requirement || variety?.water_requirement) && (
+        <Card className="bg-gradient-to-br from-blue-50 to-cyan-50 border-blue-200">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              🌱 Growing Conditions
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-2 gap-4">
+              {(variety?.spacing_recommended || variety?.spacing_min) && (
+                <div className="p-3 bg-white rounded-lg border">
+                  <Label className="text-gray-600 text-xs">Spacing</Label>
+                  <p className="font-semibold mt-1">
+                    {variety.spacing_recommended || 
+                     (variety.spacing_min && variety.spacing_max 
+                       ? `${variety.spacing_min}-${variety.spacing_max}"`
+                       : `${variety.spacing_min}"`)}
+                  </p>
+                </div>
+              )}
+              {variety?.sun_requirement && (
+                <div className="p-3 bg-white rounded-lg border">
+                  <Label className="text-gray-600 text-xs">Sun Requirement</Label>
+                  <p className="font-semibold mt-1 capitalize">{variety.sun_requirement.replace(/_/g, ' ')}</p>
+                </div>
+              )}
+              {variety?.water_requirement && (
+                <div className="p-3 bg-white rounded-lg border">
+                  <Label className="text-gray-600 text-xs">Water Requirement</Label>
+                  <p className="font-semibold mt-1 capitalize">{variety.water_requirement}</p>
+                </div>
+              )}
+              {(variety?.plant_height_typical || variety?.height_min) && (
+                <div className="p-3 bg-white rounded-lg border">
+                  <Label className="text-gray-600 text-xs">Height</Label>
+                  <p className="font-semibold mt-1">
+                    {variety.plant_height_typical || 
+                     (variety.height_min && variety.height_max 
+                       ? `${variety.height_min}-${variety.height_max}"`
+                       : variety.height_min)}
+                  </p>
+                </div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Flavor & Uses Card */}
+      {(variety?.flavor_profile || variety?.uses || variety?.fruit_color || variety?.fruit_shape) && (
+        <Card className="bg-gradient-to-br from-purple-50 to-pink-50 border-purple-200">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              🍅 Flavor & Uses
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              {variety.flavor_profile && (
+                <div className="p-3 bg-white rounded-lg border">
+                  <Label className="text-gray-600 text-xs">Flavor Profile</Label>
+                  <p className="font-medium mt-1">{variety.flavor_profile}</p>
+                </div>
+              )}
+              {variety.uses && (
+                <div className="p-3 bg-white rounded-lg border">
+                  <Label className="text-gray-600 text-xs">Uses</Label>
+                  <p className="font-medium mt-1">{variety.uses}</p>
+                </div>
+              )}
+              {variety.fruit_color && (
+                <div className="p-3 bg-white rounded-lg border">
+                  <Label className="text-gray-600 text-xs">Fruit Color</Label>
+                  <p className="font-medium mt-1 capitalize">{variety.fruit_color}</p>
+                </div>
+              )}
+              {variety.fruit_shape && (
+                <div className="p-3 bg-white rounded-lg border">
+                  <Label className="text-gray-600 text-xs">Fruit Shape</Label>
+                  <p className="font-medium mt-1 capitalize">{variety.fruit_shape}</p>
+                </div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Heat Level Card (Peppers) */}
+      {(variety?.scoville_min || variety?.scoville_max) && (
+        <Card className="bg-gradient-to-br from-red-50 to-orange-50 border-red-200">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              🌶️ Heat Level
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="p-4 bg-white rounded-lg border text-center">
+              <p className="text-3xl font-bold text-red-600">
+                {variety.scoville_min && variety.scoville_max 
+                  ? `${variety.scoville_min.toLocaleString()}-${variety.scoville_max.toLocaleString()}`
+                  : variety.scoville_min?.toLocaleString() || variety.scoville_max?.toLocaleString()}
+              </p>
+              <p className="text-sm text-gray-600 mt-1">Scoville Heat Units (SHU)</p>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Planting Schedule Card */}
+      {(variety?.start_indoors_weeks || variety?.transplant_weeks_after_last_frost_min || variety?.direct_sow_weeks_min) && (
+        <Card className="bg-gradient-to-br from-green-50 to-emerald-50 border-green-200">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              📅 Planting Schedule
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2">
+              {variety.start_indoors_weeks && (
+                <div className="flex justify-between p-3 bg-white rounded-lg border">
+                  <span className="text-gray-700">Start Indoors</span>
+                  <span className="font-semibold">{variety.start_indoors_weeks} weeks before frost</span>
+                </div>
+              )}
+              {variety.transplant_weeks_after_last_frost_min !== undefined && (
+                <div className="flex justify-between p-3 bg-white rounded-lg border">
+                  <span className="text-gray-700">Transplant</span>
+                  <span className="font-semibold">{variety.transplant_weeks_after_last_frost_min} weeks after frost</span>
+                </div>
+              )}
+              {variety.direct_sow_weeks_min !== undefined && (
+                <div className="flex justify-between p-3 bg-white rounded-lg border">
+                  <span className="text-gray-700">Direct Sow</span>
+                  <span className="font-semibold">{variety.direct_sow_weeks_min} weeks after frost</span>
+                </div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Additional Details Card */}
+      {(variety?.growth_habit || variety?.disease_resistance || variety?.breeder_or_origin) && (
+        <Card className="bg-gradient-to-br from-amber-50 to-yellow-50 border-amber-200">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              ℹ️ Additional Details
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              {variety.growth_habit && (
+                <div className="p-3 bg-white rounded-lg border">
+                  <Label className="text-gray-600 text-xs">Growth Habit</Label>
+                  <p className="font-medium mt-1 capitalize">{variety.growth_habit.replace(/_/g, ' ')}</p>
+                </div>
+              )}
+              {variety.disease_resistance && (
+                <div className="p-3 bg-white rounded-lg border">
+                  <Label className="text-gray-600 text-xs">Disease Resistance</Label>
+                  <p className="font-medium mt-1">{variety.disease_resistance}</p>
+                </div>
+              )}
+              {variety.breeder_or_origin && (
+                <div className="p-3 bg-white rounded-lg border">
+                  <Label className="text-gray-600 text-xs">Breeder / Origin</Label>
+                  <p className="font-medium mt-1">{variety.breeder_or_origin}</p>
+                </div>
+              )}
           </div>
 
+          </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Characteristics Badges Card */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Characteristics</CardTitle>
+        </CardHeader>
+        <CardContent>
           <div className="flex flex-wrap gap-2">
             {variety?.trellis_required && (
-              <Badge>Trellis Required</Badge>
+              <Badge className="bg-green-100 text-green-800">Trellis Required</Badge>
             )}
             {variety?.container_friendly && (
-              <Badge>Container Friendly</Badge>
+              <Badge className="bg-blue-100 text-blue-800">Container Friendly</Badge>
             )}
             {variety?.is_ornamental && (
               <Badge className="bg-pink-100 text-pink-800">Ornamental</Badge>
@@ -480,35 +542,49 @@ export default function ViewVariety() {
               <Badge variant="outline" className="capitalize">Season: {variety.season_timing}</Badge>
             )}
           </div>
+        </CardContent>
+      </Card>
 
-          {variety?.seed_saving_notes && (
-            <div>
-              <Label className="text-gray-600">Seed Saving Notes</Label>
-              <p className="mt-1 text-gray-900">{variety.seed_saving_notes}</p>
-            </div>
-          )}
-          {variety?.pollination_notes && (
-            <div>
-              <Label className="text-gray-600">Pollination Notes</Label>
-              <p className="mt-1 text-gray-900">{variety.pollination_notes}</p>
-            </div>
-          )}
-          {(variety?.grower_notes || variety?.notes_public) && (
-            <div>
-              <Label className="text-gray-600">Grower Notes</Label>
-              <p className="mt-1 text-gray-900">{variety.grower_notes || variety.notes_public}</p>
-            </div>
-          )}
-          {variety?.sources && variety.sources.length > 0 && (
-            <div>
-              <Label className="text-gray-600">Seed Sources</Label>
-              <div className="mt-1 flex flex-wrap gap-2">
-                {variety.sources.map((source, idx) => (
-                  <Badge key={idx} variant="outline">{source}</Badge>
-                ))}
+      {/* Notes Cards */}
+      {(variety?.seed_saving_notes || variety?.pollination_notes || variety?.grower_notes || variety?.notes_public) && (
+        <Card className="bg-gradient-to-br from-slate-50 to-gray-50 border-slate-200">
+          <CardHeader>
+            <CardTitle>📝 Growing Notes</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {variety.seed_saving_notes && (
+              <div className="p-3 bg-white rounded-lg border">
+                <Label className="text-gray-600 text-xs">Seed Saving Notes</Label>
+                <p className="mt-1 text-gray-900">{variety.seed_saving_notes}</p>
               </div>
-            </div>
-          )}
+            )}
+            {variety.pollination_notes && (
+              <div className="p-3 bg-white rounded-lg border">
+                <Label className="text-gray-600 text-xs">Pollination Notes</Label>
+                <p className="mt-1 text-gray-900">{variety.pollination_notes}</p>
+              </div>
+            )}
+            {(variety.grower_notes || variety.notes_public) && (
+              <div className="p-3 bg-white rounded-lg border">
+                <Label className="text-gray-600 text-xs">Grower Notes</Label>
+                <p className="mt-1 text-gray-900 whitespace-pre-wrap">{variety.grower_notes || variety.notes_public}</p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Seed Sources Card */}
+      {variety?.sources && variety.sources.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle>🌐 Seed Sources</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex flex-wrap gap-2">
+              {variety.sources.map((source, idx) => (
+                <Badge key={idx} variant="outline" className="px-3 py-1">{source}</Badge>
+              ))}
         </CardContent>
       </Card>
 

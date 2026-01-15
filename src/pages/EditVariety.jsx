@@ -142,8 +142,14 @@ export default function EditVariety() {
       
       // Only update fields if they have values
       if (formData.description) updateData.description = formData.description;
+      if (formData.flavor_profile) updateData.flavor_profile = formData.flavor_profile;
+      if (formData.uses) updateData.uses = formData.uses;
       if (formData.days_to_maturity) updateData.days_to_maturity = parseFloat(formData.days_to_maturity);
+      if (formData.days_to_maturity_min) updateData.days_to_maturity_min = parseFloat(formData.days_to_maturity_min);
+      if (formData.days_to_maturity_max) updateData.days_to_maturity_max = parseFloat(formData.days_to_maturity_max);
       if (formData.spacing_recommended) updateData.spacing_recommended = parseFloat(formData.spacing_recommended);
+      if (formData.spacing_min) updateData.spacing_min = parseFloat(formData.spacing_min);
+      if (formData.spacing_max) updateData.spacing_max = parseFloat(formData.spacing_max);
       if (formData.plant_height_typical) updateData.plant_height_typical = formData.plant_height_typical;
       if (formData.sun_requirement) updateData.sun_requirement = formData.sun_requirement;
       if (formData.water_requirement) updateData.water_requirement = formData.water_requirement;
@@ -523,6 +529,74 @@ export default function EditVariety() {
                 rows={3}
                 className="mt-1"
               />
+            </div>
+
+            <div>
+              <Label htmlFor="flavor_profile">Flavor Profile</Label>
+              <Input
+                id="flavor_profile"
+                value={formData.flavor_profile || ''}
+                onChange={(e) => setFormData({ ...formData, flavor_profile: e.target.value })}
+                placeholder="e.g., Sweet with tangy notes, earthy"
+                className="mt-1"
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="uses">Uses</Label>
+              <Input
+                id="uses"
+                value={formData.uses || ''}
+                onChange={(e) => setFormData({ ...formData, uses: e.target.value })}
+                placeholder="e.g., Fresh eating, canning, drying"
+                className="mt-1"
+              />
+            </div>
+
+            <div className="grid md:grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="spacing_min">Spacing Min (inches)</Label>
+                <Input
+                  id="spacing_min"
+                  type="number"
+                  value={formData.spacing_min || ''}
+                  onChange={(e) => setFormData({ ...formData, spacing_min: e.target.value })}
+                  className="mt-1"
+                />
+              </div>
+              <div>
+                <Label htmlFor="spacing_max">Spacing Max (inches)</Label>
+                <Input
+                  id="spacing_max"
+                  type="number"
+                  value={formData.spacing_max || ''}
+                  onChange={(e) => setFormData({ ...formData, spacing_max: e.target.value })}
+                  className="mt-1"
+                />
+              </div>
+            </div>
+
+            <div className="grid md:grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="days_to_maturity_min">Days to Maturity Min</Label>
+                <Input
+                  id="days_to_maturity_min"
+                  type="number"
+                  value={formData.days_to_maturity_min || ''}
+                  onChange={(e) => setFormData({ ...formData, days_to_maturity_min: e.target.value })}
+                  className="mt-1"
+                />
+              </div>
+              <div>
+                <Label htmlFor="days_to_maturity_max">Days to Maturity Max</Label>
+                <Input
+                  id="days_to_maturity_max"
+                  type="number"
+                  value={formData.days_to_maturity_max || ''}
+                  onChange={(e) => setFormData({ ...formData, days_to_maturity_max: e.target.value })}
+                  className="mt-1"
+                />
+              </div>
             </div>
 
             <div>

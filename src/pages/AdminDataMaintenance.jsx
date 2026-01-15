@@ -220,22 +220,45 @@ export default function AdminDataMaintenance() {
   };
 
   const runNormalizeSubcats = async () => {
+    if (!confirm('This will normalize ALL varieties in batches. Continue?')) return;
+    
     setNormalizingSubcats(true);
     setNormalizeResult(null);
     
     try {
-      const response = await base44.functions.invoke('normalizeVarietySubcategories', {});
-      
-      if (response.data.success) {
+      let offset = 0;
+      let totalUpdated = 0;
+      let hasMore = true;
+
+      while (hasMore) {
+        const response = await base44.functions.invoke('batchNormalizeVarietySubcategories', {
+          batch_size: 100,
+          offset
+        });
+        
+        if (!response.data.success) {
+          throw new Error(response.data.error);
+        }
+
+        totalUpdated += response.data.summary.updated;
+        hasMore = response.data.summary.has_more;
+        offset = response.data.summary.next_offset;
+
+        // Update progress
         setNormalizeResult({
           success: true,
-          ...response.data.summary,
-          timestamp: new Date().toISOString()
+          varieties_updated: totalUpdated,
+          total: response.data.summary.total,
+          progress: Math.round((offset / response.data.summary.total) * 100)
         });
-        toast.success('Subcategory normalization completed!');
-      } else {
-        throw new Error(response.data.error || 'Normalization failed');
+
+        // Small delay between batches
+        if (hasMore) {
+          await new Promise(resolve => setTimeout(resolve, 500));
+        }
       }
+
+      toast.success(`Normalization completed! ${totalUpdated} varieties updated`);
     } catch (error) {
       console.error('Normalize error:', error);
       setNormalizeResult({

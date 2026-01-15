@@ -12,6 +12,80 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Loader2, Sparkles, ExternalLink, Plus, Package, ListChecks } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
+import { smartQuery } from '@/components/utils/smartQuery';
+
+function ViewVarietyButton({ rec }) {
+  const [searching, setSearching] = useState(false);
+  const [varietyId, setVarietyId] = useState(null);
+
+  const handleView = async () => {
+    setSearching(true);
+    try {
+      // Search by variety name if provided
+      if (rec.variety_name) {
+        const varieties = await smartQuery(base44, 'Variety', {}, 'variety_name', 500);
+        const match = varieties.find(v => 
+          v.variety_name.toLowerCase().includes(rec.variety_name.toLowerCase())
+        );
+        if (match) {
+          window.location.href = createPageUrl('ViewVariety') + `?id=${match.id}`;
+          return;
+        }
+      }
+
+      // Fallback: search by plant type
+      const plantTypes = await smartQuery(base44, 'PlantType', {}, 'common_name');
+      const type = plantTypes.find(pt => 
+        pt.common_name.toLowerCase() === rec.common_name.toLowerCase()
+      );
+      
+      if (type) {
+        window.location.href = createPageUrl('PlantCatalogDetail') + `?id=${type.id}`;
+      } else {
+        window.location.href = createPageUrl('PlantCatalog') + `?search=${encodeURIComponent(rec.common_name)}`;
+      }
+    } catch (error) {
+      toast.error('Failed to find variety');
+    } finally {
+      setSearching(false);
+    }
+  };
+
+  return (
+    <Button size="sm" variant="outline" onClick={handleView} disabled={searching}>
+      {searching ? <Loader2 className="w-3 h-3 animate-spin mr-1" /> : <ExternalLink className="w-3 h-3 mr-1" />}
+      View Variety
+    </Button>
+  );
+}
+
+function AddToStashButton({ rec }) {
+  const handleAdd = () => {
+    const query = rec.variety_name || rec.common_name;
+    window.location.href = createPageUrl('SeedStash') + `?action=add&search=${encodeURIComponent(query)}`;
+  };
+
+  return (
+    <Button size="sm" variant="outline" onClick={handleAdd} className="gap-1">
+      <Package className="w-3 h-3" />
+      Add to Stash
+    </Button>
+  );
+}
+
+function AddToGrowListButton({ rec }) {
+  const handleAdd = () => {
+    const query = rec.variety_name || rec.common_name;
+    window.location.href = createPageUrl('GrowLists') + `?action=add&search=${encodeURIComponent(query)}`;
+  };
+
+  return (
+    <Button size="sm" variant="outline" onClick={handleAdd} className="gap-1">
+      <ListChecks className="w-3 h-3" />
+      Add to Grow List
+    </Button>
+  );
+}
 
 export default function PlantRecommendations({ open, onOpenChange, context = 'catalog' }) {
   const [loading, setLoading] = useState(false);
@@ -190,12 +264,9 @@ Return structured data.`,
                       </div>
                     </div>
                     <div className="flex flex-col gap-2">
-                      <Button size="sm" variant="outline" asChild>
-                        <Link to={createPageUrl('PlantCatalog') + `?search=${encodeURIComponent(rec.common_name)}`}>
-                          <ExternalLink className="w-3 h-3 mr-1" />
-                          View
-                        </Link>
-                      </Button>
+                      <ViewVarietyButton rec={rec} />
+                      <AddToStashButton rec={rec} />
+                      <AddToGrowListButton rec={rec} />
                     </div>
                   </div>
                 </CardContent>

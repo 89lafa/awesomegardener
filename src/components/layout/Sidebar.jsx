@@ -30,6 +30,7 @@ import { Button } from '@/components/ui/button';
 const getNavItems = (userRole, isEditor, user) => {
     const items = [
       { name: 'Dashboard', icon: LayoutDashboard, page: 'Dashboard' },
+      { name: 'Gardens', icon: TreeDeciduous, page: 'Gardens' },
       { name: 'Plot Layout', icon: Hammer, page: 'MyGarden' },
       { name: 'My Garden', icon: TreeDeciduous, page: 'GardenPlanting' },
       { name: 'Plant Catalog', icon: BookOpen, page: 'PlantCatalog' },
