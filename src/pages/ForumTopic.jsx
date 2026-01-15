@@ -22,6 +22,7 @@ import { format, formatDistanceToNow } from 'date-fns';
 import { cn } from '@/lib/utils';
 import ReactMarkdown from 'react-markdown';
 import PostCard from '@/components/forum/PostCard';
+import CommentCard from '@/components/forum/CommentCard';
 import ErrorBoundary from '@/components/common/ErrorBoundary';
 import ReportButton from '@/components/forum/ReportButton';
 
@@ -269,30 +270,51 @@ export default function ForumTopic() {
           {posts.length} {posts.length === 1 ? 'Reply' : 'Replies'}
         </h2>
         
-        {posts.map((post) => (
-          <PostCard
-            key={post.id}
-            post={post}
-            user={user}
-            userVote={getUserVote('post', post.id)}
-            onVote={(value) => handleVote('post', post.id, value)}
-            onDelete={async (postId) => {
-              await base44.entities.ForumPost.update(postId, { deleted_at: new Date().toISOString() });
-              setPosts(posts.filter(p => p.id !== postId));
-              
-              // Log the deletion
-              await base44.entities.AuditLog.create({
-                action_type: 'comment_delete',
-                entity_type: 'ForumPost',
-                entity_id: postId,
-                entity_name: `Post in ${topic.title}`,
-                user_role: user.role
-              });
-              
-              toast.success('Post deleted');
-            }}
-          />
-        ))}
+        {posts.map((post) => {
+          const postComments = comments.filter(c => c.post_id === post.id);
+          return (
+            <div key={post.id} className="space-y-3">
+              <PostCard
+                post={post}
+                user={user}
+                userVote={getUserVote('post', post.id)}
+                onVote={(value) => handleVote('post', post.id, value)}
+                onDelete={async (postId) => {
+                  await base44.entities.ForumPost.update(postId, { deleted_at: new Date().toISOString() });
+                  setPosts(posts.filter(p => p.id !== postId));
+                  
+                  // Log the deletion
+                  await base44.entities.AuditLog.create({
+                    action_type: 'comment_delete',
+                    entity_type: 'ForumPost',
+                    entity_id: postId,
+                    entity_name: `Post in ${topic.title}`,
+                    user_role: user.role
+                  });
+                  
+                  toast.success('Post deleted');
+                }}
+              />
+              {postComments.length > 0 && (
+                <div className="ml-12 space-y-2">
+                  {postComments.map(comment => (
+                    <CommentCard
+                      key={comment.id}
+                      comment={comment}
+                      user={user}
+                      canDelete={user?.role === 'admin' || user?.is_moderator || comment.created_by === user?.email}
+                      onDelete={async (commentId) => {
+                        await base44.entities.ForumComment.update(commentId, { deleted_at: new Date().toISOString() });
+                        setComments(comments.filter(c => c.id !== commentId));
+                        toast.success('Comment deleted');
+                      }}
+                    />
+                  ))}
+                </div>
+              )}
+            </div>
+          );
+        })}
       </div>
 
       {/* New Post Form */}
