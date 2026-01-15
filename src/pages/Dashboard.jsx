@@ -30,6 +30,8 @@ import { format, isToday, isTomorrow, addDays, isBefore } from 'date-fns';
 import { motion } from 'framer-motion';
 import { smartQuery } from '@/components/utils/smartQuery';
 import RateLimitBanner from '@/components/common/RateLimitBanner';
+import GardenOverview from '@/components/dashboard/GardenOverview';
+import UpcomingTasksCard from '@/components/dashboard/UpcomingTasksCard';
 
 export default function Dashboard() {
   const [user, setUser] = useState(null);
@@ -94,40 +96,14 @@ export default function Dashboard() {
     }
   };
 
-  const markTaskDone = async (task) => {
-    try {
-      await base44.entities.Task.update(task.id, {
-        status: 'done',
-        completed_at: new Date().toISOString()
-      });
-      setTasks(tasks.filter(t => t.id !== task.id));
-    } catch (error) {
-      console.error('Error completing task:', error);
-    }
-  };
 
-  const getTaskDateLabel = (date) => {
-    if (!date) return 'No date';
-    const d = new Date(date);
-    if (isToday(d)) return 'Today';
-    if (isTomorrow(d)) return 'Tomorrow';
-    if (isBefore(d, new Date())) return 'Overdue';
-    return format(d, 'MMM d');
-  };
-
-  const getTaskDateColor = (date) => {
-    if (!date) return 'text-gray-500';
-    const d = new Date(date);
-    if (isBefore(d, new Date()) && !isToday(d)) return 'text-red-600';
-    if (isToday(d)) return 'text-emerald-600';
-    return 'text-gray-600';
-  };
 
   const stats = [
     { label: 'Gardens', value: gardens.length, icon: TreeDeciduous, color: 'bg-emerald-100 text-emerald-600', href: 'Gardens' },
     { label: 'Open Tasks', value: tasks.length, icon: Calendar, color: 'bg-blue-100 text-blue-600', href: 'CalendarTasks' },
     { label: 'My Plants', value: myPlantsCount, icon: Sprout, color: 'bg-green-100 text-green-600', href: 'MyPlants' },
     { label: 'Seeds', value: seedCount, icon: Package, color: 'bg-amber-100 text-amber-600', href: 'SeedStash' },
+    { label: 'Grow Lists', value: growListCount, icon: ListChecks, color: 'bg-purple-100 text-purple-600', href: 'GrowLists' },
   ];
 
   if (loading) {
@@ -168,7 +144,7 @@ export default function Dashboard() {
       <AdBanner placement="top_banner" pageType="dashboard" />
 
       {/* Stats */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
         {stats.map((stat, index) => (
           <motion.div
             key={stat.label}
@@ -197,113 +173,14 @@ export default function Dashboard() {
 
       <div className="grid lg:grid-cols-3 gap-6">
         {/* Today's Tasks */}
-        <Card className="lg:col-span-2">
-          <CardHeader className="flex flex-row items-center justify-between pb-4">
-            <CardTitle className="flex items-center gap-2">
-              <Clock className="w-5 h-5 text-emerald-600" />
-              Upcoming Tasks
-            </CardTitle>
-            <Link to={createPageUrl('CalendarTasks')}>
-              <Button variant="ghost" size="sm" className="gap-1">
-                View All <ArrowRight className="w-4 h-4" />
-              </Button>
-            </Link>
-          </CardHeader>
-          <CardContent>
-            {tasks.length === 0 ? (
-              <div className="text-center py-8">
-                <CheckCircle2 className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-                <p className="text-gray-600">All caught up!</p>
-                <p className="text-sm text-gray-400">No pending tasks</p>
-              </div>
-            ) : (
-              <div className="space-y-3">
-                {tasks.slice(0, 5).map((task) => (
-                  <div 
-                    key={task.id}
-                    className="flex items-center gap-4 p-3 rounded-xl bg-gray-50 hover:bg-gray-100 transition-colors"
-                  >
-                    <button
-                      onClick={() => markTaskDone(task)}
-                      className="w-6 h-6 rounded-full border-2 border-gray-300 hover:border-emerald-500 hover:bg-emerald-50 transition-colors flex-shrink-0"
-                    />
-                    <div className="flex-1 min-w-0">
-                      <p className="font-medium text-gray-900 truncate">{task.title}</p>
-                      {task.plant_display_name && (
-                        <p className="text-sm text-gray-500 truncate">{task.plant_display_name}</p>
-                      )}
-                    </div>
-                    <div className="flex items-center gap-2 flex-shrink-0">
-                      <Badge variant="outline" className={getTaskDateColor(task.due_date)}>
-                        {getTaskDateLabel(task.due_date)}
-                      </Badge>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </CardContent>
-        </Card>
+        <UpcomingTasksCard 
+          tasks={tasks} 
+          loading={loading}
+          onTaskComplete={(taskId) => setTasks(tasks.filter(t => t.id !== taskId))}
+        />
 
         {/* Recent Gardens */}
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-4">
-            <CardTitle className="flex items-center gap-2">
-              <TreeDeciduous className="w-5 h-5 text-emerald-600" />
-              Your Gardens
-            </CardTitle>
-            <Link to={createPageUrl('Gardens')}>
-              <Button variant="ghost" size="sm" className="gap-1">
-                All <ArrowRight className="w-4 h-4" />
-              </Button>
-            </Link>
-          </CardHeader>
-          <CardContent>
-            {gardens.length === 0 ? (
-              <div className="text-center py-8">
-                <Sprout className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-                <p className="text-gray-600 mb-4">{rateLimitError ? 'Loading...' : 'No gardens yet'}</p>
-                <Link to={createPageUrl('Gardens') + '?action=new'}>
-                  <Button size="sm" className="bg-emerald-600 hover:bg-emerald-700">
-                    <Plus className="w-4 h-4 mr-2" />
-                    Create Garden
-                  </Button>
-                </Link>
-              </div>
-            ) : (
-              <div className="space-y-3">
-                {gardens.map((garden) => (
-                  <Link 
-                    key={garden.id}
-                    to={createPageUrl('Gardens')}
-                    className="block"
-                  >
-                    <div className="flex items-center gap-3 p-3 rounded-xl hover:bg-gray-50 transition-colors">
-                      {garden.cover_image ? (
-                        <img 
-                          src={garden.cover_image} 
-                          alt={garden.name}
-                          className="w-12 h-12 rounded-lg object-cover"
-                        />
-                      ) : (
-                        <div className="w-12 h-12 rounded-lg bg-emerald-100 flex items-center justify-center">
-                          <TreeDeciduous className="w-6 h-6 text-emerald-600" />
-                        </div>
-                      )}
-                      <div className="flex-1 min-w-0">
-                        <p className="font-medium text-gray-900 truncate">{garden.name}</p>
-                        <p className="text-sm text-gray-500">
-                          {garden.privacy === 'public' ? 'Public' : garden.privacy === 'unlisted' ? 'Unlisted' : 'Private'}
-                        </p>
-                      </div>
-                      <ArrowRight className="w-4 h-4 text-gray-400" />
-                    </div>
-                  </Link>
-                ))}
-              </div>
-            )}
-          </CardContent>
-        </Card>
+        <GardenOverview gardens={gardens} loading={loading} />
       </div>
 
       {/* Recent Activity */}

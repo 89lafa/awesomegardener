@@ -293,7 +293,14 @@ export default function AdminDataImport() {
             console.log('[Variety Import] Lookup keys:', Object.keys(plantTypeLookup).slice(0, 10));
           }
 
-          for (const row of data) {
+          for (let rowIndex = 0; rowIndex < data.length; rowIndex++) {
+            const row = data[rowIndex];
+            
+            // Add delay every 30 rows for rate limiting (excluding dry run)
+            if (!dryRun && (rowIndex + 1) % 30 === 0 && rowIndex + 1 < data.length) {
+              await new Promise(resolve => setTimeout(resolve, 1500));
+            }
+            
             try {
               // Process PlantSubCategory-specific data
               if (item.key === 'PlantSubCategory') {
