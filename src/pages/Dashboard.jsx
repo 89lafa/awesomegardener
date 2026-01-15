@@ -144,24 +144,24 @@ export default function Dashboard() {
       <AdBanner placement="top_banner" pageType="dashboard" />
 
       {/* Stats */}
-      <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 lg:gap-4">
         {stats.map((stat, index) => (
           <motion.div
             key={stat.label}
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: index * 0.1 }}
+            transition={{ delay: index * 0.05 }}
           >
             <Link to={createPageUrl(stat.href)}>
-              <Card className="hover:shadow-md transition-shadow cursor-pointer">
-                <CardContent className="p-4 lg:p-6">
+              <Card className="hover:shadow-lg transition-all hover:-translate-y-1 cursor-pointer border-l-4 border-l-transparent hover:border-l-emerald-500">
+                <CardContent className="p-3 lg:p-4">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-sm text-gray-600">{stat.label}</p>
-                      <p className="text-2xl lg:text-3xl font-bold mt-1">{stat.value}</p>
+                      <p className="text-xs lg:text-sm text-gray-600">{stat.label}</p>
+                      <p className="text-xl lg:text-2xl font-bold mt-0.5 lg:mt-1">{stat.value}</p>
                     </div>
-                    <div className={`w-12 h-12 rounded-xl ${stat.color} flex items-center justify-center`}>
-                      <stat.icon className="w-6 h-6" />
+                    <div className={`w-10 h-10 lg:w-12 lg:h-12 rounded-xl ${stat.color} flex items-center justify-center shadow-sm`}>
+                      <stat.icon className="w-5 h-5 lg:w-6 lg:h-6" />
                     </div>
                   </div>
                 </CardContent>
