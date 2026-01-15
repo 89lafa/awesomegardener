@@ -28,6 +28,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
 import { formatDistanceToNow } from 'date-fns';
+import TopicAuthorCard from '@/components/forum/TopicAuthorCard';
 
 export default function ForumCategory() {
   const [searchParams] = useSearchParams();
@@ -242,10 +243,14 @@ export default function ForumCategory() {
                           ))}
                         </div>
                       )}
-                      <div className="flex items-center gap-3 text-xs text-gray-500">
-                        <span>{topic.post_count || 0} replies</span>
-                        <span>by {topic.created_by}</span>
-                        <span>{formatDistanceToNow(new Date(topic.created_date), { addSuffix: true })}</span>
+                      <div className="flex items-center justify-between text-xs text-gray-500">
+                        <div className="flex items-center gap-3">
+                          <span>{topic.post_count || 0} replies</span>
+                          <span>{formatDistanceToNow(new Date(topic.created_date), { addSuffix: true })}</span>
+                        </div>
+                      </div>
+                      <div className="mt-2">
+                        <TopicAuthorCard createdBy={topic.created_by} showSignature={false} />
                       </div>
                     </div>
                   </div>
