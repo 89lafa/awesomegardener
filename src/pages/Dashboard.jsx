@@ -12,7 +12,10 @@ import {
   Clock,
   Sprout,
   AlertCircle,
-  Plus
+  Plus,
+  Apple,
+  BookText,
+  Bug
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -33,6 +36,8 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [rateLimitError, setRateLimitError] = useState(null);
   const [retrying, setRetrying] = useState(false);
+  const [recentActivity, setRecentActivity] = useState({ harvests: [], diary: [], issues: [] });
+  const [myPlantsCount, setMyPlantsCount] = useState(0);
 
   useEffect(() => {
     loadDashboardData();
@@ -45,17 +50,23 @@ export default function Dashboard() {
       const userData = await base44.auth.me();
       setUser(userData);
       
-      const [gardensData, tasksData, seedsData, growListsData] = await Promise.all([
+      const [gardensData, tasksData, seedsData, growListsData, harvestsData, diaryData, issuesData, myPlantsData] = await Promise.all([
         smartQuery(base44, 'Garden', { archived: false, created_by: userData.email }, '-updated_date', 5),
         smartQuery(base44, 'Task', { status: 'open', created_by: userData.email }, 'due_date', 10),
         smartQuery(base44, 'SeedLot', { is_wishlist: false, created_by: userData.email }),
-        smartQuery(base44, 'GrowList', { status: 'active', created_by: userData.email })
+        smartQuery(base44, 'GrowList', { status: 'active', created_by: userData.email }),
+        smartQuery(base44, 'HarvestLog', { created_by: userData.email }, '-created_date', 3),
+        smartQuery(base44, 'GardenDiary', { created_by: userData.email }, '-created_date', 3),
+        smartQuery(base44, 'IssueLog', { created_by: userData.email }, '-created_date', 3),
+        smartQuery(base44, 'MyPlant', { created_by: userData.email })
       ]);
 
       setGardens(gardensData);
       setTasks(tasksData);
       setSeedCount(seedsData.length);
       setGrowListCount(growListsData.length);
+      setRecentActivity({ harvests: harvestsData, diary: diaryData, issues: issuesData });
+      setMyPlantsCount(myPlantsData.length);
       setRateLimitError(null); // Clear any rate limit errors on success
     } catch (error) {
       console.error('Error loading dashboard:', error);
@@ -107,8 +118,8 @@ export default function Dashboard() {
   const stats = [
     { label: 'Gardens', value: gardens.length, icon: TreeDeciduous, color: 'bg-emerald-100 text-emerald-600', href: 'Gardens' },
     { label: 'Open Tasks', value: tasks.length, icon: Calendar, color: 'bg-blue-100 text-blue-600', href: 'CalendarTasks' },
+    { label: 'My Plants', value: myPlantsCount, icon: Sprout, color: 'bg-green-100 text-green-600', href: 'MyPlants' },
     { label: 'Seeds', value: seedCount, icon: Package, color: 'bg-amber-100 text-amber-600', href: 'SeedStash' },
-    { label: 'Grow Lists', value: growListCount, icon: ListChecks, color: 'bg-purple-100 text-purple-600', href: 'GrowLists' },
   ];
 
   if (loading) {
@@ -286,6 +297,52 @@ export default function Dashboard() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Recent Activity */}
+      {(recentActivity.harvests.length > 0 || recentActivity.diary.length > 0 || recentActivity.issues.length > 0) && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Recent Activity</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2">
+              {recentActivity.harvests.slice(0, 3).map(h => (
+                <Link key={h.id} to={createPageUrl('HarvestLog')}>
+                  <div className="flex items-center gap-3 p-3 rounded-lg hover:bg-gray-50 transition-colors">
+                    <Apple className="w-4 h-4 text-emerald-600 flex-shrink-0" />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-gray-900 truncate">Harvested {h.plant_display_name || 'plant'}</p>
+                      <p className="text-xs text-gray-500">{h.quantity} {h.unit} • {format(new Date(h.harvest_date), 'MMM d')}</p>
+                    </div>
+                  </div>
+                </Link>
+              ))}
+              {recentActivity.diary.slice(0, 2).map(d => (
+                <Link key={d.id} to={createPageUrl('GardenDiary')}>
+                  <div className="flex items-center gap-3 p-3 rounded-lg hover:bg-gray-50 transition-colors">
+                    <BookText className="w-4 h-4 text-blue-600 flex-shrink-0" />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-gray-900 truncate">{d.title || 'Diary entry'}</p>
+                      <p className="text-xs text-gray-500">{format(new Date(d.entry_date), 'MMM d')}</p>
+                    </div>
+                  </div>
+                </Link>
+              ))}
+              {recentActivity.issues.slice(0, 2).map(issue => (
+                <Link key={issue.id} to={createPageUrl('IssuesLog')}>
+                  <div className="flex items-center gap-3 p-3 rounded-lg hover:bg-gray-50 transition-colors">
+                    <Bug className="w-4 h-4 text-red-600 flex-shrink-0" />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-gray-900 truncate capitalize">{issue.issue_type?.replace(/_/g, ' ') || 'Issue'}</p>
+                      <p className="text-xs text-gray-500">{format(new Date(issue.observed_date), 'MMM d')}</p>
+                    </div>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Quick Actions */}
       <Card>
