@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { base44 } from '@/api/base44Client';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
@@ -7,29 +7,8 @@ import { Trash2, MapPin, Sprout } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import ReactMarkdown from 'react-markdown';
 
-export default function CommentCard({ comment, user, canDelete, onDelete }) {
-  const [commentUser, setCommentUser] = useState(null);
-
-  useEffect(() => {
-    if (comment?.created_by) {
-      loadCommentUser();
-    }
-  }, [comment?.created_by]);
-
-  const loadCommentUser = async () => {
-    try {
-      const allUsers = await base44.entities.User.list();
-      const foundUser = allUsers.find(u => u.email === comment.created_by);
-      if (foundUser) {
-        setCommentUser(foundUser);
-        console.debug('[CommentCard] Loaded user:', foundUser.email, 'nickname:', foundUser.nickname);
-      } else {
-        console.warn('[CommentCard] User not found:', comment.created_by);
-      }
-    } catch (error) {
-      console.error('[CommentCard] Error loading user:', error);
-    }
-  };
+export default function CommentCard({ comment, author, user, canDelete, onDelete }) {
+  const commentUser = author;
 
   const getInitials = (name) => {
     if (!name || typeof name !== 'string') return 'U';

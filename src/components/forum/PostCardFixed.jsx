@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -10,30 +10,9 @@ import { cn } from '@/lib/utils';
 import ReactMarkdown from 'react-markdown';
 import ReportButton from '@/components/forum/ReportButton';
 
-export default function PostCard({ post, user, onVote, onDelete, userVote, showSignature = true }) {
-  const [postUser, setPostUser] = useState(null);
+export default function PostCard({ post, author, user, onVote, onDelete, userVote, showSignature = true }) {
   const [deleting, setDeleting] = useState(false);
-  
-  useEffect(() => {
-    if (post?.created_by) {
-      loadPostUser();
-    }
-  }, [post?.created_by]);
-
-  const loadPostUser = async () => {
-    try {
-      const allUsers = await base44.entities.User.list();
-      const foundUser = allUsers.find(u => u.email === post.created_by);
-      if (foundUser) {
-        setPostUser(foundUser);
-        console.debug('[PostCard] Loaded user:', foundUser.email, 'nickname:', foundUser.nickname);
-      } else {
-        console.warn('[PostCard] User not found:', post.created_by);
-      }
-    } catch (error) {
-      console.error('[PostCard] Error loading user:', error);
-    }
-  };
+  const postUser = author;
 
   const handleDelete = async () => {
     if (!confirm('Delete this post? This cannot be undone.')) return;
