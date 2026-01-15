@@ -75,21 +75,19 @@ export default function ForumTopic() {
       filteredPosts.forEach(p => { if (p.created_by) creatorEmails.add(p.created_by); });
       filteredComments.forEach(c => { if (c.created_by) creatorEmails.add(c.created_by); });
       
-      // Fetch users individually (regular users can't list all users)
-      const usersMap = {};
-      const userPromises = Array.from(creatorEmails).map(async (email) => {
+      // Fetch users via backend function (has service role permissions)
+      let usersMap = {};
+      if (creatorEmails.size > 0) {
         try {
-          const users = await base44.entities.User.filter({ email });
-          if (users.length > 0) {
-            usersMap[email] = users[0];
-          }
+          const response = await base44.functions.invoke('getForumUsers', { 
+            emails: Array.from(creatorEmails) 
+          });
+          usersMap = response.data.users || {};
+          console.log('[ForumTopic] Loaded users:', Object.keys(usersMap).length);
         } catch (error) {
-          console.warn('[ForumTopic] Could not fetch user:', email, error);
+          console.error('[ForumTopic] Error fetching forum users:', error);
         }
-      });
-      
-      await Promise.all(userPromises);
-      console.log('[ForumTopic] Loaded users:', Object.keys(usersMap).length);
+      }
       setUserMap(usersMap);
       
       if (topicData.length > 0) setTopic(topicData[0]);
