@@ -502,9 +502,7 @@ export default function ViewVariety() {
                   <p className="font-medium mt-1">{variety.breeder_or_origin}</p>
                 </div>
               )}
-          </div>
-
-          </div>
+            </div>
           </CardContent>
         </Card>
       )}
@@ -585,8 +583,10 @@ export default function ViewVariety() {
               {variety.sources.map((source, idx) => (
                 <Badge key={idx} variant="outline" className="px-3 py-1">{source}</Badge>
               ))}
-        </CardContent>
-      </Card>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       <Dialog open={showRequestChange} onOpenChange={setShowRequestChange}>
         <DialogContent>
