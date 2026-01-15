@@ -110,6 +110,7 @@ export default function Dashboard() {
   const getTaskStatus = (task) => {
     if (!task.due_date) return { label: 'No date', color: 'bg-gray-100 text-gray-600', priority: 3 };
     const d = new Date(task.due_date);
+    if (isNaN(d.getTime())) return { label: 'Invalid date', color: 'bg-gray-100 text-gray-600', priority: 3 };
     if (isBefore(d, new Date()) && !isToday(d)) return { label: 'Overdue', color: 'bg-red-100 text-red-700', priority: 1 };
     if (isToday(d)) return { label: 'Today', color: 'bg-emerald-100 text-emerald-700', priority: 2 };
     if (isTomorrow(d)) return { label: 'Tomorrow', color: 'bg-blue-100 text-blue-700', priority: 2 };
@@ -321,9 +322,13 @@ export default function Dashboard() {
                 <div className="space-y-2 text-sm">
                   <div className="flex justify-between">
                     <span className="text-gray-600">Last Frost</span>
-                    <span className="font-medium text-gray-900">{format(new Date(user.last_frost_date), 'MMM d')}</span>
+                    <span className="font-medium text-gray-900">
+                      {user.last_frost_date && !isNaN(new Date(user.last_frost_date).getTime()) 
+                        ? format(new Date(user.last_frost_date), 'MMM d') 
+                        : 'Not set'}
+                    </span>
                   </div>
-                  {user.first_frost_date && (
+                  {user.first_frost_date && !isNaN(new Date(user.first_frost_date).getTime()) && (
                     <div className="flex justify-between">
                       <span className="text-gray-600">First Frost</span>
                       <span className="font-medium text-gray-900">{format(new Date(user.first_frost_date), 'MMM d')}</span>
@@ -355,7 +360,11 @@ export default function Dashboard() {
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium text-gray-900">Harvested {h.plant_display_name || 'plant'}</p>
-                      <p className="text-xs text-gray-500">{h.quantity} {h.unit} • {format(new Date(h.harvest_date), 'MMM d, yyyy')}</p>
+                      <p className="text-xs text-gray-500">
+                        {h.quantity} {h.unit} • {h.harvest_date && !isNaN(new Date(h.harvest_date).getTime()) 
+                          ? format(new Date(h.harvest_date), 'MMM d, yyyy') 
+                          : 'Recently'}
+                      </p>
                     </div>
                     <ExternalLink className="w-4 h-4 text-gray-400 opacity-0 group-hover:opacity-100" />
                   </div>
@@ -369,7 +378,11 @@ export default function Dashboard() {
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium text-gray-900 truncate">{d.title || 'Diary entry'}</p>
-                      <p className="text-xs text-gray-500">{format(new Date(d.entry_date), 'MMM d, yyyy')}</p>
+                      <p className="text-xs text-gray-500">
+                        {d.entry_date && !isNaN(new Date(d.entry_date).getTime()) 
+                          ? format(new Date(d.entry_date), 'MMM d, yyyy') 
+                          : 'Recently'}
+                      </p>
                     </div>
                     <ExternalLink className="w-4 h-4 text-gray-400 opacity-0 group-hover:opacity-100" />
                   </div>
@@ -383,7 +396,11 @@ export default function Dashboard() {
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium text-gray-900 capitalize">{issue.issue_type?.replace(/_/g, ' ') || 'Issue logged'}</p>
-                      <p className="text-xs text-gray-500">{format(new Date(issue.observed_date), 'MMM d, yyyy')}</p>
+                      <p className="text-xs text-gray-500">
+                        {issue.observed_date && !isNaN(new Date(issue.observed_date).getTime()) 
+                          ? format(new Date(issue.observed_date), 'MMM d, yyyy') 
+                          : 'Recently'}
+                      </p>
                     </div>
                     <ExternalLink className="w-4 h-4 text-gray-400 opacity-0 group-hover:opacity-100" />
                   </div>
