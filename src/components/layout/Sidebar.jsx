@@ -1,5 +1,4 @@
 import React from 'react';
-import { Link } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
 import { 
   LayoutDashboard, 
@@ -92,9 +91,9 @@ export default function Sidebar({ collapsed, onToggle, currentPage, user, isMobi
         {navItems.map((item) => {
           const isActive = currentPage === item.page;
           return (
-            <Link
+            <a
               key={item.name}
-              to={createPageUrl(item.page)}
+              href={createPageUrl(item.page)}
               className={cn(
                 "flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all",
                 isActive 
@@ -104,7 +103,7 @@ export default function Sidebar({ collapsed, onToggle, currentPage, user, isMobi
             >
               <item.icon className={cn("w-5 h-5 flex-shrink-0", isActive && "text-emerald-400")} />
               {!effectiveCollapsed && <span className="font-medium text-sm">{item.name}</span>}
-            </Link>
+            </a>
           );
         })}
       </nav>
