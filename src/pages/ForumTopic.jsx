@@ -41,6 +41,7 @@ export default function ForumTopic() {
   const [posting, setPosting] = useState(false);
   const [replyingTo, setReplyingTo] = useState(null);
   const [replyBody, setReplyBody] = useState('');
+  const [userMap, setUserMap] = useState({});
 
   useEffect(() => {
     if (topicId) {
@@ -64,9 +65,31 @@ export default function ForumTopic() {
       
       console.log('[ForumTopic] Data loaded:', { topicFound: topicData.length > 0, posts: postsData.length });
       setUser(userData);
+      
+      const filteredPosts = postsData.filter(p => !p.deleted_at);
+      const filteredComments = commentsData.filter(c => !c.deleted_at);
+      
+      // Gather all unique creator emails
+      const creatorEmails = new Set();
+      if (topicData.length > 0 && topicData[0].created_by) creatorEmails.add(topicData[0].created_by);
+      filteredPosts.forEach(p => { if (p.created_by) creatorEmails.add(p.created_by); });
+      filteredComments.forEach(c => { if (c.created_by) creatorEmails.add(c.created_by); });
+      
+      // Fetch all users at once
+      const users = await base44.entities.User.list();
+      const usersMap = {};
+      users.forEach(u => {
+        if (creatorEmails.has(u.email)) {
+          usersMap[u.email] = u;
+        }
+      });
+      
+      console.log('[ForumTopic] Loaded users:', Object.keys(usersMap).length);
+      setUserMap(usersMap);
+      
       if (topicData.length > 0) setTopic(topicData[0]);
-      setPosts(postsData.filter(p => !p.deleted_at));
-      setComments(commentsData.filter(c => !c.deleted_at));
+      setPosts(filteredPosts);
+      setComments(filteredComments);
       setVotes(votesData);
       
       // Increment view count
@@ -276,10 +299,12 @@ export default function ForumTopic() {
         
         {posts.map((post) => {
           const postComments = comments.filter(c => c.post_id === post.id);
+          const postAuthor = userMap[post.created_by];
           return (
             <div key={post.id} className="space-y-3">
               <PostCard
                 post={post}
+                author={postAuthor}
                 user={user}
                 userVote={getUserVote('post', post.id)}
                 onVote={(value) => handleVote('post', post.id, value)}
@@ -301,19 +326,23 @@ export default function ForumTopic() {
               />
               {postComments.length > 0 && (
                 <div className="ml-12 space-y-2">
-                  {postComments.map(comment => (
-                    <CommentCard
-                      key={comment.id}
-                      comment={comment}
-                      user={user}
-                      canDelete={user?.role === 'admin' || user?.is_moderator || comment.created_by === user?.email}
-                      onDelete={async (commentId) => {
-                        await base44.entities.ForumComment.update(commentId, { deleted_at: new Date().toISOString() });
-                        setComments(comments.filter(c => c.id !== commentId));
-                        toast.success('Comment deleted');
-                      }}
-                    />
-                  ))}
+                  {postComments.map(comment => {
+                    const commentAuthor = userMap[comment.created_by];
+                    return (
+                      <CommentCard
+                        key={comment.id}
+                        comment={comment}
+                        author={commentAuthor}
+                        user={user}
+                        canDelete={user?.role === 'admin' || user?.is_moderator || comment.created_by === user?.email}
+                        onDelete={async (commentId) => {
+                          await base44.entities.ForumComment.update(commentId, { deleted_at: new Date().toISOString() });
+                          setComments(comments.filter(c => c.id !== commentId));
+                          toast.success('Comment deleted');
+                        }}
+                      />
+                    );
+                  })}
                 </div>
               )}
             </div>
