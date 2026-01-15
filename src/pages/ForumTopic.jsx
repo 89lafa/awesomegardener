@@ -21,10 +21,11 @@ import { toast } from 'sonner';
 import { format, formatDistanceToNow } from 'date-fns';
 import { cn } from '@/lib/utils';
 import ReactMarkdown from 'react-markdown';
-import PostCard from '@/components/forum/PostCard';
-import CommentCard from '@/components/forum/CommentCard';
+import PostCard from '@/components/forum/PostCardFixed';
+import CommentCard from '@/components/forum/CommentCardFixed';
 import ErrorBoundary from '@/components/common/ErrorBoundary';
 import ReportButton from '@/components/forum/ReportButton';
+import TopicAuthorCard from '@/components/forum/TopicAuthorCard';
 
 export default function ForumTopic() {
   const [searchParams] = useSearchParams();
@@ -241,27 +242,30 @@ export default function ForumTopic() {
 
       {/* Topic Body */}
       {topic.body && (
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex justify-end mb-2">
-              <ReportButton 
-                reportType="forum_topic" 
-                targetId={topic.id} 
-                targetPreview={topic.body} 
-              />
-            </div>
-            <div className="prose prose-sm max-w-none">
-              <ReactMarkdown>{topic.body}</ReactMarkdown>
-            </div>
-            {topic.tags && topic.tags.length > 0 && (
-              <div className="flex flex-wrap gap-1 mt-4 pt-4 border-t">
-                {topic.tags.map((tag, idx) => (
-                  <Badge key={idx} variant="secondary">{tag}</Badge>
-                ))}
+        <div className="space-y-4">
+          <Card>
+            <CardContent className="p-6">
+              <div className="flex justify-end mb-2">
+                <ReportButton 
+                  reportType="forum_topic" 
+                  targetId={topic.id} 
+                  targetPreview={topic.body} 
+                />
               </div>
-            )}
-          </CardContent>
-        </Card>
+              <div className="prose prose-sm max-w-none">
+                <ReactMarkdown>{topic.body}</ReactMarkdown>
+              </div>
+              {topic.tags && topic.tags.length > 0 && (
+                <div className="flex flex-wrap gap-1 mt-4 pt-4 border-t">
+                  {topic.tags.map((tag, idx) => (
+                    <Badge key={idx} variant="secondary">{tag}</Badge>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+          <TopicAuthorCard createdBy={topic.created_by} />
+        </div>
       )}
 
       {/* Posts */}
