@@ -20,13 +20,22 @@ export default function CommentCard({ comment, user, canDelete, onDelete }) {
   }, [comment?.created_by]);
 
   const loadCommentUser = async () => {
+    console.debug('[CommentCard] Loading user for:', comment.created_by);
     try {
       const users = await base44.entities.User.filter({ email: comment.created_by });
+      console.debug('[CommentCard] Filter returned:', users.length, 'users');
       if (users.length > 0) {
+        console.debug('[CommentCard] User data:', {
+          email: users[0].email,
+          nickname: users[0].nickname,
+          full_name: users[0].full_name,
+          usda_zone: users[0].usda_zone,
+          community_interests: users[0].community_interests
+        });
         setCommentUser(users[0]);
       }
     } catch (error) {
-      console.error('Error loading comment user:', error);
+      console.error('[CommentCard] Error loading comment user:', error);
     } finally {
       setLoadingUser(false);
     }

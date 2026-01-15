@@ -15,7 +15,11 @@ import {
   Plus,
   Apple,
   BookText,
-  Bug
+  Bug,
+  TrendingUp,
+  Users,
+  MessageSquare,
+  Star
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -38,6 +42,8 @@ export default function Dashboard() {
   const [retrying, setRetrying] = useState(false);
   const [recentActivity, setRecentActivity] = useState({ harvests: [], diary: [], issues: [] });
   const [myPlantsCount, setMyPlantsCount] = useState(0);
+  const [forumTopics, setForumTopics] = useState([]);
+  const [upcomingSeasons, setUpcomingSeasons] = useState([]);
 
   useEffect(() => {
     loadDashboardData();
@@ -50,7 +56,7 @@ export default function Dashboard() {
       const userData = await base44.auth.me();
       setUser(userData);
       
-      const [gardensData, tasksData, seedsData, growListsData, harvestsData, diaryData, issuesData, myPlantsData] = await Promise.all([
+      const [gardensData, tasksData, seedsData, growListsData, harvestsData, diaryData, issuesData, myPlantsData, topicsData] = await Promise.all([
         smartQuery(base44, 'Garden', { archived: false, created_by: userData.email }, '-updated_date', 5),
         smartQuery(base44, 'Task', { status: 'open', created_by: userData.email }, 'due_date', 10),
         smartQuery(base44, 'SeedLot', { is_wishlist: false, created_by: userData.email }),
@@ -58,7 +64,8 @@ export default function Dashboard() {
         smartQuery(base44, 'HarvestLog', { created_by: userData.email }, '-created_date', 3),
         smartQuery(base44, 'GardenDiary', { created_by: userData.email }, '-created_date', 3),
         smartQuery(base44, 'IssueLog', { created_by: userData.email }, '-created_date', 3),
-        smartQuery(base44, 'MyPlant', { created_by: userData.email })
+        smartQuery(base44, 'MyPlant', { created_by: userData.email }),
+        smartQuery(base44, 'ForumTopic', {}, '-last_activity_at', 5)
       ]);
 
       setGardens(gardensData);
@@ -67,6 +74,7 @@ export default function Dashboard() {
       setGrowListCount(growListsData.length);
       setRecentActivity({ harvests: harvestsData, diary: diaryData, issues: issuesData });
       setMyPlantsCount(myPlantsData.length);
+      setForumTopics(topicsData.filter(t => !t.deleted_at));
       setRateLimitError(null); // Clear any rate limit errors on success
     } catch (error) {
       console.error('Error loading dashboard:', error);
@@ -344,6 +352,40 @@ export default function Dashboard() {
         </Card>
       )}
 
+      {/* Community Activity */}
+      {forumTopics.length > 0 && (
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between pb-4">
+            <CardTitle className="flex items-center gap-2">
+              <MessageSquare className="w-5 h-5 text-purple-600" />
+              Community Activity
+            </CardTitle>
+            <Link to={createPageUrl('CommunityBoard')}>
+              <Button variant="ghost" size="sm" className="gap-1">
+                View Board <ArrowRight className="w-4 h-4" />
+              </Button>
+            </Link>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              {forumTopics.slice(0, 3).map((topic) => (
+                <Link key={topic.id} to={createPageUrl('ForumTopic') + `?id=${topic.id}`}>
+                  <div className="flex items-center gap-3 p-3 rounded-lg hover:bg-gray-50 transition-colors">
+                    <MessageSquare className="w-4 h-4 text-purple-600 flex-shrink-0" />
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium text-gray-900 truncate">{topic.title}</p>
+                      <p className="text-xs text-gray-500">
+                        {topic.post_count || 0} replies • {topic.view_count || 0} views
+                      </p>
+                    </div>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Quick Actions */}
       <Card>
         <CardHeader>
@@ -373,6 +415,30 @@ export default function Dashboard() {
               <Button variant="outline" className="w-full h-auto py-4 flex-col gap-2">
                 <Sprout className="w-5 h-5 text-purple-600" />
                 <span>Browse Plants</span>
+              </Button>
+            </Link>
+            <Link to={createPageUrl('MyPlants')}>
+              <Button variant="outline" className="w-full h-auto py-4 flex-col gap-2">
+                <Sprout className="w-5 h-5 text-green-600" />
+                <span>My Plants</span>
+              </Button>
+            </Link>
+            <Link to={createPageUrl('GrowLists')}>
+              <Button variant="outline" className="w-full h-auto py-4 flex-col gap-2">
+                <ListChecks className="w-5 h-5 text-indigo-600" />
+                <span>Grow Lists</span>
+              </Button>
+            </Link>
+            <Link to={createPageUrl('HarvestLog')}>
+              <Button variant="outline" className="w-full h-auto py-4 flex-col gap-2">
+                <Apple className="w-5 h-5 text-red-600" />
+                <span>Harvest Log</span>
+              </Button>
+            </Link>
+            <Link to={createPageUrl('CommunityBoard')}>
+              <Button variant="outline" className="w-full h-auto py-4 flex-col gap-2">
+                <Users className="w-5 h-5 text-purple-600" />
+                <span>Community</span>
               </Button>
             </Link>
           </div>

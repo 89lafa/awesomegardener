@@ -16,15 +16,25 @@ import { smartQuery } from '@/components/utils/smartQuery';
 
 function ViewVarietyButton({ rec }) {
   const [searching, setSearching] = useState(false);
-  const [varietyId, setVarietyId] = useState(null);
 
   const handleView = async () => {
     setSearching(true);
     try {
-      // Search by variety name if provided
+      // First search by exact variety name
       if (rec.variety_name) {
-        const varieties = await smartQuery(base44, 'Variety', {}, 'variety_name', 500);
-        const match = varieties.find(v => 
+        const varieties = await base44.entities.Variety.filter({ 
+          variety_name: rec.variety_name,
+          status: 'active'
+        });
+        if (varieties.length > 0) {
+          window.location.href = createPageUrl('ViewVariety') + `?id=${varieties[0].id}`;
+          return;
+        }
+        
+        // Try partial match
+        const allVarieties = await smartQuery(base44, 'Variety', { status: 'active' }, 'variety_name', 500);
+        const match = allVarieties.find(v => 
+          v.variety_name.toLowerCase() === rec.variety_name.toLowerCase() ||
           v.variety_name.toLowerCase().includes(rec.variety_name.toLowerCase())
         );
         if (match) {
@@ -34,17 +44,18 @@ function ViewVarietyButton({ rec }) {
       }
 
       // Fallback: search by plant type
-      const plantTypes = await smartQuery(base44, 'PlantType', {}, 'common_name');
+      const plantTypes = await base44.entities.PlantType.list('common_name');
       const type = plantTypes.find(pt => 
-        pt.common_name.toLowerCase() === rec.common_name.toLowerCase()
+        pt.common_name && pt.common_name.toLowerCase() === rec.common_name.toLowerCase()
       );
       
       if (type) {
-        window.location.href = createPageUrl('PlantCatalogDetail') + `?id=${type.id}`;
+        window.location.href = createPageUrl('PlantCatalog') + `?type=${type.id}`;
       } else {
         window.location.href = createPageUrl('PlantCatalog') + `?search=${encodeURIComponent(rec.common_name)}`;
       }
     } catch (error) {
+      console.error('View variety error:', error);
       toast.error('Failed to find variety');
     } finally {
       setSearching(false);
@@ -54,35 +65,144 @@ function ViewVarietyButton({ rec }) {
   return (
     <Button size="sm" variant="outline" onClick={handleView} disabled={searching}>
       {searching ? <Loader2 className="w-3 h-3 animate-spin mr-1" /> : <ExternalLink className="w-3 h-3 mr-1" />}
-      View Variety
+      View
     </Button>
   );
 }
 
-function AddToStashButton({ rec }) {
-  const handleAdd = () => {
-    const query = rec.variety_name || rec.common_name;
-    window.location.href = createPageUrl('SeedStash') + `?action=add&search=${encodeURIComponent(query)}`;
+function AddToStashButton({ rec, onAdded }) {
+  const [adding, setAdding] = useState(false);
+
+  const handleAdd = async () => {
+    setAdding(true);
+    try {
+      // Find plant type
+      const plantTypes = await base44.entities.PlantType.list('common_name');
+      const plantType = plantTypes.find(pt => 
+        pt.common_name && pt.common_name.toLowerCase() === rec.common_name.toLowerCase()
+      );
+      
+      if (!plantType) {
+        toast.error('Plant type not found in catalog');
+        return;
+      }
+
+      // Find or create PlantProfile
+      let profile = null;
+      if (rec.variety_name) {
+        const profiles = await base44.entities.PlantProfile.filter({
+          plant_type_id: plantType.id,
+          variety_name: rec.variety_name
+        });
+        profile = profiles[0];
+      }
+
+      if (!profile) {
+        // Create new profile
+        profile = await base44.entities.PlantProfile.create({
+          plant_type_id: plantType.id,
+          common_name: plantType.common_name,
+          variety_name: rec.variety_name || plantType.common_name,
+          source_type: 'user_private'
+        });
+      }
+
+      // Create seed lot with is_wishlist=true
+      await base44.entities.SeedLot.create({
+        plant_profile_id: profile.id,
+        is_wishlist: true,
+        lot_notes: `AI Recommended: ${rec.reason}`
+      });
+
+      toast.success(`Added ${rec.variety_name || rec.common_name} to wishlist!`);
+      if (onAdded) onAdded();
+    } catch (error) {
+      console.error('Add to stash error:', error);
+      toast.error('Failed to add to stash');
+    } finally {
+      setAdding(false);
+    }
   };
 
   return (
-    <Button size="sm" variant="outline" onClick={handleAdd} className="gap-1">
-      <Package className="w-3 h-3" />
+    <Button size="sm" variant="outline" onClick={handleAdd} disabled={adding} className="gap-1">
+      {adding ? <Loader2 className="w-3 h-3 animate-spin" /> : <Package className="w-3 h-3" />}
       Add to Stash
     </Button>
   );
 }
 
-function AddToGrowListButton({ rec }) {
-  const handleAdd = () => {
-    const query = rec.variety_name || rec.common_name;
-    window.location.href = createPageUrl('GrowLists') + `?action=add&search=${encodeURIComponent(query)}`;
+function AddToGrowListButton({ rec, onAdded }) {
+  const [adding, setAdding] = useState(false);
+
+  const handleAdd = async () => {
+    setAdding(true);
+    try {
+      // Find active grow list or create one
+      const user = await base44.auth.me();
+      let growLists = await base44.entities.GrowList.filter({
+        created_by: user.email,
+        status: 'active'
+      });
+      
+      let growList = growLists[0];
+      if (!growList) {
+        growList = await base44.entities.GrowList.create({
+          name: `${new Date().getFullYear()} Grow List`,
+          status: 'active',
+          year: new Date().getFullYear(),
+          items: []
+        });
+      }
+
+      // Find plant type and variety
+      const plantTypes = await base44.entities.PlantType.list('common_name');
+      const plantType = plantTypes.find(pt => 
+        pt.common_name && pt.common_name.toLowerCase() === rec.common_name.toLowerCase()
+      );
+
+      if (!plantType) {
+        toast.error('Plant type not found');
+        return;
+      }
+
+      // Find variety if specified
+      let varietyId = null;
+      if (rec.variety_name) {
+        const varieties = await base44.entities.Variety.filter({
+          plant_type_id: plantType.id,
+          variety_name: rec.variety_name,
+          status: 'active'
+        });
+        if (varieties.length > 0) varietyId = varieties[0].id;
+      }
+
+      // Add to grow list
+      const items = growList.items || [];
+      items.push({
+        plant_type_id: plantType.id,
+        plant_type_name: plantType.common_name,
+        variety_id: varietyId,
+        variety_name: rec.variety_name || null,
+        quantity: 1,
+        added_date: new Date().toISOString()
+      });
+
+      await base44.entities.GrowList.update(growList.id, { items });
+      toast.success(`Added to ${growList.name}!`);
+      if (onAdded) onAdded();
+    } catch (error) {
+      console.error('Add to grow list error:', error);
+      toast.error('Failed to add to grow list');
+    } finally {
+      setAdding(false);
+    }
   };
 
   return (
-    <Button size="sm" variant="outline" onClick={handleAdd} className="gap-1">
-      <ListChecks className="w-3 h-3" />
-      Add to Grow List
+    <Button size="sm" variant="outline" onClick={handleAdd} disabled={adding} className="gap-1">
+      {adding ? <Loader2 className="w-3 h-3 animate-spin" /> : <ListChecks className="w-3 h-3" />}
+      Grow List
     </Button>
   );
 }
@@ -263,10 +383,10 @@ Return structured data.`,
                         <span>🍅 Harvest: {rec.harvest_timing}</span>
                       </div>
                     </div>
-                    <div className="flex flex-col gap-2">
+                    <div className="flex flex-col gap-2 min-w-[120px]">
                       <ViewVarietyButton rec={rec} />
-                      <AddToStashButton rec={rec} />
-                      <AddToGrowListButton rec={rec} />
+                      <AddToStashButton rec={rec} onAdded={() => {}} />
+                      <AddToGrowListButton rec={rec} onAdded={() => {}} />
                     </div>
                   </div>
                 </CardContent>

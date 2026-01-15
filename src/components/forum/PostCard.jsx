@@ -40,11 +40,19 @@ export default function PostCard({ post, user, onVote, onDelete, userVote, showS
     console.debug('[PostCard] Loading user for:', post.created_by);
     try {
       const users = await base44.entities.User.filter({ email: post.created_by });
+      console.debug('[PostCard] Filter returned:', users.length, 'users');
       if (users.length > 0) {
+        console.debug('[PostCard] User data:', {
+          email: users[0].email,
+          nickname: users[0].nickname,
+          full_name: users[0].full_name,
+          usda_zone: users[0].usda_zone,
+          location_city: users[0].location_city,
+          community_interests: users[0].community_interests
+        });
         setPostUser(users[0]);
-        console.debug('[PostCard] User loaded:', users[0].email);
       } else {
-        console.debug('[PostCard] No user found for:', post.created_by);
+        console.warn('[PostCard] No user found for email:', post.created_by);
       }
     } catch (error) {
       console.error('[PostCard] Error loading post user:', error);

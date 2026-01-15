@@ -220,7 +220,7 @@ export default function AdminDataMaintenance() {
   };
 
   const runNormalizeSubcats = async () => {
-    if (!confirm('This will normalize ALL varieties in batches. Continue?')) return;
+    if (!confirm('This will normalize ALL varieties in batches with auto rate-limit handling. Continue?')) return;
     
     setNormalizingSubcats(true);
     setNormalizeResult(null);
@@ -228,11 +228,12 @@ export default function AdminDataMaintenance() {
     try {
       let offset = 0;
       let totalUpdated = 0;
+      let totalSkipped = 0;
       let hasMore = true;
 
       while (hasMore) {
         const response = await base44.functions.invoke('batchNormalizeVarietySubcategories', {
-          batch_size: 100,
+          batch_size: 50,
           offset
         });
         
@@ -240,7 +241,8 @@ export default function AdminDataMaintenance() {
           throw new Error(response.data.error);
         }
 
-        totalUpdated += response.data.summary.updated;
+        totalUpdated += response.data.summary.updated || 0;
+        totalSkipped += response.data.summary.skipped || 0;
         hasMore = response.data.summary.has_more;
         offset = response.data.summary.next_offset;
 
@@ -248,22 +250,24 @@ export default function AdminDataMaintenance() {
         setNormalizeResult({
           success: true,
           varieties_updated: totalUpdated,
+          varieties_skipped: totalSkipped,
           total: response.data.summary.total,
           progress: Math.round((offset / response.data.summary.total) * 100)
         });
 
-        // Small delay between batches
+        // Delay between batches for rate limit safety
         if (hasMore) {
-          await new Promise(resolve => setTimeout(resolve, 500));
+          await new Promise(resolve => setTimeout(resolve, 1500));
         }
       }
 
-      toast.success(`Normalization completed! ${totalUpdated} varieties updated`);
+      toast.success(`Normalization completed! ${totalUpdated} updated, ${totalSkipped} skipped`);
     } catch (error) {
       console.error('Normalize error:', error);
       setNormalizeResult({
         success: false,
-        error: error.message
+        error: error.message,
+        varieties_updated: totalUpdated
       });
       toast.error('Normalization failed: ' + error.message);
     } finally {
