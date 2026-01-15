@@ -703,6 +703,21 @@ export default function AdminDataImport() {
             }
           }
 
+          // Update progress periodically during import
+          if ((inserted + updated + skipped + rejected) % 10 === 0) {
+            setResults({
+              ...importResults,
+              [item.key]: {
+                status: 'in_progress',
+                message: `Processing... ${inserted + updated} / ${data.length}`,
+                inserted,
+                updated,
+                skipped,
+                rejected
+              }
+            });
+          }
+
           importResults[item.key] = {
             status: 'success',
             message: 'Import completed',

@@ -726,8 +726,13 @@ export default function AdminDataMaintenance() {
                   <div className="font-semibold">Results:</div>
                   {normalizeResult.success ? (
                     <>
+                      {normalizeResult.progress && (
+                        <div className="text-sm font-medium mb-2">
+                          Progress: {normalizeResult.progress}% ({normalizeResult.varieties_updated} / {normalizeResult.total})
+                        </div>
+                      )}
                       <ul className="text-sm space-y-1">
-                        <li>• Varieties scanned: {normalizeResult.varieties_scanned}</li>
+                        <li>• Varieties scanned: {normalizeResult.varieties_scanned || normalizeResult.total}</li>
                         <li>• Varieties updated: {normalizeResult.varieties_updated || normalizeResult.would_update}</li>
                         <li>• Already OK: {normalizeResult.already_ok}</li>
                         <li>• String arrays fixed: {normalizeResult.had_string_array_fixed}</li>
