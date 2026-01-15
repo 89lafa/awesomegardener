@@ -9,111 +9,71 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'Forbidden: Admin access required' }, { status: 403 });
     }
 
-    const { plant_type_id, batch_size = 50, offset = 0 } = await req.json();
+    const { plant_type_id, dry_run = false } = await req.json().catch(() => ({}));
 
     if (!plant_type_id) {
       return Response.json({ error: 'plant_type_id required' }, { status: 400 });
     }
 
-    // Step 1: Activate all subcategories for this type
-    const allSubcats = await base44.asServiceRole.entities.PlantSubCategory.filter({ 
-      plant_type_id 
-    });
+    // Fetch varieties for this plant type
+    const varieties = await base44.asServiceRole.entities.Variety.filter({ plant_type_id });
+    const subcategories = await base44.asServiceRole.entities.PlantSubCategory.filter({ plant_type_id });
 
-    let subcatsActivated = 0;
-    for (const subcat of allSubcats) {
-      if (!subcat.is_active) {
-        await base44.asServiceRole.entities.PlantSubCategory.update(subcat.id, { is_active: true });
-        subcatsActivated++;
-      }
+    // Find uncategorized subcategory for this type
+    const uncategorized = subcategories.find(sc => 
+      sc.subcat_code?.includes('UNCATEGORIZED') || sc.name?.toLowerCase().includes('uncategorized')
+    );
+
+    if (!uncategorized) {
+      return Response.json({ 
+        error: 'No uncategorized subcategory found for this plant type',
+        suggestion: 'Create one first via Admin Data Maintenance'
+      }, { status: 400 });
     }
 
-    // Build lookup for resolution
-    const subcatLookup = {};
-    allSubcats.forEach(sc => {
-      if (sc.subcat_code) subcatLookup[sc.subcat_code] = sc;
-    });
-
-    // Step 2: Process varieties in batch
-    const varieties = await base44.asServiceRole.entities.Variety.filter({ 
-      plant_type_id,
-      status: 'active'
-    });
-
-    const batch = varieties.slice(offset, offset + batch_size);
     let repaired = 0;
-    let skipped = 0;
-    let missingCode = 0;
-    let unresolvable = 0;
-    let junkCleaned = 0;
-    const errors = [];
+    let errors = 0;
+    const BATCH_SIZE = 25;
+    const DELAY_MS = 1500;
 
-    for (const variety of batch) {
+    for (let i = 0; i < varieties.length; i++) {
+      const variety = varieties[i];
+
       try {
-        const primaryCode = variety.plant_subcategory_code || 
-                           variety.extended_data?.import_subcat_code || 
-                           null;
-
-        let resolvedId = null;
-        let resolvedCode = null;
-
-        if (primaryCode && primaryCode.trim()) {
-          let normalized = primaryCode.trim();
-          if (!normalized.startsWith('PSC_')) normalized = 'PSC_' + normalized;
-
-          const subcat = subcatLookup[normalized];
-          if (subcat) {
-            resolvedId = subcat.id;
-            resolvedCode = subcat.subcat_code;
-          } else {
-            unresolvable++;
+        // Check if variety has no subcategory assigned
+        if (!variety.plant_subcategory_id) {
+          if (!dry_run) {
+            await base44.asServiceRole.entities.Variety.update(variety.id, {
+              plant_subcategory_id: uncategorized.id,
+              plant_subcategory_ids: [uncategorized.id],
+              plant_subcategory_code: uncategorized.subcat_code,
+              plant_subcategory_codes: [uncategorized.subcat_code]
+            });
           }
-        } else {
-          missingCode++;
+          repaired++;
         }
 
-        // Check for junk arrays
-        const hasJunk = (
-          typeof variety.plant_subcategory_ids === 'string' ||
-          (Array.isArray(variety.plant_subcategory_ids) && 
-           variety.plant_subcategory_ids.some(id => typeof id !== 'string' || id.startsWith('[')))
-        );
-
-        if (hasJunk) junkCleaned++;
-
-        const updateData = {
-          plant_subcategory_id: resolvedId,
-          plant_subcategory_ids: resolvedId ? [resolvedId] : [],
-          plant_subcategory_code: resolvedCode,
-          plant_subcategory_codes: resolvedCode ? [resolvedCode] : []
-        };
-
-        await base44.asServiceRole.entities.Variety.update(variety.id, updateData);
-        repaired++;
+        // Rate limiting: pause after each batch
+        if ((i + 1) % BATCH_SIZE === 0 && i + 1 < varieties.length) {
+          console.log(`[Repair] Batch complete: ${i + 1}/${varieties.length}, pausing ${DELAY_MS}ms`);
+          await new Promise(resolve => setTimeout(resolve, DELAY_MS));
+        }
       } catch (error) {
-        errors.push(`${variety.variety_name}: ${error.message}`);
-        skipped++;
+        console.error(`[Repair] Error on variety ${variety.id}:`, error.message);
+        errors++;
       }
     }
-
-    const hasMore = offset + batch_size < varieties.length;
 
     return Response.json({
       success: true,
-      stats: {
-        subcategories_activated: subcatsActivated,
-        varieties_repaired: repaired,
-        varieties_skipped: skipped,
-        missing_subcategory_code: missingCode,
-        unresolvable_subcategory_code: unresolvable,
-        junk_arrays_cleaned: junkCleaned,
-        errors,
-        has_more: hasMore,
-        next_offset: offset + batch_size,
-        total_varieties: varieties.length
-      }
+      dry_run,
+      total: varieties.length,
+      repaired,
+      errors,
+      uncategorized_subcat: uncategorized.name
     });
   } catch (error) {
-    return Response.json({ success: false, error: error.message }, { status: 500 });
+    console.error('[Repair] Fatal error:', error);
+    return Response.json({ error: error.message }, { status: 500 });
   }
 });

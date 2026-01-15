@@ -9,60 +9,93 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'Forbidden: Admin access required' }, { status: 403 });
     }
 
-    const { batch_size = 100, offset = 0 } = await req.json();
+    const { dry_run = false } = await req.json().catch(() => ({}));
 
-    // Load active subcategories for validation
-    const allSubcats = await base44.asServiceRole.entities.PlantSubCategory.list();
-    const activeSubcatIds = new Set(allSubcats.filter(s => s.is_active).map(s => s.id));
+    // Fetch all varieties and subcategories
+    const [varieties, subcategories] = await Promise.all([
+      base44.asServiceRole.entities.Variety.list(),
+      base44.asServiceRole.entities.PlantSubCategory.list()
+    ]);
 
-    // Get varieties to process
-    const allVarieties = await base44.asServiceRole.entities.Variety.filter({ status: 'active' });
-    const batch = allVarieties.slice(offset, offset + batch_size);
+    const subcatMap = {};
+    subcategories.forEach(sc => {
+      subcatMap[sc.id] = sc;
+    });
 
-    let updated = 0;
-    let skipped = 0;
+    let processed = 0;
+    let fixed = 0;
+    let errors = 0;
+    const BATCH_SIZE = 30;
+    const DELAY_MS = 1500;
 
-    for (const variety of batch) {
+    for (let i = 0; i < varieties.length; i++) {
+      const variety = varieties[i];
+      
       try {
-        // Get effective IDs
-        let effectiveIds = [];
-        if (variety.plant_subcategory_id) effectiveIds.push(variety.plant_subcategory_id);
-        if (Array.isArray(variety.plant_subcategory_ids)) {
-          effectiveIds = effectiveIds.concat(variety.plant_subcategory_ids);
+        let needsUpdate = false;
+        const updates = {};
+
+        // Normalize primary subcategory
+        if (variety.plant_subcategory_id) {
+          const subcat = subcatMap[variety.plant_subcategory_id];
+          if (!subcat) {
+            updates.plant_subcategory_id = null;
+            updates.plant_subcategory_code = null;
+            needsUpdate = true;
+          } else {
+            // Ensure code is synced
+            if (variety.plant_subcategory_code !== subcat.subcat_code) {
+              updates.plant_subcategory_code = subcat.subcat_code;
+              needsUpdate = true;
+            }
+          }
         }
-        effectiveIds = [...new Set(effectiveIds.filter(id => 
-          id && typeof id === 'string' && id.trim() !== '' && activeSubcatIds.has(id)
-        ))];
 
-        // Build update
-        const updateData = {
-          plant_subcategory_id: effectiveIds[0] || null,
-          plant_subcategory_ids: effectiveIds
-        };
+        // Normalize arrays
+        if (variety.plant_subcategory_ids && Array.isArray(variety.plant_subcategory_ids)) {
+          const validIds = variety.plant_subcategory_ids.filter(id => subcatMap[id]);
+          if (validIds.length !== variety.plant_subcategory_ids.length) {
+            updates.plant_subcategory_ids = validIds;
+            needsUpdate = true;
+          }
+        }
 
-        await base44.asServiceRole.entities.Variety.update(variety.id, updateData);
-        updated++;
+        // Sync single → array
+        if (variety.plant_subcategory_id && (!variety.plant_subcategory_ids || !variety.plant_subcategory_ids.includes(variety.plant_subcategory_id))) {
+          updates.plant_subcategory_ids = variety.plant_subcategory_id ? [variety.plant_subcategory_id] : [];
+          needsUpdate = true;
+        }
+
+        if (needsUpdate && !dry_run) {
+          await base44.asServiceRole.entities.Variety.update(variety.id, updates);
+          fixed++;
+        } else if (needsUpdate) {
+          fixed++;
+        }
+
+        processed++;
+
+        // Rate limiting: pause after each batch
+        if ((i + 1) % BATCH_SIZE === 0 && i + 1 < varieties.length) {
+          console.log(`[Normalize] Batch complete: ${i + 1}/${varieties.length}, pausing ${DELAY_MS}ms`);
+          await new Promise(resolve => setTimeout(resolve, DELAY_MS));
+        }
       } catch (error) {
-        console.error(`Error updating variety ${variety.id}:`, error);
-        skipped++;
+        console.error(`[Normalize] Error on variety ${variety.id}:`, error.message);
+        errors++;
       }
     }
 
-    const hasMore = offset + batch_size < allVarieties.length;
-
     return Response.json({
       success: true,
-      summary: {
-        batch_size,
-        offset,
-        updated,
-        skipped,
-        has_more: hasMore,
-        next_offset: offset + batch_size,
-        total: allVarieties.length
-      }
+      dry_run,
+      processed,
+      fixed,
+      errors,
+      total: varieties.length
     });
   } catch (error) {
-    return Response.json({ success: false, error: error.message }, { status: 500 });
+    console.error('[Normalize] Fatal error:', error);
+    return Response.json({ error: error.message }, { status: 500 });
   }
 });
