@@ -13,6 +13,7 @@ import CalendarPlanner from './pages/CalendarPlanner';
 import CalendarTasks from './pages/CalendarTasks';
 import ChangeRequests from './pages/ChangeRequests';
 import Community from './pages/Community';
+import CommunityBoard from './pages/CommunityBoard';
 import CompanionPlanner from './pages/CompanionPlanner';
 import CompanionRuleImport from './pages/CompanionRuleImport';
 import CompanionRulesAudit from './pages/CompanionRulesAudit';
@@ -23,6 +24,8 @@ import EditVariety from './pages/EditVariety';
 import EditorReviewQueue from './pages/EditorReviewQueue';
 import FeatureRequests from './pages/FeatureRequests';
 import ForumAdmin from './pages/ForumAdmin';
+import ForumCategory from './pages/ForumCategory';
+import ForumTopic from './pages/ForumTopic';
 import GardenBuilder from './pages/GardenBuilder';
 import GardenCare from './pages/GardenCare';
 import GardenDiary from './pages/GardenDiary';
@@ -58,9 +61,6 @@ import Users from './pages/Users';
 import VarietyReviewQueue from './pages/VarietyReviewQueue';
 import ViewVariety from './pages/ViewVariety';
 import ZoneMap from './pages/ZoneMap';
-import CommunityBoard from './pages/CommunityBoard';
-import ForumCategory from './pages/ForumCategory';
-import ForumTopic from './pages/ForumTopic';
 import __Layout from './Layout.jsx';
 
 
@@ -80,6 +80,7 @@ export const PAGES = {
     "CalendarTasks": CalendarTasks,
     "ChangeRequests": ChangeRequests,
     "Community": Community,
+    "CommunityBoard": CommunityBoard,
     "CompanionPlanner": CompanionPlanner,
     "CompanionRuleImport": CompanionRuleImport,
     "CompanionRulesAudit": CompanionRulesAudit,
@@ -90,6 +91,8 @@ export const PAGES = {
     "EditorReviewQueue": EditorReviewQueue,
     "FeatureRequests": FeatureRequests,
     "ForumAdmin": ForumAdmin,
+    "ForumCategory": ForumCategory,
+    "ForumTopic": ForumTopic,
     "GardenBuilder": GardenBuilder,
     "GardenCare": GardenCare,
     "GardenDiary": GardenDiary,
@@ -125,9 +128,6 @@ export const PAGES = {
     "VarietyReviewQueue": VarietyReviewQueue,
     "ViewVariety": ViewVariety,
     "ZoneMap": ZoneMap,
-    "CommunityBoard": CommunityBoard,
-    "ForumCategory": ForumCategory,
-    "ForumTopic": ForumTopic,
 }
 
 export const pagesConfig = {

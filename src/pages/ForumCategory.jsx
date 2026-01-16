@@ -37,7 +37,7 @@ export default function ForumCategory() {
       const [userData, categoryData, topicsData, postsData] = await Promise.all([
         base44.auth.me(),
         base44.entities.ForumCategory.filter({ id: categoryId }),
-        base44.entities.ForumTopic.filter({ category_id: categoryId }, '-pinned,-updated_date'),
+        base44.entities.ForumTopic.filter({ category_id: categoryId }, '-updated_date'),
         base44.entities.ForumPost.list()
       ]);
 
