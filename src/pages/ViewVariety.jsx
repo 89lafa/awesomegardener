@@ -15,7 +15,7 @@ import {
 } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { ArrowLeft, ExternalLink, Loader2, Edit, ShoppingCart, Package, Plus, Image as ImageIcon } from 'lucide-react';
+import { ArrowLeft, ExternalLink, Loader2, Edit, Package, Plus, Sprout, Sun, Calendar, Ruler, Droplets, TrendingUp } from 'lucide-react';
 import { toast } from 'sonner';
 import AddToStashModal from '@/components/catalog/AddToStashModal';
 
@@ -45,27 +45,21 @@ export default function ViewVariety() {
 
   const loadData = async () => {
     try {
-      console.log('[ViewVariety] Loading variety:', varietyId);
       const [userData, varietyData] = await Promise.all([
         base44.auth.me(),
         base44.entities.Variety.filter({ id: varietyId })
       ]);
 
       setUser(userData);
-      console.log('[ViewVariety] Found varieties:', varietyData.length);
 
       if (varietyData.length === 0) {
-        console.error('[ViewVariety] Variety not found');
         setLoading(false);
         return;
       }
 
       const v = varietyData[0];
-      console.log('[ViewVariety] Loaded variety:', v);
       
-      // Check if this variety was merged into another
       if (v.status === 'removed' && v.extended_data?.merged_into_variety_id) {
-        console.log('[ViewVariety] Variety was merged, redirecting to:', v.extended_data.merged_into_variety_id);
         window.location.href = createPageUrl('ViewVariety') + `?id=${v.extended_data.merged_into_variety_id}`;
         return;
       }
@@ -74,21 +68,18 @@ export default function ViewVariety() {
 
       if (v.plant_type_id) {
         const types = await base44.entities.PlantType.filter({ id: v.plant_type_id });
-        console.log('[ViewVariety] Found plant types:', types.length);
         if (types.length > 0) {
-          console.log('[ViewVariety] Plant type:', types[0]);
           setPlantType(types[0]);
         }
       }
 
-      // Load all subcategories for this variety
       const allSubcatIds = v.plant_subcategory_ids || (v.plant_subcategory_id ? [v.plant_subcategory_id] : []);
       if (allSubcatIds.length > 0) {
         const subcats = await base44.entities.PlantSubCategory.list();
         setSubCategories(subcats.filter(s => allSubcatIds.includes(s.id)));
       }
     } catch (error) {
-      console.error('[ViewVariety] Error loading variety:', error);
+      console.error('Error loading variety:', error);
     } finally {
       setLoading(false);
     }
@@ -104,9 +95,7 @@ export default function ViewVariety() {
     try {
       await base44.entities.VarietyChangeRequest.create({
         variety_id: varietyId,
-        requested_changes: {
-          note: 'User requested edit access'
-        },
+        requested_changes: { note: 'User requested edit access' },
         reason: requestReason,
         submitted_by: user.email,
         status: 'pending'
@@ -141,9 +130,7 @@ export default function ViewVariety() {
       
       await base44.entities.VarietyChangeRequest.create({
         variety_id: varietyId,
-        requested_changes: {
-          images: [file_url]
-        },
+        requested_changes: { images: [file_url] },
         reason: 'User submitted image for variety',
         submitted_by: user.email,
         status: 'pending'
@@ -181,7 +168,6 @@ export default function ViewVariety() {
   }
 
   const isAdmin = user?.role === 'admin';
-  const isModerator = user?.is_moderator || false;
 
   return (
     <div className="max-w-6xl mx-auto space-y-6">
@@ -209,7 +195,7 @@ export default function ViewVariety() {
             onClick={() => setShowAddImage(true)}
             className="gap-2"
           >
-            <ImageIcon className="w-4 h-4" />
+            <Sprout className="w-4 h-4" />
             Add Image
           </Button>
           {isAdmin ? (
@@ -241,9 +227,7 @@ export default function ViewVariety() {
               src={url} 
               alt={`${variety.variety_name} ${idx + 1}`}
               className="w-full aspect-square object-cover rounded-xl shadow-md"
-              onError={(e) => {
-                e.target.style.display = 'none';
-              }}
+              onError={(e) => { e.target.style.display = 'none'; }}
             />
           ))}
         </div>
@@ -260,11 +244,7 @@ export default function ViewVariety() {
                   <p className="text-sm text-emerald-700">Get this variety from our trusted partner</p>
                 </div>
               </div>
-              <a
-                href={variety.affiliate_url}
-                target="_blank"
-                rel="noopener noreferrer"
-              >
+              <a href={variety.affiliate_url} target="_blank" rel="noopener noreferrer">
                 <Button className="bg-emerald-600 hover:bg-emerald-700">
                   <ExternalLink className="w-4 h-4 mr-2" />
                   Buy Now
@@ -557,8 +537,6 @@ export default function ViewVariety() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-
-
 
       <Dialog open={showAddImage} onOpenChange={setShowAddImage}>
         <DialogContent>
