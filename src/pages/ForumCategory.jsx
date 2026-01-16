@@ -20,6 +20,7 @@ export default function ForumCategory() {
   const [topics, setTopics] = useState([]);
   const [posts, setPosts] = useState([]);
   const [user, setUser] = useState(null);
+  const [usersMap, setUsersMap] = useState({});
   const [loading, setLoading] = useState(true);
   const [showNewTopic, setShowNewTopic] = useState(false);
   const [newTopic, setNewTopic] = useState({ title: '', body: '' });
@@ -45,6 +46,27 @@ export default function ForumCategory() {
       if (categoryData.length > 0) setCategory(categoryData[0]);
       setTopics(topicsData);
       setPosts(postsData);
+
+      // Fetch user data for all topic authors
+      const emails = new Set();
+      topicsData.forEach(t => {
+        const email = t.author_email || t.created_by;
+        if (email) emails.add(email);
+      });
+
+      if (emails.size > 0) {
+        try {
+          const response = await base44.functions.invoke('getForumUserData', {
+            emails: Array.from(emails)
+          });
+          setUsersMap(response.data.users || {});
+        } catch (err) {
+          console.error('Error fetching forum user data:', err);
+          const fallbackMap = {};
+          if (userData.email) fallbackMap[userData.email] = userData;
+          setUsersMap(fallbackMap);
+        }
+      }
     } catch (error) {
       console.error('Error loading category:', error);
       toast.error('Failed to load category');
@@ -72,6 +94,11 @@ export default function ForumCategory() {
         post_count: 0,
         like_count: 0
       });
+
+      // Add current user to usersMap if not already there
+      if (!usersMap[user.email]) {
+        setUsersMap({ ...usersMap, [user.email]: user });
+      }
 
       setTopics([topic, ...topics]);
       setNewTopic({ title: '', body: '' });
@@ -169,7 +196,11 @@ export default function ForumCategory() {
                           </h3>
                         </div>
                         <div className="flex items-center gap-3 text-sm text-gray-500">
-                          <span>by {(topic.author_email || topic.created_by || 'Unknown').split('@')[0]}</span>
+                          <span>by {(() => {
+                            const authorEmail = topic.author_email || topic.created_by;
+                            const author = usersMap[authorEmail];
+                            return author?.nickname || author?.full_name || authorEmail?.split('@')[0] || 'Unknown';
+                          })()}</span>
                           <span>•</span>
                           <span>{formatDistanceToNow(new Date(topic.created_date), { addSuffix: true })}</span>
                         </div>
