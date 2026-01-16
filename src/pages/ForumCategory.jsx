@@ -65,6 +65,7 @@ export default function ForumCategory() {
         category_id: categoryId,
         title: newTopic.title,
         body: newTopic.body,
+        author_email: user.email,
         status: 'open',
         pinned: false,
         view_count: 0,
@@ -168,7 +169,7 @@ export default function ForumCategory() {
                           </h3>
                         </div>
                         <div className="flex items-center gap-3 text-sm text-gray-500">
-                          <span>by {topic.created_by}</span>
+                          <span>by {(topic.author_email || topic.created_by || 'Unknown').split('@')[0]}</span>
                           <span>•</span>
                           <span>{formatDistanceToNow(new Date(topic.created_date), { addSuffix: true })}</span>
                         </div>

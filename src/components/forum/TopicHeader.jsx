@@ -9,9 +9,8 @@ import ReportButton from './ReportButton';
 import ShareButton from './ShareButton';
 
 export default function TopicHeader({ topic, author }) {
-  console.log('TopicHeader - topic.created_by:', topic.created_by, 'author:', author);
-  
-  const displayName = author?.nickname || author?.full_name || topic.created_by?.split('@')[0] || 'Unknown User';
+  const authorEmail = topic.author_email || topic.created_by;
+  const displayName = author?.nickname || author?.full_name || authorEmail?.split('@')[0] || 'Unknown User';
 
   return (
     <div className="space-y-4">

@@ -53,8 +53,14 @@ export default function ForumTopic() {
 
       // Fetch all unique user data
       const emails = new Set();
-      if (topicData.length > 0 && topicData[0].created_by) emails.add(topicData[0].created_by);
-      filteredPosts.forEach(p => { if (p.created_by) emails.add(p.created_by); });
+      if (topicData.length > 0) {
+        const email = topicData[0].author_email || topicData[0].created_by;
+        if (email) emails.add(email);
+      }
+      filteredPosts.forEach(p => { 
+        const email = p.author_email || p.created_by;
+        if (email) emails.add(email);
+      });
 
       if (emails.size > 0) {
         try {
@@ -92,6 +98,7 @@ export default function ForumTopic() {
       const post = await base44.entities.ForumPost.create({
         topic_id: topicId,
         body: newPostBody,
+        author_email: user.email,
         like_count: 0
       });
 
@@ -172,7 +179,8 @@ export default function ForumTopic() {
   }
 
   const isLocked = topic.status === 'locked';
-  const topicAuthor = usersMap[topic.created_by];
+  const topicAuthorEmail = topic.author_email || topic.created_by;
+  const topicAuthor = usersMap[topicAuthorEmail];
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
@@ -192,16 +200,19 @@ export default function ForumTopic() {
           {posts.length} {posts.length === 1 ? 'Reply' : 'Replies'}
         </h2>
 
-        {posts.map((post) => (
-          <PostItem
-            key={post.id}
-            post={post}
-            author={usersMap[post.created_by]}
-            currentUser={user}
-            onDelete={handleDeletePost}
-            onLike={handleLike}
-          />
-        ))}
+        {posts.map((post) => {
+          const postAuthorEmail = post.author_email || post.created_by;
+          return (
+            <PostItem
+              key={post.id}
+              post={post}
+              author={usersMap[postAuthorEmail]}
+              currentUser={user}
+              onDelete={handleDeletePost}
+              onLike={handleLike}
+            />
+          );
+        })}
       </div>
 
       {/* New Post Form */}
