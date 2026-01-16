@@ -4,13 +4,11 @@ Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
     
-    // Authenticate the user
     const user = await base44.auth.me();
     if (!user) {
       return Response.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Get the emails from the request body
     const { emails } = await req.json();
     
     if (!emails || !Array.isArray(emails) || emails.length === 0) {
@@ -46,7 +44,7 @@ Deno.serve(async (req) => {
 
     return Response.json({ users: usersMap });
   } catch (error) {
-    console.error('Error fetching forum users:', error);
+    console.error('Error in getForumUserData:', error);
     return Response.json({ error: error.message }, { status: 500 });
   }
 });

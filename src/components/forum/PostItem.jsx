@@ -1,38 +1,26 @@
-import React, { useState } from 'react';
-import { base44 } from '@/api/base44Client';
+import React from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { ThumbsUp, Trash2, MapPin, Sprout } from 'lucide-react';
+import { ThumbsUp, Trash2 } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { cn } from '@/lib/utils';
 import ReactMarkdown from 'react-markdown';
-import ReportButton from '@/components/forum/ReportButton';
+import UserSignature from './UserSignature';
+import ReportButton from './ReportButton';
+import ShareButton from './ShareButton';
 
-export default function PostCard({ post, author, user, onVote, onDelete, userVote, showSignature = true }) {
-  const [deleting, setDeleting] = useState(false);
-  const postUser = author;
-
-  const handleDelete = async () => {
-    if (!confirm('Delete this post? This cannot be undone.')) return;
-    setDeleting(true);
-    try {
-      await onDelete(post.id);
-    } finally {
-      setDeleting(false);
-    }
-  };
+export default function PostItem({ post, author, currentUser, onDelete, onLike }) {
+  const displayName = author?.nickname || author?.full_name || post.created_by?.split('@')[0] || 'User';
+  const isAdmin = author?.role === 'admin';
+  const isModerator = author?.is_moderator;
+  const canDelete = currentUser?.role === 'admin' || currentUser?.is_moderator || post.created_by === currentUser?.email;
 
   const getInitials = (name) => {
     if (!name || typeof name !== 'string') return 'U';
     return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
   };
-
-  const displayName = postUser?.nickname || postUser?.full_name || post.created_by?.split('@')[0] || 'Unknown';
-  const isAdmin = postUser?.role === 'admin';
-  const isModerator = postUser?.is_moderator;
-  const canDelete = user?.role === 'admin' || user?.is_moderator || post.created_by === user?.email;
 
   return (
     <Card className="hover:shadow-md transition-shadow">
@@ -43,11 +31,8 @@ export default function PostCard({ post, author, user, onVote, onDelete, userVot
             <Button
               variant="ghost"
               size="icon"
-              onClick={() => onVote(1)}
-              className={cn(
-                "h-8 w-8",
-                userVote === 1 && "text-emerald-600 bg-emerald-50"
-              )}
+              onClick={() => onLike(post.id)}
+              className="h-8 w-8 hover:text-emerald-600"
             >
               <ThumbsUp className="w-4 h-4" />
             </Button>
@@ -62,7 +47,7 @@ export default function PostCard({ post, author, user, onVote, onDelete, userVot
             <div className="flex items-start justify-between mb-3">
               <div className="flex items-center gap-3">
                 <Avatar className="w-10 h-10">
-                  <AvatarImage src={postUser?.avatar_url || postUser?.profile_logo_url} />
+                  <AvatarImage src={author?.profile_logo_url || author?.avatar_url} />
                   <AvatarFallback className="bg-emerald-100 text-emerald-700 text-sm font-medium">
                     {getInitials(displayName)}
                   </AvatarFallback>
@@ -76,11 +61,12 @@ export default function PostCard({ post, author, user, onVote, onDelete, userVot
                     {isModerator && !isAdmin && <Badge className="bg-blue-600 text-white text-xs">MOD</Badge>}
                   </div>
                   <span className="text-sm text-gray-500">
-                    {post.created_date ? formatDistanceToNow(new Date(post.created_date), { addSuffix: true }) : ''}
+                    {formatDistanceToNow(new Date(post.created_date), { addSuffix: true })}
                   </span>
                 </div>
               </div>
               <div className="flex items-center gap-1">
+                <ShareButton type="post" id={post.id} />
                 <ReportButton
                   reportType="forum_post"
                   targetId={post.id}
@@ -90,8 +76,7 @@ export default function PostCard({ post, author, user, onVote, onDelete, userVot
                   <Button
                     variant="ghost"
                     size="icon"
-                    onClick={handleDelete}
-                    disabled={deleting}
+                    onClick={() => onDelete(post.id)}
                     className="text-red-600 hover:text-red-700 hover:bg-red-50"
                   >
                     <Trash2 className="w-4 h-4" />
@@ -102,7 +87,7 @@ export default function PostCard({ post, author, user, onVote, onDelete, userVot
 
             {/* Body */}
             <div className="prose prose-sm max-w-none mb-4">
-              <ReactMarkdown>{post.body || '(No content)'}</ReactMarkdown>
+              <ReactMarkdown>{post.body || ''}</ReactMarkdown>
             </div>
 
             {/* Images */}
@@ -115,35 +100,7 @@ export default function PostCard({ post, author, user, onVote, onDelete, userVot
             )}
 
             {/* Signature */}
-            {showSignature && postUser && (
-              <div className="mt-4 pt-4 border-t border-gray-200">
-                <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-gray-500">
-                  {postUser.usda_zone && (
-                    <div className="flex items-center gap-1">
-                      <MapPin className="w-3 h-3" />
-                      <span>Zone {postUser.usda_zone}</span>
-                    </div>
-                  )}
-                  {postUser.location_city && postUser.location_state && (
-                    <div className="flex items-center gap-1">
-                      <MapPin className="w-3 h-3" />
-                      <span>{postUser.location_city}, {postUser.location_state}</span>
-                    </div>
-                  )}
-                  {postUser.community_bio && (
-                    <div className="flex items-center gap-1">
-                      <span className="italic">"{postUser.community_bio}"</span>
-                    </div>
-                  )}
-                  {postUser.community_interests && (
-                    <div className="flex items-center gap-1">
-                      <Sprout className="w-3 h-3" />
-                      <span className="italic">{postUser.community_interests}</span>
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
+            {author && <UserSignature user={author} />}
           </div>
         </div>
       </CardContent>
