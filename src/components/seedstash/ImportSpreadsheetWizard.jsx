@@ -175,15 +175,24 @@ export default function ImportSpreadsheetWizard({ open, onOpenChange, onSuccess 
         let inserted = 0;
         let skipped = 0;
         let suggested = 0;
-        const BATCH_SIZE = 25;
+        const BATCH_SIZE = 100;
 
-        // Pre-load plant types and profiles
-        const allPlantTypes = await base44.entities.PlantType.list();
-        const allProfiles = await base44.entities.PlantProfile.list();
+        // Pre-load plant types, profiles, varieties, and existing user seeds
+        const user = await base44.auth.me();
+        const [allPlantTypes, allProfiles, allVarieties, existingSeeds] = await Promise.all([
+          base44.entities.PlantType.list(),
+          base44.entities.PlantProfile.list(),
+          base44.entities.Variety.list(),
+          base44.entities.SeedLot.filter({ created_by: user.email })
+        ]);
+        
         const plantTypesByName = {};
         allPlantTypes.forEach(pt => {
           if (pt.common_name) plantTypesByName[pt.common_name.toLowerCase()] = pt;
         });
+
+        // Map existing seeds by profile ID to prevent duplicates
+        const existingSeedProfiles = new Set(existingSeeds.map(s => s.plant_profile_id).filter(Boolean));
 
         for (let i = 0; i < dataRows.length; i++) {
           const row = dataRows[i];
@@ -210,17 +219,58 @@ export default function ImportSpreadsheetWizard({ open, onOpenChange, onSuccess 
               (!plantType || p.plant_type_id === plantType?.id)
             );
 
+            // Check if user already has this seed in their stash
+            if (profile && existingSeedProfiles.has(profile.id)) {
+              setLog(prev => [...prev, { row: rowNum, status: 'skip', message: `Already in stash: ${varietyName}` }]);
+              skipped++;
+              setProgress({ current: i + 1, total: dataRows.length });
+              continue;
+            }
+
+            // Try to find matching variety in public catalog
+            let catalogVariety = null;
+            if (plantType) {
+              catalogVariety = allVarieties.find(v => 
+                v.variety_name?.toLowerCase() === varietyName.toLowerCase() &&
+                v.plant_type_id === plantType.id
+              );
+            }
+
             if (!profile) {
-              // Create new PlantProfile
+              // Create new PlantProfile with catalog data if available
               const profileData = {
                 common_name: plantType?.common_name || plantTypeName || 'Unknown',
                 variety_name: varietyName,
                 plant_type_id: plantType?.id || null,
+                variety_id: catalogVariety?.id || null,
                 source_type: 'user_private'
               };
+              
+              // Transfer catalog data to profile
+              if (catalogVariety) {
+                profileData.days_to_maturity_seed = catalogVariety.days_to_maturity;
+                profileData.sun_requirement = catalogVariety.sun_requirement;
+                profileData.water_requirement = catalogVariety.water_requirement;
+                profileData.spacing_in_min = catalogVariety.spacing_min;
+                profileData.spacing_in_max = catalogVariety.spacing_max;
+                profileData.height_in_min = catalogVariety.height_min;
+                profileData.height_in_max = catalogVariety.height_max;
+                profileData.container_friendly = catalogVariety.container_friendly;
+                profileData.trellis_required = catalogVariety.trellis_required;
+                profileData.notes_public = catalogVariety.description;
+              }
+              
               profile = await base44.entities.PlantProfile.create(profileData);
               allProfiles.push(profile);
-              setLog(prev => [...prev, { row: rowNum, status: 'info', message: `Created profile for ${varietyName}` }]);
+              existingSeedProfiles.add(profile.id);
+              
+              if (catalogVariety) {
+                setLog(prev => [...prev, { row: rowNum, status: 'info', message: `✓ Created ${varietyName} with catalog data` }]);
+              } else {
+                setLog(prev => [...prev, { row: rowNum, status: 'info', message: `Created profile for ${varietyName}` }]);
+              }
+            } else {
+              existingSeedProfiles.add(profile.id);
             }
 
             // Create SeedLot
@@ -247,9 +297,10 @@ export default function ImportSpreadsheetWizard({ open, onOpenChange, onSuccess 
 
           setProgress({ current: i + 1, total: dataRows.length });
 
-          // Batch delay for rate limiting
+          // Batch delay for rate limiting - wait 3 seconds every 100 rows
           if ((i + 1) % BATCH_SIZE === 0 && i + 1 < dataRows.length) {
-            await new Promise(resolve => setTimeout(resolve, 1000));
+            setLog(prev => [...prev, { row: rowNum, status: 'info', message: '⏳ Rate limit pause (3s)...' }]);
+            await new Promise(resolve => setTimeout(resolve, 3000));
           }
         }
 
