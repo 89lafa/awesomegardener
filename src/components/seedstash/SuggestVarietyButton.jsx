@@ -32,35 +32,11 @@ export default function SuggestVarietyButton({ profile, seedLot, isFromCatalog }
     }
 
     try {
-      // Load plant type to check if variety name matches plant type + variety pattern
-      let plantType = null;
-      if (profile.plant_type_id) {
-        const types = await base44.entities.PlantType.filter({ id: profile.plant_type_id });
-        plantType = types[0];
-      }
-
       const existing = await base44.entities.Variety.filter({
-        plant_type_id: profile.plant_type_id
+        plant_type_id: profile.plant_type_id,
+        variety_name: profile.variety_name
       });
-
-      // Check for exact match or pattern match like "Beit Alpha Cucumber" = "Beit Alpha" + "Cucumber"
-      const varietyMatch = existing.find(v => {
-        if (v.variety_name?.toLowerCase() === profile.variety_name?.toLowerCase()) {
-          return true;
-        }
-        
-        // Check if profile variety name is just variety name + plant type name
-        if (plantType && profile.variety_name) {
-          const constructedName = `${v.variety_name} ${plantType.common_name}`.toLowerCase();
-          if (constructedName === profile.variety_name.toLowerCase()) {
-            return true;
-          }
-        }
-        
-        return false;
-      });
-
-      setCatalogCheck(!!varietyMatch);
+      setCatalogCheck(existing.length > 0);
     } catch (error) {
       console.error('Error checking catalog:', error);
       setCatalogCheck(false);
@@ -85,34 +61,12 @@ export default function SuggestVarietyButton({ profile, seedLot, isFromCatalog }
       const user = await base44.auth.me();
       
       // Check if variety already exists in catalog
-      let plantType = null;
-      if (profile.plant_type_id) {
-        const types = await base44.entities.PlantType.filter({ id: profile.plant_type_id });
-        plantType = types[0];
-      }
-
       const existing = await base44.entities.Variety.filter({
-        plant_type_id: profile.plant_type_id
+        plant_type_id: profile.plant_type_id,
+        variety_name: profile.variety_name
       });
 
-      // Check for exact match or pattern match
-      const varietyMatch = existing.find(v => {
-        if (v.variety_name?.toLowerCase() === profile.variety_name?.toLowerCase()) {
-          return true;
-        }
-        
-        // Check if profile variety name is just variety name + plant type name
-        if (plantType && profile.variety_name) {
-          const constructedName = `${v.variety_name} ${plantType.common_name}`.toLowerCase();
-          if (constructedName === profile.variety_name.toLowerCase()) {
-            return true;
-          }
-        }
-        
-        return false;
-      });
-
-      if (varietyMatch) {
+      if (existing.length > 0) {
         toast.error('This variety already exists in the catalog');
         setSubmitting(false);
         return;

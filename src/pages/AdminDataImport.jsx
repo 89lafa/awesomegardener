@@ -153,87 +153,6 @@ export default function AdminDataImport() {
         const text = await file.text();
         const data = parseCSV(text);
 
-        // For Variety imports with >40 rows, use batched processing
-        if (item.key === 'Variety' && !dryRun && data.length > 40) {
-          toast.info(`Processing ${data.length} varieties in batches...`);
-          
-          // Pre-load lookups
-          const [allPlantTypes, allSubcats] = await Promise.all([
-            base44.entities.PlantType.list(),
-            base44.entities.PlantSubCategory.list()
-          ]);
-
-          const plantTypeLookup = {};
-          allPlantTypes.forEach(pt => {
-            if (pt.plant_type_code) plantTypeLookup[pt.plant_type_code] = pt;
-            if (pt.common_name) plantTypeLookup[pt.common_name.toLowerCase()] = pt;
-            plantTypeLookup[pt.id] = pt;
-          });
-
-          const subcatLookup = {};
-          allSubcats.forEach(sc => {
-            const key = `${sc.plant_type_id}_${sc.subcat_code}`;
-            subcatLookup[key] = sc;
-            if (sc.subcat_code) subcatLookup[sc.subcat_code] = sc;
-            subcatLookup[sc.id] = sc;
-          });
-
-          let offset = 0;
-          let totalInserted = 0;
-          let totalUpdated = 0;
-          let totalRejected = 0;
-          const allSkipReasons = [];
-
-          while (offset < data.length) {
-            const response = await base44.functions.invoke('batchImportVarieties', {
-              rows: data,
-              batch_size: 30,
-              offset,
-              plant_type_lookup: plantTypeLookup,
-              subcat_lookup: subcatLookup
-            });
-
-            if (!response.data.success) {
-              throw new Error(response.data.error);
-            }
-
-            totalInserted += response.data.summary.inserted;
-            totalUpdated += response.data.summary.updated;
-            totalRejected += response.data.summary.rejected;
-            allSkipReasons.push(...(response.data.summary.skipReasons || []));
-            offset = response.data.summary.next_offset;
-
-            // Update UI with progress
-            setResults({
-              ...importResults,
-              [item.key]: {
-                status: 'success',
-                message: `Processing batch ${Math.floor(offset / 30)}...`,
-                inserted: totalInserted,
-                updated: totalUpdated,
-                rejected: totalRejected,
-                skipReasons: allSkipReasons.slice(0, 20)
-              }
-            });
-
-            // Small delay between batches
-            if (response.data.summary.has_more) {
-              await new Promise(resolve => setTimeout(resolve, 1000));
-            }
-          }
-
-          importResults[item.key] = {
-            status: 'success',
-            message: 'Batch import completed',
-            inserted: totalInserted,
-            updated: totalUpdated,
-            rejected: totalRejected,
-            skipReasons: allSkipReasons.slice(0, 20)
-          };
-
-          continue; // Skip regular processing
-        }
-
         if (data.length === 0) {
           importResults[item.key] = {
             status: 'error',
@@ -293,14 +212,7 @@ export default function AdminDataImport() {
             console.log('[Variety Import] Lookup keys:', Object.keys(plantTypeLookup).slice(0, 10));
           }
 
-          for (let rowIndex = 0; rowIndex < data.length; rowIndex++) {
-            const row = data[rowIndex];
-            
-            // Add delay every 30 rows for rate limiting (excluding dry run)
-            if (!dryRun && (rowIndex + 1) % 30 === 0 && rowIndex + 1 < data.length) {
-              await new Promise(resolve => setTimeout(resolve, 1500));
-            }
-            
+          for (const row of data) {
             try {
               // Process PlantSubCategory-specific data
               if (item.key === 'PlantSubCategory') {
@@ -708,21 +620,6 @@ export default function AdminDataImport() {
               skipped++;
               skipReasons.push({ row, reason: error.message });
             }
-          }
-
-          // Update progress periodically during import
-          if ((inserted + updated + skipped + rejected) % 10 === 0) {
-            setResults({
-              ...importResults,
-              [item.key]: {
-                status: 'in_progress',
-                message: `Processing... ${inserted + updated} / ${data.length}`,
-                inserted,
-                updated,
-                skipped,
-                rejected
-              }
-            });
           }
 
           importResults[item.key] = {

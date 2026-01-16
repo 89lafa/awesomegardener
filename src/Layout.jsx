@@ -107,12 +107,6 @@ export default function Layout({ children, currentPageName }) {
     return null;
   }
 
-  // Redirect to Dashboard if user tries to access DashboardV2
-  if (currentPageName === 'DashboardV2') {
-    window.location.href = createPageUrl('Dashboard');
-    return null;
-  }
-
   return (
     <div className="min-h-screen bg-[#FDFBF7]">
       {/* Desktop Sidebar */}

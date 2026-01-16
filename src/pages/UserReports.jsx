@@ -62,14 +62,10 @@ export default function UserReports() {
           }
           
           if (content) {
-            // Get author_email first (new field), fallback to created_by or submitted_by
-            creatorsMap[report.id] = content.author_email || content.created_by || content.submitted_by || 'Unknown';
-          } else {
-            creatorsMap[report.id] = 'Unknown';
+            creatorsMap[report.id] = content.created_by || content.submitted_by || 'Unknown';
           }
         } catch (error) {
           console.error('Error loading content creator:', error);
-          creatorsMap[report.id] = 'Unknown';
         }
       }
       setContentCreators(creatorsMap);

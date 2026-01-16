@@ -39,57 +39,20 @@ export default function RepairSubcategoriesCard() {
       return;
     }
 
-    if (!confirm('This will repair all varieties for this plant type in batches. Continue?')) {
-      return;
-    }
-
     setRepairing(true);
     setResult(null);
 
     try {
-      let offset = 0;
-      let hasMore = true;
-      let totalRepaired = 0;
-      let totalSkipped = 0;
-      let totalSubcatsActivated = 0;
+      const response = await base44.functions.invoke('repairPlantTypeSubcategories', {
+        plant_type_id: selectedType
+      });
 
-      while (hasMore) {
-        const response = await base44.functions.invoke('batchRepairSubcategories', {
-          plant_type_id: selectedType,
-          batch_size: 50,
-          offset
-        });
-
-        if (!response.data.success) {
-          throw new Error(response.data.error);
-        }
-
-        const stats = response.data.stats;
-        totalRepaired += stats.varieties_repaired;
-        totalSkipped += stats.varieties_skipped;
-        totalSubcatsActivated = stats.subcategories_activated;
-        hasMore = stats.has_more;
-        offset = stats.next_offset;
-
-        // Update progress
-        setResult({
-          subcategories_activated: totalSubcatsActivated,
-          varieties_repaired: totalRepaired,
-          varieties_skipped: totalSkipped,
-          missing_subcategory_code: stats.missing_subcategory_code,
-          unresolvable_subcategory_code: stats.unresolvable_subcategory_code,
-          junk_arrays_cleaned: stats.junk_arrays_cleaned,
-          progress: Math.round((offset / stats.total_varieties) * 100),
-          total: stats.total_varieties
-        });
-
-        // Small delay between batches
-        if (hasMore) {
-          await new Promise(resolve => setTimeout(resolve, 800));
-        }
+      if (response.data.success) {
+        setResult(response.data.stats);
+        toast.success('Repair completed!');
+      } else {
+        throw new Error(response.data.error || 'Repair failed');
       }
-
-      toast.success(`Repair completed! ${totalRepaired} varieties repaired`);
     } catch (error) {
       console.error('Repair error:', error);
       toast.error('Repair failed: ' + error.message);
@@ -164,11 +127,6 @@ export default function RepairSubcategoriesCard() {
               ) : (
                 <div className="space-y-2">
                   <div className="font-semibold">Results:</div>
-                  {result.progress && (
-                    <div className="text-sm mb-2">
-                      Progress: {result.progress}% ({result.varieties_repaired} / {result.total})
-                    </div>
-                  )}
                   <div className="grid grid-cols-2 gap-2 text-sm">
                     <div>Subcategories Activated: <strong>{result.subcategories_activated || 0}</strong></div>
                     <div>Varieties Repaired: <strong>{result.varieties_repaired || 0}</strong></div>

@@ -1,89 +1,80 @@
 import React, { useState, useEffect } from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
-import { base44 } from '@/api/base44Client';
 import { createPageUrl } from '@/utils';
+import { base44 } from '@/api/base44Client';
+import { 
+  ArrowLeft,
+  ThumbsUp,
+  MessageCircle,
+  Pin,
+  Lock,
+  Trash2,
+  Edit,
+  Loader2,
+  Send
+} from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
-import { ArrowLeft, Loader2, Send } from 'lucide-react';
 import { toast } from 'sonner';
-import TopicHeader from '@/components/forum/TopicHeader';
-import PostItem from '@/components/forum/PostItem';
+import { format, formatDistanceToNow } from 'date-fns';
+import { cn } from '@/lib/utils';
+import ReactMarkdown from 'react-markdown';
+import PostCard from '@/components/forum/PostCard';
+import ErrorBoundary from '@/components/common/ErrorBoundary';
+import ReportButton from '@/components/forum/ReportButton';
 
 export default function ForumTopic() {
   const [searchParams] = useSearchParams();
   const topicId = searchParams.get('id');
-
+  
   const [topic, setTopic] = useState(null);
   const [posts, setPosts] = useState([]);
-  const [user, setUser] = useState(null);
-  const [usersMap, setUsersMap] = useState({});
+  const [comments, setComments] = useState([]);
+  const [votes, setVotes] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [user, setUser] = useState(null);
   const [newPostBody, setNewPostBody] = useState('');
   const [posting, setPosting] = useState(false);
+  const [replyingTo, setReplyingTo] = useState(null);
+  const [replyBody, setReplyBody] = useState('');
 
   useEffect(() => {
     if (topicId) {
       loadData();
+    } else {
+      setLoading(false);
     }
   }, [topicId]);
 
   const loadData = async () => {
+    console.log('[ForumTopic] Loading topic:', topicId);
     setLoading(true);
     try {
-      const [userData, topicData, postsData] = await Promise.all([
+      const [userData, topicData, postsData, commentsData, votesData] = await Promise.all([
         base44.auth.me(),
         base44.entities.ForumTopic.filter({ id: topicId }),
-        base44.entities.ForumPost.filter({ topic_id: topicId }, 'created_date')
+        base44.entities.ForumPost.filter({ topic_id: topicId }, 'created_date'),
+        base44.entities.ForumComment.list(),
+        base44.entities.ForumVote.list()
       ]);
-
-      setUser(userData);
       
+      console.log('[ForumTopic] Data loaded:', { topicFound: topicData.length > 0, posts: postsData.length });
+      setUser(userData);
+      if (topicData.length > 0) setTopic(topicData[0]);
+      setPosts(postsData.filter(p => !p.deleted_at));
+      setComments(commentsData.filter(c => !c.deleted_at));
+      setVotes(votesData);
+      
+      // Increment view count
       if (topicData.length > 0) {
-        setTopic(topicData[0]);
-        
-        // Increment view count
         await base44.entities.ForumTopic.update(topicId, {
           view_count: (topicData[0].view_count || 0) + 1
         });
       }
-
-      const filteredPosts = postsData.filter(p => !p.deleted_at);
-      setPosts(filteredPosts);
-
-      // Fetch all unique user data
-      const emails = new Set();
-      if (topicData.length > 0) {
-        const email = topicData[0].author_email || topicData[0].created_by;
-        if (email) emails.add(email);
-      }
-      filteredPosts.forEach(p => { 
-        const email = p.author_email || p.created_by;
-        if (email) emails.add(email);
-      });
-
-      if (emails.size > 0) {
-        try {
-          const response = await base44.functions.invoke('getForumUserData', {
-            emails: Array.from(emails)
-          });
-          
-          console.log('Forum user data response:', response.data);
-          setUsersMap(response.data.users || {});
-        } catch (err) {
-          console.error('Error fetching forum user data:', err);
-          // Build fallback map with current user
-          const fallbackMap = {};
-          emails.forEach(email => {
-            if (email === userData.email) {
-              fallbackMap[email] = userData;
-            }
-          });
-          setUsersMap(fallbackMap);
-        }
-      }
     } catch (error) {
-      console.error('Error loading topic:', error);
+      console.error('[ForumTopic] Error loading topic:', error);
       toast.error('Failed to load topic');
     } finally {
       setLoading(false);
@@ -92,76 +83,101 @@ export default function ForumTopic() {
 
   const handleCreatePost = async () => {
     if (!newPostBody.trim() || posting) return;
-
+    
     setPosting(true);
     try {
       const post = await base44.entities.ForumPost.create({
         topic_id: topicId,
         body: newPostBody,
-        author_email: user.email,
-        like_count: 0
+        like_count: 0,
+        comment_count: 0
       });
-
-      // Add current user to usersMap if not already there
-      if (!usersMap[user.email]) {
-        setUsersMap({ ...usersMap, [user.email]: user });
-      }
-
+      
       setPosts([...posts, post]);
       setNewPostBody('');
-
-      // Update topic
+      
+      // Update topic counts
+      const newPostCount = (topic.post_count || 0) + 1;
       await base44.entities.ForumTopic.update(topicId, {
-        post_count: (topic.post_count || 0) + 1,
-        last_activity_at: new Date().toISOString()
+        post_count: newPostCount,
+        last_activity_at: new Date().toISOString(),
+        last_post_by: user.email
       });
-
-      toast.success('Reply posted!');
+      
+      // Update category counts
+      if (topic.category_id) {
+        const categories = await base44.entities.ForumCategory.filter({ id: topic.category_id });
+        if (categories.length > 0) {
+          await base44.entities.ForumCategory.update(topic.category_id, {
+            post_count: (categories[0].post_count || 0) + 1,
+            last_activity_at: new Date().toISOString()
+          });
+        }
+      }
+      
+      toast.success('Post added!');
     } catch (error) {
       console.error('Error creating post:', error);
-      toast.error('Failed to post reply');
+      toast.error('Failed to create post');
     } finally {
       setPosting(false);
     }
   };
 
-  const handleDeletePost = async (postId) => {
-    if (!confirm('Delete this post? This cannot be undone.')) return;
-
+  const handleVote = async (targetType, targetId, value) => {
     try {
-      await base44.entities.ForumPost.update(postId, { 
-        deleted_at: new Date().toISOString() 
-      });
+      const existing = votes.find(v => 
+        v.target_type === targetType && 
+        v.target_id === targetId && 
+        v.user_email === user.email
+      );
       
-      setPosts(posts.filter(p => p.id !== postId));
+      if (existing) {
+        if (existing.value === value) {
+          // Remove vote
+          await base44.entities.ForumVote.delete(existing.id);
+          setVotes(votes.filter(v => v.id !== existing.id));
+        } else {
+          // Change vote
+          await base44.entities.ForumVote.update(existing.id, { value });
+          setVotes(votes.map(v => v.id === existing.id ? { ...v, value } : v));
+        }
+      } else {
+        // New vote
+        const vote = await base44.entities.ForumVote.create({
+          target_type: targetType,
+          target_id: targetId,
+          value,
+          user_email: user.email
+        });
+        setVotes([...votes, vote]);
+      }
       
-      await base44.entities.AuditLog.create({
-        action_type: 'post_delete',
-        entity_type: 'ForumPost',
-        entity_id: postId,
-        user_role: user.role
-      });
-
-      toast.success('Post deleted');
+      // Update like count
+      const likeCount = votes.filter(v => 
+        v.target_type === targetType && 
+        v.target_id === targetId && 
+        v.value === 1
+      ).length;
+      
+      if (targetType === 'topic') {
+        await base44.entities.ForumTopic.update(targetId, { like_count: likeCount });
+      } else if (targetType === 'post') {
+        await base44.entities.ForumPost.update(targetId, { like_count: likeCount });
+      }
     } catch (error) {
-      console.error('Error deleting post:', error);
-      toast.error('Failed to delete post');
+      console.error('Error voting:', error);
+      toast.error('Failed to vote');
     }
   };
 
-  const handleLike = async (postId) => {
-    try {
-      const post = posts.find(p => p.id === postId);
-      await base44.entities.ForumPost.update(postId, {
-        like_count: (post.like_count || 0) + 1
-      });
-      
-      setPosts(posts.map(p => 
-        p.id === postId ? { ...p, like_count: (p.like_count || 0) + 1 } : p
-      ));
-    } catch (error) {
-      console.error('Error liking post:', error);
-    }
+  const getUserVote = (targetType, targetId) => {
+    const vote = votes.find(v => 
+      v.target_type === targetType && 
+      v.target_id === targetId && 
+      v.user_email === user?.email
+    );
+    return vote?.value || 0;
   };
 
   if (loading) {
@@ -172,10 +188,23 @@ export default function ForumTopic() {
     );
   }
 
+  if (!topicId) {
+    return (
+      <div className="text-center py-16">
+        <h2 className="text-2xl font-bold text-gray-900 mb-2">No Topic ID Provided</h2>
+        <p className="text-gray-600 mb-4">Please provide a topic ID in the URL (e.g., /ForumTopic?id=...)</p>
+        <Link to={createPageUrl('CommunityBoard')}>
+          <Button>Back to Community Board</Button>
+        </Link>
+      </div>
+    );
+  }
+
   if (!topic) {
     return (
       <div className="text-center py-16">
         <h2 className="text-2xl font-bold text-gray-900 mb-2">Topic Not Found</h2>
+        <p className="text-gray-600 mb-4">This topic may have been deleted or the ID is incorrect.</p>
         <Link to={createPageUrl('CommunityBoard')}>
           <Button>Back to Community Board</Button>
         </Link>
@@ -184,40 +213,86 @@ export default function ForumTopic() {
   }
 
   const isLocked = topic.status === 'locked';
-  const topicAuthorEmail = topic.author_email || topic.created_by;
-  const topicAuthor = usersMap[topicAuthorEmail];
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6">
+    <ErrorBoundary fallbackTitle="Forum Error" fallbackMessage="An error occurred loading this topic. Please try again.">
+    <div className="space-y-6 max-w-4xl mx-auto">
+      {/* Header */}
       <div className="flex items-center gap-3">
         <Link to={createPageUrl('CommunityBoard')}>
           <Button variant="ghost" size="icon">
             <ArrowLeft className="w-5 h-5" />
           </Button>
         </Link>
+        <div className="flex-1">
+          <div className="flex items-center gap-2 mb-1">
+            {topic.pinned && <Pin className="w-4 h-4 text-emerald-600" />}
+            {isLocked && <Lock className="w-4 h-4 text-gray-400" />}
+            <h1 className="text-xl lg:text-2xl font-bold text-gray-900">{topic.title}</h1>
+          </div>
+          <div className="flex items-center gap-3 text-sm text-gray-500">
+            <span>by {topic.created_by}</span>
+            <span>{formatDistanceToNow(new Date(topic.created_date), { addSuffix: true })}</span>
+            <span>{topic.view_count || 0} views</span>
+          </div>
+        </div>
       </div>
 
-      <TopicHeader topic={topic} author={topicAuthor} />
+      {/* Topic Body */}
+      {topic.body && (
+        <Card>
+          <CardContent className="p-6">
+            <div className="flex justify-end mb-2">
+              <ReportButton 
+                reportType="forum_topic" 
+                targetId={topic.id} 
+                targetPreview={topic.body} 
+              />
+            </div>
+            <div className="prose prose-sm max-w-none">
+              <ReactMarkdown>{topic.body}</ReactMarkdown>
+            </div>
+            {topic.tags && topic.tags.length > 0 && (
+              <div className="flex flex-wrap gap-1 mt-4 pt-4 border-t">
+                {topic.tags.map((tag, idx) => (
+                  <Badge key={idx} variant="secondary">{tag}</Badge>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       {/* Posts */}
       <div className="space-y-4">
         <h2 className="text-lg font-semibold text-gray-900">
           {posts.length} {posts.length === 1 ? 'Reply' : 'Replies'}
         </h2>
-
-        {posts.map((post) => {
-          const postAuthorEmail = post.author_email || post.created_by;
-          return (
-            <PostItem
-              key={post.id}
-              post={post}
-              author={usersMap[postAuthorEmail]}
-              currentUser={user}
-              onDelete={handleDeletePost}
-              onLike={handleLike}
-            />
-          );
-        })}
+        
+        {posts.map((post) => (
+          <PostCard
+            key={post.id}
+            post={post}
+            user={user}
+            userVote={getUserVote('post', post.id)}
+            onVote={(value) => handleVote('post', post.id, value)}
+            onDelete={async (postId) => {
+              await base44.entities.ForumPost.update(postId, { deleted_at: new Date().toISOString() });
+              setPosts(posts.filter(p => p.id !== postId));
+              
+              // Log the deletion
+              await base44.entities.AuditLog.create({
+                action_type: 'comment_delete',
+                entity_type: 'ForumPost',
+                entity_id: postId,
+                entity_name: `Post in ${topic.title}`,
+                user_role: user.role
+              });
+              
+              toast.success('Post deleted');
+            }}
+          />
+        ))}
       </div>
 
       {/* New Post Form */}
@@ -232,7 +307,7 @@ export default function ForumTopic() {
               rows={4}
               className="mb-3"
             />
-            <Button
+            <Button 
               onClick={handleCreatePost}
               disabled={!newPostBody.trim() || posting}
               className="bg-emerald-600 hover:bg-emerald-700"
@@ -243,6 +318,16 @@ export default function ForumTopic() {
           </CardContent>
         </Card>
       )}
+
+      {isLocked && (
+        <Card className="bg-gray-50">
+          <CardContent className="p-6 text-center">
+            <Lock className="w-8 h-8 text-gray-400 mx-auto mb-2" />
+            <p className="text-gray-600">This topic has been locked</p>
+          </CardContent>
+        </Card>
+      )}
     </div>
+    </ErrorBoundary>
   );
 }

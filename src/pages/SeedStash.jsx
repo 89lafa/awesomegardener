@@ -64,7 +64,6 @@ import { cn } from '@/lib/utils';
 import AddCustomSeedDialog from '@/components/seedstash/AddCustomSeedDialog';
 import AddFromCatalogDialog from '@/components/seedstash/AddFromCatalogDialog';
 import ImportFromURLDialog from '@/components/seedstash/ImportFromURLDialog';
-import ImportSpreadsheetWizard from '@/components/seedstash/ImportSpreadsheetWizard';
 import { smartQuery } from '@/components/utils/smartQuery';
 import RateLimitBanner from '@/components/common/RateLimitBanner';
 
@@ -84,7 +83,6 @@ export default function SeedStash() {
   const [showAddCustomDialog, setShowAddCustomDialog] = useState(false);
   const [showAddFromCatalogDialog, setShowAddFromCatalogDialog] = useState(false);
   const [showAddDialog, setShowAddDialog] = useState(false);
-  const [showImportWizard, setShowImportWizard] = useState(false);
   const [editingSeed, setEditingSeed] = useState(null);
   const [viewMode, setViewMode] = useState('grid');
   const [filterTab, setFilterTab] = useState('stash');
@@ -531,7 +529,7 @@ export default function SeedStash() {
           <h1 className="text-2xl lg:text-3xl font-bold text-gray-900">Seed Stash</h1>
           <p className="text-gray-600 mt-1">Track your seeds and wishlist</p>
         </div>
-        <div className="flex gap-2 flex-wrap">
+        <div className="flex gap-2">
           <Button 
             onClick={() => setShowAddCustomDialog(true)}
             className="bg-emerald-600 hover:bg-emerald-700 gap-2"
@@ -546,14 +544,6 @@ export default function SeedStash() {
           >
             <Package className="w-4 h-4" />
             Add from Catalog
-          </Button>
-          <Button 
-            onClick={() => setShowImportWizard(true)}
-            variant="outline"
-            className="gap-2 border-blue-600 text-blue-700 hover:bg-blue-50"
-          >
-            <ListChecks className="w-4 h-4" />
-            Import Your Spreadsheet
           </Button>
         </div>
       </div>
@@ -1331,12 +1321,6 @@ export default function SeedStash() {
       <AddFromCatalogDialog 
         open={showAddFromCatalogDialog}
         onOpenChange={setShowAddFromCatalogDialog}
-        onSuccess={loadData}
-      />
-
-      <ImportSpreadsheetWizard
-        open={showImportWizard}
-        onOpenChange={setShowImportWizard}
         onSuccess={loadData}
       />
 
