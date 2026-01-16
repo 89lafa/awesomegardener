@@ -276,13 +276,13 @@ export default function ForumTopic() {
                 <Avatar className="w-10 h-10">
                   <AvatarImage src={topicAuthor?.avatar_url} />
                   <AvatarFallback className="bg-emerald-100 text-emerald-700 font-medium">
-                    {topicAuthor?.full_name?.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) || 'U'}
+                    {topicAuthor?.full_name ? topicAuthor.full_name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) : 'U'}
                   </AvatarFallback>
                 </Avatar>
                 <div>
                   <div className="flex items-center gap-2">
                     <span className="font-semibold text-gray-900">
-                      {topicAuthor?.nickname || topicAuthor?.full_name || topic.created_by.split('@')[0]}
+                      {topicAuthor?.nickname || topicAuthor?.full_name || (topic.created_by ? topic.created_by.split('@')[0] : 'Unknown')}
                     </span>
                     {topicAuthor?.role === 'admin' && <Badge className="bg-red-600 text-white text-xs">ADMIN</Badge>}
                     {topicAuthor?.is_moderator && <Badge className="bg-blue-600 text-white text-xs">MOD</Badge>}
@@ -365,13 +365,13 @@ export default function ForumTopic() {
                         <Avatar className="w-10 h-10">
                           <AvatarImage src={postAuthor?.avatar_url} />
                           <AvatarFallback className="bg-emerald-100 text-emerald-700 font-medium">
-                            {postAuthor?.full_name?.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) || 'U'}
+                            {postAuthor?.full_name ? postAuthor.full_name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) : 'U'}
                           </AvatarFallback>
                         </Avatar>
                         <div>
                           <div className="flex items-center gap-2">
                             <span className="font-semibold text-gray-900">
-                              {postAuthor?.nickname || postAuthor?.full_name || post.created_by.split('@')[0]}
+                              {postAuthor?.nickname || postAuthor?.full_name || (post.created_by ? post.created_by.split('@')[0] : 'Unknown')}
                             </span>
                             {postAuthor?.role === 'admin' && <Badge className="bg-red-600 text-white text-xs">ADMIN</Badge>}
                             {postAuthor?.is_moderator && <Badge className="bg-blue-600 text-white text-xs">MOD</Badge>}
