@@ -8,10 +8,16 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { ArrowLeft, Loader2, ThumbsUp, MessageSquare, Trash2, Share2, Flag, MapPin, Sprout, Lock, Pin } from 'lucide-react';
-import { formatDistanceToNow } from 'date-fns';
+import { formatDistanceToNow, addHours } from 'date-fns';
 import { toast } from 'sonner';
 import ReactMarkdown from 'react-markdown';
 import ReportButton from '@/components/forum/ReportButton';
+
+const SERVER_TIME_OFFSET_HOURS = 5;
+const getAdjustedDate = (dateString) => {
+  if (!dateString) return null;
+  return addHours(new Date(dateString), -SERVER_TIME_OFFSET_HOURS);
+};
 
 export default function ForumTopic() {
   const [searchParams] = useSearchParams();
@@ -293,7 +299,7 @@ export default function ForumTopic() {
                     {topicAuthor?.is_moderator && <Badge className="bg-blue-600 text-white text-xs">MOD</Badge>}
                   </div>
                   <span className="text-sm text-gray-500">
-                    {formatDistanceToNow(new Date(topic.created_date), { addSuffix: true })}
+                    {formatDistanceToNow(getAdjustedDate(topic.created_date), { addSuffix: true })}
                   </span>
                 </div>
               </div>
@@ -382,7 +388,7 @@ export default function ForumTopic() {
                             {postAuthor?.is_moderator && <Badge className="bg-blue-600 text-white text-xs">MOD</Badge>}
                           </div>
                           <span className="text-sm text-gray-500">
-                            {formatDistanceToNow(new Date(post.created_date), { addSuffix: true })}
+                            {formatDistanceToNow(getAdjustedDate(post.created_date), { addSuffix: true })}
                           </span>
                         </div>
                       </div>

@@ -10,8 +10,14 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { MessageSquare, Plus, Pin, Lock, ArrowLeft, Loader2, ThumbsUp, User, Clock } from 'lucide-react';
-import { formatDistanceToNow } from 'date-fns';
+import { formatDistanceToNow, addHours } from 'date-fns';
 import { toast } from 'sonner';
+
+const SERVER_TIME_OFFSET_HOURS = 5;
+const getAdjustedDate = (dateString) => {
+  if (!dateString) return null;
+  return addHours(new Date(dateString), -SERVER_TIME_OFFSET_HOURS);
+};
 
 export default function ForumCategory() {
   const [searchParams] = useSearchParams();
@@ -208,7 +214,7 @@ export default function ForumCategory() {
                           </div>
                           <div className="flex items-center gap-1">
                             <Clock className="w-4 h-4" />
-                            <span>{formatDistanceToNow(new Date(topic.created_date), { addSuffix: true })}</span>
+                            <span>{formatDistanceToNow(getAdjustedDate(topic.created_date), { addSuffix: true })}</span>
                           </div>
                         </div>
                       </div>
