@@ -22,6 +22,7 @@ export default function EditPlantType() {
   const plantTypeId = searchParams.get('id');
   
   const [plantType, setPlantType] = useState(null);
+  const [plantingRules, setPlantingRules] = useState([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [formData, setFormData] = useState({
@@ -63,6 +64,10 @@ export default function EditPlantType() {
       
       const type = types[0];
       setPlantType(type);
+      
+      // Load planting rules
+      const rules = await base44.entities.PlantingRule.filter({ plant_type_id: plantTypeId });
+      setPlantingRules(rules);
       setFormData({
         common_name: type.common_name || '',
         scientific_name: type.scientific_name || '',
@@ -108,6 +113,45 @@ export default function EditPlantType() {
       toast.error('Failed to save');
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleAddRule = async (containerType) => {
+    try {
+      const newRule = await base44.entities.PlantingRule.create({
+        plant_type_id: plantTypeId,
+        container_type: containerType,
+        grid_cols: 1,
+        grid_rows: 1,
+        plants_per_grid_slot: 1
+      });
+      setPlantingRules([...plantingRules, newRule]);
+      toast.success(`Added rule for ${containerType}`);
+    } catch (error) {
+      console.error('Error adding rule:', error);
+      toast.error('Failed to add rule');
+    }
+  };
+
+  const handleUpdateRule = async (ruleId, updates) => {
+    try {
+      await base44.entities.PlantingRule.update(ruleId, updates);
+      setPlantingRules(plantingRules.map(r => r.id === ruleId ? { ...r, ...updates } : r));
+    } catch (error) {
+      console.error('Error updating rule:', error);
+      toast.error('Failed to update rule');
+    }
+  };
+
+  const handleDeleteRule = async (ruleId) => {
+    if (!confirm('Delete this planting rule?')) return;
+    try {
+      await base44.entities.PlantingRule.delete(ruleId);
+      setPlantingRules(plantingRules.filter(r => r.id !== ruleId));
+      toast.success('Rule deleted');
+    } catch (error) {
+      console.error('Error deleting rule:', error);
+      toast.error('Failed to delete rule');
     }
   };
 
@@ -323,6 +367,110 @@ export default function EditPlantType() {
               />
             </div>
           </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Grid Planting Rules</CardTitle>
+          <p className="text-sm text-gray-600 mt-1">
+            Define how much space this plant type requires in different container types
+          </p>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {plantingRules.length === 0 ? (
+            <div className="text-center py-8 bg-gray-50 rounded-lg">
+              <p className="text-gray-600 text-sm mb-4">No planting rules defined yet</p>
+              <div className="flex flex-wrap gap-2 justify-center">
+                {['RAISED_BED', 'IN_GROUND_BED', 'GREENHOUSE', 'GROW_BAG', 'CONTAINER'].map(type => (
+                  <Button 
+                    key={type}
+                    size="sm" 
+                    variant="outline" 
+                    onClick={() => handleAddRule(type)}
+                  >
+                    + {type.replace(/_/g, ' ')}
+                  </Button>
+                ))}
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {plantingRules.map(rule => (
+                <div key={rule.id} className="p-4 border rounded-lg bg-gray-50">
+                  <div className="flex items-center justify-between mb-3">
+                    <h4 className="font-semibold text-sm">{rule.container_type.replace(/_/g, ' ')}</h4>
+                    <Button 
+                      size="sm" 
+                      variant="ghost" 
+                      onClick={() => handleDeleteRule(rule.id)}
+                    >
+                      <Trash2 className="w-4 h-4 text-red-600" />
+                    </Button>
+                  </div>
+                  <div className="grid md:grid-cols-3 gap-3">
+                    <div>
+                      <Label className="text-xs">Grid Columns</Label>
+                      <Input
+                        type="number"
+                        min="1"
+                        value={rule.grid_cols}
+                        onChange={(e) => handleUpdateRule(rule.id, { grid_cols: parseInt(e.target.value) || 1 })}
+                        className="mt-1"
+                      />
+                      <p className="text-xs text-gray-500 mt-1">Width in 1-ft squares</p>
+                    </div>
+                    <div>
+                      <Label className="text-xs">Grid Rows</Label>
+                      <Input
+                        type="number"
+                        min="1"
+                        value={rule.grid_rows}
+                        onChange={(e) => handleUpdateRule(rule.id, { grid_rows: parseInt(e.target.value) || 1 })}
+                        className="mt-1"
+                      />
+                      <p className="text-xs text-gray-500 mt-1">Height in 1-ft squares</p>
+                    </div>
+                    <div>
+                      <Label className="text-xs">Plants Per Slot</Label>
+                      <Input
+                        type="number"
+                        min="1"
+                        value={rule.plants_per_grid_slot}
+                        onChange={(e) => handleUpdateRule(rule.id, { plants_per_grid_slot: parseInt(e.target.value) || 1 })}
+                        className="mt-1"
+                      />
+                      <p className="text-xs text-gray-500 mt-1">e.g., 16 for radishes</p>
+                    </div>
+                  </div>
+                  <div className="mt-3">
+                    <Label className="text-xs">Notes (Optional)</Label>
+                    <Input
+                      value={rule.notes || ''}
+                      onChange={(e) => handleUpdateRule(rule.id, { notes: e.target.value })}
+                      placeholder="Additional spacing notes..."
+                      className="mt-1"
+                    />
+                  </div>
+                </div>
+              ))}
+              <div className="flex flex-wrap gap-2">
+                <p className="text-xs text-gray-600 w-full mb-1">Add rule for:</p>
+                {['RAISED_BED', 'IN_GROUND_BED', 'GREENHOUSE', 'GROW_BAG', 'CONTAINER', 'OPEN_PLOT']
+                  .filter(type => !plantingRules.find(r => r.container_type === type))
+                  .map(type => (
+                    <Button 
+                      key={type}
+                      size="sm" 
+                      variant="outline" 
+                      onClick={() => handleAddRule(type)}
+                    >
+                      + {type.replace(/_/g, ' ')}
+                    </Button>
+                  ))}
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
 

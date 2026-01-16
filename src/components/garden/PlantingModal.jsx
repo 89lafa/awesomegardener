@@ -31,6 +31,7 @@ export default function PlantingModal({ open, onOpenChange, item, itemType, gard
   const [profiles, setProfiles] = useState({});
   const [varieties, setVarieties] = useState([]);
   const [plantTypes, setPlantTypes] = useState([]);
+  const [plantingRules, setPlantingRules] = useState([]);
   const [selectedPlant, setSelectedPlant] = useState(null);
   const [selectedPlanting, setSelectedPlanting] = useState(null);
   const [isMoving, setIsMoving] = useState(false);
@@ -100,7 +101,8 @@ export default function PlantingModal({ open, onOpenChange, item, itemType, gard
         base44.entities.SeedLot.filter({ is_wishlist: false, created_by: user.email }),
         base44.entities.PlantProfile.list('variety_name', 500),
         base44.entities.Variety.list('variety_name', 500),
-        base44.entities.PlantType.list('common_name', 100)
+        base44.entities.PlantType.list('common_name', 100),
+        base44.entities.PlantingRule.list()
       ];
       
       if (seasonId) {
@@ -108,7 +110,7 @@ export default function PlantingModal({ open, onOpenChange, item, itemType, gard
       }
       
       const results = await Promise.all(loadPromises);
-      const [allPlantings, stashData, profilesData, varietiesData, typesData, cropPlansData] = results;
+      const [allPlantings, stashData, profilesData, varietiesData, typesData, rulesData, cropPlansData] = results;
       
       if (cropPlansData) {
         setCropPlans(cropPlansData.filter(p => (p.quantity_planted || 0) < (p.quantity_planned || 0)));
@@ -142,6 +144,7 @@ export default function PlantingModal({ open, onOpenChange, item, itemType, gard
       
       setVarieties(varietiesData);
       setPlantTypes(typesData);
+      setPlantingRules(rulesData || []);
     } catch (error) {
       console.error('Error loading planting data:', error);
     } finally {
@@ -149,19 +152,33 @@ export default function PlantingModal({ open, onOpenChange, item, itemType, gard
     }
   };
 
-  const getSpacingForPlant = (variety) => {
+  const getSpacingForPlant = (plantTypeId, varietySpacing) => {
+    // First, check if there's a PlantingRule for this plant type and container
+    const containerType = itemType || item.item_type;
+    const rule = plantingRules.find(r => 
+      r.plant_type_id === plantTypeId && 
+      r.container_type === containerType
+    );
+    
+    if (rule) {
+      return { 
+        cols: rule.grid_cols, 
+        rows: rule.grid_rows,
+        plantsPerSlot: rule.plants_per_grid_slot 
+      };
+    }
+    
+    // Fallback to old logic if no rule exists
     const method = garden.planting_method || 'STANDARD';
     
     if (method === 'SQUARE_FOOT') {
-      // Most plants 1x1 in SFT, larger crops 2x2
-      const spacing = variety.spacing_recommended || 12;
-      if (spacing >= 18) return { cols: 2, rows: 2 };
-      return { cols: 1, rows: 1 };
+      const spacing = varietySpacing || 12;
+      if (spacing >= 18) return { cols: 2, rows: 2, plantsPerSlot: 1 };
+      return { cols: 1, rows: 1, plantsPerSlot: 1 };
     } else {
-      // Standard spacing - use variety spacing
-      const spacing = variety.spacing_recommended || 24;
+      const spacing = varietySpacing || 24;
       const cells = Math.ceil(spacing / 12);
-      return { cols: cells, rows: cells };
+      return { cols: cells, rows: cells, plantsPerSlot: 1 };
     }
   };
 
@@ -230,11 +247,13 @@ export default function PlantingModal({ open, onOpenChange, item, itemType, gard
 
       console.log('[PlantingModal] Created PlantInstance:', planting.id);
       
-      // If from crop plan, update quantities
+      // If from crop plan, update quantities - count actual plants, not grid slots
       if (selectedPlant.crop_plan_id) {
         try {
+          const plantsAdded = selectedPlant.plantsPerSlot || 1;
           await base44.functions.invoke('updateCropPlantedQuantity', { 
-            crop_plan_id: selectedPlant.crop_plan_id 
+            crop_plan_id: selectedPlant.crop_plan_id,
+            quantity_to_add: plantsAdded
           });
           // Reload crop plans
           if (seasonId) {
@@ -373,11 +392,13 @@ export default function PlantingModal({ open, onOpenChange, item, itemType, gard
 
         console.log('[PlantingModal] Created PlantInstance:', planting.id);
 
-        // If from crop plan, update quantities
+        // If from crop plan, update quantities - count actual plants, not grid slots
         if (selectedPlant.crop_plan_id) {
           try {
+            const plantsAdded = selectedPlant.plantsPerSlot || 1;
             await base44.functions.invoke('updateCropPlantedQuantity', { 
-              crop_plan_id: selectedPlant.crop_plan_id 
+              crop_plan_id: selectedPlant.crop_plan_id,
+              quantity_to_add: plantsAdded
             });
             // Reload crop plans to show updated counts
             if (seasonId) {
@@ -458,7 +479,7 @@ export default function PlantingModal({ open, onOpenChange, item, itemType, gard
     );
     
     const spacing = variety 
-      ? getSpacingForPlant(variety) 
+      ? getSpacingForPlant(profile.plant_type_id, variety.spacing_recommended) 
       : getDefaultSpacing(profile.common_name);
     
     const plantData = {
@@ -468,7 +489,8 @@ export default function PlantingModal({ open, onOpenChange, item, itemType, gard
       plant_type_name: profile.common_name,
       plant_family: profile.plant_family,
       spacing_cols: spacing.cols,
-      spacing_rows: spacing.rows
+      spacing_rows: spacing.rows,
+      plantsPerSlot: spacing.plantsPerSlot
     };
     
     setSelectedPlant(plantData);
@@ -625,7 +647,7 @@ export default function PlantingModal({ open, onOpenChange, item, itemType, gard
         return;
       }
       
-      const spacing = getSpacingForPlant(variety);
+      const spacing = getSpacingForPlant(variety.plant_type_id, variety.spacing_recommended);
       console.log('[PlantingModal] Creating SeedLot with variety:', variety.id, variety.variety_name);
       
       // Find or create PlantProfile from Variety
@@ -689,7 +711,8 @@ export default function PlantingModal({ open, onOpenChange, item, itemType, gard
         plant_type_name: variety.plant_type_name || variety.variety_name,
         plant_family: plantType?.plant_family_id,
         spacing_cols: spacing.cols,
-        spacing_rows: spacing.rows
+        spacing_rows: spacing.rows,
+        plantsPerSlot: spacing.plantsPerSlot
       };
       console.log('[PlantingModal] Setting selected plant:', selectedPlantData);
       setSelectedPlant(selectedPlantData);
@@ -860,6 +883,7 @@ export default function PlantingModal({ open, onOpenChange, item, itemType, gard
                   <p className="text-sm text-emerald-700 truncate">{selectedPlant.variety_name}</p>
                   <p className="text-xs text-emerald-600 mt-1">
                     Takes {selectedPlant.spacing_cols}×{selectedPlant.spacing_rows} cells
+                    {selectedPlant.plantsPerSlot > 1 && ` (${selectedPlant.plantsPerSlot} plants)`}
                   </p>
                   <Button
                     size="sm"

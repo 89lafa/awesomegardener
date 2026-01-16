@@ -9,60 +9,48 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { crop_plan_id } = await req.json();
+    const { crop_plan_id, quantity_to_add } = await req.json();
 
     if (!crop_plan_id) {
-      return Response.json({ error: 'Missing crop_plan_id' }, { status: 400 });
+      return Response.json({ error: 'crop_plan_id is required' }, { status: 400 });
     }
 
-    console.log('[UpdateCropQty] Updating planted quantity for:', crop_plan_id);
-
-    // Load crop plan
-    const cropPlans = await base44.asServiceRole.entities.CropPlan.filter({ id: crop_plan_id });
-    if (cropPlans.length === 0) {
-      return Response.json({ error: 'Crop not found' }, { status: 404 });
+    // Get the crop plan
+    const plans = await base44.entities.CropPlan.filter({ id: crop_plan_id });
+    if (plans.length === 0) {
+      return Response.json({ error: 'Crop plan not found' }, { status: 404 });
     }
 
-    const crop = cropPlans[0];
+    const plan = plans[0];
 
-    // Count all PlantInstance records that match this crop
-    const allPlantings = await base44.asServiceRole.entities.PlantInstance.list();
-    
-    const matchingPlantings = allPlantings.filter(p => {
-      // Match by plant_type_id primarily
-      if (p.plant_type_id !== crop.plant_type_id) return false;
-      
-      // If crop has specific variety, match that
-      if (crop.variety_id && p.variety_id === crop.variety_id) return true;
-      if (crop.plant_profile_id && p.variety_id === crop.plant_profile_id) return true;
-      
-      // Match by label/display_name if no specific variety
-      if (!crop.variety_id && !crop.plant_profile_id) {
-        return p.display_name?.includes(crop.label);
-      }
-      
-      return false;
+    // Count actual plants for this crop plan (not grid slots)
+    const plantings = await base44.entities.PlantInstance.filter({
+      garden_id: plan.garden_id,
+      variety_id: plan.variety_id
     });
 
-    const quantityPlanted = matchingPlantings.length;
+    // Calculate total plants - if quantity_to_add is provided, use it
+    // Otherwise, count plantings (for backwards compatibility)
+    let totalPlanted;
+    if (quantity_to_add !== undefined) {
+      totalPlanted = (plan.quantity_planted || 0) + quantity_to_add;
+    } else {
+      // Legacy: just count the number of plantings
+      totalPlanted = plantings.length;
+    }
 
-    console.log('[UpdateCropQty] Found', quantityPlanted, 'planted instances from', allPlantings.length, 'total');
-
-    // Update crop plan
-    await base44.asServiceRole.entities.CropPlan.update(crop_plan_id, {
-      quantity_planted: quantityPlanted,
-      status: quantityPlanted >= (crop.quantity_planned || 0) ? 'planted' : crop.status
+    // Update the crop plan
+    await base44.entities.CropPlan.update(crop_plan_id, {
+      quantity_planted: totalPlanted
     });
 
     return Response.json({
       success: true,
-      quantity_planted: quantityPlanted
+      quantity_planted: totalPlanted,
+      quantity_planned: plan.quantity_planned
     });
   } catch (error) {
-    console.error('[UpdateCropQty] Error:', error);
-    return Response.json({ 
-      error: error.message,
-      stack: error.stack 
-    }, { status: 500 });
+    console.error('Error updating crop quantity:', error);
+    return Response.json({ error: error.message }, { status: 500 });
   }
 });
