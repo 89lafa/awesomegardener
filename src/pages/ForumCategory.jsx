@@ -57,19 +57,16 @@ export default function ForumCategory() {
       });
       setTopics(sortedTopics);
 
-      // Load users for topics
+      // Load users for topics via backend function
       if (sortedTopics.length > 0) {
         const userEmails = [...new Set(sortedTopics.map(t => t.created_by).filter(Boolean))];
-        const usersMap = {};
-        for (const email of userEmails) {
-          try {
-            const userData = await base44.entities.User.filter({ email });
-            if (userData[0]) usersMap[email] = userData[0];
-          } catch (err) {
-            console.log('Could not load user:', email);
-          }
+        try {
+          const { data } = await base44.functions.invoke('getForumUserProfiles', { emails: userEmails });
+          setUsers(data.profiles || {});
+        } catch (err) {
+          console.error('Could not load users:', err);
+          setUsers({});
         }
-        setUsers(usersMap);
       }
     } catch (error) {
       console.error('Error loading category:', error);

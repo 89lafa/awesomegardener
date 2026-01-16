@@ -57,19 +57,16 @@ export default function ForumTopic() {
         setCategory(categoryData[0]);
       }
 
-      // Load users
+      // Load users via backend function
       const allEmails = [topicData[0].created_by, ...postsData.map(p => p.created_by)].filter(Boolean);
       const uniqueEmails = [...new Set(allEmails)];
-      const usersMap = {};
-      for (const email of uniqueEmails) {
-        try {
-          const userData = await base44.entities.User.filter({ email });
-          if (userData[0]) usersMap[email] = userData[0];
-        } catch (err) {
-          console.log('Could not load user:', email);
-        }
+      try {
+        const { data } = await base44.functions.invoke('getForumUserProfiles', { emails: uniqueEmails });
+        setUsers(data.profiles || {});
+      } catch (err) {
+        console.error('Could not load users:', err);
+        setUsers({});
       }
-      setUsers(usersMap);
 
       // User votes
       const votesMap = {};
