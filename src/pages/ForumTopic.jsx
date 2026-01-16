@@ -58,15 +58,17 @@ export default function ForumTopic() {
       }
 
       // Load users
-      const allEmails = [topicData[0].created_by, ...postsData.map(p => p.created_by)];
+      const allEmails = [topicData[0].created_by, ...postsData.map(p => p.created_by)].filter(Boolean);
       const uniqueEmails = [...new Set(allEmails)];
-      const usersData = await Promise.all(
-        uniqueEmails.map(email => base44.entities.User.filter({ email }))
-      );
       const usersMap = {};
-      usersData.forEach(arr => {
-        if (arr[0]) usersMap[arr[0].email] = arr[0];
-      });
+      for (const email of uniqueEmails) {
+        try {
+          const userData = await base44.entities.User.filter({ email });
+          if (userData[0]) usersMap[email] = userData[0];
+        } catch (err) {
+          console.log('Could not load user:', email);
+        }
+      }
       setUsers(usersMap);
 
       // User votes
