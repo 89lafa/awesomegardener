@@ -49,6 +49,7 @@ export default function AdminDataImport() {
   const [dryRun, setDryRun] = useState(true);
   const [importMode, setImportMode] = useState('UPSERT_BY_ID');
   const [results, setResults] = useState(null);
+  const [importProgress, setImportProgress] = useState({ current: 0, total: 0, currentFile: '' });
 
   React.useEffect(() => {
     checkAdmin();
@@ -142,6 +143,7 @@ export default function AdminDataImport() {
 
     setImporting(true);
     setResults(null);
+    setImportProgress({ current: 0, total: 0, currentFile: '' });
 
     try {
       const importResults = {};
@@ -150,8 +152,12 @@ export default function AdminDataImport() {
         const file = files[item.key];
         if (!file) continue;
 
+        setImportProgress({ current: 0, total: 0, currentFile: item.label });
+        
         const text = await file.text();
         const data = parseCSV(text);
+        
+        setImportProgress({ current: 0, total: data.length, currentFile: item.label });
 
         if (data.length === 0) {
           importResults[item.key] = {
@@ -630,6 +636,7 @@ export default function AdminDataImport() {
 
             // Progress update
             const processed = Math.min(i + BATCH_SIZE, data.length);
+            setImportProgress({ current: processed, total: data.length, currentFile: item.label });
             console.log(`[Import] Batch ${Math.floor(i / BATCH_SIZE) + 1}: Processed ${processed} / ${data.length}`);
 
             // Wait between batches
@@ -924,7 +931,7 @@ export default function AdminDataImport() {
             </p>
           </div>
 
-          <div className="flex items-center justify-between">
+          <div className="space-y-4">
             <div className="flex items-center gap-4">
               <label className="flex items-center gap-2 cursor-pointer">
                 <input
@@ -935,6 +942,26 @@ export default function AdminDataImport() {
                 />
                 <span className="text-sm font-medium">Dry Run (Preview only)</span>
               </label>
+            </div>
+            
+            <div className="flex items-center gap-4">
+            <div className="flex-1">
+              {importing && importProgress.total > 0 && (
+                <div className="space-y-2">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-700">{importProgress.currentFile}</span>
+                    <span className="font-semibold text-gray-900">
+                      {importProgress.current} / {importProgress.total}
+                    </span>
+                  </div>
+                  <div className="w-full bg-gray-200 rounded-full h-2">
+                    <div
+                      className="bg-emerald-600 h-2 rounded-full transition-all"
+                      style={{ width: `${(importProgress.current / importProgress.total) * 100}%` }}
+                    />
+                  </div>
+                </div>
+              )}
             </div>
             <Button
               onClick={handleImport}
@@ -953,6 +980,7 @@ export default function AdminDataImport() {
                 </>
               )}
             </Button>
+            </div>
           </div>
         </CardContent>
       </Card>

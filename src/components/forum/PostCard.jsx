@@ -107,9 +107,9 @@ export default function PostCard({ post, user, onVote, onDelete, userVote, showS
                   </AvatarFallback>
                 </Avatar>
                 <div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 flex-wrap">
                     <span className="font-semibold text-gray-900">
-                      {postUser?.nickname || postUser?.full_name || (post.created_by && typeof post.created_by === 'string' ? post.created_by.split('@')[0] : 'Unknown')}
+                      {(postUser?.nickname && postUser.nickname.trim()) || postUser?.full_name || (post.created_by && typeof post.created_by === 'string' ? post.created_by.split('@')[0] : 'Unknown')}
                     </span>
                     {isAdmin && <Badge className="bg-red-600 text-white text-xs">ADMIN</Badge>}
                     {isModerator && !isAdmin && <Badge className="bg-blue-600 text-white text-xs">MOD</Badge>}
