@@ -11,8 +11,10 @@ import { toast } from 'sonner';
 export default function AdminDataMaintenance() {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [running, setRunning] = useState(false);
-  const [result, setResult] = useState(null);
+  const [runningNormalize, setRunningNormalize] = useState(false);
+  const [runningRepair, setRunningRepair] = useState(false);
+  const [normalizeResult, setNormalizeResult] = useState(null);
+  const [repairResult, setRepairResult] = useState(null);
   const [plantTypes, setPlantTypes] = useState([]);
   const [selectedType, setSelectedType] = useState('');
 
@@ -46,18 +48,18 @@ export default function AdminDataMaintenance() {
   };
 
   const runNormalize = async (dryRun = false) => {
-    setRunning(true);
-    setResult(null);
+    setRunningNormalize(true);
+    setNormalizeResult(null);
     try {
       const response = await base44.functions.invoke('batchNormalizeVarietySubcategories', { dry_run: dryRun });
-      setResult(response.data);
+      setNormalizeResult(response.data);
       toast.success(dryRun ? 'Analysis complete' : 'Normalization complete');
     } catch (error) {
       console.error('Normalize error:', error);
       toast.error('Normalization failed: ' + (error.response?.data?.error || error.message));
-      setResult({ error: error.response?.data?.error || error.message });
+      setNormalizeResult({ error: error.response?.data?.error || error.message });
     } finally {
-      setRunning(false);
+      setRunningNormalize(false);
     }
   };
 
@@ -67,21 +69,21 @@ export default function AdminDataMaintenance() {
       return;
     }
 
-    setRunning(true);
-    setResult(null);
+    setRunningRepair(true);
+    setRepairResult(null);
     try {
       const response = await base44.functions.invoke('batchRepairSubcategories', { 
         plant_type_id: selectedType,
         dry_run: dryRun 
       });
-      setResult(response.data);
+      setRepairResult(response.data);
       toast.success(dryRun ? 'Analysis complete' : 'Repair complete');
     } catch (error) {
       console.error('Repair error:', error);
       toast.error('Repair failed: ' + (error.response?.data?.error || error.message));
-      setResult({ error: error.response?.data?.error || error.message });
+      setRepairResult({ error: error.response?.data?.error || error.message });
     } finally {
-      setRunning(false);
+      setRunningRepair(false);
     }
   };
 
@@ -119,34 +121,34 @@ export default function AdminDataMaintenance() {
           <div className="flex gap-2">
             <Button
               onClick={() => runNormalize(true)}
-              disabled={running}
+              disabled={runningNormalize}
               variant="outline"
               className="gap-2"
             >
-              {running ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
+              {runningNormalize ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
               Analyze (Dry Run)
             </Button>
             <Button
               onClick={() => runNormalize(false)}
-              disabled={running}
+              disabled={runningNormalize}
               className="bg-emerald-600 hover:bg-emerald-700 gap-2"
             >
-              {running ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
+              {runningNormalize ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
               Normalize All
             </Button>
           </div>
-          {result && (
-            <Alert className={result.error ? "bg-red-50 border-red-200" : "bg-green-50 border-green-200"}>
-              {result.error ? <AlertCircle className="w-4 h-4 text-red-600" /> : <CheckCircle2 className="w-4 h-4 text-green-600" />}
-              <AlertDescription className={result.error ? "text-red-800" : "text-green-800"}>
-                {result.error ? (
-                  <div className="font-semibold">Error: {result.error}</div>
+          {normalizeResult && (
+            <Alert className={normalizeResult.error ? "bg-red-50 border-red-200" : "bg-green-50 border-green-200"}>
+              {normalizeResult.error ? <AlertCircle className="w-4 h-4 text-red-600" /> : <CheckCircle2 className="w-4 h-4 text-green-600" />}
+              <AlertDescription className={normalizeResult.error ? "text-red-800" : "text-green-800"}>
+                {normalizeResult.error ? (
+                  <div className="font-semibold">Error: {normalizeResult.error}</div>
                 ) : (
                   <div className="space-y-1">
-                    <div className="font-semibold">{result.dry_run ? 'Analysis' : 'Results'}:</div>
-                    <div className="text-sm">Processed: {result.processed} / {result.total}</div>
-                    <div className="text-sm">Fixed: {result.fixed}</div>
-                    {result.errors > 0 && <div className="text-sm text-red-700">Errors: {result.errors}</div>}
+                    <div className="font-semibold">{normalizeResult.dry_run ? 'Analysis' : 'Results'}:</div>
+                    <div className="text-sm">Processed: {normalizeResult.processed} / {normalizeResult.total}</div>
+                    <div className="text-sm">Fixed: {normalizeResult.fixed}</div>
+                    {normalizeResult.errors > 0 && <div className="text-sm text-red-700">Errors: {normalizeResult.errors}</div>}
                   </div>
                 )}
               </AlertDescription>
@@ -183,39 +185,39 @@ export default function AdminDataMaintenance() {
           <div className="flex gap-2">
             <Button
               onClick={() => runRepair(true)}
-              disabled={running || !selectedType}
+              disabled={runningRepair || !selectedType}
               variant="outline"
               className="gap-2"
             >
-              {running ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
+              {runningRepair ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
               Analyze (Dry Run)
             </Button>
             <Button
               onClick={() => runRepair(false)}
-              disabled={running || !selectedType}
+              disabled={runningRepair || !selectedType}
               className="bg-emerald-600 hover:bg-emerald-700 gap-2"
             >
-              {running ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
+              {runningRepair ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
               Repair Now
             </Button>
           </div>
 
-          {result && (
-            <Alert className={result.error ? "bg-red-50 border-red-200" : "bg-green-50 border-green-200"}>
-              {result.error ? <AlertCircle className="w-4 h-4 text-red-600" /> : <CheckCircle2 className="w-4 h-4 text-green-600" />}
-              <AlertDescription className={result.error ? "text-red-800" : "text-green-800"}>
-                {result.error ? (
+          {repairResult && (
+            <Alert className={repairResult.error ? "bg-red-50 border-red-200" : "bg-green-50 border-green-200"}>
+              {repairResult.error ? <AlertCircle className="w-4 h-4 text-red-600" /> : <CheckCircle2 className="w-4 h-4 text-green-600" />}
+              <AlertDescription className={repairResult.error ? "text-red-800" : "text-green-800"}>
+                {repairResult.error ? (
                   <div>
-                    <div className="font-semibold mb-1">Error: {result.error}</div>
-                    {result.suggestion && <div className="text-sm">{result.suggestion}</div>}
+                    <div className="font-semibold mb-1">Error: {repairResult.error}</div>
+                    {repairResult.suggestion && <div className="text-sm">{repairResult.suggestion}</div>}
                   </div>
                 ) : (
                   <div className="space-y-1">
-                    <div className="font-semibold">{result.dry_run ? 'Analysis' : 'Results'}:</div>
-                    <div className="text-sm">Total varieties: {result.total}</div>
-                    <div className="text-sm">Repaired: {result.repaired}</div>
-                    {result.errors > 0 && <div className="text-sm text-red-700">Errors: {result.errors}</div>}
-                    {result.uncategorized_subcat && <div className="text-sm">Using: {result.uncategorized_subcat}</div>}
+                    <div className="font-semibold">{repairResult.dry_run ? 'Analysis' : 'Results'}:</div>
+                    <div className="text-sm">Total varieties: {repairResult.total}</div>
+                    <div className="text-sm">Repaired: {repairResult.repaired}</div>
+                    {repairResult.errors > 0 && <div className="text-sm text-red-700">Errors: {repairResult.errors}</div>}
+                    {repairResult.uncategorized_subcat && <div className="text-sm">Using: {repairResult.uncategorized_subcat}</div>}
                   </div>
                 )}
               </AlertDescription>
