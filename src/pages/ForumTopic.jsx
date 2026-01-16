@@ -39,7 +39,7 @@ export default function ForumTopic() {
         base44.auth.me(),
         base44.entities.ForumTopic.filter({ id: topicId }),
         base44.entities.ForumPost.filter({ topic_id: topicId }, 'created_date'),
-        base44.entities.ForumVote.filter({ item_id: topicId })
+        base44.entities.ForumVote.filter({ target_id: topicId })
       ]);
 
       if (!topicData[0]) {
@@ -73,8 +73,8 @@ export default function ForumTopic() {
 
       // User votes
       const votesMap = {};
-      votesData.filter(v => v.created_by === userData.email).forEach(v => {
-        votesMap[v.item_id] = v.vote_value;
+      votesData.filter(v => v.user_email === userData.email).forEach(v => {
+        votesMap[v.target_id] = v.value;
       });
       setUserVotes(votesMap);
 
@@ -94,21 +94,22 @@ export default function ForumTopic() {
     
     try {
       const existing = await base44.entities.ForumVote.filter({
-        item_id: itemId,
-        created_by: user.email
+        target_id: itemId,
+        user_email: user.email
       });
 
       if (existing.length > 0) {
         if (newValue === 0) {
           await base44.entities.ForumVote.delete(existing[0].id);
         } else {
-          await base44.entities.ForumVote.update(existing[0].id, { vote_value: newValue });
+          await base44.entities.ForumVote.update(existing[0].id, { value: newValue });
         }
       } else if (newValue === 1) {
         await base44.entities.ForumVote.create({
-          item_id: itemId,
-          item_type: itemType,
-          vote_value: newValue
+          target_id: itemId,
+          target_type: itemType,
+          value: newValue,
+          user_email: user.email
         });
       }
 
@@ -124,6 +125,7 @@ export default function ForumTopic() {
       loadData();
     } catch (error) {
       console.error('Error voting:', error);
+      toast.error('Failed to vote');
     }
   };
 
