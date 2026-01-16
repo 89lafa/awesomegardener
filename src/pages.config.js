@@ -13,7 +13,6 @@ import CalendarPlanner from './pages/CalendarPlanner';
 import CalendarTasks from './pages/CalendarTasks';
 import ChangeRequests from './pages/ChangeRequests';
 import Community from './pages/Community';
-import CommunityBoard from './pages/CommunityBoard';
 import CompanionPlanner from './pages/CompanionPlanner';
 import CompanionRuleImport from './pages/CompanionRuleImport';
 import CompanionRulesAudit from './pages/CompanionRulesAudit';
@@ -80,7 +79,6 @@ export const PAGES = {
     "CalendarTasks": CalendarTasks,
     "ChangeRequests": ChangeRequests,
     "Community": Community,
-    "CommunityBoard": CommunityBoard,
     "CompanionPlanner": CompanionPlanner,
     "CompanionRuleImport": CompanionRuleImport,
     "CompanionRulesAudit": CompanionRulesAudit,
