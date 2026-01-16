@@ -33,26 +33,42 @@ export default function ForumCategory() {
 
   const loadData = async () => {
     try {
-      const [userData, categoryData, topicsData] = await Promise.all([
+      const [userData, categoryData] = await Promise.all([
         base44.auth.me(),
-        base44.entities.ForumCategory.filter({ id: categoryId }),
-        base44.entities.ForumTopic.filter({ category_id: categoryId }, '-last_activity_at')
+        base44.entities.ForumCategory.filter({ id: categoryId })
       ]);
 
       setUser(userData);
       setCategory(categoryData[0]);
-      setTopics(topicsData);
+
+      if (!categoryData[0]) {
+        setLoading(false);
+        return;
+      }
+
+      // Load topics
+      const topicsData = await base44.entities.ForumTopic.filter({ category_id: categoryId });
+      const sortedTopics = topicsData.sort((a, b) => {
+        if (a.pinned && !b.pinned) return -1;
+        if (!a.pinned && b.pinned) return 1;
+        const dateA = new Date(a.last_activity_at || a.created_date);
+        const dateB = new Date(b.last_activity_at || b.created_date);
+        return dateB - dateA;
+      });
+      setTopics(sortedTopics);
 
       // Load users for topics
-      const userEmails = [...new Set(topicsData.map(t => t.created_by))];
-      const usersData = await Promise.all(
-        userEmails.map(email => base44.entities.User.filter({ email }))
-      );
-      const usersMap = {};
-      usersData.forEach(arr => {
-        if (arr[0]) usersMap[arr[0].email] = arr[0];
-      });
-      setUsers(usersMap);
+      if (sortedTopics.length > 0) {
+        const userEmails = [...new Set(sortedTopics.map(t => t.created_by))];
+        const usersData = await Promise.all(
+          userEmails.map(email => base44.entities.User.filter({ email }))
+        );
+        const usersMap = {};
+        usersData.forEach(arr => {
+          if (arr[0]) usersMap[arr[0].email] = arr[0];
+        });
+        setUsers(usersMap);
+      }
     } catch (error) {
       console.error('Error loading category:', error);
     } finally {
