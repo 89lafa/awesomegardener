@@ -59,7 +59,7 @@ export default function ForumCategory() {
 
       // Load users for topics via backend function
       if (sortedTopics.length > 0) {
-        const userEmails = [...new Set(sortedTopics.map(t => t.created_by).filter(Boolean))];
+        const userEmails = [...new Set(sortedTopics.map(t => t.author_email || t.created_by).filter(Boolean))];
         try {
           const { data } = await base44.functions.invoke('getForumUserProfiles', { emails: userEmails });
           setUsers(data.profiles || {});

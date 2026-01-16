@@ -58,7 +58,10 @@ export default function ForumTopic() {
       }
 
       // Load users via backend function
-      const allEmails = [topicData[0].created_by, ...postsData.map(p => p.created_by)].filter(Boolean);
+      const allEmails = [
+        topicData[0].author_email || topicData[0].created_by, 
+        ...postsData.map(p => p.author_email || p.created_by)
+      ].filter(Boolean);
       const uniqueEmails = [...new Set(allEmails)];
       try {
         const { data } = await base44.functions.invoke('getForumUserProfiles', { emails: uniqueEmails });
@@ -136,7 +139,8 @@ export default function ForumTopic() {
     try {
       await base44.entities.ForumPost.create({
         topic_id: topicId,
-        body: replyText
+        body: replyText,
+        author_email: user.email
       });
 
       // Update counts
@@ -208,7 +212,7 @@ export default function ForumTopic() {
     );
   }
 
-  const topicAuthor = users[topic.created_by];
+  const topicAuthor = users[topic.author_email || topic.created_by];
   const canReply = topic.status !== 'locked';
 
   return (
@@ -283,7 +287,7 @@ export default function ForumTopic() {
                 <div>
                   <div className="flex items-center gap-2">
                     <span className="font-semibold text-gray-900">
-                      {topicAuthor?.nickname || topicAuthor?.full_name || (topic.created_by ? topic.created_by.split('@')[0] : 'Unknown')}
+                      {topicAuthor?.nickname || topicAuthor?.full_name || (topic.author_email ? topic.author_email.split('@')[0] : (topic.created_by ? topic.created_by.split('@')[0] : user?.full_name || 'Unknown'))}
                     </span>
                     {topicAuthor?.role === 'admin' && <Badge className="bg-red-600 text-white text-xs">ADMIN</Badge>}
                     {topicAuthor?.is_moderator && <Badge className="bg-blue-600 text-white text-xs">MOD</Badge>}
@@ -339,8 +343,8 @@ export default function ForumTopic() {
         </h2>
 
         {posts.map((post) => {
-          const postAuthor = users[post.created_by];
-          const canDelete = isAdmin || post.created_by === user?.email;
+          const postAuthor = users[post.author_email || post.created_by];
+          const canDelete = isAdmin || post.author_email === user?.email || post.created_by === user?.email;
           
           return (
             <Card key={post.id}>
@@ -372,7 +376,7 @@ export default function ForumTopic() {
                         <div>
                           <div className="flex items-center gap-2">
                             <span className="font-semibold text-gray-900">
-                              {postAuthor?.nickname || postAuthor?.full_name || (post.created_by ? post.created_by.split('@')[0] : 'Unknown')}
+                              {postAuthor?.nickname || postAuthor?.full_name || (post.author_email ? post.author_email.split('@')[0] : (post.created_by ? post.created_by.split('@')[0] : user?.full_name || 'Unknown'))}
                             </span>
                             {postAuthor?.role === 'admin' && <Badge className="bg-red-600 text-white text-xs">ADMIN</Badge>}
                             {postAuthor?.is_moderator && <Badge className="bg-blue-600 text-white text-xs">MOD</Badge>}
