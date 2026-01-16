@@ -212,7 +212,13 @@ export default function AdminDataImport() {
             console.log('[Variety Import] Lookup keys:', Object.keys(plantTypeLookup).slice(0, 10));
           }
 
-          for (const row of data) {
+          const BATCH_SIZE = 30;
+          const DELAY_MS = 1000;
+
+          for (let i = 0; i < data.length; i += BATCH_SIZE) {
+            const batch = data.slice(i, i + BATCH_SIZE);
+
+            for (const row of batch) {
             try {
               // Process PlantSubCategory-specific data
               if (item.key === 'PlantSubCategory') {
@@ -619,6 +625,17 @@ export default function AdminDataImport() {
               console.error(`Error importing ${item.key}:`, error);
               skipped++;
               skipReasons.push({ row, reason: error.message });
+            }
+            }
+
+            // Progress update
+            const processed = Math.min(i + BATCH_SIZE, data.length);
+            console.log(`[Import] Batch ${Math.floor(i / BATCH_SIZE) + 1}: Processed ${processed} / ${data.length}`);
+
+            // Wait between batches
+            if (i + BATCH_SIZE < data.length) {
+              console.log(`[Import] Waiting ${DELAY_MS}ms before next batch...`);
+              await new Promise(resolve => setTimeout(resolve, DELAY_MS));
             }
           }
 

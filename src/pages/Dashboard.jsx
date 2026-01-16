@@ -30,6 +30,9 @@ export default function Dashboard() {
   const [tasks, setTasks] = useState([]);
   const [seedCount, setSeedCount] = useState(0);
   const [growListCount, setGrowListCount] = useState(0);
+  const [seeds, setSeeds] = useState([]);
+  const [growLists, setGrowLists] = useState([]);
+  const [diaryEntries, setDiaryEntries] = useState([]);
   const [loading, setLoading] = useState(true);
   const [rateLimitError, setRateLimitError] = useState(null);
   const [retrying, setRetrying] = useState(false);
