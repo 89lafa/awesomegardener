@@ -13,6 +13,7 @@ import CalendarPlanner from './pages/CalendarPlanner';
 import CalendarTasks from './pages/CalendarTasks';
 import ChangeRequests from './pages/ChangeRequests';
 import Community from './pages/Community';
+import CommunityBoard from './pages/CommunityBoard';
 import CompanionPlanner from './pages/CompanionPlanner';
 import CompanionRuleImport from './pages/CompanionRuleImport';
 import CompanionRulesAudit from './pages/CompanionRulesAudit';
@@ -37,6 +38,7 @@ import HarvestLog from './pages/HarvestLog';
 import ImageSubmissions from './pages/ImageSubmissions';
 import IssuesLog from './pages/IssuesLog';
 import Landing from './pages/Landing';
+import ManageForumCategories from './pages/ManageForumCategories';
 import MyGarden from './pages/MyGarden';
 import MyPlants from './pages/MyPlants';
 import Onboarding from './pages/Onboarding';
@@ -60,8 +62,6 @@ import Users from './pages/Users';
 import VarietyReviewQueue from './pages/VarietyReviewQueue';
 import ViewVariety from './pages/ViewVariety';
 import ZoneMap from './pages/ZoneMap';
-import CommunityBoard from './pages/CommunityBoard';
-import ManageForumCategories from './pages/ManageForumCategories';
 import __Layout from './Layout.jsx';
 
 
@@ -81,6 +81,7 @@ export const PAGES = {
     "CalendarTasks": CalendarTasks,
     "ChangeRequests": ChangeRequests,
     "Community": Community,
+    "CommunityBoard": CommunityBoard,
     "CompanionPlanner": CompanionPlanner,
     "CompanionRuleImport": CompanionRuleImport,
     "CompanionRulesAudit": CompanionRulesAudit,
@@ -105,6 +106,7 @@ export const PAGES = {
     "ImageSubmissions": ImageSubmissions,
     "IssuesLog": IssuesLog,
     "Landing": Landing,
+    "ManageForumCategories": ManageForumCategories,
     "MyGarden": MyGarden,
     "MyPlants": MyPlants,
     "Onboarding": Onboarding,
@@ -128,8 +130,6 @@ export const PAGES = {
     "VarietyReviewQueue": VarietyReviewQueue,
     "ViewVariety": ViewVariety,
     "ZoneMap": ZoneMap,
-    "CommunityBoard": CommunityBoard,
-    "ManageForumCategories": ManageForumCategories,
 }
 
 export const pagesConfig = {

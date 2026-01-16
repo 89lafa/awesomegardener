@@ -167,7 +167,8 @@ export default function ImportSpreadsheetDialog({ open, onOpenChange, onSuccess 
               profile = await base44.entities.PlantProfile.create({
                 variety_name: varietyName,
                 common_name: commonName || 'Unknown',
-                source_type: 'user_private'
+                source_type: 'user_private',
+                is_custom: true
               });
             }
 
