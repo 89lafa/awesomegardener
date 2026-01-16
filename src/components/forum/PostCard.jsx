@@ -155,24 +155,26 @@ export default function PostCard({ post, user, onVote, onDelete, userVote, showS
 
             {/* Signature */}
             {showSignature && postUser && (
-              <div className="mt-4 pt-4 border-t border-gray-200">
-                <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-gray-500">
-                  {postUser.usda_zone && typeof postUser.usda_zone === 'string' && (
-                    <div className="flex items-center gap-1">
-                      <MapPin className="w-3 h-3" />
-                      <span>Zone {postUser.usda_zone}</span>
-                    </div>
-                  )}
-                  {postUser.location_city && postUser.location_state && (
+              <div className="mt-4 pt-4 border-t border-gray-200 bg-gray-50/50 p-3 rounded-lg">
+                {postUser.community_bio && (
+                  <p className="text-xs text-gray-700 mb-2 italic">"{postUser.community_bio}"</p>
+                )}
+                <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-gray-600">
+                  {(postUser.location_city && postUser.location_state) && (
                     <div className="flex items-center gap-1">
                       <MapPin className="w-3 h-3" />
                       <span>{postUser.location_city}, {postUser.location_state}</span>
                     </div>
                   )}
-                  {postUser.community_interests && typeof postUser.community_interests === 'string' && (
+                  {postUser.usda_zone && (
                     <div className="flex items-center gap-1">
                       <Sprout className="w-3 h-3" />
-                      <span className="italic">{postUser.community_interests}</span>
+                      <span>Zone {postUser.usda_zone}</span>
+                    </div>
+                  )}
+                  {postUser.community_interests && (
+                    <div className="flex items-center gap-1">
+                      <span className="italic">Growing: {postUser.community_interests}</span>
                     </div>
                   )}
                 </div>
