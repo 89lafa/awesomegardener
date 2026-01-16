@@ -36,7 +36,7 @@ export default function ForumCategory() {
       const [userData, categoryData, topicsData] = await Promise.all([
         base44.auth.me(),
         base44.entities.ForumCategory.filter({ id: categoryId }),
-        base44.entities.ForumTopic.filter({ category_id: categoryId }, '-pinned,-last_activity_at')
+        base44.entities.ForumTopic.filter({ category_id: categoryId }, '-last_activity_at')
       ]);
 
       setUser(userData);
