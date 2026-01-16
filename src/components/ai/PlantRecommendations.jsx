@@ -12,6 +12,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Loader2, Sparkles, ExternalLink, Plus, Package, ListChecks } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
+import { AddToStashButton, AddToGrowListButton } from '@/components/catalog/QuickAddButtons';
 
 export default function PlantRecommendations({ open, onOpenChange, context = 'catalog' }) {
   const [loading, setLoading] = useState(false);
@@ -193,11 +194,11 @@ Return structured data.`,
                       <Button size="sm" variant="outline" asChild>
                         <Link to={createPageUrl('PlantCatalog') + `?search=${encodeURIComponent(rec.variety_name || rec.common_name)}`}>
                           <ExternalLink className="w-3 h-3 mr-1" />
-                          View
+                          View Catalog
                         </Link>
                       </Button>
-                      <AddToStashButton variety={{ variety_name: rec.variety_name || rec.common_name, plant_type_name: rec.common_name }} />
-                      <AddToGrowListButton variety={{ variety_name: rec.variety_name || rec.common_name, plant_type_name: rec.common_name }} />
+                      <AddToStashButton variety={{ variety_name: rec.variety_name || rec.common_name, plant_type_name: rec.common_name }} size="sm" />
+                      <AddToGrowListButton variety={{ variety_name: rec.variety_name || rec.common_name, plant_type_name: rec.common_name }} size="sm" />
                     </div>
                   </div>
                 </CardContent>
