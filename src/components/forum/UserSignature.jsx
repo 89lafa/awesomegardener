@@ -2,9 +2,16 @@ import React from 'react';
 import { MapPin, Sprout } from 'lucide-react';
 
 export default function UserSignature({ user }) {
-  if (!user) return null;
+  console.log('UserSignature - user:', user);
+  
+  if (!user) {
+    console.log('UserSignature - no user data');
+    return null;
+  }
 
   const hasSignature = user.usda_zone || user.location_city || user.community_bio || user.community_interests;
+  
+  console.log('UserSignature - hasSignature:', hasSignature);
   
   if (!hasSignature) return null;
 

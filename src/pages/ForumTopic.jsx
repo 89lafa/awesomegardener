@@ -56,11 +56,26 @@ export default function ForumTopic() {
       if (topicData.length > 0 && topicData[0].created_by) emails.add(topicData[0].created_by);
       filteredPosts.forEach(p => { if (p.created_by) emails.add(p.created_by); });
 
-      const response = await base44.functions.invoke('getForumUserData', {
-        emails: Array.from(emails)
-      });
-      
-      setUsersMap(response.data.users || {});
+      if (emails.size > 0) {
+        try {
+          const response = await base44.functions.invoke('getForumUserData', {
+            emails: Array.from(emails)
+          });
+          
+          console.log('Forum user data response:', response.data);
+          setUsersMap(response.data.users || {});
+        } catch (err) {
+          console.error('Error fetching forum user data:', err);
+          // Build fallback map with current user
+          const fallbackMap = {};
+          emails.forEach(email => {
+            if (email === userData.email) {
+              fallbackMap[email] = userData;
+            }
+          });
+          setUsersMap(fallbackMap);
+        }
+      }
     } catch (error) {
       console.error('Error loading topic:', error);
       toast.error('Failed to load topic');

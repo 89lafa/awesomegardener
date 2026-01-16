@@ -12,7 +12,9 @@ import ReportButton from './ReportButton';
 import ShareButton from './ShareButton';
 
 export default function PostItem({ post, author, currentUser, onDelete, onLike }) {
-  const displayName = author?.nickname || author?.full_name || post.created_by?.split('@')[0] || 'User';
+  console.log('PostItem - post.created_by:', post.created_by, 'author:', author);
+  
+  const displayName = author?.nickname || author?.full_name || post.created_by?.split('@')[0] || 'Unknown User';
   const isAdmin = author?.role === 'admin';
   const isModerator = author?.is_moderator;
   const canDelete = currentUser?.role === 'admin' || currentUser?.is_moderator || post.created_by === currentUser?.email;
