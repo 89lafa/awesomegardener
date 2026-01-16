@@ -187,10 +187,12 @@ export default function ImportSpreadsheetDialog({ open, onOpenChange, onSuccess 
             await base44.entities.SeedLot.create(seedData);
             totalInserted++;
             setStatusLog(prev => [...prev, `Row ${i + batch.indexOf(row) + 1}: Imported "${varietyName}"`]);
+            setResults({ inserted: totalInserted, skipped: totalSkipped, errors: errorsList });
           } catch (error) {
             totalSkipped++;
             errorsList.push({ row: i + batch.indexOf(row) + 1, error: error.message });
             setStatusLog(prev => [...prev, `Row ${i + batch.indexOf(row) + 1}: Error - ${error.message}`]);
+            setResults({ inserted: totalInserted, skipped: totalSkipped, errors: errorsList });
           }
         }
 

@@ -255,9 +255,8 @@ export default function ViewVariety() {
         </Card>
       )}
 
-      <div className="grid lg:grid-cols-3 gap-6">
-        {/* Main Info Card */}
-        <Card className="lg:col-span-2">
+      {/* Main Info Card - Full Width */}
+      <Card>
           <CardHeader>
             <CardTitle className="text-xl">📖 Variety Profile</CardTitle>
           </CardHeader>
@@ -462,45 +461,44 @@ export default function ViewVariety() {
           </CardContent>
         </Card>
 
-        {/* Sidebar Info Card */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-xl">Quick Info</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {(() => {
-              const allSubcatIds = variety?.plant_subcategory_ids || (variety?.plant_subcategory_id ? [variety.plant_subcategory_id] : []);
-              return allSubcatIds.length > 0 && (
-                <div>
-                  <Label className="text-xs text-gray-600">Categories</Label>
-                  <div className="flex flex-wrap gap-2 mt-1">
-                    {allSubcatIds.map(subcatId => {
-                      const subcat = subCategories.find(s => s.id === subcatId);
-                      return subcat ? (
-                        <Badge key={subcatId} variant="secondary">
-                          {subcat.icon && <span className="mr-1">{subcat.icon}</span>}
-                          {subcat.name}
-                        </Badge>
-                      ) : null;
-                    })}
-                  </div>
-                </div>
-              );
-            })()}
-            
-            {variety?.sources && variety.sources.length > 0 && (
+      {/* Quick Info Card - Below */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-xl">Additional Information</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {(() => {
+            const allSubcatIds = variety?.plant_subcategory_ids || (variety?.plant_subcategory_id ? [variety.plant_subcategory_id] : []);
+            return allSubcatIds.length > 0 && (
               <div>
-                <Label className="text-xs text-gray-600">Seed Sources</Label>
-                <div className="mt-1 flex flex-wrap gap-2">
-                  {variety.sources.map((source, idx) => (
-                    <Badge key={idx} variant="outline" className="text-xs">{source}</Badge>
-                  ))}
+                <Label className="text-sm text-gray-600 font-semibold">Categories</Label>
+                <div className="flex flex-wrap gap-2 mt-2">
+                  {allSubcatIds.map(subcatId => {
+                    const subcat = subCategories.find(s => s.id === subcatId);
+                    return subcat ? (
+                      <Badge key={subcatId} variant="secondary" className="px-3 py-1">
+                        {subcat.icon && <span className="mr-1">{subcat.icon}</span>}
+                        {subcat.name}
+                      </Badge>
+                    ) : null;
+                  })}
                 </div>
               </div>
-            )}
-          </CardContent>
-        </Card>
-      </div>
+            );
+          })()}
+          
+          {variety?.sources && variety.sources.length > 0 && (
+            <div>
+              <Label className="text-sm text-gray-600 font-semibold">Seed Sources</Label>
+              <div className="mt-2 flex flex-wrap gap-2">
+                {variety.sources.map((source, idx) => (
+                  <Badge key={idx} variant="outline" className="px-3 py-1">{source}</Badge>
+                ))}
+              </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       <Dialog open={showRequestChange} onOpenChange={setShowRequestChange}>
         <DialogContent>
