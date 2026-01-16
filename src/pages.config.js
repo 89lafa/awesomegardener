@@ -1,8 +1,6 @@
 import AdminAuditLog from './pages/AdminAuditLog';
 import AdminBulkEdit from './pages/AdminBulkEdit';
 import AdminDataCleanup from './pages/AdminDataCleanup';
-import AdminDataImport from './pages/AdminDataImport';
-import AdminDataMaintenance from './pages/AdminDataMaintenance';
 import AdminDeduplicateVarieties from './pages/AdminDeduplicateVarieties';
 import AdminHub from './pages/AdminHub';
 import AdminLog from './pages/AdminLog';
@@ -13,19 +11,14 @@ import CalendarPlanner from './pages/CalendarPlanner';
 import CalendarTasks from './pages/CalendarTasks';
 import ChangeRequests from './pages/ChangeRequests';
 import Community from './pages/Community';
-import CommunityBoard from './pages/CommunityBoard';
 import CompanionPlanner from './pages/CompanionPlanner';
 import CompanionRuleImport from './pages/CompanionRuleImport';
 import CompanionRulesAudit from './pages/CompanionRulesAudit';
-import Dashboard from './pages/Dashboard';
 import DebugFeatures from './pages/DebugFeatures';
 import EditPlantType from './pages/EditPlantType';
-import EditVariety from './pages/EditVariety';
 import EditorReviewQueue from './pages/EditorReviewQueue';
 import FeatureRequests from './pages/FeatureRequests';
 import ForumAdmin from './pages/ForumAdmin';
-import ForumCategory from './pages/ForumCategory';
-import ForumTopic from './pages/ForumTopic';
 import GardenBuilder from './pages/GardenBuilder';
 import GardenCare from './pages/GardenCare';
 import GardenDiary from './pages/GardenDiary';
@@ -51,16 +44,23 @@ import PublicPlant from './pages/PublicPlant';
 import PublicSeed from './pages/PublicSeed';
 import Resources from './pages/Resources';
 import SeedInventory from './pages/SeedInventory';
-import SeedStash from './pages/SeedStash';
 import SeedStashDetail from './pages/SeedStashDetail';
 import Settings from './pages/Settings';
 import ShipAudit from './pages/ShipAudit';
 import SubcategoryMapping from './pages/SubcategoryMapping';
-import UserReports from './pages/UserReports';
 import Users from './pages/Users';
 import VarietyReviewQueue from './pages/VarietyReviewQueue';
-import ViewVariety from './pages/ViewVariety';
 import ZoneMap from './pages/ZoneMap';
+import UserReports from './pages/UserReports';
+import CommunityBoard from './pages/CommunityBoard';
+import ForumCategory from './pages/ForumCategory';
+import ForumTopic from './pages/ForumTopic';
+import Dashboard from './pages/Dashboard';
+import AdminDataImport from './pages/AdminDataImport';
+import AdminDataMaintenance from './pages/AdminDataMaintenance';
+import EditVariety from './pages/EditVariety';
+import SeedStash from './pages/SeedStash';
+import ViewVariety from './pages/ViewVariety';
 import __Layout from './Layout.jsx';
 
 
@@ -68,8 +68,6 @@ export const PAGES = {
     "AdminAuditLog": AdminAuditLog,
     "AdminBulkEdit": AdminBulkEdit,
     "AdminDataCleanup": AdminDataCleanup,
-    "AdminDataImport": AdminDataImport,
-    "AdminDataMaintenance": AdminDataMaintenance,
     "AdminDeduplicateVarieties": AdminDeduplicateVarieties,
     "AdminHub": AdminHub,
     "AdminLog": AdminLog,
@@ -80,19 +78,14 @@ export const PAGES = {
     "CalendarTasks": CalendarTasks,
     "ChangeRequests": ChangeRequests,
     "Community": Community,
-    "CommunityBoard": CommunityBoard,
     "CompanionPlanner": CompanionPlanner,
     "CompanionRuleImport": CompanionRuleImport,
     "CompanionRulesAudit": CompanionRulesAudit,
-    "Dashboard": Dashboard,
     "DebugFeatures": DebugFeatures,
     "EditPlantType": EditPlantType,
-    "EditVariety": EditVariety,
     "EditorReviewQueue": EditorReviewQueue,
     "FeatureRequests": FeatureRequests,
     "ForumAdmin": ForumAdmin,
-    "ForumCategory": ForumCategory,
-    "ForumTopic": ForumTopic,
     "GardenBuilder": GardenBuilder,
     "GardenCare": GardenCare,
     "GardenDiary": GardenDiary,
@@ -118,16 +111,23 @@ export const PAGES = {
     "PublicSeed": PublicSeed,
     "Resources": Resources,
     "SeedInventory": SeedInventory,
-    "SeedStash": SeedStash,
     "SeedStashDetail": SeedStashDetail,
     "Settings": Settings,
     "ShipAudit": ShipAudit,
     "SubcategoryMapping": SubcategoryMapping,
-    "UserReports": UserReports,
     "Users": Users,
     "VarietyReviewQueue": VarietyReviewQueue,
-    "ViewVariety": ViewVariety,
     "ZoneMap": ZoneMap,
+    "UserReports": UserReports,
+    "CommunityBoard": CommunityBoard,
+    "ForumCategory": ForumCategory,
+    "ForumTopic": ForumTopic,
+    "Dashboard": Dashboard,
+    "AdminDataImport": AdminDataImport,
+    "AdminDataMaintenance": AdminDataMaintenance,
+    "EditVariety": EditVariety,
+    "SeedStash": SeedStash,
+    "ViewVariety": ViewVariety,
 }
 
 export const pagesConfig = {

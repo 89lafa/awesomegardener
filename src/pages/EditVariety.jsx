@@ -148,6 +148,8 @@ export default function EditVariety() {
       if (formData.sun_requirement) updateData.sun_requirement = formData.sun_requirement;
       if (formData.water_requirement) updateData.water_requirement = formData.water_requirement;
       if (formData.growth_habit) updateData.growth_habit = formData.growth_habit;
+      if (formData.flavor_profile) updateData.flavor_profile = formData.flavor_profile;
+      if (formData.uses) updateData.uses = formData.uses;
       if (formData.species_custom) {
         updateData.species = formData.species_custom;
       } else if (formData.species) {
@@ -523,6 +525,29 @@ export default function EditVariety() {
                 rows={3}
                 className="mt-1"
               />
+            </div>
+
+            <div className="grid md:grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="flavor_profile">Flavor Profile</Label>
+                <Input
+                  id="flavor_profile"
+                  value={formData.flavor_profile || ''}
+                  onChange={(e) => setFormData({ ...formData, flavor_profile: e.target.value })}
+                  placeholder="e.g., Sweet and tangy"
+                  className="mt-1"
+                />
+              </div>
+              <div>
+                <Label htmlFor="uses">Uses</Label>
+                <Input
+                  id="uses"
+                  value={formData.uses || ''}
+                  onChange={(e) => setFormData({ ...formData, uses: e.target.value })}
+                  placeholder="e.g., Fresh eating, canning"
+                  className="mt-1"
+                />
+              </div>
             </div>
 
             <div>

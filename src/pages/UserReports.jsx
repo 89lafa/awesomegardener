@@ -170,8 +170,8 @@ export default function UserReports() {
             <Card key={report.id} className="border-red-200">
               <CardContent className="p-6">
                 <div className="flex items-start justify-between mb-3">
-                  <div>
-                    <div className="flex items-center gap-2 mb-1">
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2">
                       <Badge className="bg-red-100 text-red-800 capitalize">
                         {report.report_type.replace('_', ' ')}
                       </Badge>
@@ -179,14 +179,18 @@ export default function UserReports() {
                         {format(new Date(report.created_date), 'MMM d, yyyy')}
                       </span>
                     </div>
-                    <p className="text-sm text-gray-600">
-                      Reported by: <span className="font-medium">{report.reporter_email}</span>
-                    </p>
-                    {contentCreators[report.id] && (
+                    <div className="grid gap-1">
                       <p className="text-sm text-gray-600">
-                        Content by: <span className="font-medium text-red-600">{contentCreators[report.id]}</span>
+                        <span className="font-semibold text-gray-700">Reported by:</span>{' '}
+                        <span className="font-medium">{report.reporter_email}</span>
                       </p>
-                    )}
+                      {contentCreators[report.id] && (
+                        <p className="text-sm text-gray-600">
+                          <span className="font-semibold text-gray-700">Original Author:</span>{' '}
+                          <span className="font-medium text-red-600">{contentCreators[report.id]}</span>
+                        </p>
+                      )}
+                    </div>
                   </div>
                 </div>
 

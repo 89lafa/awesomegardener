@@ -191,11 +191,13 @@ Return structured data.`,
                     </div>
                     <div className="flex flex-col gap-2">
                       <Button size="sm" variant="outline" asChild>
-                        <Link to={createPageUrl('PlantCatalog') + `?search=${encodeURIComponent(rec.common_name)}`}>
+                        <Link to={createPageUrl('PlantCatalog') + `?search=${encodeURIComponent(rec.variety_name || rec.common_name)}`}>
                           <ExternalLink className="w-3 h-3 mr-1" />
                           View
                         </Link>
                       </Button>
+                      <AddToStashButton variety={{ variety_name: rec.variety_name || rec.common_name, plant_type_name: rec.common_name }} />
+                      <AddToGrowListButton variety={{ variety_name: rec.variety_name || rec.common_name, plant_type_name: rec.common_name }} />
                     </div>
                   </div>
                 </CardContent>
