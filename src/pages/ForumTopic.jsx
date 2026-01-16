@@ -102,6 +102,11 @@ export default function ForumTopic() {
         like_count: 0
       });
 
+      // Add current user to usersMap if not already there
+      if (!usersMap[user.email]) {
+        setUsersMap({ ...usersMap, [user.email]: user });
+      }
+
       setPosts([...posts, post]);
       setNewPostBody('');
 
