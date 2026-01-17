@@ -11,7 +11,8 @@ import {
   ArrowRight,
   ArrowLeft,
   Check,
-  Loader2
+  Loader2,
+  Sparkles  // ✅ ADDED THIS
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
