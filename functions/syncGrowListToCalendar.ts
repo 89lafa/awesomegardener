@@ -45,9 +45,11 @@ Deno.serve(async (req) => {
     const seasonData = season[0];
     const lastFrostDate = seasonData.last_frost_date ? new Date(seasonData.last_frost_date) : null;
 
-    // Load PlantTypes and Varieties for default timing
-    const plantTypes = await base44.asServiceRole.entities.PlantType.list();
-    const varieties = await base44.asServiceRole.entities.Variety.list();
+    // ✅ FIXED: Use filter() instead of list() to get arrays
+    const plantTypes = await base44.asServiceRole.entities.PlantType.filter({});
+    const varieties = await base44.asServiceRole.entities.Variety.filter({});
+
+    console.log('[SyncGrowList] Loaded', plantTypes.length, 'plant types and', varieties.length, 'varieties');
 
     let created = 0;
     let updated = 0;
