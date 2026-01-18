@@ -35,11 +35,9 @@ Deno.serve(async (req) => {
     const seasonEnd = new Date(season.year, 9, 31); // October
 
     // Check if maintenance tasks already exist
-    // ✅ FIXED: Check by empty crop_plan_id (maintenance tasks)
     const existingMaintenance = await base44.entities.CropTask.filter({
       garden_season_id,
-      crop_plan_id: '',
-      task_type: 'cultivate'
+      crop_plan_id: null // Maintenance tasks have no crop_plan_id
     });
 
     if (existingMaintenance.length > 0) {
@@ -57,7 +55,7 @@ Deno.serve(async (req) => {
     while (taskDate <= seasonEnd) {
       maintenanceTasks.push({
         garden_season_id,
-        crop_plan_id: '', // ✅ Empty string for maintenance tasks (field is required)
+        crop_plan_id: null,
         task_type: 'cultivate',
         title: 'Water Garden',
         start_date: taskDate.toISOString().split('T')[0],
@@ -73,7 +71,7 @@ Deno.serve(async (req) => {
     while (taskDate <= seasonEnd) {
       maintenanceTasks.push({
         garden_season_id,
-        crop_plan_id: '', // ✅ Empty string for maintenance tasks
+        crop_plan_id: null,
         task_type: 'cultivate',
         title: 'Weed Garden Beds',
         start_date: taskDate.toISOString().split('T')[0],
@@ -89,7 +87,7 @@ Deno.serve(async (req) => {
     while (taskDate <= seasonEnd) {
       maintenanceTasks.push({
         garden_season_id,
-        crop_plan_id: '', // ✅ Empty string for maintenance tasks
+        crop_plan_id: null,
         task_type: 'cultivate',
         title: 'Check for Pests',
         start_date: taskDate.toISOString().split('T')[0],
