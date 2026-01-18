@@ -45,16 +45,14 @@ Deno.serve(async (req) => {
     const seasonData = season[0];
     const lastFrostDate = seasonData.last_frost_date ? new Date(seasonData.last_frost_date) : null;
 
-    // ✅ FIXED: Use list() with high limit to get all records as array
-    const plantTypes = await base44.asServiceRole.entities.PlantType.list('-created_date', 10000);
-    const varieties = await base44.asServiceRole.entities.Variety.list('-created_date', 10000);
-
-    console.log('[SyncGrowList] Loaded', plantTypes?.length || 0, 'plant types and', varieties?.length || 0, 'varieties');
+    // ✅ FIXED: list() returns paginated object {items: [...], total: N}, extract the items array
+    const plantTypesResult = await base44.asServiceRole.entities.PlantType.list('-created_date', 10000);
+    const varietiesResult = await base44.asServiceRole.entities.Variety.list('-created_date', 10000);
     
-    // Safety check - make sure we got arrays
-    if (!Array.isArray(plantTypes) || !Array.isArray(varieties)) {
-      throw new Error(`Data loading failed - plantTypes is ${typeof plantTypes}, varieties is ${typeof varieties}`);
-    }
+    const plantTypes = plantTypesResult.items || plantTypesResult || [];
+    const varieties = varietiesResult.items || varietiesResult || [];
+
+    console.log('[SyncGrowList] Loaded', plantTypes.length, 'plant types and', varieties.length, 'varieties');
 
     let created = 0;
     let updated = 0;
