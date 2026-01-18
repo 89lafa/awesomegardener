@@ -45,12 +45,37 @@ Deno.serve(async (req) => {
     const seasonData = season[0];
     const lastFrostDate = seasonData.last_frost_date ? new Date(seasonData.last_frost_date) : null;
 
-    // ✅ FIXED: list() returns paginated object {items: [...], total: N}, extract the items array
+    // ✅ FIXED: Load data with proper array extraction
     const plantTypesResult = await base44.asServiceRole.entities.PlantType.list('-created_date', 10000);
     const varietiesResult = await base44.asServiceRole.entities.Variety.list('-created_date', 10000);
     
-    const plantTypes = plantTypesResult.items || plantTypesResult || [];
-    const varieties = varietiesResult.items || varietiesResult || [];
+    console.log('[SyncGrowList] Raw results:', {
+      plantTypesType: typeof plantTypesResult,
+      plantTypesIsArray: Array.isArray(plantTypesResult),
+      plantTypesKeys: plantTypesResult ? Object.keys(plantTypesResult).slice(0, 5) : 'null',
+      varietiesType: typeof varietiesResult,
+      varietiesIsArray: Array.isArray(varietiesResult)
+    });
+    
+    // Handle different response formats
+    let plantTypes = [];
+    let varieties = [];
+    
+    if (Array.isArray(plantTypesResult)) {
+      plantTypes = plantTypesResult;
+    } else if (plantTypesResult?.items) {
+      plantTypes = plantTypesResult.items;
+    } else if (plantTypesResult?.data) {
+      plantTypes = plantTypesResult.data;
+    }
+    
+    if (Array.isArray(varietiesResult)) {
+      varieties = varietiesResult;
+    } else if (varietiesResult?.items) {
+      varieties = varietiesResult.items;
+    } else if (varietiesResult?.data) {
+      varieties = varietiesResult.data;
+    }
 
     console.log('[SyncGrowList] Loaded', plantTypes.length, 'plant types and', varieties.length, 'varieties');
 
