@@ -186,6 +186,7 @@ export default function GrowLists() {
       plant_type_name: newItem.plant_type_name,
       variety_id: newItem.variety_id || null,
       variety_name: newItem.variety_name,
+      target_count: newItem.quantity || 1, // Use target_count for consistency with sync
       quantity: newItem.quantity || 1,
       seed_lot_id: newItem.seed_lot_id || null,
       notes: newItem.notes || '',
