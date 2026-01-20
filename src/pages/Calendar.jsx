@@ -93,14 +93,14 @@ export default function Calendar() {
     }
   }, [activeSeasonId]);
   
-  const generateMaintenanceTasksIfNeeded = async () => {
-    if (!activeSeasonId) return;
-    try {
-      await base44.functions.invoke('generateMaintenanceTasks', { garden_season_id: activeSeasonId });
-    } catch (error) {
-      console.error('Error generating maintenance tasks:', error);
-    }
-  };
+  //const generateMaintenanceTasksIfNeeded = async () => {
+  //  if (!activeSeasonId) return;
+  //  try {
+  //    await base44.functions.invoke('generateMaintenanceTasks', { garden_season_id: activeSeasonId });
+  //  } catch (error) {
+  //    console.error('Error generating maintenance tasks:', error);
+  //  }
+  //};
 
   const getSeasonStartDate = () => {
     if (!seasons.length || !activeSeasonId) return new Date();
