@@ -89,7 +89,7 @@ export default function Calendar() {
   useEffect(() => {
     if (activeSeasonId) {
       loadPlansAndTasks();
-      generateMaintenanceTasksIfNeeded();
+//      generateMaintenanceTasksIfNeeded();
     }
   }, [activeSeasonId]);
   
