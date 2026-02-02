@@ -43,16 +43,55 @@ export default function RepairSubcategoriesCard() {
     setResult(null);
 
     try {
-      const response = await base44.functions.invoke('repairPlantTypeSubcategories', {
-        plant_type_id: selectedType
+      // Get variety count for selected plant type
+      const varieties = await base44.entities.Variety.filter({ 
+        plant_type_id: selectedType,
+        status: 'active'
       });
+      
+      const totalVarieties = varieties.length;
+      const BATCH_SIZE = 30;
+      let processedCount = 0;
+      let repaired = 0;
+      let skipped = 0;
+      let errors = [];
 
-      if (response.data.success) {
-        setResult(response.data.stats);
-        toast.success('Repair completed!');
-      } else {
-        throw new Error(response.data.error || 'Repair failed');
+      // Process in batches
+      for (let i = 0; i < totalVarieties; i += BATCH_SIZE) {
+        const batchEnd = Math.min(i + BATCH_SIZE, totalVarieties);
+        toast.info(`Processing batch ${Math.floor(i / BATCH_SIZE) + 1}/${Math.ceil(totalVarieties / BATCH_SIZE)}... (${batchEnd}/${totalVarieties})`);
+
+        const response = await base44.functions.invoke('repairPlantTypeSubcategories', {
+          plant_type_id: selectedType,
+          batch_offset: i,
+          batch_size: BATCH_SIZE
+        });
+
+        if (response.data.success) {
+          repaired += response.data.stats.varieties_repaired || 0;
+          skipped += response.data.stats.varieties_skipped || 0;
+          if (response.data.stats.errors) {
+            errors = errors.concat(response.data.stats.errors);
+          }
+        } else {
+          throw new Error(response.data.error || 'Batch repair failed');
+        }
+
+        processedCount = batchEnd;
+
+        // Pause between batches to avoid rate limits
+        if (batchEnd < totalVarieties) {
+          await new Promise(resolve => setTimeout(resolve, 3000));
+        }
       }
+
+      setResult({
+        subcategories_activated: varieties.length > 0 ? 1 : 0,
+        varieties_repaired: repaired,
+        varieties_skipped: skipped,
+        errors: errors
+      });
+      toast.success(`Repair completed! Processed ${processedCount} varieties`);
     } catch (error) {
       console.error('Repair error:', error);
       toast.error('Repair failed: ' + error.message);
