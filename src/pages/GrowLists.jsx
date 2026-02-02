@@ -157,8 +157,12 @@ export default function GrowLists() {
     }
   };
 
+  const [creatingList, setCreatingList] = useState(false);
+
   const handleCreateList = async () => {
     if (!newList.name.trim()) return;
+    if (creatingList) return; // Prevent double-submit
+    setCreatingList(true);
 
     try {
       const list = await base44.entities.GrowList.create({
@@ -181,6 +185,8 @@ export default function GrowLists() {
     } catch (error) {
       console.error('Error creating grow list:', error);
       toast.error('Failed to create grow list');
+    } finally {
+      setCreatingList(false);
     }
   };
 
@@ -196,8 +202,12 @@ export default function GrowLists() {
     }
   };
 
+  const [addingItem, setAddingItem] = useState(false);
+
   const handleAddItem = async () => {
     if (!selectedList || !newItem.plant_type_name) return;
+    if (addingItem) return; // Prevent double-submit
+    setAddingItem(true);
 
     const item = {
       id: Date.now().toString(),
@@ -231,6 +241,9 @@ export default function GrowLists() {
       toast.success('Item added!');
     } catch (error) {
       console.error('Error adding item:', error);
+      toast.error('Failed to add item');
+    } finally {
+      setAddingItem(false);
     }
   };
 
@@ -663,11 +676,19 @@ export default function GrowLists() {
                 onClick={handleAddItem}
                 disabled={
                   !newItem.plant_type_id || 
+                  addingItem ||
                   (newItem.seed_lot_id && newItem.available_quantity !== undefined && newItem.quantity > newItem.available_quantity)
                 }
                 className="bg-emerald-600 hover:bg-emerald-700"
               >
-                Add Item
+                {addingItem ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                    Adding...
+                  </>
+                ) : (
+                  'Add Item'
+                )}
               </Button>
             </DialogFooter>
           </DialogContent>
@@ -937,10 +958,17 @@ export default function GrowLists() {
             <Button variant="outline" onClick={() => setShowNewDialog(false)}>Cancel</Button>
             <Button 
               onClick={handleCreateList}
-              disabled={!newList.name.trim()}
+              disabled={!newList.name.trim() || creatingList}
               className="bg-emerald-600 hover:bg-emerald-700"
             >
-              Create List
+              {creatingList ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                  Creating...
+                </>
+              ) : (
+                'Create List'
+              )}
             </Button>
           </DialogFooter>
         </DialogContent>

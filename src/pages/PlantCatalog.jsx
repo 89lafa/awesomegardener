@@ -75,6 +75,8 @@ export default function PlantCatalog() {
   const [showAIRecommendations, setShowAIRecommendations] = useState(false);
   const [rateLimitError, setRateLimitError] = useState(null);
   const [retrying, setRetrying] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 50;
   const [newVariety, setNewVariety] = useState({
     variety_name: '',
     days_to_maturity: '',
@@ -253,7 +255,8 @@ export default function PlantCatalog() {
   const popularTypes = ['Tomato', 'Pepper', 'Cucumber', 'Lettuce', 'Bean', 'Pea', 'Squash', 'Zucchini', 
                         'Carrot', 'Radish', 'Onion', 'Garlic', 'Basil', 'Cilantro', 'Parsley'];
 
-  const filteredTypes = plantTypes.filter(type => {
+  // V1B-3: Pagination for large lists
+  const allFilteredTypes = plantTypes.filter(type => {
     const name = type.common_name || '';
     
     // If search query exists, check both PlantType names AND Variety names
@@ -289,6 +292,9 @@ export default function PlantCatalog() {
     }
     return 0;
   });
+  
+  const filteredTypes = allFilteredTypes.slice(0, currentPage * itemsPerPage);
+  const hasMoreTypes = allFilteredTypes.length > filteredTypes.length;
 
   const getSunIcon = (sun) => {
     switch (sun) {
@@ -871,11 +877,23 @@ export default function PlantCatalog() {
         </div>
       )}
 
-      {filteredTypes.length === 0 && (
+      {allFilteredTypes.length === 0 && (
         <div className="text-center py-12">
           <Sprout className="w-16 h-16 text-gray-300 mx-auto mb-4" />
           <h3 className="text-lg font-medium text-gray-900">No plants found</h3>
           <p className="text-gray-600">Try adjusting your search or filters</p>
+        </div>
+      )}
+      
+      {hasMoreTypes && (
+        <div className="text-center py-6">
+          <Button
+            variant="outline"
+            onClick={() => setCurrentPage(currentPage + 1)}
+            className="gap-2"
+          >
+            Load More ({allFilteredTypes.length - filteredTypes.length} remaining)
+          </Button>
         </div>
       )}
       

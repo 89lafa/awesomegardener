@@ -170,7 +170,7 @@ export default function Calendar() {
     if (!activeSeasonId) return;
     
     try {
-      // V1B-2: Batch query - load all plans and tasks in parallel
+      // V1B-2: Batch query - load both plans and tasks together
       const [plansData, tasksData] = await Promise.all([
         smartQuery(base44, 'CropPlan', { garden_season_id: activeSeasonId }),
         smartQuery(base44, 'CropTask', { garden_season_id: activeSeasonId }, 'start_date')

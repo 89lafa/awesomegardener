@@ -36,6 +36,7 @@ export default function Dashboard() {
       const userData = await base44.auth.me();
       setUser(userData);
 
+      // V1B-2: Batch query optimization - load all user data in parallel
       const [gardensData, tasksData, seedsData, growListsData, diaryData] = await Promise.all([
         base44.entities.Garden.filter({ archived: false, created_by: userData.email }, '-updated_date'),
         base44.entities.Task.filter({ created_by: userData.email, status: 'open' }, 'due_date'),
