@@ -43,8 +43,7 @@ export default function PlantingModal({ open, onOpenChange, item, itemType, gard
   const [companionResults, setCompanionResults] = useState([]);
   const [selectedPlanItem, setSelectedPlanItem] = useState(null);
   const [cropPlans, setCropPlans] = useState([]);
-  const [showCompanionPopup, setShowCompanionPopup] = useState(false);
-  const [companionPlantTypeId, setCompanionPlantTypeId] = useState(null);
+  const [showCompanionSuggestions, setShowCompanionSuggestions] = useState(false);
   
   const [newPlant, setNewPlant] = useState({
     variety_id: '',
@@ -516,12 +515,7 @@ export default function PlantingModal({ open, onOpenChange, item, itemType, gard
     
     setSelectedPlant(plantData);
     checkCompanionAndRotation(plantData);
-    
-    // Show companion suggestions popup
-    if (profile.plant_type_id) {
-      setCompanionPlantTypeId(profile.plant_type_id);
-      setShowCompanionPopup(true);
-    }
+    setShowCompanionSuggestions(true);
   };
 
   const checkCompanionAndRotation = async (plantData) => {
@@ -822,7 +816,13 @@ export default function PlantingModal({ open, onOpenChange, item, itemType, gard
 
         <div className="flex gap-6 p-6 overflow-hidden h-[calc(90vh-120px)]">
           {/* Left Panel - Plant Picker */}
-          <div className="w-80 flex-shrink-0 flex flex-col min-h-0">
+          <div className="w-80 flex-shrink-0 flex flex-col min-h-0 relative">
+            {showCompanionSuggestions && selectedPlant?.plant_type_id && (
+              <CompanionSuggestions 
+                plantTypeId={selectedPlant.plant_type_id}
+                onClose={() => setShowCompanionSuggestions(false)}
+              />
+            )}
             <Tabs defaultValue="stash" className="flex-1 flex flex-col min-h-0">
               <TabsList className="w-full flex-shrink-0">
                 <TabsTrigger value="stash" className="flex-1">From Stash</TabsTrigger>
@@ -909,7 +909,7 @@ export default function PlantingModal({ open, onOpenChange, item, itemType, gard
             </Tabs>
             
             {selectedPlant && (
-              <div className="mt-4 space-y-2 flex-shrink-0 relative">
+              <div className="mt-4 space-y-2 flex-shrink-0">
                 <div className="p-3 bg-emerald-50 rounded-lg border border-emerald-200">
                   <p className="text-sm font-medium text-emerald-900">Selected:</p>
                   <p className="text-sm text-emerald-700 truncate">{selectedPlant.variety_name}</p>
@@ -924,20 +924,12 @@ export default function PlantingModal({ open, onOpenChange, item, itemType, gard
                       setSelectedPlant(null);
                       setCompanionWarning(null);
                       setRotationWarning(null);
-                      setShowCompanionPopup(false);
                     }}
                     className="w-full mt-2"
                   >
                     Cancel
                   </Button>
                 </div>
-                
-                {showCompanionPopup && companionPlantTypeId && (
-                  <CompanionSuggestions 
-                    plantTypeId={companionPlantTypeId}
-                    onClose={() => setShowCompanionPopup(false)}
-                  />
-                )}
 
                 {companionWarning && (
                   <div className="p-3 bg-amber-50 rounded-lg border border-amber-300">
