@@ -96,11 +96,11 @@ export function useLongPress(callback, delay = 500) {
 export function usePinchZoom({ 
   minScale = 0.5, 
   maxScale = 3, 
-  initialScale = 1 
+  initialScale: initialScaleValue = 1 
 }) {
-  const [scale, setScale] = useState(initialScale);
+  const [scale, setScale] = useState(initialScaleValue);
   const initialDistance = useRef(null);
-  const initialScaleRef = useRef(scale);
+  const initialScale = useRef(initialScaleValue);
 
   const getDistance = (touches) => {
     return Math.hypot(
@@ -112,7 +112,7 @@ export function usePinchZoom({
   const handleTouchStart = useCallback((e) => {
     if (e.touches.length === 2) {
       initialDistance.current = getDistance(e.touches);
-      initialScaleRef.current = scale;
+      initialScale.current = scale;
     }
   }, [scale]);
 
@@ -120,7 +120,7 @@ export function usePinchZoom({
     if (e.touches.length === 2 && initialDistance.current) {
       const currentDistance = getDistance(e.touches);
       const delta = currentDistance / initialDistance.current;
-      const newScale = Math.min(maxScale, Math.max(minScale, initialScaleRef.current * delta));
+      const newScale = Math.min(maxScale, Math.max(minScale, initialScale.current * delta));
       setScale(newScale);
     }
   }, [minScale, maxScale]);
@@ -130,8 +130,8 @@ export function usePinchZoom({
   }, []);
 
   const resetZoom = useCallback(() => {
-    setScale(initialScale);
-  }, [initialScale]);
+    setScale(initialScaleValue);
+  }, [initialScaleValue]);
 
   return {
     scale,
