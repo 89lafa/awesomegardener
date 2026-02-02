@@ -9,7 +9,7 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'Forbidden: Admin access required' }, { status: 403 });
     }
     
-    const { plant_type_id } = await req.json();
+    const { plant_type_id, batch_offset = 0, batch_size = 30 } = await req.json();
     
     if (!plant_type_id) {
       return Response.json({ 
@@ -52,12 +52,16 @@ Deno.serve(async (req) => {
       codeToIdMap[s.subcat_code] = s.id;
     });
     
-    // Step 2: Repair all varieties for this plant type
-    const varieties = await base44.asServiceRole.entities.Variety.filter({
-      plant_type_id: plant_type_id
+    // Step 2: Repair varieties for this plant type (batched)
+    const allVarieties = await base44.asServiceRole.entities.Variety.filter({
+      plant_type_id: plant_type_id,
+      status: 'active'
     });
     
-    console.log(`[REPAIR] Found ${varieties.length} varieties to process`);
+    // Slice to process only the current batch
+    const varieties = allVarieties.slice(batch_offset, batch_offset + batch_size);
+    
+    console.log(`[REPAIR] Processing batch: ${batch_offset}-${batch_offset + batch_size} of ${allVarieties.length} total varieties`);
     
     for (const variety of varieties) {
       let needsUpdate = false;
@@ -129,7 +133,7 @@ Deno.serve(async (req) => {
           await base44.asServiceRole.entities.Variety.update(variety.id, updateData);
           stats.varieties_repaired++;
           console.log(`[REPAIR] Repaired: ${variety.variety_name} -> ${resolvedCode || 'null'}`);
-          await new Promise(resolve => setTimeout(resolve, 150));
+          await new Promise(resolve => setTimeout(resolve, 100));
         } catch (error) {
           stats.errors.push(`${variety.variety_name}: ${error.message}`);
           console.error(`[REPAIR] Error:`, error);
