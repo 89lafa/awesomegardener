@@ -22,16 +22,54 @@ import {
 } from '@/components/ui/select';
 
 const COLUMN_MAPPINGS = [
-  { key: 'variety_name', label: 'Variety Name', required: true, category: 'basic' },
-  { key: 'common_name', label: 'Plant Type', required: false, category: 'basic' },
-  { key: 'quantity', label: 'Quantity', required: false, category: 'inventory' },
-  { key: 'unit', label: 'Unit (seeds/packets/grams)', required: false, category: 'inventory' },
-  { key: 'year_acquired', label: 'Year Acquired', required: false, category: 'inventory' },
-  { key: 'packed_for_year', label: 'Packed For Year', required: false, category: 'inventory' },
-  { key: 'source_vendor_name', label: 'Vendor/Source', required: false, category: 'inventory' },
-  { key: 'source_vendor_url', label: 'Vendor URL', required: false, category: 'inventory' },
-  { key: 'storage_location', label: 'Storage Location', required: false, category: 'inventory' },
-  { key: 'lot_notes', label: 'Notes', required: false, category: 'inventory' },
+  // Basic Info
+  { key: 'variety_name', label: 'Variety Name', required: true, category: 'basic', target: 'profile' },
+  { key: 'common_name', label: 'Plant Type', required: false, category: 'basic', target: 'profile' },
+  { key: 'description', label: 'Description', required: false, category: 'basic', target: 'profile' },
+  
+  // Seed Stash Fields
+  { key: 'quantity', label: 'Quantity', required: false, category: 'inventory', target: 'seed' },
+  { key: 'unit', label: 'Unit (seeds/packets/grams)', required: false, category: 'inventory', target: 'seed' },
+  { key: 'year_acquired', label: 'Year Acquired', required: false, category: 'inventory', target: 'seed' },
+  { key: 'packed_for_year', label: 'Packed For Year', required: false, category: 'inventory', target: 'seed' },
+  { key: 'source_vendor_name', label: 'Vendor/Source', required: false, category: 'inventory', target: 'seed' },
+  { key: 'source_vendor_url', label: 'Vendor URL', required: false, category: 'inventory', target: 'seed' },
+  { key: 'storage_location', label: 'Storage Location', required: false, category: 'inventory', target: 'seed' },
+  { key: 'lot_notes', label: 'Notes', required: false, category: 'inventory', target: 'seed' },
+  
+  // Variety Growing Info
+  { key: 'days_to_maturity', label: 'Days to Maturity', required: false, category: 'growing', target: 'profile' },
+  { key: 'days_to_maturity_min', label: 'DTM Min', required: false, category: 'growing', target: 'profile' },
+  { key: 'days_to_maturity_max', label: 'DTM Max', required: false, category: 'growing', target: 'profile' },
+  { key: 'start_indoors_weeks', label: 'Start Indoors (weeks)', required: false, category: 'growing', target: 'profile' },
+  { key: 'transplant_weeks_after_last_frost_min', label: 'Transplant Week Min', required: false, category: 'growing', target: 'profile' },
+  { key: 'transplant_weeks_after_last_frost_max', label: 'Transplant Week Max', required: false, category: 'growing', target: 'profile' },
+  { key: 'direct_sow_weeks_min', label: 'Direct Sow Week Min', required: false, category: 'growing', target: 'profile' },
+  { key: 'direct_sow_weeks_max', label: 'Direct Sow Week Max', required: false, category: 'growing', target: 'profile' },
+  { key: 'spacing_recommended', label: 'Spacing (inches)', required: false, category: 'growing', target: 'profile' },
+  { key: 'spacing_min', label: 'Spacing Min', required: false, category: 'growing', target: 'profile' },
+  { key: 'spacing_max', label: 'Spacing Max', required: false, category: 'growing', target: 'profile' },
+  
+  // Variety Characteristics
+  { key: 'fruit_color', label: 'Fruit Color', required: false, category: 'characteristics', target: 'profile' },
+  { key: 'fruit_shape', label: 'Fruit Shape', required: false, category: 'characteristics', target: 'profile' },
+  { key: 'fruit_size', label: 'Fruit Size', required: false, category: 'characteristics', target: 'profile' },
+  { key: 'pod_color', label: 'Pod Color', required: false, category: 'characteristics', target: 'profile' },
+  { key: 'pod_shape', label: 'Pod Shape', required: false, category: 'characteristics', target: 'profile' },
+  { key: 'pod_size', label: 'Pod Size', required: false, category: 'characteristics', target: 'profile' },
+  { key: 'scoville_min', label: 'Scoville Min', required: false, category: 'characteristics', target: 'profile' },
+  { key: 'scoville_max', label: 'Scoville Max', required: false, category: 'characteristics', target: 'profile' },
+  { key: 'flavor_profile', label: 'Flavor Profile', required: false, category: 'characteristics', target: 'profile' },
+  { key: 'uses', label: 'Uses', required: false, category: 'characteristics', target: 'profile' },
+  
+  // Other
+  { key: 'sun_requirement', label: 'Sun (full_sun/partial_sun)', required: false, category: 'requirements', target: 'profile' },
+  { key: 'water_requirement', label: 'Water (low/moderate/high)', required: false, category: 'requirements', target: 'profile' },
+  { key: 'growth_habit', label: 'Growth Habit', required: false, category: 'characteristics', target: 'profile' },
+  { key: 'trellis_required', label: 'Trellis Required (true/false)', required: false, category: 'requirements', target: 'profile' },
+  { key: 'container_friendly', label: 'Container Friendly (true/false)', required: false, category: 'requirements', target: 'profile' },
+  { key: 'seed_line_type', label: 'Seed Type (heirloom/hybrid)', required: false, category: 'characteristics', target: 'profile' },
+  { key: 'breeder_or_origin', label: 'Breeder/Origin', required: false, category: 'characteristics', target: 'profile' },
 ];
 
 export default function ImportSpreadsheetDialog({ open, onOpenChange, onSuccess }) {
@@ -163,13 +201,32 @@ export default function ImportSpreadsheetDialog({ open, onOpenChange, onSuccess 
             if (existingProfiles.length > 0) {
               profile = existingProfiles[0];
             } else {
-              // Create new profile
-              profile = await base44.entities.PlantProfile.create({
+              // Create new profile with ALL mapped fields
+              const profileData = {
                 variety_name: varietyName,
                 common_name: commonName || 'Unknown',
                 source_type: 'user_private',
                 is_custom: true
+              };
+              
+              // Add all profile fields from mappings
+              COLUMN_MAPPINGS.filter(m => m.target === 'profile' && mappings[m.key]).forEach(mapping => {
+                const value = row[mappings[mapping.key]];
+                if (value && value.trim()) {
+                  // Convert boolean strings
+                  if (mapping.key === 'trellis_required' || mapping.key === 'container_friendly') {
+                    profileData[mapping.key] = value.toLowerCase() === 'true';
+                  } else if (mapping.key.includes('days_to_maturity') || mapping.key.includes('weeks') || mapping.key.includes('spacing') || mapping.key.includes('scoville')) {
+                    // Convert to number
+                    const num = parseFloat(value);
+                    if (!isNaN(num)) profileData[mapping.key] = num;
+                  } else {
+                    profileData[mapping.key] = value;
+                  }
+                }
               });
+              
+              profile = await base44.entities.PlantProfile.create(profileData);
             }
 
             // Create seed lot
@@ -219,8 +276,8 @@ export default function ImportSpreadsheetDialog({ open, onOpenChange, onSuccess 
   const handleDownloadTemplate = () => {
     const headers = COLUMN_MAPPINGS.map(c => c.key).join(',');
     const example = [
-      'Cherokee Purple,Tomato,25,seeds,2024,2024,Botanical Interests,https://example.com,Fridge Drawer 1,Great heirloom variety',
-      'Carolina Reaper,Pepper,50,seeds,2023,2023,PepperSeeds.net,https://pepperseeds.net,Seed Box,Extremely hot!'
+      'Cherokee Purple,Tomato,Indeterminate heirloom tomato,25,seeds,2024,2024,Botanical Interests,https://example.com,Fridge Drawer 1,Great variety,80,75,85,6,0,2,-2,4,24,18,30,Dark pink,Round,Large,,,,,,,Sweet and complex,Fresh eating/canning,full_sun,moderate,indeterminate,false,true,heirloom,Unknown origin',
+      'Carolina Reaper,Pepper,Super hot pepper,50,seeds,2023,2023,PepperSeeds.net,https://pepperseeds.net,Seed Box,Extremely hot!,90,,,8,2,4,,,18,,,,,Red,Wrinkled,Medium,1500000,2200000,Intense fruity,Hot sauce,full_sun,moderate,bush,false,true,hybrid,Ed Currie'
     ].join('\n');
     const csv = headers + '\n' + example;
 
@@ -294,30 +351,138 @@ export default function ImportSpreadsheetDialog({ open, onOpenChange, onSuccess 
               </p>
             </div>
 
-            <div className="space-y-3">
-              {COLUMN_MAPPINGS.map(col => (
-                <div key={col.key} className="flex items-center gap-4">
-                  <div className="w-48">
-                    <Label className="text-sm">
-                      {col.label} {col.required && <span className="text-red-600">*</span>}
-                    </Label>
+            <div className="max-h-96 overflow-y-auto space-y-4">
+              {/* Basic Info */}
+              <div className="space-y-2">
+                <h4 className="font-semibold text-gray-900 text-sm">Basic Info</h4>
+                {COLUMN_MAPPINGS.filter(c => c.category === 'basic').map(col => (
+                  <div key={col.key} className="flex items-center gap-4">
+                    <div className="w-48">
+                      <Label className="text-sm">
+                        {col.label} {col.required && <span className="text-red-600">*</span>}
+                      </Label>
+                    </div>
+                    <Select
+                      value={mappings[col.key] || ''}
+                      onValueChange={(v) => setMappings({ ...mappings, [col.key]: v })}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select column..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value={null}>-- None --</SelectItem>
+                        {headers.map(h => (
+                          <SelectItem key={h} value={h}>{h}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
-                  <Select
-                    value={mappings[col.key] || ''}
-                    onValueChange={(v) => setMappings({ ...mappings, [col.key]: v })}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select column..." />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value={null}>-- None --</SelectItem>
-                      {headers.map(h => (
-                        <SelectItem key={h} value={h}>{h}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              ))}
+                ))}
+              </div>
+              
+              {/* Inventory Fields */}
+              <div className="space-y-2">
+                <h4 className="font-semibold text-gray-900 text-sm">Seed Stash Info</h4>
+                {COLUMN_MAPPINGS.filter(c => c.category === 'inventory').map(col => (
+                  <div key={col.key} className="flex items-center gap-4">
+                    <div className="w-48">
+                      <Label className="text-sm">{col.label}</Label>
+                    </div>
+                    <Select
+                      value={mappings[col.key] || ''}
+                      onValueChange={(v) => setMappings({ ...mappings, [col.key]: v })}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select column..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value={null}>-- None --</SelectItem>
+                        {headers.map(h => (
+                          <SelectItem key={h} value={h}>{h}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                ))}
+              </div>
+              
+              {/* Growing Info */}
+              <div className="space-y-2">
+                <h4 className="font-semibold text-gray-900 text-sm">Growing Info</h4>
+                {COLUMN_MAPPINGS.filter(c => c.category === 'growing').map(col => (
+                  <div key={col.key} className="flex items-center gap-4">
+                    <div className="w-48">
+                      <Label className="text-sm">{col.label}</Label>
+                    </div>
+                    <Select
+                      value={mappings[col.key] || ''}
+                      onValueChange={(v) => setMappings({ ...mappings, [col.key]: v })}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select column..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value={null}>-- None --</SelectItem>
+                        {headers.map(h => (
+                          <SelectItem key={h} value={h}>{h}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                ))}
+              </div>
+              
+              {/* Characteristics */}
+              <div className="space-y-2">
+                <h4 className="font-semibold text-gray-900 text-sm">Characteristics</h4>
+                {COLUMN_MAPPINGS.filter(c => c.category === 'characteristics').map(col => (
+                  <div key={col.key} className="flex items-center gap-4">
+                    <div className="w-48">
+                      <Label className="text-sm">{col.label}</Label>
+                    </div>
+                    <Select
+                      value={mappings[col.key] || ''}
+                      onValueChange={(v) => setMappings({ ...mappings, [col.key]: v })}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select column..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value={null}>-- None --</SelectItem>
+                        {headers.map(h => (
+                          <SelectItem key={h} value={h}>{h}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                ))}
+              </div>
+              
+              {/* Requirements */}
+              <div className="space-y-2">
+                <h4 className="font-semibold text-gray-900 text-sm">Requirements</h4>
+                {COLUMN_MAPPINGS.filter(c => c.category === 'requirements').map(col => (
+                  <div key={col.key} className="flex items-center gap-4">
+                    <div className="w-48">
+                      <Label className="text-sm">{col.label}</Label>
+                    </div>
+                    <Select
+                      value={mappings[col.key] || ''}
+                      onValueChange={(v) => setMappings({ ...mappings, [col.key]: v })}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select column..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value={null}>-- None --</SelectItem>
+                        {headers.map(h => (
+                          <SelectItem key={h} value={h}>{h}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                ))}
+              </div>
             </div>
 
             <div className="p-3 bg-gray-50 rounded-lg">
