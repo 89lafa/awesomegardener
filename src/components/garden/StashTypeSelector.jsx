@@ -24,7 +24,11 @@ export default function StashTypeSelector({
   const [profiles, setProfiles] = useState({});
   const [varieties, setVarieties] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
+  const [typeSearchQuery, setTypeSearchQuery] = useState('');
   const [loading, setLoading] = useState(true);
+  
+  const debouncedSearch = useDebouncedValue(searchQuery, 300);
+  const debouncedTypeSearch = useDebouncedValue(typeSearchQuery, 300);
 
   useEffect(() => {
     // Use external data if provided, otherwise load
