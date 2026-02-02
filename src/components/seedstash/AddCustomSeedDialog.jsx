@@ -6,10 +6,10 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Combobox } from '@/components/ui/combobox';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Loader2, Plus, Trash2, Sparkles } from 'lucide-react';
 import { toast } from 'sonner';
+import { Combobox } from '@/components/ui/combobox';
 
 export default function AddCustomSeedDialog({ open, onOpenChange, onSuccess, prefilledData }) {
   const [loading, setLoading] = useState(false);
@@ -265,21 +265,18 @@ export default function AddCustomSeedDialog({ open, onOpenChange, onSuccess, pre
             {/* Plant Type */}
             <div>
               <Label>Plant Type <span className="text-red-500">*</span></Label>
-              <Select 
-                value={String(formData.plant_type_id || '')} 
-                onValueChange={(id) => setFormData({ ...formData, plant_type_id: String(id) })}
-              >
-                <SelectTrigger className="mt-1">
-                  <SelectValue placeholder="Select from our plant types..." />
-                </SelectTrigger>
-                <SelectContent>
-                  {plantTypes.map(type => (
-                    <SelectItem key={type.id} value={String(type.id)}>
-                      {type.icon} {type.common_name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <Combobox
+                value={formData.plant_type_id}
+                onValueChange={(id) => setFormData({ ...formData, plant_type_id: id })}
+                options={plantTypes.map(type => ({
+                  value: type.id,
+                  label: `${type.icon || ''} ${type.common_name}`
+                }))}
+                placeholder="Select plant type..."
+                searchPlaceholder="Search plant types..."
+                emptyText="No plant types found."
+                className="mt-1"
+              />
             </div>
 
             {/* Variety Name */}

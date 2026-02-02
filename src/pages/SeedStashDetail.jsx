@@ -649,6 +649,26 @@ export default function SeedStashDetail() {
                 </Badge>
               </div>
             )}
+            {seed.quantity_available_trade > 0 && (
+              <div className="flex items-center justify-between py-3 px-4 bg-white rounded-lg border">
+                <span className="text-gray-700 font-medium flex items-center gap-2">
+                  🔄 Available for Trade
+                </span>
+                <Badge className="bg-blue-600 text-white text-sm px-3 py-1">
+                  {seed.quantity_available_trade} {seed.unit}
+                </Badge>
+              </div>
+            )}
+            {seed.quantity_available_sale > 0 && (
+              <div className="flex items-center justify-between py-3 px-4 bg-white rounded-lg border">
+                <span className="text-gray-700 font-medium flex items-center gap-2">
+                  💰 Available for Sale
+                </span>
+                <Badge className="bg-purple-600 text-white text-sm px-3 py-1">
+                  {seed.quantity_available_sale} {seed.unit}
+                </Badge>
+              </div>
+            )}
             {seed.year_acquired && (
               <div className="flex items-center justify-between py-3 px-4 bg-white rounded-lg border">
                 <span className="text-gray-700 font-medium flex items-center gap-2">
