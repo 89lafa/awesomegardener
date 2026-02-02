@@ -68,6 +68,8 @@ import ImportFromURLDialog from '@/components/seedstash/ImportFromURLDialog';
 import ImportSpreadsheetDialog from '@/components/seedstash/ImportSpreadsheetDialog';
 import { smartQuery } from '@/components/utils/smartQuery';
 import RateLimitBanner from '@/components/common/RateLimitBanner';
+import { useDebouncedValue } from '@/lib/useDebouncedValue';
+import { getPlantTypesCached, getSubcategoriesCached } from '@/components/utils/dataCache';
 
 const TAGS = [
   { value: 'favorite', label: 'Favorite', icon: Star, color: 'text-yellow-500' },
@@ -90,6 +92,7 @@ export default function SeedStash() {
   const [viewMode, setViewMode] = useState('grid');
   const [filterTab, setFilterTab] = useState('stash');
   const [searchQuery, setSearchQuery] = useState('');
+  const debouncedSearchQuery = useDebouncedValue(searchQuery, 300);
   const [filterType, setFilterType] = useState('all');
   const [filterTag, setFilterTag] = useState('all');
   const [varieties, setVarieties] = useState([]);
@@ -192,11 +195,22 @@ export default function SeedStash() {
     try {
       console.log('[SeedStash] Loading data...');
       const user = await base44.auth.me();
-      const [seedsData, profilesData, typesData] = await Promise.all([
-        smartQuery(base44, 'SeedLot', { created_by: user.email }, '-created_date'),
-        smartQuery(base44, 'PlantProfile', {}, 'variety_name', 500),
+      
+      // V1B-2: Batch query optimization - load seeds first, then only needed profiles
+      const seedsData = await smartQuery(base44, 'SeedLot', { created_by: user.email }, '-created_date');
+      
+      // Extract unique profile IDs from seeds
+      const uniqueProfileIds = [...new Set(seedsData.map(s => s.plant_profile_id).filter(Boolean))];
+      
+      // Batch fetch only needed profiles
+      const profilesData = uniqueProfileIds.length > 0 
+        ? await base44.entities.PlantProfile.filter({ id: { $in: uniqueProfileIds } })
+        : [];
+      
+      // Use cached plant types
+      const typesData = await getPlantTypesCached(() => 
         smartQuery(base44, 'PlantType', {}, 'common_name')
-      ]);
+      );
       
       console.log('[SeedStash] Loaded:', seedsData.length, 'lots,', profilesData.length, 'profiles');
       setSeeds(seedsData);
@@ -278,11 +292,16 @@ export default function SeedStash() {
     });
   };
 
+  const [submitting, setSubmitting] = useState(false);
+
   const handleSubmit = async () => {
     if (!formData.plant_profile_id) {
       toast.error('Please select a variety');
       return;
     }
+    
+    if (submitting) return; // V1B-11: Prevent double-submit
+    setSubmitting(true);
 
     try {
       if (editingSeed) {
@@ -298,6 +317,8 @@ export default function SeedStash() {
     } catch (error) {
       console.error('Error saving seed:', error);
       toast.error('Failed to save seed');
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -421,6 +442,15 @@ export default function SeedStash() {
     }
   };
 
+  // V1B-11: Escape closes modal
+  useEffect(() => {
+    const handleEscape = (e) => {
+      if (e.key === 'Escape' && showAddDialog) closeDialog();
+    };
+    document.addEventListener('keydown', handleEscape);
+    return () => document.removeEventListener('keydown', handleEscape);
+  }, [showAddDialog]);
+
   const closeDialog = () => {
     setShowAddDialog(false);
     setEditingSeed(null);
@@ -457,7 +487,7 @@ export default function SeedStash() {
 
       // Search filter
       const name = (profile?.variety_name || profile?.common_name || seed.custom_label || '').toLowerCase();
-      if (searchQuery && !name.includes(searchQuery.toLowerCase())) return false;
+      if (debouncedSearchQuery && !name.includes(debouncedSearchQuery.toLowerCase())) return false;
 
       // Type filter
       if (filterType !== 'all' && profile?.common_name !== filterType) return false;
@@ -1314,9 +1344,17 @@ export default function SeedStash() {
             <Button variant="outline" onClick={closeDialog}>Cancel</Button>
             <Button 
               onClick={handleSubmit}
+              disabled={submitting}
               className="bg-emerald-600 hover:bg-emerald-700"
             >
-              {editingSeed ? 'Save Changes' : 'Add Seed'}
+              {submitting ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                  {editingSeed ? 'Saving...' : 'Adding...'}
+                </>
+              ) : (
+                editingSeed ? 'Save Changes' : 'Add Seed'
+              )}
             </Button>
           </DialogFooter>
         </DialogContent>

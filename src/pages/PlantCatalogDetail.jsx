@@ -37,6 +37,7 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { toast } from 'sonner';
 import ErrorBoundary from '@/components/common/ErrorBoundary';
+import { useDebouncedValue } from '@/lib/useDebouncedValue';
 
 export default function PlantCatalogDetail() {
   const [searchParams] = useSearchParams();
@@ -69,6 +70,7 @@ export default function PlantCatalogDetail() {
     return 'cards';
   });
   const [searchQuery, setSearchQuery] = useState('');
+  const debouncedSearchQuery = useDebouncedValue(searchQuery, 300);
   const [sortBy, setSortBy] = useState('name_asc');
   const [filters, setFilters] = useState({
     daysToMaturity: { min: null, max: null },
@@ -404,8 +406,8 @@ export default function PlantCatalogDetail() {
     let filtered = [...varieties];
 
     // Search
-    if (searchQuery) {
-      const query = searchQuery.toLowerCase();
+    if (debouncedSearchQuery) {
+      const query = debouncedSearchQuery.toLowerCase();
       filtered = filtered.filter(v => 
         v.variety_name?.toLowerCase().includes(query) ||
         v.synonyms?.some(s => s.toLowerCase().includes(query)) ||
@@ -603,7 +605,7 @@ export default function PlantCatalogDetail() {
 
   const getActiveFilterCount = () => {
     let count = 0;
-    if (searchQuery) count++;
+    if (debouncedSearchQuery) count++;
     if (selectedSubCategories.length > 0) count++;
     if (filters.daysToMaturity.min !== null || filters.daysToMaturity.max !== null) count++;
     if (filters.spacing.min !== null || filters.spacing.max !== null) count++;
@@ -969,9 +971,9 @@ export default function PlantCatalogDetail() {
             {activeFilterCount > 0 && (
               <div className="flex flex-wrap gap-2">
                 <span className="text-sm text-gray-500">Active filters:</span>
-                {searchQuery && (
+                {debouncedSearchQuery && (
                   <Badge variant="secondary" className="gap-1">
-                    Search: "{searchQuery}"
+                    Search: "{debouncedSearchQuery}"
                     <X className="w-3 h-3 cursor-pointer" onClick={() => setSearchQuery('')} />
                   </Badge>
                 )}

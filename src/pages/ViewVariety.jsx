@@ -90,7 +90,8 @@ export default function ViewVariety() {
       toast.error('Please provide a reason for this change request');
       return;
     }
-
+    
+    if (submitting) return; // Prevent double-submit
     setSubmitting(true);
     try {
       await base44.entities.VarietyChangeRequest.create({
@@ -123,7 +124,8 @@ export default function ViewVariety() {
       toast.error('Please upload an image and confirm ownership');
       return;
     }
-
+    
+    if (uploadingImage) return; // Prevent double-submit
     setUploadingImage(true);
     try {
       const { file_url } = await base44.integrations.Core.UploadFile({ file: imageFile });
@@ -226,6 +228,7 @@ export default function ViewVariety() {
               key={idx}
               src={url} 
               alt={`${variety.variety_name} ${idx + 1}`}
+              loading="lazy"
               className="w-full aspect-square object-cover rounded-xl shadow-md"
               onError={(e) => { e.target.style.display = 'none'; }}
             />

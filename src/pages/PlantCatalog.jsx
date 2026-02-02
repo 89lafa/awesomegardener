@@ -52,6 +52,7 @@ import PlantRecommendations from '@/components/ai/PlantRecommendations';
 import { Sparkles } from 'lucide-react';
 import { smartQuery } from '@/components/utils/smartQuery';
 import RateLimitBanner from '@/components/common/RateLimitBanner';
+import { useDebouncedValue } from '@/lib/useDebouncedValue';
 
 const CATEGORIES = ['vegetable', 'fruit', 'herb', 'flower', 'other'];
 
@@ -64,6 +65,7 @@ export default function PlantCatalog() {
   const [selectedSubCategory, setSelectedSubCategory] = useState('all');
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
+  const debouncedSearchQuery = useDebouncedValue(searchQuery, 300);
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [sortBy, setSortBy] = useState('popularity');
   const [viewMode, setViewMode] = useState('grid');
@@ -255,12 +257,12 @@ export default function PlantCatalog() {
     const name = type.common_name || '';
     
     // If search query exists, check both PlantType names AND Variety names
-    const matchesSearch = searchQuery === '' || 
-                         name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         type.scientific_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    const matchesSearch = debouncedSearchQuery === '' || 
+                         name.toLowerCase().includes(debouncedSearchQuery.toLowerCase()) ||
+                         type.scientific_name?.toLowerCase().includes(debouncedSearchQuery.toLowerCase()) ||
                          allVarieties.some(v => 
                            v.plant_type_id === type.id && 
-                           v.variety_name?.toLowerCase().includes(searchQuery.toLowerCase())
+                           v.variety_name?.toLowerCase().includes(debouncedSearchQuery.toLowerCase())
                          );
     
     const matchesCategory = selectedCategory === 'all' || type.category === selectedCategory || type.category === 'browse';
@@ -836,10 +838,17 @@ export default function PlantCatalog() {
                   transition={{ delay: index * 0.02 }}
                 >
                   <Card className="cursor-pointer hover:shadow-md transition-all duration-200 group">
-                   <CardContent className="p-4 flex items-center gap-4">
-                     <div className="w-12 h-12 rounded-lg flex items-center justify-center text-2xl flex-shrink-0 bg-white group-hover:scale-110 transition-transform">
-                       {type.icon || '🌱'}
-                     </div>
+                  <CardContent className="p-4 flex items-center gap-4">
+                    <div className="w-12 h-12 rounded-lg flex items-center justify-center text-2xl flex-shrink-0 bg-white group-hover:scale-110 transition-transform overflow-hidden">
+                      <img 
+                        src={type.image_url} 
+                        alt={type.common_name || type.name}
+                        loading="lazy"
+                        className="w-full h-full object-cover rounded-lg"
+                        onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'block'; }}
+                      />
+                      <span style={{ display: 'none' }}>{type.icon || '🌱'}</span>
+                    </div>
                       <div className="flex-1 min-w-0">
                         <h3 className="font-semibold text-gray-900">{type.common_name || type.name}</h3>
                         {type.scientific_name && (

@@ -73,6 +73,8 @@ export default function AddToStashModal({ open, onOpenChange, variety, plantType
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    
+    if (saving) return; // Prevent double-submit
     setSaving(true);
 
     try {
