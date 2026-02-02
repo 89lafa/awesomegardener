@@ -130,6 +130,27 @@ export default function Settings() {
   };
 
   const handleSave = async () => {
+    if (!formData.nickname || formData.nickname.trim().length < 3) {
+      toast.error('Nickname must be at least 3 characters');
+      return;
+    }
+    
+    // Validate nickname is unique before saving
+    try {
+      const { data: validationResult } = await base44.functions.invoke('validateNickname', { 
+        nickname: formData.nickname 
+      });
+      
+      if (!validationResult.available) {
+        toast.error('This nickname is already taken. Please choose a different one.');
+        return;
+      }
+    } catch (error) {
+      console.error('Error validating nickname:', error);
+      toast.error('Failed to validate nickname');
+      return;
+    }
+    
     setSaving(true);
     try {
       await base44.auth.updateMe({
@@ -243,15 +264,32 @@ export default function Settings() {
             </CardHeader>
             <CardContent className="space-y-4">
               <div>
-                <Label htmlFor="nickname">Nickname / Display Name</Label>
+                <Label htmlFor="nickname">Nickname / Display Name *</Label>
                 <Input
                   id="nickname"
                   placeholder="Your public display name"
                   value={formData.nickname}
-                  onChange={(e) => setFormData({ ...formData, nickname: e.target.value })}
+                  onChange={async (e) => {
+                    const newNickname = e.target.value;
+                    setFormData({ ...formData, nickname: newNickname });
+                    
+                    // Validate uniqueness
+                    if (newNickname.length >= 3) {
+                      try {
+                        const { data } = await base44.functions.invoke('validateNickname', { nickname: newNickname });
+                        if (!data.available) {
+                          toast.error('This nickname is already taken');
+                        }
+                      } catch (error) {
+                        console.error('Error validating nickname:', error);
+                      }
+                    }
+                  }}
                   className="mt-2"
                 />
-                <p className="text-xs text-gray-500 mt-1">Shown on your public gardens and forum posts</p>
+                <p className="text-xs text-gray-500 mt-1">
+                  Must be unique. Used for messaging and forum posts.
+                </p>
               </div>
               
               <div>

@@ -282,8 +282,9 @@ export default function PlantingModal({ open, onOpenChange, item, itemType, gard
       
       const updatedPlantings = [...plantings, planting];
       setPlantings(updatedPlantings);
-      setSelectedPlant(null); // Clear selection
-      toast.success('Plant added');
+      // DON'T clear selection - keep it for multiple plantings
+      // setSelectedPlant(null);
+      toast.success('Plant added - click more cells to keep planting');
       
       // Re-run companion analysis with new plantings state
       analyzeCompanionsWithPlantings(updatedPlantings);
