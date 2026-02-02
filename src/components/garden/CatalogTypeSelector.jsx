@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Search, Loader2, Plus } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
+import { Combobox } from '@/components/ui/combobox';
 
 export default function CatalogTypeSelector({ 
   onSelect,
@@ -122,22 +123,20 @@ export default function CatalogTypeSelector({
       {!selectedType ? (
         <>
           <p className="text-sm text-gray-600">Select plant type:</p>
-          <ScrollArea className="h-[400px]">
-            <div className="space-y-1">
-              {plantTypes.map(type => (
-                <button
-                  key={type.id}
-                  onClick={() => setSelectedType(type)}
-                  className="w-full p-3 rounded-lg border-2 border-gray-200 hover:border-emerald-300 hover:bg-emerald-50 text-left transition-colors"
-                >
-                  <div className="flex items-center gap-2">
-                    <span className="text-xl">{type.icon || '🌱'}</span>
-                    <span className="font-medium text-sm">{type.common_name}</span>
-                  </div>
-                </button>
-              ))}
-            </div>
-          </ScrollArea>
+          <Combobox
+            options={plantTypes.map(type => ({
+              value: type.id,
+              label: `${type.icon || '🌱'} ${type.common_name}`,
+              searchValue: type.common_name.toLowerCase()
+            }))}
+            value={selectedType?.id || ''}
+            onChange={(value) => {
+              const type = plantTypes.find(t => t.id === value);
+              if (type) setSelectedType(type);
+            }}
+            placeholder="Select or search plant type"
+            searchPlaceholder="Type to search (e.g., 'pep' for Pepper)..."
+          />
         </>
       ) : (
         <>
