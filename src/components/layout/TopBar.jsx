@@ -29,6 +29,25 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { base44 } from '@/api/base44Client';
 
 export default function TopBar({ user, onMobileMenuToggle, onSidebarToggle, sidebarCollapsed }) {
+  const [unreadCount, setUnreadCount] = React.useState(0);
+
+  React.useEffect(() => {
+    if (user) {
+      loadUnreadCount();
+    }
+  }, [user]);
+
+  const loadUnreadCount = async () => {
+    try {
+      const notifications = await base44.entities.Notification.filter({ 
+        user_email: user.email,
+        is_read: false
+      });
+      setUnreadCount(notifications.length);
+    } catch (error) {
+      console.error('Error loading unread count:', error);
+    }
+  };
   const [searchQuery, setSearchQuery] = useState('');
 
   const handleLogout = async () => {
