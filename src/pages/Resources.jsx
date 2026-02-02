@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
-import { Plus, Loader2, Edit, Trash2, ExternalLink } from 'lucide-react';
+import { Plus, Loader2, Edit, Trash2, ExternalLink, BookOpen } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -9,6 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
 
 const TYPE_CONFIG = {
@@ -158,7 +159,7 @@ export default function Resources() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold">Resources</h1>
-          <p className="text-gray-600 text-sm">Vendors, breeders, suppliers & traders</p>
+          <p className="text-gray-600 text-sm">Guides, tips, and helpful links</p>
         </div>
         <Button
           onClick={() => {
@@ -169,92 +170,159 @@ export default function Resources() {
           className="bg-emerald-600 hover:bg-emerald-700"
         >
           <Plus className="w-4 h-4 mr-2" />
-          Add Resource
+          Add Vendor
         </Button>
       </div>
 
-      <div className="flex gap-3">
-        <Input
-          placeholder="Search resources..."
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          className="flex-1"
-        />
-        <Select value={typeFilter} onValueChange={setTypeFilter}>
-          <SelectTrigger className="w-40">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Types</SelectItem>
-            {Object.entries(TYPE_CONFIG).map(([key, cfg]) => (
-              <SelectItem key={key} value={key}>{cfg.label}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
+      <Tabs defaultValue="vendors" className="w-full">
+        <TabsList className="grid w-full grid-cols-2">
+          <TabsTrigger value="vendors">My Vendors & Suppliers</TabsTrigger>
+          <TabsTrigger value="guides">Learning Guides</TabsTrigger>
+        </TabsList>
 
-      <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {filteredResources.map(resource => {
-          const config = TYPE_CONFIG[resource.type] || TYPE_CONFIG.other;
-          
-          return (
-            <Card key={resource.id}>
-              <CardHeader className="pb-3">
-                <div className="flex items-start justify-between">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-2">
-                      <span className="text-lg">{config.icon}</span>
-                      <Badge className={config.color}>{config.label}</Badge>
+        {/* Vendors Tab */}
+        <TabsContent value="vendors" className="space-y-4">
+
+          <div className="flex gap-3">
+            <Input
+              placeholder="Search vendors..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="flex-1"
+            />
+            <Select value={typeFilter} onValueChange={setTypeFilter}>
+              <SelectTrigger className="w-40">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Types</SelectItem>
+                {Object.entries(TYPE_CONFIG).map(([key, cfg]) => (
+                  <SelectItem key={key} value={key}>{cfg.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {filteredResources.map(resource => {
+              const config = TYPE_CONFIG[resource.type] || TYPE_CONFIG.other;
+              
+              return (
+                <Card key={resource.id}>
+                  <CardHeader className="pb-3">
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-2">
+                          <span className="text-lg">{config.icon}</span>
+                          <Badge className={config.color}>{config.label}</Badge>
+                        </div>
+                        <CardTitle className="text-lg">{resource.name}</CardTitle>
+                      </div>
+                      <div className="flex gap-1">
+                        <Button variant="ghost" size="icon" onClick={() => handleEdit(resource)}>
+                          <Edit className="w-4 h-4" />
+                        </Button>
+                        <Button variant="ghost" size="icon" onClick={() => handleDelete(resource)}>
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </div>
                     </div>
-                    <CardTitle className="text-lg">{resource.name}</CardTitle>
-                  </div>
-                  <div className="flex gap-1">
-                    <Button variant="ghost" size="icon" onClick={() => handleEdit(resource)}>
-                      <Edit className="w-4 h-4" />
-                    </Button>
-                    <Button variant="ghost" size="icon" onClick={() => handleDelete(resource)}>
-                      <Trash2 className="w-4 h-4" />
-                    </Button>
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent>
-                {resource.description && (
-                  <p className="text-sm text-gray-600 mb-3 line-clamp-2">{resource.description}</p>
-                )}
-                {resource.specialties && resource.specialties.length > 0 && (
-                  <div className="flex flex-wrap gap-1 mb-3">
-                    {resource.specialties.map((spec, idx) => (
-                      <Badge key={idx} variant="outline" className="text-xs">{spec}</Badge>
-                    ))}
-                  </div>
-                )}
-                {resource.url && (
-                  <a 
-                    href={resource.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-sm text-emerald-600 hover:underline flex items-center gap-1"
-                  >
-                    Visit Website <ExternalLink className="w-3 h-3" />
-                  </a>
-                )}
-                {resource.rating && (
-                  <div className="text-sm mt-2">
-                    {'⭐'.repeat(Math.round(resource.rating))}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          );
-        })}
-      </div>
+                  </CardHeader>
+                  <CardContent>
+                    {resource.description && (
+                      <p className="text-sm text-gray-600 mb-3 line-clamp-2">{resource.description}</p>
+                    )}
+                    {resource.specialties && resource.specialties.length > 0 && (
+                      <div className="flex flex-wrap gap-1 mb-3">
+                        {resource.specialties.map((spec, idx) => (
+                          <Badge key={idx} variant="outline" className="text-xs">{spec}</Badge>
+                        ))}
+                      </div>
+                    )}
+                    {resource.url && (
+                      <a 
+                        href={resource.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-sm text-emerald-600 hover:underline flex items-center gap-1"
+                      >
+                        Visit Website <ExternalLink className="w-3 h-3" />
+                      </a>
+                    )}
+                    {resource.rating && (
+                      <div className="text-sm mt-2">
+                        {'⭐'.repeat(Math.round(resource.rating))}
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
 
-      {filteredResources.length === 0 && (
-        <div className="text-center py-12">
-          <p className="text-gray-500">No resources yet</p>
-        </div>
-      )}
+          {filteredResources.length === 0 && (
+            <div className="text-center py-12">
+              <p className="text-gray-500">No vendors yet</p>
+            </div>
+          )}
+        </TabsContent>
+
+        {/* Guides Tab */}
+        <TabsContent value="guides" className="space-y-6">
+          <div className="grid md:grid-cols-2 gap-6">
+            <GuideSection
+              title="Getting Started"
+              icon="🌱"
+              guides={[
+                { title: 'Square Foot Gardening Basics', type: 'Guide' },
+                { title: 'Seed Starting 101', type: 'Guide' },
+                { title: 'Understanding Soil Types', type: 'Guide' }
+              ]}
+            />
+            <GuideSection
+              title="Pest & Disease"
+              icon="🐛"
+              guides={[
+                { title: 'Common Garden Pests', type: 'Guide' },
+                { title: 'Organic Pest Control Methods', type: 'Guide' },
+                { title: 'Identifying Plant Diseases', type: 'Guide' }
+              ]}
+            />
+            <GuideSection
+              title="Watering & Irrigation"
+              icon="💧"
+              guides={[
+                { title: 'Drip Irrigation Setup', type: 'Guide' },
+                { title: 'When and How Much to Water', type: 'Guide' },
+                { title: 'Rain Barrel Collection', type: 'Guide' }
+              ]}
+            />
+            <GuideSection
+              title="Season Extension"
+              icon="❄️"
+              guides={[
+                { title: 'Cold Frame Basics', type: 'Guide' },
+                { title: 'Row Cover Guide', type: 'Guide' },
+                { title: 'Winter Gardening Tips', type: 'Guide' }
+              ]}
+            />
+          </div>
+
+          <div className="bg-gray-50 rounded-lg p-6 border border-gray-200 mt-8">
+            <h3 className="text-lg font-semibold mb-4">Helpful Resources</h3>
+            <div className="grid md:grid-cols-2 gap-4">
+              <a href="#" className="p-4 border border-gray-200 rounded-lg hover:border-emerald-400 hover:bg-emerald-50 transition">
+                <p className="font-medium text-gray-900">USDA Zone Map</p>
+                <p className="text-xs text-gray-600 mt-1">Find your hardiness zone</p>
+              </a>
+              <a href="#" className="p-4 border border-gray-200 rounded-lg hover:border-emerald-400 hover:bg-emerald-50 transition">
+                <p className="font-medium text-gray-900">Extension Services</p>
+                <p className="text-xs text-gray-600 mt-1">Local gardening resources</p>
+              </a>
+            </div>
+          </div>
+        </TabsContent>
+      </Tabs>
 
       <Dialog open={showDialog} onOpenChange={setShowDialog}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
@@ -387,6 +455,32 @@ export default function Resources() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+    </div>
+  );
+}
+
+function GuideSection({ title, icon, guides }) {
+  return (
+    <div className="border border-gray-200 rounded-lg overflow-hidden">
+      <div className="bg-gradient-to-r from-emerald-50 to-green-50 px-4 py-3 border-b border-gray-200 flex items-center gap-2">
+        <span className="text-xl">{icon}</span>
+        <h3 className="font-semibold text-gray-900">{title}</h3>
+      </div>
+      <div className="divide-y divide-gray-200">
+        {guides.map((guide, idx) => (
+          <a
+            key={idx}
+            href="#"
+            className="p-3 hover:bg-emerald-50 transition flex items-start gap-3 group"
+          >
+            <BookOpen className="w-4 h-4 text-gray-400 group-hover:text-emerald-600 mt-0.5 flex-shrink-0" />
+            <div>
+              <p className="font-medium text-sm text-gray-900 group-hover:text-emerald-700">{guide.title}</p>
+              <p className="text-xs text-gray-500">{guide.type}</p>
+            </div>
+          </a>
+        ))}
+      </div>
     </div>
   );
 }

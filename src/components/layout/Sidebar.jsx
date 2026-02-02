@@ -29,42 +29,55 @@ import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 
 const getNavItems = (userRole, isEditor, user) => {
-    const items = [
-      { name: 'Dashboard', icon: LayoutDashboard, page: 'Dashboard' },
-      { name: 'Gardens', icon: Globe, page: 'Gardens' },
-      { name: 'Indoor Grow', icon: Sprout, page: 'IndoorGrowSpaces' },
-      { name: 'Plot Layout', icon: Hammer, page: 'MyGarden' },
-      { name: 'My Garden', icon: TreeDeciduous, page: 'GardenPlanting' },
-      { name: 'Plant Catalog', icon: BookOpen, page: 'PlantCatalog' },
-      { name: 'Seed Stash', icon: Package, page: 'SeedStash' },
-      { name: 'Grow Lists', icon: ListChecks, page: 'GrowLists' },
-      { name: 'Tasks', icon: Calendar, page: 'CalendarTasks' },
-      { name: 'Calendar Planner', icon: Sprout, page: 'Calendar' },
-      { name: 'Seed Trading', icon: Apple, page: 'SeedTrading' },
-      { name: 'Garden Expenses', icon: Package, page: 'GardenExpenses' },
-      { name: 'My Plants', icon: Apple, page: 'MyPlants' },
-      { name: 'Messages', icon: Mail, page: 'Messages' },
-      { name: 'Companion Planting', icon: Sprout, page: 'CompanionPlanner' },
-      { name: 'Diary', icon: BookText, page: 'GardenDiary' },
-      { name: 'Harvest Log', icon: Apple, page: 'HarvestLog' },
-      { name: 'Issues Log', icon: Bug, page: 'IssuesLog' },
-      { name: 'Garden Care', icon: Sprout, page: 'GardenCare' },
-      { name: 'Browse Gardens', icon: Globe, page: 'BrowseGardens' },
-      { name: 'Community Board', icon: MessageSquare, page: 'CommunityBoard' },
-      { name: 'Zone Map', icon: MapPin, page: 'ZoneMap' },
-      { name: 'Gardening Basics', icon: BookMarked, page: 'GardeningBasics' },
-      { name: 'Resources', icon: Link2, page: 'Resources' },
-      { name: 'Feature Requests', icon: Lightbulb, page: 'FeatureRequests' },
-    ];
-
-  // Admin/Moderator/Editor consolidated hub
-  if (isEditor || userRole === 'admin' || user?.is_moderator) {
-    items.push({ name: 'Admin Hub', icon: Shield, page: 'AdminHub' });
-  }
-
-  items.push({ name: 'Settings', icon: Settings, page: 'Settings' });
-  
-  return items;
+  return [
+    // Main features
+    { category: true, label: 'PLANTING & PLANNING' },
+    { name: 'Dashboard', icon: LayoutDashboard, page: 'Dashboard' },
+    { name: 'Plant Catalog', icon: BookOpen, page: 'PlantCatalog' },
+    { name: 'Seed Stash', icon: Package, page: 'SeedStash' },
+    { name: 'Grow Lists', icon: ListChecks, page: 'GrowLists' },
+    { name: 'Gardens', icon: Globe, page: 'Gardens' },
+    { name: 'My Plants', icon: Apple, page: 'MyPlants' },
+    
+    // Garden management
+    { category: true, label: 'GARDEN MANAGEMENT' },
+    { name: 'Calendar', icon: Calendar, page: 'Calendar' },
+    { name: 'Tasks', icon: ListChecks, page: 'CalendarTasks' },
+    { name: 'Indoor Grow', icon: Sprout, page: 'IndoorGrowSpaces' },
+    { name: 'Plot Layout', icon: Hammer, page: 'MyGarden' },
+    
+    // Tracking
+    { category: true, label: 'TRACKING' },
+    { name: 'Diary', icon: BookText, page: 'GardenDiary' },
+    { name: 'Harvest Log', icon: Apple, page: 'HarvestLog' },
+    { name: 'Issues Log', icon: Bug, page: 'IssuesLog' },
+    
+    // Trading & community
+    { category: true, label: 'COMMUNITY' },
+    { name: 'Seed Trading', icon: Apple, page: 'SeedTrading' },
+    { name: 'Companion Planting', icon: Sprout, page: 'CompanionPlanner' },
+    { name: 'Browse Gardens', icon: Globe, page: 'BrowseGardens' },
+    { name: 'Zone Map', icon: MapPin, page: 'ZoneMap' },
+    
+    // Resources
+    { category: true, label: 'LEARN & EXPLORE' },
+    { name: 'Resources', icon: Link2, page: 'Resources' },
+    { name: 'Community Board', icon: MessageSquare, page: 'CommunityBoard' },
+    { name: 'Feature Requests', icon: Lightbulb, page: 'FeatureRequests' },
+    
+    // Settings
+    { category: true, label: 'SETTINGS' },
+    { name: 'Settings', icon: Settings, page: 'Settings' },
+    
+    // Admin (conditional)
+    ...(isEditor || userRole === 'admin' || user?.is_moderator 
+      ? [
+          { category: true, label: 'ADMIN' },
+          { name: 'Admin Hub', icon: Shield, page: 'AdminHub' }
+        ]
+      : []
+    ),
+  ];
 };
 
 export default function Sidebar({ collapsed, onToggle, currentPage, user, isMobile }) {
@@ -94,7 +107,15 @@ export default function Sidebar({ collapsed, onToggle, currentPage, user, isMobi
 
       {/* Navigation */}
       <nav className="flex-1 p-3 space-y-1 overflow-y-auto">
-        {navItems.map((item) => {
+        {navItems.map((item, idx) => {
+          if (item.category) {
+            return !effectiveCollapsed ? (
+              <div key={`cat-${idx}`} className="pt-2 px-3 pb-1 mt-2">
+                <p className="text-xs font-semibold text-white/40 uppercase tracking-wider">{item.label}</p>
+              </div>
+            ) : null;
+          }
+          
           const isActive = currentPage === item.page;
           return (
             <Link
