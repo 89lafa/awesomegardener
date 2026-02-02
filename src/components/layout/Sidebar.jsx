@@ -40,6 +40,8 @@ const getNavItems = (userRole, isEditor, user) => {
       { name: 'Grow Lists', icon: ListChecks, page: 'GrowLists' },
       { name: 'Tasks', icon: Calendar, page: 'CalendarTasks' },
       { name: 'Calendar Planner', icon: Sprout, page: 'Calendar' },
+      { name: 'Seed Trading', icon: Apple, page: 'SeedTrading' },
+      { name: 'Garden Expenses', icon: Package, page: 'GardenExpenses' },
       { name: 'My Plants', icon: Apple, page: 'MyPlants' },
       { name: 'Messages', icon: Mail, page: 'Messages' },
       { name: 'Companion Planting', icon: Sprout, page: 'CompanionPlanner' },
