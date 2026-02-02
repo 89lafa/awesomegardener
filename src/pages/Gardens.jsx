@@ -87,8 +87,8 @@ export default function Gardens() {
   };
 
   const handleCreate = async () => {
-    if (!formData.name.trim() || saving) return; // Prevent double-submit
-    
+    if (!formData.name.trim()) return;
+    if (saving) return; // V1B-11: Prevent double-submit
     setSaving(true);
     try {
       const garden = await base44.entities.Garden.create({
@@ -309,6 +309,7 @@ export default function Gardens() {
                       <img 
                         src={garden.cover_image} 
                         alt={garden.name}
+                        loading="lazy"
                         className="w-full h-full object-cover"
                       />
                     ) : (
@@ -481,8 +482,14 @@ export default function Gardens() {
               disabled={!formData.name.trim() || saving}
               className="bg-emerald-600 hover:bg-emerald-700"
             >
-              {saving ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
-              Create Garden
+              {saving ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                  Creating...
+                </>
+              ) : (
+                'Create Garden'
+              )}
             </Button>
           </DialogFooter>
         </DialogContent>

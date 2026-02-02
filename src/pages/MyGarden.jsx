@@ -315,8 +315,8 @@ export default function MyGarden() {
   };
 
   const handleCreateGarden = async () => {
-    if (!newGardenName.trim() || creating) return;
-
+    if (!newGardenName.trim()) return;
+    if (creating) return; // V1B-11: Prevent double-submit
     setCreating(true);
     try {
       const garden = await base44.entities.Garden.create({
@@ -631,8 +631,14 @@ export default function MyGarden() {
               disabled={!newGardenName.trim() || creating}
               className="bg-emerald-600 hover:bg-emerald-700"
             >
-              {creating ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
-              Create Garden
+              {creating ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                  Creating...
+                </>
+              ) : (
+                'Create Garden'
+              )}
             </Button>
           </DialogFooter>
         </DialogContent>
