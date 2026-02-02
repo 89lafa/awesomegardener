@@ -114,6 +114,8 @@ import VarietyReviewQueue from './pages/VarietyReviewQueue';
 import ViewVariety from './pages/ViewVariety';
 import ZoneMap from './pages/ZoneMap';
 import NeedToBuy from './pages/NeedToBuy';
+import IndoorGrowSpaces from './pages/IndoorGrowSpaces';
+import IndoorSpaceDetail from './pages/IndoorSpaceDetail';
 import __Layout from './Layout.jsx';
 
 
@@ -185,6 +187,8 @@ export const PAGES = {
     "ViewVariety": ViewVariety,
     "ZoneMap": ZoneMap,
     "NeedToBuy": NeedToBuy,
+    "IndoorGrowSpaces": IndoorGrowSpaces,
+    "IndoorSpaceDetail": IndoorSpaceDetail,
 }
 
 export const pagesConfig = {

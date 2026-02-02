@@ -1,0 +1,334 @@
+import React, { useState, useEffect } from 'react';
+import { base44 } from '@/api/base44Client';
+import { 
+  Plus, 
+  Loader2,
+  Home,
+  Edit,
+  Trash2,
+  ChevronRight,
+  Sprout
+} from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Card } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from '@/components/ui/dialog';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { toast } from 'sonner';
+import { createPageUrl } from '@/utils';
+import { useNavigate } from 'react-router-dom';
+import AdBanner from '@/components/monetization/AdBanner';
+
+export default function IndoorGrowSpaces() {
+  const navigate = useNavigate();
+  const [spaces, setSpaces] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [showNewDialog, setShowNewDialog] = useState(false);
+  const [creating, setCreating] = useState(false);
+  const [deleting, setDeleting] = useState(null);
+  
+  const [newSpace, setNewSpace] = useState({
+    name: '',
+    space_type: 'room',
+    width_ft: 15,
+    length_ft: 30,
+    height_ft: 8
+  });
+
+  useEffect(() => {
+    loadSpaces();
+  }, []);
+
+  const loadSpaces = async () => {
+    try {
+      setLoading(true);
+      const user = await base44.auth.me();
+      const spacesData = await base44.entities.IndoorGrowSpace.filter({
+        created_by: user.email
+      }, '-created_date');
+      
+      // Load stats for each space
+      const spacesWithStats = await Promise.all(spacesData.map(async (space) => {
+        const trays = await base44.entities.SeedTray.filter({ indoor_space_id: space.id });
+        const containers = await base44.entities.IndoorContainer.filter({ indoor_space_id: space.id });
+        const racks = await base44.entities.GrowRack.filter({ indoor_space_id: space.id });
+        
+        // Count active seedlings
+        let activeSeedlings = 0;
+        for (const tray of trays) {
+          const cells = await base44.entities.TrayCell.filter({ 
+            tray_id: tray.id,
+            status: { $in: ['seeded', 'germinated', 'growing'] }
+          });
+          activeSeedlings += cells.length;
+        }
+        
+        // Count plants in containers
+        const activePlants = containers.filter(c => c.status === 'growing' || c.status === 'planted').length;
+        
+        return {
+          ...space,
+          stats: {
+            racks: racks.length,
+            trays: trays.length,
+            containers: containers.length,
+            activeSeedlings,
+            activePlants
+          }
+        };
+      }));
+      
+      setSpaces(spacesWithStats);
+    } catch (error) {
+      console.error('Error loading spaces:', error);
+      toast.error('Failed to load indoor spaces');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleCreateSpace = async () => {
+    if (!newSpace.name.trim()) {
+      toast.error('Please enter a space name');
+      return;
+    }
+    
+    setCreating(true);
+    try {
+      const space = await base44.entities.IndoorGrowSpace.create(newSpace);
+      setSpaces([space, ...spaces]);
+      setNewSpace({
+        name: '',
+        space_type: 'room',
+        width_ft: 15,
+        length_ft: 30,
+        height_ft: 8
+      });
+      setShowNewDialog(false);
+      toast.success('Indoor grow space created!');
+    } catch (error) {
+      console.error('Error creating space:', error);
+      toast.error('Failed to create space');
+    } finally {
+      setCreating(false);
+    }
+  };
+
+  const handleDeleteSpace = async (spaceId) => {
+    if (!confirm('Delete this space and all its contents?')) return;
+    
+    setDeleting(spaceId);
+    try {
+      await base44.entities.IndoorGrowSpace.delete(spaceId);
+      setSpaces(spaces.filter(s => s.id !== spaceId));
+      toast.success('Space deleted');
+    } catch (error) {
+      console.error('Error deleting space:', error);
+      toast.error('Failed to delete space');
+    } finally {
+      setDeleting(null);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <Loader2 className="w-8 h-8 animate-spin text-emerald-600" />
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6 max-w-6xl">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold text-gray-900">🏠 Indoor Grow Spaces</h1>
+          <p className="text-gray-600 mt-1">Start seeds indoors before transplanting</p>
+        </div>
+        <Button 
+          onClick={() => setShowNewDialog(true)}
+          className="bg-emerald-600 hover:bg-emerald-700 gap-2"
+        >
+          <Plus className="w-4 h-4" />
+          New Space
+        </Button>
+      </div>
+
+      <AdBanner placement="top_banner" pageType="indoor_grow" />
+
+      {/* Spaces Grid */}
+      {spaces.length === 0 ? (
+        <Card className="p-12 text-center">
+          <Home className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+          <h3 className="text-lg font-semibold text-gray-900 mb-2">No indoor spaces yet</h3>
+          <p className="text-gray-600 mb-6">Create your first grow room or tent to start tracking seeds</p>
+          <Button 
+            onClick={() => setShowNewDialog(true)}
+            className="bg-emerald-600 hover:bg-emerald-700"
+          >
+            Create Indoor Space
+          </Button>
+        </Card>
+      ) : (
+        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {spaces.map(space => (
+            <Card 
+              key={space.id}
+              className="hover:shadow-md transition-shadow cursor-pointer"
+              onClick={() => navigate(createPageUrl('IndoorSpaceDetail') + `?id=${space.id}`)}
+            >
+              <div className="p-6">
+                <div className="flex items-start justify-between mb-4">
+                  <div>
+                    <h3 className="text-lg font-semibold text-gray-900">{space.name}</h3>
+                    <p className="text-sm text-gray-600 mt-1">
+                      {space.width_ft}ft × {space.length_ft}ft • {space.space_type === 'room' ? '🏠 Room' : '⛺ Tent'}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Stats Grid */}
+                <div className="grid grid-cols-2 gap-2 mb-4">
+                  <div className="bg-blue-50 rounded-lg p-2">
+                    <p className="text-xs text-gray-600">Racks</p>
+                    <p className="text-lg font-semibold text-blue-700">{space.stats.racks}</p>
+                  </div>
+                  <div className="bg-green-50 rounded-lg p-2">
+                    <p className="text-xs text-gray-600">Trays</p>
+                    <p className="text-lg font-semibold text-green-700">{space.stats.trays}</p>
+                  </div>
+                  <div className="bg-purple-50 rounded-lg p-2">
+                    <p className="text-xs text-gray-600">Active Seedlings</p>
+                    <p className="text-lg font-semibold text-purple-700">🌱 {space.stats.activeSeedlings}</p>
+                  </div>
+                  <div className="bg-orange-50 rounded-lg p-2">
+                    <p className="text-xs text-gray-600">Containers</p>
+                    <p className="text-lg font-semibold text-orange-700">🪴 {space.stats.containers}</p>
+                  </div>
+                </div>
+
+                {/* Actions */}
+                <div className="flex gap-2 pt-4 border-t">
+                  <Button 
+                    variant="ghost" 
+                    size="sm"
+                    className="flex-1"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      navigate(createPageUrl('IndoorSpaceDetail') + `?id=${space.id}`);
+                    }}
+                  >
+                    Open
+                    <ChevronRight className="w-4 h-4 ml-1" />
+                  </Button>
+                  <Button 
+                    variant="ghost" 
+                    size="sm"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleDeleteSpace(space.id);
+                    }}
+                    disabled={deleting === space.id}
+                  >
+                    {deleting === space.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+                  </Button>
+                </div>
+              </div>
+            </Card>
+          ))}
+        </div>
+      )}
+
+      {/* New Space Dialog */}
+      <Dialog open={showNewDialog} onOpenChange={setShowNewDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Create Indoor Grow Space</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <label className="text-sm font-medium">Space Name</label>
+              <Input
+                placeholder="e.g., Basement Grow Room"
+                value={newSpace.name}
+                onChange={(e) => setNewSpace({...newSpace, name: e.target.value})}
+                className="mt-1"
+              />
+            </div>
+
+            <div>
+              <label className="text-sm font-medium">Type</label>
+              <Select 
+                value={newSpace.space_type}
+                onValueChange={(v) => setNewSpace({...newSpace, space_type: v})}
+              >
+                <SelectTrigger className="mt-1">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="room">🏠 Room</SelectItem>
+                  <SelectItem value="grow_tent">⛺ Grow Tent</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="grid grid-cols-3 gap-3">
+              <div>
+                <label className="text-sm font-medium">Width (ft)</label>
+                <Input
+                  type="number"
+                  value={newSpace.width_ft}
+                  onChange={(e) => setNewSpace({...newSpace, width_ft: parseFloat(e.target.value) || 0})}
+                  className="mt-1"
+                />
+              </div>
+              <div>
+                <label className="text-sm font-medium">Length (ft)</label>
+                <Input
+                  type="number"
+                  value={newSpace.length_ft}
+                  onChange={(e) => setNewSpace({...newSpace, length_ft: parseFloat(e.target.value) || 0})}
+                  className="mt-1"
+                />
+              </div>
+              <div>
+                <label className="text-sm font-medium">Height (ft)</label>
+                <Input
+                  type="number"
+                  value={newSpace.height_ft}
+                  onChange={(e) => setNewSpace({...newSpace, height_ft: parseFloat(e.target.value) || 0})}
+                  className="mt-1"
+                />
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowNewDialog(false)}>Cancel</Button>
+            <Button 
+              onClick={handleCreateSpace}
+              disabled={creating}
+              className="bg-emerald-600 hover:bg-emerald-700"
+            >
+              {creating ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+              Create Space
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
