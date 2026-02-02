@@ -32,6 +32,15 @@ export default function AddCropModal({ open, onOpenChange, seasonId, onSuccess }
   const [season, setSeason] = useState(null);
   const [showAdvanced, setShowAdvanced] = useState(false);
   
+  // V1B-11: Escape closes modal
+  useEffect(() => {
+    const handleEscape = (e) => {
+      if (e.key === 'Escape' && open) onOpenChange(false);
+    };
+    document.addEventListener('keydown', handleEscape);
+    return () => document.removeEventListener('keydown', handleEscape);
+  }, [open, onOpenChange]);
+  
   const [formData, setFormData] = useState({
     source: 'stash', // 'stash' or 'catalog'
     plant_type_id: '',
@@ -61,12 +70,19 @@ export default function AddCropModal({ open, onOpenChange, seasonId, onSuccess }
   const loadData = async () => {
     try {
       const user = await base44.auth.me();
-      const [typesData, stashData, profilesData, seasonData] = await Promise.all([
+      
+      // V1B-2: Load stash first, then only needed profiles
+      const [typesData, stashData, seasonData] = await Promise.all([
         base44.entities.PlantType.list('common_name'),
         base44.entities.SeedLot.filter({ is_wishlist: false, created_by: user.email }),
-        base44.entities.PlantProfile.list('variety_name', 500),
         base44.entities.GardenSeason.filter({ id: seasonId })
       ]);
+      
+      // Extract unique profile IDs
+      const uniqueProfileIds = [...new Set(stashData.map(s => s.plant_profile_id).filter(Boolean))];
+      const profilesData = uniqueProfileIds.length > 0
+        ? await base44.entities.PlantProfile.filter({ id: { $in: uniqueProfileIds } })
+        : [];
       
       setPlantTypes(typesData);
       setStashSeeds(stashData);
@@ -280,6 +296,7 @@ export default function AddCropModal({ open, onOpenChange, seasonId, onSuccess }
       return;
     }
     
+    if (loading) return; // Prevent double-submit
     setLoading(true);
     try {
       // Create CropPlan

@@ -95,22 +95,37 @@ export default function PlantingModal({ open, onOpenChange, item, itemType, gard
       const user = await base44.auth.me();
       const seasonKey = activeSeason || `${new Date().getFullYear()}-Spring`;
 
-      // Load all plantings for this bed, then filter client-side (same logic as PlotCanvas)
-      const loadPromises = [
+      // V1B-2: Load stash first, then only needed profiles
+      const [allPlantings, stashData, varietiesData, typesData, rulesData] = await Promise.all([
         base44.entities.PlantInstance.filter({ bed_id: item.id }),
         base44.entities.SeedLot.filter({ is_wishlist: false, created_by: user.email }),
-        base44.entities.PlantProfile.list('variety_name', 500),
         base44.entities.Variety.list('variety_name', 500),
         base44.entities.PlantType.list('common_name', 100),
         base44.entities.PlantingRule.list()
+      ]);
+      
+      // Extract unique profile IDs
+      const uniqueProfileIds = [...new Set(stashData.map(s => s.plant_profile_id).filter(Boolean))];
+      const profilesData = uniqueProfileIds.length > 0
+        ? await base44.entities.PlantProfile.filter({ id: { $in: uniqueProfileIds } })
+        : [];
+      
+      const loadPromises = [
+        allPlantings, 
+        stashData, 
+        profilesData, 
+        varietiesData, 
+        typesData, 
+        rulesData
       ];
       
+      let cropPlansData = null;
       if (seasonId) {
-        loadPromises.push(base44.entities.CropPlan.filter({ garden_season_id: seasonId }));
+        cropPlansData = await base44.entities.CropPlan.filter({ garden_season_id: seasonId });
       }
       
-      const results = await Promise.all(loadPromises);
-      const [allPlantings, stashData, profilesData, varietiesData, typesData, rulesData, cropPlansData] = results;
+      const results = loadPromises;
+      const [_allPlantings, _stashData, _profilesData, _varietiesData, _typesData, _rulesData] = results;
       
       if (cropPlansData) {
         setCropPlans(cropPlansData.filter(p => (p.quantity_planted || 0) < (p.quantity_planned || 0)));
@@ -635,7 +650,8 @@ export default function PlantingModal({ open, onOpenChange, item, itemType, gard
   const analyzeCompanions = () => analyzeCompanionsWithPlantings(plantings);
   
   const handleCreateNewPlant = async () => {
-    if (!newPlant.variety_id || creating) return;
+    if (!newPlant.variety_id) return;
+    if (creating) return; // Prevent double-submit
     
     console.log('[PlantingModal] Creating new plant from variety:', newPlant.variety_id);
     setCreating(true);
