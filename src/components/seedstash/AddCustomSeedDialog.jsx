@@ -273,8 +273,8 @@ export default function AddCustomSeedDialog({ open, onOpenChange, onSuccess, pre
                 }))}
                 value={formData.plant_type_id}
                 onChange={(value) => setFormData({ ...formData, plant_type_id: value })}
-                placeholder="Select plant type"
-                searchPlaceholder="Type to search..."
+                placeholder="Select or search plant type"
+                searchPlaceholder="Type to search (e.g., 'pep' for Pepper)..."
                 className="mt-1"
               />
             </div>

@@ -251,8 +251,8 @@ export default function AddPlantDialog({
                     }))}
                     value={formData.plant_type_id}
                     onChange={(v) => setFormData({ ...formData, plant_type_id: v, variety_id: '' })}
-                    placeholder="Select plant type"
-                    searchPlaceholder="Type to search..."
+                    placeholder="Select or search plant type"
+                    searchPlaceholder="Type to search (e.g., 'tom' for Tomato)..."
                     className="mt-2"
                   />
                 </div>
@@ -295,8 +295,8 @@ export default function AddPlantDialog({
                   }))}
                   value={formData.plant_type_id}
                   onChange={(v) => setFormData({ ...formData, plant_type_id: v, variety_id: '' })}
-                  placeholder="Select plant type"
-                  searchPlaceholder="Type to search..."
+                  placeholder="Select or search plant type"
+                  searchPlaceholder="Type to search (e.g., 'tom' for Tomato)..."
                   className="mt-2"
                 />
               </div>
