@@ -37,9 +37,8 @@ export default function Layout({ children, currentPageName }) {
   const isLandingPage = currentPageName === 'Landing';
 
   useEffect(() => {
-    if (authState !== 'loading') return;
     loadUser();
-  }, [authState]);
+  }, []);
 
   // Lock body scroll when mobile menu is open
   useEffect(() => {
@@ -109,7 +108,7 @@ export default function Layout({ children, currentPageName }) {
     return <div className="min-h-screen bg-[#FDFBF7]">{children}</div>;
   }
 
-  // Check if onboarding is needed (only after auth fully resolved)
+  // Check if onboarding is needed (only after auth is fully resolved)
   if (authState === 'authenticated' && user && !user.onboarding_completed && currentPageName !== 'Onboarding') {
     window.location.href = createPageUrl('Onboarding');
     return null;
@@ -169,8 +168,8 @@ export default function Layout({ children, currentPageName }) {
         <main className="p-4 lg:p-6">
           {children}
         </main>
-        {user && <BottomNav />}
       </div>
+      {user && <BottomNav />}
     </div>
   );
 }
