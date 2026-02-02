@@ -716,12 +716,20 @@ export default function GrowLists() {
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h1 className="text-2xl lg:text-3xl font-bold text-gray-900">Grow Lists</h1>
-          <p className="text-gray-600 mt-1">Plan what you want to grow each season</p>
-        </div>
-        <div className="flex gap-2">
-          <div className="flex border rounded-lg">
+         <div>
+           <h1 className="text-2xl lg:text-3xl font-bold text-gray-900">Grow Lists</h1>
+           <p className="text-gray-600 mt-1">Plan what you want to grow each season</p>
+         </div>
+         <div className="flex gap-2 flex-wrap">
+           <Link to={createPageUrl('NeedToBuy')}>
+             <Button 
+               variant="outline"
+               className="gap-2 bg-blue-50 hover:bg-blue-100 text-blue-700 border-blue-300"
+             >
+               🛒 Need to Buy
+             </Button>
+           </Link>
+           <div className="flex border rounded-lg">
             <Button
               variant={viewMode === 'cards' ? 'default' : 'ghost'}
               size="sm"

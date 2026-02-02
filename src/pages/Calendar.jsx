@@ -13,8 +13,11 @@ import {
   Copy,
   Trash2,
   RefreshCw,
-  Download
+  Download,
+  ShoppingCart
 } from 'lucide-react';
+import { useSwipe } from '@/components/utils/useTouch';
+import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
@@ -71,6 +74,13 @@ export default function Calendar() {
   const [rateLimitError, setRateLimitError] = useState(null);
   const [retrying, setRetrying] = useState(false);
   const [showAIWizard, setShowAIWizard] = useState(false);
+  const [currentMonth, setCurrentMonth] = useState(new Date());
+  
+  // Swipe support for month navigation
+  const swipeHandlers = useSwipe({
+    onSwipeLeft: () => setCurrentMonth(m => addMonths(m, 1)),
+    onSwipeRight: () => setCurrentMonth(m => addMonths(m, -1)),
+  });
   
   useEffect(() => {
     loadData();
@@ -438,6 +448,16 @@ export default function Calendar() {
           >
             ✨ AI Build My Calendar
           </Button>
+          <Link to={createPageUrl('NeedToBuy')} className="w-full">
+            <Button
+              variant="outline"
+              size="sm"
+              className="w-full gap-2 bg-blue-50 hover:bg-blue-100 text-blue-700 border-blue-300"
+            >
+              <ShoppingCart className="w-4 h-4" />
+              Need to Buy
+            </Button>
+          </Link>
           <Button
             onClick={() => setShowGuide(true)}
             variant="outline"
