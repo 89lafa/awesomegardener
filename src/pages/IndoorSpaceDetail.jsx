@@ -135,13 +135,35 @@ export default function IndoorSpaceDetail() {
         </TabsList>
 
         <TabsContent value="racks" className="space-y-4">
+          <Button 
+            onClick={async () => {
+              const rackName = prompt('Rack name (e.g., Rack 1):');
+              if (!rackName) return;
+              
+              try {
+                const newRack = await base44.entities.GrowRack.create({
+                  indoor_space_id: spaceId,
+                  name: rackName,
+                  width_ft: 6,
+                  depth_ft: 3,
+                  height_ft: 6,
+                  num_shelves: 4
+                });
+                setRacks([...racks, newRack]);
+                toast.success('Rack added!');
+              } catch (error) {
+                toast.error('Failed to add rack');
+              }
+            }}
+            className="bg-emerald-600 hover:bg-emerald-700 gap-2"
+          >
+            <Plus className="w-4 h-4" />
+            Add Rack
+          </Button>
+
           {racks.length === 0 ? (
             <Card className="p-8 text-center">
-              <p className="text-gray-600 mb-4">No racks yet</p>
-              <Button className="bg-emerald-600 hover:bg-emerald-700 gap-2">
-                <Plus className="w-4 h-4" />
-                Add Rack
-              </Button>
+              <p className="text-gray-600">No racks yet. Click "Add Rack" to create one.</p>
             </Card>
           ) : (
             racks.map(rack => (

@@ -102,9 +102,9 @@ export default function AIGrowAssistant({ onClose, context }) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-      <div className="bg-[var(--bg-card)] rounded-2xl p-6 w-full max-w-lg mx-4 shadow-xl">
-        <div className="flex items-center justify-between mb-6">
-          <h2 className="text-xl font-semibold flex items-center gap-2">
+      <div className="bg-white rounded-2xl p-6 w-full max-w-lg mx-4 shadow-2xl border border-gray-200">
+        <div className="flex items-center justify-between mb-6 pb-4 border-b border-gray-200">
+          <h2 className="text-xl font-semibold flex items-center gap-2 text-gray-900">
             🤖 AI Grow Assistant
           </h2>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
@@ -136,14 +136,14 @@ export default function AIGrowAssistant({ onClose, context }) {
           </button>
         </div>
 
-        <p className="text-center text-gray-600 mb-4">
+        <p className="text-center text-gray-700 mb-4">
           {isListening ? '🔴 Listening...' : processing ? '⏳ Processing...' : '👆 Tap to speak'}
         </p>
 
         {/* Transcript */}
         {transcript && (
-          <div className="bg-gray-100 rounded-xl p-4 mb-4">
-            <p className="text-xs text-gray-600 mb-1">You said:</p>
+          <div className="bg-blue-50 rounded-xl p-4 mb-4 border border-blue-200">
+            <p className="text-xs text-blue-700 mb-1 font-medium">You said:</p>
             <p className="font-medium text-gray-900">"{transcript}"</p>
           </div>
         )}
@@ -153,10 +153,10 @@ export default function AIGrowAssistant({ onClose, context }) {
           <div className={cn(
             'rounded-xl p-4 mb-4 border',
             aiResponse.success !== false 
-              ? 'bg-green-50 border-green-300' 
+              ? 'bg-emerald-50 border-emerald-300' 
               : 'bg-red-50 border-red-300'
           )}>
-            <p className="text-sm font-medium mb-2">{aiResponse.message}</p>
+            <p className="text-sm font-medium text-gray-900 mb-2">{aiResponse.message}</p>
             
             {aiResponse.details && (
               <div className="text-xs text-gray-700 mb-3 space-y-1">
@@ -181,8 +181,8 @@ export default function AIGrowAssistant({ onClose, context }) {
         )}
 
         {/* Text Input Alternative */}
-        <div className="border-t border-gray-200 pt-4">
-          <p className="text-xs text-gray-600 mb-2">Or type a command:</p>
+        <div className="border-t border-gray-200 pt-4 mt-4">
+          <p className="text-xs text-gray-700 font-medium mb-2">Or type a command:</p>
           <div className="flex gap-2">
             <Input
               placeholder="Plant 10 Cherokee Purple in Tray 5..."
@@ -206,7 +206,7 @@ export default function AIGrowAssistant({ onClose, context }) {
 
         {/* Example Commands */}
         <div className="mt-4 pt-4 border-t border-gray-200">
-          <p className="text-xs text-gray-600 mb-2">Example commands:</p>
+          <p className="text-xs text-gray-700 font-medium mb-2">Example commands:</p>
           <div className="flex flex-wrap gap-2">
             {[
               'Plant 10 Cherry Tomato in Tray 5',
@@ -216,7 +216,7 @@ export default function AIGrowAssistant({ onClose, context }) {
               <button
                 key={i}
                 onClick={() => handleTextInput(example)}
-                className="text-xs px-2 py-1 rounded-full bg-gray-100 text-gray-700 hover:bg-gray-200"
+                className="text-xs px-2 py-1 rounded-full bg-blue-100 text-blue-700 hover:bg-blue-200 transition-colors"
               >
                 {example}
               </button>

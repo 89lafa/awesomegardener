@@ -85,12 +85,15 @@ import GrowLists from './pages/GrowLists';
 import GrowingProfile from './pages/GrowingProfile';
 import HarvestLog from './pages/HarvestLog';
 import ImageSubmissions from './pages/ImageSubmissions';
+import IndoorGrowSpaces from './pages/IndoorGrowSpaces';
+import IndoorSpaceDetail from './pages/IndoorSpaceDetail';
 import IssuesLog from './pages/IssuesLog';
 import Landing from './pages/Landing';
 import ManageForumCategories from './pages/ManageForumCategories';
 import Messages from './pages/Messages';
 import MyGarden from './pages/MyGarden';
 import MyPlants from './pages/MyPlants';
+import NeedToBuy from './pages/NeedToBuy';
 import Notifications from './pages/Notifications';
 import Onboarding from './pages/Onboarding';
 import PlantCatalog from './pages/PlantCatalog';
@@ -113,9 +116,6 @@ import Users from './pages/Users';
 import VarietyReviewQueue from './pages/VarietyReviewQueue';
 import ViewVariety from './pages/ViewVariety';
 import ZoneMap from './pages/ZoneMap';
-import NeedToBuy from './pages/NeedToBuy';
-import IndoorGrowSpaces from './pages/IndoorGrowSpaces';
-import IndoorSpaceDetail from './pages/IndoorSpaceDetail';
 import __Layout from './Layout.jsx';
 
 
@@ -158,12 +158,15 @@ export const PAGES = {
     "GrowingProfile": GrowingProfile,
     "HarvestLog": HarvestLog,
     "ImageSubmissions": ImageSubmissions,
+    "IndoorGrowSpaces": IndoorGrowSpaces,
+    "IndoorSpaceDetail": IndoorSpaceDetail,
     "IssuesLog": IssuesLog,
     "Landing": Landing,
     "ManageForumCategories": ManageForumCategories,
     "Messages": Messages,
     "MyGarden": MyGarden,
     "MyPlants": MyPlants,
+    "NeedToBuy": NeedToBuy,
     "Notifications": Notifications,
     "Onboarding": Onboarding,
     "PlantCatalog": PlantCatalog,
@@ -186,9 +189,6 @@ export const PAGES = {
     "VarietyReviewQueue": VarietyReviewQueue,
     "ViewVariety": ViewVariety,
     "ZoneMap": ZoneMap,
-    "NeedToBuy": NeedToBuy,
-    "IndoorGrowSpaces": IndoorGrowSpaces,
-    "IndoorSpaceDetail": IndoorSpaceDetail,
 }
 
 export const pagesConfig = {
