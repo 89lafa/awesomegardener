@@ -22,7 +22,8 @@ import {
   Apple,
   MapPin,
   BookMarked,
-  Link2
+  Link2,
+  Mail
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
