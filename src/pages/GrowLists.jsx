@@ -61,6 +61,7 @@ export default function GrowLists() {
   const [showNewDialog, setShowNewDialog] = useState(searchParams.get('action') === 'new');
   const [showAddItemDialog, setShowAddItemDialog] = useState(false);
   const [showAIRecommendations, setShowAIRecommendations] = useState(false);
+  const [viewMode, setViewMode] = useState('cards'); // 'cards' or 'list'
 
   const [seasons, setSeasons] = useState([]);
   const [newList, setNewList] = useState({
@@ -586,6 +587,24 @@ export default function GrowLists() {
           <p className="text-gray-600 mt-1">Plan what you want to grow each season</p>
         </div>
         <div className="flex gap-2">
+          <div className="flex border rounded-lg">
+            <Button
+              variant={viewMode === 'cards' ? 'default' : 'ghost'}
+              size="sm"
+              onClick={() => setViewMode('cards')}
+              className={viewMode === 'cards' ? 'bg-emerald-600 hover:bg-emerald-700' : ''}
+            >
+              Cards
+            </Button>
+            <Button
+              variant={viewMode === 'list' ? 'default' : 'ghost'}
+              size="sm"
+              onClick={() => setViewMode('list')}
+              className={viewMode === 'list' ? 'bg-emerald-600 hover:bg-emerald-700' : ''}
+            >
+              List
+            </Button>
+          </div>
           <Button 
             onClick={() => setShowAIRecommendations(true)}
             variant="outline"
@@ -620,7 +639,7 @@ export default function GrowLists() {
             </Button>
           </CardContent>
         </Card>
-      ) : (
+      ) : viewMode === 'cards' ? (
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
           {growLists.map((list, index) => (
             <motion.div
@@ -668,6 +687,62 @@ export default function GrowLists() {
                   <div className="flex items-center gap-1 mt-2 text-emerald-600 text-sm">
                     <span>View details</span>
                     <ChevronRight className="w-4 h-4" />
+                  </div>
+                </CardContent>
+              </Card>
+            </motion.div>
+          ))}
+        </div>
+      ) : (
+        <div className="space-y-2">
+          {growLists.map((list, index) => (
+            <motion.div
+              key={list.id}
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: index * 0.03 }}
+            >
+              <Card 
+                className="cursor-pointer hover:shadow-md transition-shadow"
+                onClick={() => setSelectedList(list)}
+              >
+                <CardContent className="p-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-4 flex-1">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-lg bg-emerald-100 flex items-center justify-center">
+                          <ListChecks className="w-5 h-5 text-emerald-600" />
+                        </div>
+                        <div>
+                          <h3 className="font-semibold text-gray-900">{list.name}</h3>
+                          <div className="flex items-center gap-2 mt-1">
+                            <Badge className={`${getStatusColor(list.status)} text-xs`}>
+                              {list.status}
+                            </Badge>
+                            {list.year && (
+                              <Badge variant="outline" className="text-xs">{list.year}</Badge>
+                            )}
+                            <span className="text-sm text-gray-500">• {list.items?.length || 0} items</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <ChevronRight className="w-5 h-5 text-gray-400" />
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+                          <Button variant="ghost" size="icon">
+                            <MoreVertical className="w-4 h-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleDeleteList(list); }}>
+                            <Trash2 className="w-4 h-4 mr-2" />
+                            Delete
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
                   </div>
                 </CardContent>
               </Card>

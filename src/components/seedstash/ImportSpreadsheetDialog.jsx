@@ -130,8 +130,8 @@ export default function ImportSpreadsheetDialog({ open, onOpenChange, onSuccess 
     try {
       const text = await file.text();
       const { rows } = parseCSV(text);
-      const BATCH_SIZE = 25;
-      const DELAY_MS = 800;
+      const BATCH_SIZE = 30;
+      const DELAY_MS = 3000; // 3 seconds pause after each batch
 
       let totalInserted = 0;
       let totalSkipped = 0;

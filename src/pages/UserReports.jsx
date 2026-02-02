@@ -181,15 +181,13 @@ export default function UserReports() {
                     </div>
                     <div className="grid gap-1">
                       <p className="text-sm text-gray-600">
-                        <span className="font-semibold text-gray-700">Reported by:</span>{' '}
-                        <span className="font-medium">{report.reporter_email}</span>
+                       <span className="font-semibold text-gray-700">Reported by:</span>{' '}
+                       <span className="font-medium">{report.reporter_email}</span>
                       </p>
-                      {contentCreators[report.id] && (
-                        <p className="text-sm text-gray-600">
-                          <span className="font-semibold text-gray-700">Original Author:</span>{' '}
-                          <span className="font-medium text-red-600">{contentCreators[report.id]}</span>
-                        </p>
-                      )}
+                      <p className="text-sm text-gray-600">
+                       <span className="font-semibold text-gray-700">Created by:</span>{' '}
+                       <span className="font-medium text-red-600">{contentCreators[report.id] || 'Loading...'}</span>
+                      </p>
                     </div>
                   </div>
                 </div>
