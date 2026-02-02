@@ -14,6 +14,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 
 export default function BrowseCategoryConfig() {
   const [user, setUser] = useState(null);

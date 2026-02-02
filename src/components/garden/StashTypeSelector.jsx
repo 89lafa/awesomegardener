@@ -11,7 +11,11 @@ export default function StashTypeSelector({
   onSelect, 
   selectedPlant,
   getSpacingForPlant,
-  getDefaultSpacing 
+  getDefaultSpacing,
+  stashPlants: externalStashPlants,
+  profiles: externalProfiles,
+  varieties: externalVarieties,
+  plantTypes: externalPlantTypes
 }) {
   const [plantTypes, setPlantTypes] = useState([]);
   const [selectedType, setSelectedType] = useState(null);
@@ -22,8 +26,34 @@ export default function StashTypeSelector({
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    loadData();
-  }, []);
+    // Use external data if provided, otherwise load
+    if (externalStashPlants && externalProfiles && externalVarieties && externalPlantTypes) {
+      setStashPlants(externalStashPlants);
+      setProfiles(externalProfiles);
+      setVarieties(externalVarieties);
+      
+      // Group stash by plant type
+      const typeMap = new Map();
+      externalStashPlants.forEach(lot => {
+        const profile = externalProfiles[lot.plant_profile_id];
+        if (profile?.plant_type_id) {
+          if (!typeMap.has(profile.plant_type_id)) {
+            typeMap.set(profile.plant_type_id, []);
+          }
+          typeMap.get(profile.plant_type_id).push(lot);
+        }
+      });
+
+      const typesWithCounts = externalPlantTypes
+        .filter(t => typeMap.has(t.id))
+        .map(t => ({ ...t, count: typeMap.get(t.id).length }));
+
+      setPlantTypes(typesWithCounts);
+      setLoading(false);
+    } else {
+      loadData();
+    }
+  }, [externalStashPlants, externalProfiles, externalVarieties, externalPlantTypes]);
 
   const loadData = async () => {
     try {
