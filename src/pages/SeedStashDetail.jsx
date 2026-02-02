@@ -403,15 +403,21 @@ export default function SeedStashDetail() {
 
       <div className="grid lg:grid-cols-3 gap-6">
         {/* Catalog Data Section */}
-        {hasRichData && (
-          <Card className="lg:col-span-2">
-            <CardHeader className="flex flex-row items-center justify-between">
-              <CardTitle className="text-xl">📖 Variety Profile {variety && <span className="text-sm font-normal text-gray-500">(Public Catalog Data)</span>}</CardTitle>
-              <Button variant="outline" size="sm" onClick={() => setShowEditProfile(true)}>
-                <Edit className="w-4 h-4 mr-2" />
-                Edit Attributes
-              </Button>
-            </CardHeader>
+        <Card className="lg:col-span-2">
+          <CardHeader className="flex flex-row items-center justify-between">
+            <CardTitle className="text-xl">
+              📖 Variety Profile 
+              {variety && <span className="text-sm font-normal text-gray-500 ml-2">(Catalog)</span>}
+              {!variety && profile && <span className="text-sm font-normal text-gray-500 ml-2">(Custom)</span>}
+            </CardTitle>
+            <Button variant="outline" size="sm" onClick={() => setShowEditProfile(true)}>
+              <Edit className="w-4 h-4 mr-2" />
+              Edit Details
+            </Button>
+          </CardHeader>
+          {profile && (
+            <CardContent className="space-y-6">{hasRichData ? (
+              <>
             <CardContent className="space-y-6">
               {/* Variety Info Banner */}
               {variety && (
@@ -606,9 +612,21 @@ export default function SeedStashDetail() {
                   <p className="text-gray-700 whitespace-pre-wrap leading-relaxed">{profile?.notes_public || variety?.grower_notes}</p>
                 </div>
               )}
+              </>
+            ) : (
+              <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+                <p className="text-sm font-medium text-yellow-900 mb-2">
+                  This is a custom variety without catalog data. Add details using "Edit Details" above.
+                </p>
+                <div className="text-xs text-yellow-700 space-y-1">
+                  <p>• Add description, days to maturity, spacing, etc.</p>
+                  <p>• Your edits are private to your stash</p>
+                  <p>• You can suggest this variety to the public catalog later</p>
+                </div>
+              </div>
+            )}
             </CardContent>
           </Card>
-        )}
 
         {/* Lot Details Card */}
         <Card className="bg-gradient-to-br from-white to-gray-50">
@@ -848,10 +866,43 @@ export default function SeedStashDetail() {
             </div>
 
             <div>
+              <Label>Description</Label>
+              <Textarea
+                value={profileForm.description || ''}
+                onChange={(e) => setProfileForm({ ...profileForm, description: e.target.value })}
+                placeholder="Describe this variety..."
+                className="mt-2"
+                rows={3}
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label>Flavor Profile</Label>
+                <Input
+                  value={profileForm.flavor_profile || ''}
+                  onChange={(e) => setProfileForm({ ...profileForm, flavor_profile: e.target.value })}
+                  placeholder="e.g., Sweet, tangy"
+                  className="mt-2"
+                />
+              </div>
+              <div>
+                <Label>Fruit/Pod Color</Label>
+                <Input
+                  value={profileForm.fruit_color || ''}
+                  onChange={(e) => setProfileForm({ ...profileForm, fruit_color: e.target.value })}
+                  placeholder="e.g., Red, Green"
+                  className="mt-2"
+                />
+              </div>
+            </div>
+
+            <div>
               <Label>Growing Notes</Label>
               <Textarea
                 value={profileForm.notes_public || ''}
                 onChange={(e) => setProfileForm({ ...profileForm, notes_public: e.target.value })}
+                placeholder="Tips for growing this variety..."
                 className="mt-2"
                 rows={3}
               />
@@ -949,6 +1000,29 @@ export default function SeedStashDetail() {
                 onChange={(e) => setLotForm({ ...lotForm, storage_location: e.target.value })}
                 className="mt-2"
               />
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label>Available for Trade</Label>
+                <Input
+                  type="number"
+                  value={lotForm.quantity_available_trade || ''}
+                  onChange={(e) => setLotForm({ ...lotForm, quantity_available_trade: parseInt(e.target.value) || null })}
+                  placeholder="0"
+                  className="mt-2"
+                />
+              </div>
+              <div>
+                <Label>Available for Sale</Label>
+                <Input
+                  type="number"
+                  value={lotForm.quantity_available_sale || ''}
+                  onChange={(e) => setLotForm({ ...lotForm, quantity_available_sale: parseInt(e.target.value) || null })}
+                  placeholder="0"
+                  className="mt-2"
+                />
+              </div>
             </div>
 
             <div>

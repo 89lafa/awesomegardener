@@ -172,8 +172,25 @@ export default function Messages() {
 
     setSending(true);
     try {
+      let recipientEmail = newThreadData.recipient_email.trim();
+      
+      // Check if input is a nickname (no @ symbol)
+      if (!recipientEmail.includes('@')) {
+        const { data: nicknameResult } = await base44.functions.invoke('findUserByNickname', { 
+          nickname: recipientEmail 
+        });
+        
+        if (!nicknameResult.found) {
+          toast.error('User with that nickname not found');
+          setSending(false);
+          return;
+        }
+        
+        recipientEmail = nicknameResult.email;
+      }
+      
       // Check if recipient allows messages (unless they're admin)
-      const recipients = await base44.entities.User.filter({ email: newThreadData.recipient_email });
+      const recipients = await base44.entities.User.filter({ email: recipientEmail });
       if (recipients.length === 0) {
         toast.error('User not found');
         setSending(false);
@@ -192,15 +209,15 @@ export default function Messages() {
       const message = await base44.entities.Message.create({
         thread_id: threadId,
         sender_email: user.email,
-        recipient_email: newThreadData.recipient_email,
+        recipient_email: recipientEmail,
         subject: newThreadData.subject || 'No subject',
         body: newThreadData.body,
-        is_admin_message: user.role === 'admin' || newThreadData.recipient_email === 'admin'
+        is_admin_message: user.role === 'admin' || recipientEmail === 'admin'
       });
 
       // Create notification
       await base44.entities.Notification.create({
-        user_email: newThreadData.recipient_email,
+        user_email: recipientEmail,
         type: 'message',
         title: `New message from ${user.nickname || user.email}`,
         body: newThreadData.body.substring(0, 100),
@@ -435,13 +452,16 @@ export default function Messages() {
           </DialogHeader>
           <div className="space-y-4">
             <div>
-              <label className="text-sm font-medium">To (email address)</label>
+              <label className="text-sm font-medium">To (nickname or email)</label>
               <Input
-                placeholder="user@example.com or 'admin' for admin team"
+                placeholder="Enter nickname (e.g., 'john123') or email"
                 value={newThreadData.recipient_email}
                 onChange={(e) => setNewThreadData({ ...newThreadData, recipient_email: e.target.value })}
                 className="mt-2"
               />
+              <p className="text-xs text-gray-500 mt-1">
+                You can send to a user's nickname or email address
+              </p>
             </div>
             <div>
               <label className="text-sm font-medium">Subject</label>

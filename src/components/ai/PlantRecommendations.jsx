@@ -30,8 +30,13 @@ export default function PlantRecommendations({ open, onOpenChange, context = 'ca
 
     try {
       const user = await base44.auth.me();
+      const randomSeed = Math.random().toString(36).substring(7);
       const response = await base44.integrations.Core.InvokeLLM({
-        prompt: `You are a gardening expert. Recommend 5-8 plant varieties based on these criteria:
+        prompt: `You are a gardening expert. Recommend 5-8 plant varieties based on these criteria.
+
+IMPORTANT: Provide VARIED and DIVERSE recommendations. Include some unexpected or unusual varieties alongside popular ones. Mix common and heirloom varieties. [Random seed: ${randomSeed}]
+
+Criteria:
 
 Location Profile:
 - USDA Zone: ${user.usda_zone || 'unknown'}
@@ -170,8 +175,40 @@ Return structured data.`,
             </Button>
           </div>
         ) : (
-          <div className="space-y-3">
-            <h3 className="font-semibold">Recommended for You:</h3>
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="font-semibold">Recommended for You:</h3>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={async () => {
+                  const growLists = await base44.entities.GrowList.filter({ created_by: user.email });
+                  if (growLists.length === 0) {
+                    toast.error('Create a grow list first');
+                    return;
+                  }
+                  
+                  const targetList = growLists[0];
+                  const existingItems = targetList.items || [];
+                  const newItems = recommendations.recommendations.map(rec => ({
+                    variety_name: rec.variety_name || rec.common_name,
+                    plant_type_name: rec.common_name,
+                    quantity: 1,
+                    added_date: new Date().toISOString()
+                  }));
+                  
+                  await base44.entities.GrowList.update(targetList.id, {
+                    items: [...existingItems, ...newItems]
+                  });
+                  
+                  toast.success(`Added ${newItems.length} varieties to ${targetList.name}`);
+                }}
+                className="gap-2"
+              >
+                <Plus className="w-4 h-4" />
+                Add All to Grow List
+              </Button>
+            </div>
             {recommendations.recommendations?.map((rec, idx) => (
               <Card key={idx} className="border-l-4 border-l-purple-500">
                 <CardContent className="p-4">
@@ -212,9 +249,20 @@ Return structured data.`,
             {recommendations ? 'Done' : 'Cancel'}
           </Button>
           {recommendations && (
-            <Button onClick={() => setRecommendations(null)} variant="outline">
-              New Search
-            </Button>
+            <>
+              <Button 
+                onClick={handleGenerate} 
+                disabled={loading}
+                variant="outline"
+                className="gap-2"
+              >
+                {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
+                More Suggestions
+              </Button>
+              <Button onClick={() => setRecommendations(null)} variant="outline">
+                New Search
+              </Button>
+            </>
           )}
         </DialogFooter>
       </DialogContent>
