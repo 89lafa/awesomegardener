@@ -6,6 +6,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { Search, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useDebouncedValue } from '../utils/useDebouncedValue';
 
 export default function StashTypeSelector({ 
   onSelect, 
@@ -122,13 +123,18 @@ export default function StashTypeSelector({
     onSelect(plantData);
   };
 
+  const filteredTypes = plantTypes.filter(type => {
+    if (!debouncedTypeSearch) return true;
+    return type.common_name?.toLowerCase().includes(debouncedTypeSearch.toLowerCase());
+  });
+
   const filteredVarieties = selectedType
     ? stashPlants
         .filter(lot => {
           const profile = profiles[lot.plant_profile_id];
           if (!profile || profile.plant_type_id !== selectedType.id) return false;
-          if (searchQuery) {
-            return profile.variety_name?.toLowerCase().includes(searchQuery.toLowerCase());
+          if (debouncedSearch) {
+            return profile.variety_name?.toLowerCase().includes(debouncedSearch.toLowerCase());
           }
           return true;
         })
@@ -159,9 +165,18 @@ export default function StashTypeSelector({
       {!selectedType ? (
         <>
           <p className="text-sm text-gray-600">Select plant type:</p>
-          <ScrollArea className="h-[400px]">
+          <div className="relative mb-2">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
+            <Input
+              placeholder="Search plant types..."
+              value={typeSearchQuery}
+              onChange={(e) => setTypeSearchQuery(e.target.value)}
+              className="pl-9"
+            />
+          </div>
+          <ScrollArea className="h-[360px]">
             <div className="space-y-1">
-              {plantTypes.map(type => (
+              {filteredTypes.map(type => (
                 <button
                   key={type.id}
                   onClick={() => setSelectedType(type)}
@@ -189,6 +204,7 @@ export default function StashTypeSelector({
               onClick={() => {
                 setSelectedType(null);
                 setSearchQuery('');
+                setTypeSearchQuery('');
               }}
               className="w-full"
             >

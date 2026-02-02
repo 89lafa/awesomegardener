@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Search, Loader2, Plus } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
-import { Combobox } from '@/components/ui/combobox';
+import { useDebouncedValue } from '../utils/useDebouncedValue';
 
 export default function CatalogTypeSelector({ 
   onSelect,
@@ -19,14 +19,22 @@ export default function CatalogTypeSelector({
 }) {
   const [selectedType, setSelectedType] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [typeSearchQuery, setTypeSearchQuery] = useState('');
+  const debouncedSearch = useDebouncedValue(searchQuery, 300);
+  const debouncedTypeSearch = useDebouncedValue(typeSearchQuery, 300);
   const [creating, setCreating] = useState(false);
+
+  const filteredTypes = plantTypes.filter(type => {
+    if (!debouncedTypeSearch) return true;
+    return type.common_name?.toLowerCase().includes(debouncedTypeSearch.toLowerCase());
+  });
 
   const filteredVarieties = selectedType
     ? varieties
         .filter(v => {
           if (v.plant_type_id !== selectedType.id) return false;
-          if (searchQuery) {
-            return v.variety_name?.toLowerCase().includes(searchQuery.toLowerCase());
+          if (debouncedSearch) {
+            return v.variety_name?.toLowerCase().includes(debouncedSearch.toLowerCase());
           }
           return true;
         })
@@ -123,20 +131,31 @@ export default function CatalogTypeSelector({
       {!selectedType ? (
         <>
           <p className="text-sm text-gray-600">Select plant type:</p>
-          <Combobox
-            options={plantTypes.map(type => ({
-              value: type.id,
-              label: `${type.icon || '🌱'} ${type.common_name}`,
-              searchValue: type.common_name.toLowerCase()
-            }))}
-            value={selectedType?.id || ''}
-            onChange={(value) => {
-              const type = plantTypes.find(t => t.id === value);
-              if (type) setSelectedType(type);
-            }}
-            placeholder="Select or search plant type"
-            searchPlaceholder="Type to search (e.g., 'pep' for Pepper)..."
-          />
+          <div className="relative mb-2">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
+            <Input
+              placeholder="Search plant types..."
+              value={typeSearchQuery}
+              onChange={(e) => setTypeSearchQuery(e.target.value)}
+              className="pl-9"
+            />
+          </div>
+          <ScrollArea className="h-[360px]">
+            <div className="space-y-1">
+              {filteredTypes.map(type => (
+                <button
+                  key={type.id}
+                  onClick={() => setSelectedType(type)}
+                  className="w-full p-3 rounded-lg border-2 border-gray-200 hover:border-emerald-300 hover:bg-emerald-50 text-left transition-colors"
+                >
+                  <div className="flex items-center gap-2">
+                    <span className="text-xl">{type.icon || '🌱'}</span>
+                    <span className="font-medium text-sm">{type.common_name}</span>
+                  </div>
+                </button>
+              ))}
+            </div>
+          </ScrollArea>
         </>
       ) : (
         <>
@@ -147,6 +166,7 @@ export default function CatalogTypeSelector({
               onClick={() => {
                 setSelectedType(null);
                 setSearchQuery('');
+                setTypeSearchQuery('');
               }}
               className="w-full"
             >
