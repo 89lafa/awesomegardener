@@ -140,7 +140,8 @@ export default function ForumTopic() {
       toast.error('Please enter a reply');
       return;
     }
-
+    
+    if (submitting) return; // V1B-11: Prevent double-submit
     setSubmitting(true);
     try {
       await base44.entities.ForumPost.create({
@@ -418,7 +419,7 @@ export default function ForumTopic() {
                     {post.images && post.images.length > 0 && (
                       <div className="grid grid-cols-2 gap-2 mb-4">
                         {post.images.map((url, idx) => (
-                          <img key={idx} src={url} alt="" className="rounded-lg w-full h-auto" />
+                          <img key={idx} src={url} alt="" loading="lazy" className="rounded-lg w-full h-auto" />
                         ))}
                       </div>
                     )}
@@ -476,8 +477,14 @@ export default function ForumTopic() {
                 disabled={submitting || !replyText.trim()}
                 className="bg-emerald-600 hover:bg-emerald-700"
               >
-                {submitting ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
-                Post Reply
+                {submitting ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                    Posting...
+                  </>
+                ) : (
+                  'Post Reply'
+                )}
               </Button>
             </div>
           </CardContent>
