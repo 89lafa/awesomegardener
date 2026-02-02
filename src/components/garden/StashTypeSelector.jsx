@@ -111,7 +111,7 @@ export default function StashTypeSelector({
     );
 
     const spacing = variety 
-      ? getSpacingForPlant(variety) 
+      ? getSpacingForPlant(profile.plant_type_id, variety.spacing_recommended) 
       : getDefaultSpacing(profile.common_name);
 
     const plantData = {
