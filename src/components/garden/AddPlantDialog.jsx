@@ -21,6 +21,7 @@ import {
 } from '@/components/ui/dialog';
 import { Loader2, Calendar } from 'lucide-react';
 import { toast } from 'sonner';
+import { Combobox } from '@/components/ui/combobox';
 
 export default function AddPlantDialog({ 
   open, 
@@ -242,21 +243,18 @@ export default function AddPlantDialog({
               <TabsContent value="catalog" className="space-y-4 mt-4">
                 <div>
                   <Label>Plant Type *</Label>
-                  <Select 
-                    value={formData.plant_type_id} 
-                    onValueChange={(v) => setFormData({ ...formData, plant_type_id: v, variety_id: '' })}
-                  >
-                    <SelectTrigger className="mt-2">
-                      <SelectValue placeholder="Select plant type" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {plantTypes.map((type) => (
-                        <SelectItem key={type.id} value={type.id}>
-                          {type.common_name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <Combobox
+                    options={plantTypes.map(type => ({
+                      value: type.id,
+                      label: `${type.icon || '🌱'} ${type.common_name}`,
+                      searchValue: type.common_name.toLowerCase()
+                    }))}
+                    value={formData.plant_type_id}
+                    onChange={(v) => setFormData({ ...formData, plant_type_id: v, variety_id: '' })}
+                    placeholder="Select plant type"
+                    searchPlaceholder="Type to search..."
+                    className="mt-2"
+                  />
                 </div>
 
                 {formData.plant_type_id && (
@@ -289,21 +287,18 @@ export default function AddPlantDialog({
             <>
               <div>
                 <Label>Plant Type *</Label>
-                <Select 
-                  value={formData.plant_type_id} 
-                  onValueChange={(v) => setFormData({ ...formData, plant_type_id: v, variety_id: '' })}
-                >
-                  <SelectTrigger className="mt-2">
-                    <SelectValue placeholder="Select plant type" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {plantTypes.map((type) => (
-                      <SelectItem key={type.id} value={type.id}>
-                        {type.common_name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <Combobox
+                  options={plantTypes.map(type => ({
+                    value: type.id,
+                    label: `${type.icon || '🌱'} ${type.common_name}`,
+                    searchValue: type.common_name.toLowerCase()
+                  }))}
+                  value={formData.plant_type_id}
+                  onChange={(v) => setFormData({ ...formData, plant_type_id: v, variety_id: '' })}
+                  placeholder="Select plant type"
+                  searchPlaceholder="Type to search..."
+                  className="mt-2"
+                />
               </div>
 
               {formData.plant_type_id && (

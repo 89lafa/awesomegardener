@@ -6,10 +6,10 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Combobox } from '@/components/ui/combobox';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Loader2, Plus, Trash2, Sparkles } from 'lucide-react';
 import { toast } from 'sonner';
-import { Combobox } from '@/components/ui/combobox';
 
 export default function AddCustomSeedDialog({ open, onOpenChange, onSuccess, prefilledData }) {
   const [loading, setLoading] = useState(false);
@@ -266,15 +266,15 @@ export default function AddCustomSeedDialog({ open, onOpenChange, onSuccess, pre
             <div>
               <Label>Plant Type <span className="text-red-500">*</span></Label>
               <Combobox
-                value={formData.plant_type_id}
-                onValueChange={(id) => setFormData({ ...formData, plant_type_id: id })}
                 options={plantTypes.map(type => ({
                   value: type.id,
-                  label: `${type.icon || ''} ${type.common_name}`
+                  label: `${type.icon || '🌱'} ${type.common_name}`,
+                  searchValue: type.common_name.toLowerCase()
                 }))}
-                placeholder="Select plant type..."
-                searchPlaceholder="Search plant types..."
-                emptyText="No plant types found."
+                value={formData.plant_type_id}
+                onChange={(value) => setFormData({ ...formData, plant_type_id: value })}
+                placeholder="Select plant type"
+                searchPlaceholder="Type to search..."
                 className="mt-1"
               />
             </div>

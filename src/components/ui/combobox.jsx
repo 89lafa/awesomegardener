@@ -8,7 +8,7 @@ import {
   CommandGroup,
   CommandInput,
   CommandItem,
-  CommandList,
+  CommandList
 } from "@/components/ui/command"
 import {
   Popover,
@@ -16,15 +16,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover"
 
-export function Combobox({
-  value,
-  onValueChange,
-  options = [],
-  placeholder = "Select option...",
-  searchPlaceholder = "Search...",
-  emptyText = "No results found.",
-  className
-}) {
+export function Combobox({ options, value, onChange, placeholder = "Select...", searchPlaceholder = "Search...", className }) {
   const [open, setOpen] = React.useState(false)
 
   const selectedOption = options.find((option) => option.value === value)
@@ -46,14 +38,14 @@ export function Combobox({
         <Command>
           <CommandInput placeholder={searchPlaceholder} />
           <CommandList>
-            <CommandEmpty>{emptyText}</CommandEmpty>
-            <CommandGroup>
+            <CommandEmpty>No results found.</CommandEmpty>
+            <CommandGroup className="max-h-64 overflow-auto">
               {options.map((option) => (
                 <CommandItem
                   key={option.value}
-                  value={option.label}
+                  value={option.searchValue || option.label}
                   onSelect={() => {
-                    onValueChange(option.value === value ? "" : option.value)
+                    onChange(option.value)
                     setOpen(false)
                   }}
                 >
