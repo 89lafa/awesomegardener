@@ -4,7 +4,6 @@ import { createPageUrl } from '@/utils';
 import Sidebar from '@/components/layout/Sidebar';
 import TopBar from '@/components/layout/TopBar';
 import BottomNav from '@/components/layout/BottomNav';
-import { ThemeProvider } from '@/components/ThemeProvider';
 import { cn } from '@/lib/utils';
 import { Loader2 } from 'lucide-react';
 import ErrorBoundary from '@/components/common/ErrorBoundary';
@@ -91,33 +90,23 @@ export default function Layout({ children, currentPageName }) {
 
   if (loading) {
     return (
-      <ThemeProvider>
-        <div className="min-h-screen bg-[var(--bg-primary)] flex items-center justify-center">
-          <div className="text-center">
-            <Loader2 className="w-8 h-8 animate-spin text-[var(--primary)] mx-auto mb-3" />
-            <p className="text-[var(--text-secondary)]">Loading AwesomeGardener...</p>
-          </div>
+      <div className="min-h-screen bg-[#FDFBF7] flex items-center justify-center">
+        <div className="text-center">
+          <Loader2 className="w-8 h-8 animate-spin text-emerald-600 mx-auto mb-3" />
+          <p className="text-gray-600">Loading AwesomeGardener...</p>
         </div>
-      </ThemeProvider>
+      </div>
     );
   }
 
   // Landing page has its own layout
   if (isLandingPage) {
-    return (
-      <ThemeProvider>
-        <div className="min-h-screen bg-[var(--bg-primary)]">{children}</div>
-      </ThemeProvider>
-    );
+    return <div className="min-h-screen bg-[#FDFBF7]">{children}</div>;
   }
 
   // Public pages without sidebar
   if (isPublicPage && !user) {
-    return (
-      <ThemeProvider>
-        <div className="min-h-screen bg-[var(--bg-primary)]">{children}</div>
-      </ThemeProvider>
-    );
+    return <div className="min-h-screen bg-[#FDFBF7]">{children}</div>;
   }
 
   // Check if onboarding is needed (only after auth is fully resolved)
@@ -127,9 +116,8 @@ export default function Layout({ children, currentPageName }) {
   }
 
   return (
-    <ThemeProvider>
     <ErrorBoundary>
-    <div className="min-h-screen bg-[var(--bg-primary)] transition-colors duration-300">
+    <div className="min-h-screen bg-[#FDFBF7]">
       {/* Desktop Sidebar */}
       <div className={cn('hidden lg:block', desktopSidebarCollapsed && 'lg:hidden')}>
         <Sidebar 
@@ -186,6 +174,5 @@ export default function Layout({ children, currentPageName }) {
       {user && <BottomNav />}
     </div>
     </ErrorBoundary>
-    </ThemeProvider>
   );
 }

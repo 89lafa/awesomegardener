@@ -1,6 +1,6 @@
 import React from 'react';
 import { Sun, Moon, Monitor } from 'lucide-react';
-import { useTheme } from '@/components/ThemeProvider';
+import { useTheme } from '@/lib/ThemeContext';
 import { cn } from '@/lib/utils';
 
 export function ThemeToggle({ showLabels = false }) {
