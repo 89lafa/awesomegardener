@@ -27,6 +27,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
+import { ThemeToggleCompact } from '@/components/ui/ThemeToggle';
 import { base44 } from '@/api/base44Client';
 export default function TopBar({ user, onMobileMenuToggle, onSidebarToggle, sidebarCollapsed }) {
   const [searchQuery, setSearchQuery] = useState('');
@@ -91,7 +92,7 @@ export default function TopBar({ user, onMobileMenuToggle, onSidebarToggle, side
   };
 
   return (
-    <header className="h-16 bg-white border-b border-gray-200 flex items-center justify-between px-4 lg:px-6">
+    <header className="h-16 bg-[var(--bg-primary)] border-b border-[var(--border-default)] flex items-center justify-between px-4 lg:px-6 transition-colors duration-300">
       {/* Sidebar Toggle - Works on all screens */}
       <div className="flex items-center gap-2">
         <Button
@@ -126,25 +127,28 @@ export default function TopBar({ user, onMobileMenuToggle, onSidebarToggle, side
         >
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
           <Input
-            placeholder="Search plants, varieties, gardens..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') {
-                e.preventDefault();
-                if (searchQuery.trim()) {
-                  window.location.href = createPageUrl('PlantCatalog') + '?search=' + encodeURIComponent(searchQuery);
-                }
-              }
-            }}
-            className="pl-10 bg-gray-50 border-gray-200 focus:bg-white"
+           placeholder="Search plants, varieties, gardens..."
+           value={searchQuery}
+           onChange={(e) => setSearchQuery(e.target.value)}
+           onKeyDown={(e) => {
+             if (e.key === 'Enter') {
+               e.preventDefault();
+               if (searchQuery.trim()) {
+                 window.location.href = createPageUrl('PlantCatalog') + '?search=' + encodeURIComponent(searchQuery);
+               }
+             }
+           }}
+           className="pl-10 bg-[var(--surface-hover)] border-[var(--border-default)] focus:bg-[var(--bg-primary)]"
           />
         </form>
       </div>
 
       <div className="flex items-center gap-2">
-        {/* Quick Add */}
-        <DropdownMenu>
+         {/* Theme Toggle */}
+         <ThemeToggleCompact />
+
+         {/* Quick Add */}
+         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button size="sm" className="bg-emerald-600 hover:bg-emerald-700 gap-2">
               <Plus className="w-4 h-4" />
