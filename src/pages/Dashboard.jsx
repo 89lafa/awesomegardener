@@ -11,6 +11,7 @@ import AdBanner from '@/components/monetization/AdBanner';
 import RateLimitBanner from '@/components/common/RateLimitBanner';
 import { Skeleton } from '@/components/ui/skeleton';
 import { format, isAfter, isBefore, addDays, isPast } from 'date-fns';
+import NotificationCard from '@/components/dashboard/NotificationCard';
 
 export default function Dashboard() {
   const [user, setUser] = useState(null);
@@ -153,6 +154,9 @@ export default function Dashboard() {
 
       {/* Main Content Grid */}
       <div className="grid lg:grid-cols-2 gap-6">
+        {/* Notifications */}
+        <NotificationCard user={user} />
+
         {/* Upcoming Tasks */}
         <Card className="border-l-4 border-l-orange-500">
           <CardHeader className="flex flex-row items-center justify-between pb-3">
