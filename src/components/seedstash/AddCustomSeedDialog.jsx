@@ -128,7 +128,8 @@ export default function AddCustomSeedDialog({ open, onOpenChange, onSuccess, pre
       toast.error('Please select plant type and enter variety name');
       return;
     }
-
+    
+    if (loading) return; // V1B-11: Prevent double-submit
     setLoading(true);
     try {
       const user = await base44.auth.me();
@@ -619,7 +620,7 @@ export default function AddCustomSeedDialog({ open, onOpenChange, onSuccess, pre
                     <div className="grid grid-cols-4 gap-2">
                       {formData.lot_images.map((url, idx) => (
                         <div key={idx} className="relative group">
-                          <img src={url} alt="Seed" className="w-full h-20 object-cover rounded-lg" />
+                          <img src={url} alt="Seed" loading="lazy" className="w-full h-20 object-cover rounded-lg" />
                           <Button
                             type="button"
                             variant="destructive"
@@ -663,10 +664,16 @@ export default function AddCustomSeedDialog({ open, onOpenChange, onSuccess, pre
                 onClick={handleSubmit}
                 disabled={loading || !formData.plant_type_id || !formData.variety_name.trim()}
                 className="bg-emerald-600 hover:bg-emerald-700"
-              >
-                {loading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
-                Add to Stash
-              </Button>
+                >
+                {loading ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                    Adding...
+                  </>
+                ) : (
+                  'Add to Stash'
+                )}
+                </Button>
             </DialogFooter>
           </div>
         )}

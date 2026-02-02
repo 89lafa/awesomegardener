@@ -152,7 +152,8 @@ export default function AddVarietyDialog({ plantType, open, onOpenChange, onSucc
         return;
       }
     }
-
+    
+    if (submitting) return; // V1B-11: Prevent double-submit
     setSubmitting(true);
     try {
       if (isAdminOrEditor) {
@@ -331,7 +332,7 @@ export default function AddVarietyDialog({ plantType, open, onOpenChange, onSucc
                 <div className="flex flex-wrap gap-2">
                   {formData.images.map((url, idx) => (
                     <div key={idx} className="relative w-24 h-24">
-                      <img src={url} alt={`Image ${idx + 1}`} className="w-full h-full object-cover rounded border" />
+                      <img src={url} alt={`Image ${idx + 1}`} loading="lazy" className="w-full h-full object-cover rounded border" />
                       <Button
                         type="button"
                         size="sm"
@@ -549,7 +550,14 @@ export default function AddVarietyDialog({ plantType, open, onOpenChange, onSucc
             disabled={submitting || !formData.variety_name.trim() || duplicateWarning?.type === 'exact'}
             className="bg-emerald-600 hover:bg-emerald-700"
           >
-            {submitting ? 'Submitting...' : (isAdminOrEditor ? 'Add Variety' : 'Submit for Review')}
+            {submitting ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                Submitting...
+              </>
+            ) : (
+              isAdminOrEditor ? 'Add Variety' : 'Submit for Review'
+            )}
           </Button>
         </DialogFooter>
       </DialogContent>
