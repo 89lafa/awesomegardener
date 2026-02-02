@@ -4,15 +4,22 @@ import { Button } from '@/components/ui/button';
 
 export default function ThemeSwitcher() {
   const [theme, setTheme] = useState(() => {
-    // Check localStorage or system preference
     const saved = localStorage.getItem('theme');
     if (saved) return saved;
     return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
   });
 
   useEffect(() => {
-    // Apply theme to document
-    document.documentElement.setAttribute('data-theme', theme);
+    const root = document.documentElement;
+    
+    if (theme === 'dark') {
+      root.classList.add('dark');
+      root.setAttribute('data-theme', 'dark');
+    } else {
+      root.classList.remove('dark');
+      root.setAttribute('data-theme', 'light');
+    }
+    
     localStorage.setItem('theme', theme);
   }, [theme]);
 
