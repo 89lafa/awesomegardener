@@ -3,6 +3,7 @@ import { base44 } from '@/api/base44Client';
 import { createPageUrl } from '@/utils';
 import Sidebar from '@/components/layout/Sidebar';
 import TopBar from '@/components/layout/TopBar';
+import BottomNav from '@/components/layout/BottomNav';
 import { cn } from '@/lib/utils';
 import { Loader2 } from 'lucide-react';
 
@@ -10,6 +11,7 @@ import { Loader2 } from 'lucide-react';
 const publicPages = ['Landing', 'PublicGarden', 'PublicPlant', 'Community', 'GardeningBasics'];
 
 export default function Layout({ children, currentPageName }) {
+  const [authState, setAuthState] = useState('loading');
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -35,8 +37,9 @@ export default function Layout({ children, currentPageName }) {
   const isLandingPage = currentPageName === 'Landing';
 
   useEffect(() => {
+    if (authState !== 'loading') return;
     loadUser();
-  }, []);
+  }, [authState]);
 
   // Lock body scroll when mobile menu is open
   useEffect(() => {
@@ -64,13 +67,18 @@ export default function Layout({ children, currentPageName }) {
         }
         
         setUser(userData);
-      } else if (!isPublicPage) {
-        // Redirect to landing for non-public pages
-        window.location.href = createPageUrl('Landing');
-        return;
+        setAuthState('authenticated');
+      } else {
+        setAuthState('unauthenticated');
+        if (!isPublicPage) {
+          // Redirect to landing for non-public pages
+          window.location.href = createPageUrl('Landing');
+          return;
+        }
       }
     } catch (error) {
       console.error('Error loading user:', error);
+      setAuthState('unauthenticated');
       if (!isPublicPage) {
         window.location.href = createPageUrl('Landing');
         return;
@@ -101,8 +109,8 @@ export default function Layout({ children, currentPageName }) {
     return <div className="min-h-screen bg-[#FDFBF7]">{children}</div>;
   }
 
-  // Check if onboarding is needed
-  if (user && !user.onboarding_completed && currentPageName !== 'Onboarding') {
+  // Check if onboarding is needed (only after auth fully resolved)
+  if (authState === 'authenticated' && user && !user.onboarding_completed && currentPageName !== 'Onboarding') {
     window.location.href = createPageUrl('Onboarding');
     return null;
   }
@@ -161,6 +169,7 @@ export default function Layout({ children, currentPageName }) {
         <main className="p-4 lg:p-6">
           {children}
         </main>
+        {user && <BottomNav />}
       </div>
     </div>
   );
