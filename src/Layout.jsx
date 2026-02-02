@@ -6,6 +6,7 @@ import TopBar from '@/components/layout/TopBar';
 import BottomNav from '@/components/layout/BottomNav';
 import { cn } from '@/lib/utils';
 import { Loader2 } from 'lucide-react';
+import ErrorBoundary from '@/components/common/ErrorBoundary';
 
 // Public pages that don't require authentication
 const publicPages = ['Landing', 'PublicGarden', 'PublicPlant', 'Community', 'GardeningBasics'];
@@ -166,7 +167,9 @@ export default function Layout({ children, currentPageName }) {
           sidebarCollapsed={desktopSidebarCollapsed}
         />
         <main className="p-4 lg:p-6">
-          {children}
+          <ErrorBoundary>
+            {children}
+          </ErrorBoundary>
         </main>
       </div>
       {user && <BottomNav />}
