@@ -118,7 +118,6 @@ import ViewVariety from './pages/ViewVariety';
 import ZoneMap from './pages/ZoneMap';
 import SeedTrading from './pages/SeedTrading';
 import GardenExpenses from './pages/GardenExpenses';
-import CalendarTasksKanban from './pages/CalendarTasksKanban';
 import __Layout from './Layout.jsx';
 
 
@@ -194,7 +193,6 @@ export const PAGES = {
     "ZoneMap": ZoneMap,
     "SeedTrading": SeedTrading,
     "GardenExpenses": GardenExpenses,
-    "CalendarTasksKanban": CalendarTasksKanban,
 }
 
 export const pagesConfig = {
