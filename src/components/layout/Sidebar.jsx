@@ -22,9 +22,7 @@ import {
   Apple,
   MapPin,
   BookMarked,
-  Link2,
-  Mail,
-  Bell
+  Link2
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -41,6 +39,7 @@ const getNavItems = (userRole, isEditor, user) => {
       { name: 'Tasks', icon: Calendar, page: 'CalendarTasks' },
       { name: 'Calendar Planner', icon: Sprout, page: 'Calendar' },
       { name: 'My Plants', icon: Apple, page: 'MyPlants' },
+      { name: 'Messages', icon: Mail, page: 'Messages' },
       { name: 'Companion Planting', icon: Sprout, page: 'CompanionPlanner' },
       { name: 'Diary', icon: BookText, page: 'GardenDiary' },
       { name: 'Harvest Log', icon: Apple, page: 'HarvestLog' },
@@ -48,8 +47,6 @@ const getNavItems = (userRole, isEditor, user) => {
       { name: 'Garden Care', icon: Sprout, page: 'GardenCare' },
       { name: 'Browse Gardens', icon: Globe, page: 'BrowseGardens' },
       { name: 'Community Board', icon: MessageSquare, page: 'CommunityBoard' },
-      { name: 'Messages', icon: Mail, page: 'Messages' },
-      { name: 'Notifications', icon: Bell, page: 'Notifications' },
       { name: 'Zone Map', icon: MapPin, page: 'ZoneMap' },
       { name: 'Gardening Basics', icon: BookMarked, page: 'GardeningBasics' },
       { name: 'Resources', icon: Link2, page: 'Resources' },
