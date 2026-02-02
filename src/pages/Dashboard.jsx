@@ -13,6 +13,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { format, isAfter, isBefore, addDays, isPast } from 'date-fns';
 import NotificationCard from '@/components/dashboard/NotificationCard';
 import { getPlantTypesCached } from '@/components/utils/dataCache';
+import { GlassCard, StatCard } from '@/components/ui/GlassCard';
 
 export default function Dashboard() {
   const [user, setUser] = useState(null);
@@ -102,55 +103,51 @@ export default function Dashboard() {
       )}
 
       {/* Welcome Header */}
-      <div className="bg-gradient-to-r from-emerald-50 via-green-50 to-blue-50 rounded-2xl p-8 border border-emerald-200">
+      <GlassCard className="bg-gradient-to-r from-emerald-50 via-green-50 to-blue-50 border-emerald-200">
         <h1 className="text-3xl font-bold text-gray-900 mb-2">
           Welcome back, {user?.full_name?.split(' ')[0] || 'Gardener'}! 🌱
         </h1>
         <p className="text-gray-700">Here's what's happening in your garden today</p>
-      </div>
+      </GlassCard>
 
       <AdBanner placement="top_banner" pageType="dashboard" />
 
       {/* Quick Stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <Link to={createPageUrl('Gardens')}>
-          <Card className="hover:shadow-lg transition-all cursor-pointer bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200">
-            <CardContent className="p-6 text-center">
-              <TreeDeciduous className="w-8 h-8 text-blue-600 mx-auto mb-2" />
-              <p className="text-3xl font-bold text-blue-900">{gardens.length}</p>
-              <p className="text-sm text-blue-700 font-medium">Gardens</p>
-            </CardContent>
-          </Card>
+          <StatCard
+            icon={<TreeDeciduous />}
+            label="Gardens"
+            value={gardens.length}
+            color="var(--info)"
+          />
         </Link>
 
         <Link to={createPageUrl('CalendarTasks')}>
-          <Card className="hover:shadow-lg transition-all cursor-pointer bg-gradient-to-br from-amber-50 to-orange-100 border-orange-200">
-            <CardContent className="p-6 text-center">
-              <Calendar className="w-8 h-8 text-orange-600 mx-auto mb-2" />
-              <p className="text-3xl font-bold text-orange-900">{tasks.length}</p>
-              <p className="text-sm text-orange-700 font-medium">Open Tasks</p>
-            </CardContent>
-          </Card>
+          <StatCard
+            icon={<Calendar />}
+            label="Open Tasks"
+            value={tasks.length}
+            color="var(--warning)"
+          />
         </Link>
 
         <Link to={createPageUrl('SeedStash')}>
-          <Card className="hover:shadow-lg transition-all cursor-pointer bg-gradient-to-br from-emerald-50 to-green-100 border-emerald-200">
-            <CardContent className="p-6 text-center">
-              <Package className="w-8 h-8 text-emerald-600 mx-auto mb-2" />
-              <p className="text-3xl font-bold text-emerald-900">{totalSeeds}</p>
-              <p className="text-sm text-emerald-700 font-medium">Seeds</p>
-            </CardContent>
-          </Card>
+          <StatCard
+            icon={<Package />}
+            label="Seeds"
+            value={totalSeeds}
+            color="var(--primary)"
+          />
         </Link>
 
         <Link to={createPageUrl('GrowLists')}>
-          <Card className="hover:shadow-lg transition-all cursor-pointer bg-gradient-to-br from-purple-50 to-purple-100 border-purple-200">
-            <CardContent className="p-6 text-center">
-              <ListChecks className="w-8 h-8 text-purple-600 mx-auto mb-2" />
-              <p className="text-3xl font-bold text-purple-900">{activeGrowList?.items?.length || 0}</p>
-              <p className="text-sm text-purple-700 font-medium">Planned Plants</p>
-            </CardContent>
-          </Card>
+          <StatCard
+            icon={<ListChecks />}
+            label="Planned Plants"
+            value={activeGrowList?.items?.length || 0}
+            color="var(--purple)"
+          />
         </Link>
       </div>
 
@@ -160,7 +157,7 @@ export default function Dashboard() {
         <NotificationCard user={user} />
 
         {/* Upcoming Tasks */}
-        <Card className="border-l-4 border-l-orange-500">
+        <GlassCard className="border-l-4 border-l-orange-500">
           <CardHeader className="flex flex-row items-center justify-between pb-3">
             <div className="flex items-center gap-2">
               <Calendar className="w-5 h-5 text-orange-600" />
@@ -201,10 +198,10 @@ export default function Dashboard() {
               </div>
             )}
           </CardContent>
-        </Card>
+        </GlassCard>
 
         {/* Seed Stash Summary */}
-        <Card className="border-l-4 border-l-emerald-500">
+        <GlassCard className="border-l-4 border-l-emerald-500">
           <CardHeader className="flex flex-row items-center justify-between pb-3">
             <div className="flex items-center gap-2">
               <Package className="w-5 h-5 text-emerald-600" />
@@ -237,10 +234,10 @@ export default function Dashboard() {
               </div>
             )}
           </CardContent>
-        </Card>
+        </GlassCard>
 
         {/* Recent Activity */}
-        <Card className="border-l-4 border-l-blue-500">
+        <GlassCard className="border-l-4 border-l-blue-500">
           <CardHeader className="flex flex-row items-center justify-between pb-3">
             <div className="flex items-center gap-2">
               <Sprout className="w-5 h-5 text-blue-600" />
@@ -272,10 +269,10 @@ export default function Dashboard() {
               </div>
             )}
           </CardContent>
-        </Card>
+        </GlassCard>
 
         {/* Grow List Summary */}
-        <Card className="border-l-4 border-l-purple-500">
+        <GlassCard className="border-l-4 border-l-purple-500">
           <CardHeader className="flex flex-row items-center justify-between pb-3">
             <div className="flex items-center gap-2">
               <ListChecks className="w-5 h-5 text-purple-600" />
@@ -306,7 +303,7 @@ export default function Dashboard() {
               </div>
             )}
           </CardContent>
-        </Card>
+        </GlassCard>
       </div>
 
       {/* Gardens Overview */}
