@@ -88,8 +88,10 @@ import ImageSubmissions from './pages/ImageSubmissions';
 import IssuesLog from './pages/IssuesLog';
 import Landing from './pages/Landing';
 import ManageForumCategories from './pages/ManageForumCategories';
+import Messages from './pages/Messages';
 import MyGarden from './pages/MyGarden';
 import MyPlants from './pages/MyPlants';
+import Notifications from './pages/Notifications';
 import Onboarding from './pages/Onboarding';
 import PlantCatalog from './pages/PlantCatalog';
 import PlantCatalogBrowse from './pages/PlantCatalogBrowse';
@@ -111,8 +113,6 @@ import Users from './pages/Users';
 import VarietyReviewQueue from './pages/VarietyReviewQueue';
 import ViewVariety from './pages/ViewVariety';
 import ZoneMap from './pages/ZoneMap';
-import Messages from './pages/Messages';
-import Notifications from './pages/Notifications';
 import __Layout from './Layout.jsx';
 
 
@@ -158,8 +158,10 @@ export const PAGES = {
     "IssuesLog": IssuesLog,
     "Landing": Landing,
     "ManageForumCategories": ManageForumCategories,
+    "Messages": Messages,
     "MyGarden": MyGarden,
     "MyPlants": MyPlants,
+    "Notifications": Notifications,
     "Onboarding": Onboarding,
     "PlantCatalog": PlantCatalog,
     "PlantCatalogBrowse": PlantCatalogBrowse,
@@ -181,8 +183,6 @@ export const PAGES = {
     "VarietyReviewQueue": VarietyReviewQueue,
     "ViewVariety": ViewVariety,
     "ZoneMap": ZoneMap,
-    "Messages": Messages,
-    "Notifications": Notifications,
 }
 
 export const pagesConfig = {

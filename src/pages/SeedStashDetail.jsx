@@ -495,37 +495,37 @@ export default function SeedStashDetail() {
               {/* Extended Variety Data from Catalog */}
               {variety && (
                 <div className="space-y-4">
-                  {variety.description && (
+                  {(profile?.description || variety?.description) && (
                     <div className="p-4 bg-gray-50 rounded-lg border">
                       <p className="font-semibold text-gray-900 mb-2">Description</p>
-                      <p className="text-gray-700 leading-relaxed">{variety.description}</p>
+                      <p className="text-gray-700 leading-relaxed">{profile?.description || variety?.description}</p>
                     </div>
                   )}
                   
-                  {(variety.flavor_profile || variety.uses || variety.fruit_color || variety.growth_habit) && (
+                  {((profile?.flavor_profile || variety?.flavor_profile) || (profile?.color_notes || variety?.fruit_color) || (profile?.growth_habit || variety?.growth_habit)) && (
                     <div className="grid sm:grid-cols-2 gap-4">
-                      {variety.flavor_profile && (
+                      {(profile?.flavor_profile || variety?.flavor_profile) && (
                         <div className="p-3 bg-purple-50 rounded-lg border border-purple-200">
                           <p className="text-xs font-semibold text-purple-700 mb-1">Flavor</p>
-                          <p className="text-sm text-purple-900">{variety.flavor_profile}</p>
+                          <p className="text-sm text-purple-900">{profile?.flavor_profile || variety?.flavor_profile}</p>
                         </div>
                       )}
-                      {variety.uses && (
+                      {variety?.uses && (
                         <div className="p-3 bg-blue-50 rounded-lg border border-blue-200">
                           <p className="text-xs font-semibold text-blue-700 mb-1">Uses</p>
                           <p className="text-sm text-blue-900">{variety.uses}</p>
                         </div>
                       )}
-                      {variety.fruit_color && (
+                      {(profile?.color_notes || variety?.fruit_color) && (
                         <div className="p-3 bg-pink-50 rounded-lg border border-pink-200">
-                          <p className="text-xs font-semibold text-pink-700 mb-1">Fruit Color</p>
-                          <p className="text-sm text-pink-900">{variety.fruit_color}</p>
+                          <p className="text-xs font-semibold text-pink-700 mb-1">Fruit/Pod Color</p>
+                          <p className="text-sm text-pink-900">{profile?.color_notes || variety?.fruit_color}</p>
                         </div>
                       )}
-                      {variety.growth_habit && (
+                      {(profile?.growth_habit || variety?.growth_habit) && (
                         <div className="p-3 bg-green-50 rounded-lg border border-green-200">
                           <p className="text-xs font-semibold text-green-700 mb-1">Growth Habit</p>
-                          <p className="text-sm text-green-900 capitalize">{variety.growth_habit}</p>
+                          <p className="text-sm text-green-900 capitalize">{profile?.growth_habit || variety?.growth_habit}</p>
                         </div>
                       )}
                     </div>
@@ -888,8 +888,8 @@ export default function SeedStashDetail() {
               <div>
                 <Label>Fruit/Pod Color</Label>
                 <Input
-                  value={profileForm.fruit_color || ''}
-                  onChange={(e) => setProfileForm({ ...profileForm, fruit_color: e.target.value })}
+                  value={profileForm.color_notes || ''}
+                  onChange={(e) => setProfileForm({ ...profileForm, color_notes: e.target.value })}
                   placeholder="e.g., Red, Green"
                   className="mt-2"
                 />
