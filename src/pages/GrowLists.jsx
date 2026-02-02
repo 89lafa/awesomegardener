@@ -16,9 +16,7 @@ import {
   Loader2,
   ArrowLeft,
   Target,
-  AlertTriangle,
-  Grid3x3,
-  List
+  AlertTriangle
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -64,7 +62,7 @@ export default function GrowLists() {
   const [showAddItemDialog, setShowAddItemDialog] = useState(false);
   const [showAIRecommendations, setShowAIRecommendations] = useState(false);
   const [viewMode, setViewMode] = useState('cards'); // 'cards' or 'list'
-  const [itemViewMode, setItemViewMode] = useState('cards'); // 'cards' or 'list' for items within a list
+  const [itemViewMode, setItemViewMode] = useState('card'); // 'card' or 'list' for detail view items
 
   const [seasons, setSeasons] = useState([]);
   const [newList, setNewList] = useState({
@@ -219,6 +217,22 @@ export default function GrowLists() {
     }
   };
 
+  const removeFromList = async (listId, itemIndex) => {
+    if (!selectedList) return;
+
+    try {
+      const updatedItems = selectedList.items.filter((_, idx) => idx !== itemIndex);
+      await base44.entities.GrowList.update(listId, { items: updatedItems });
+      setSelectedList({ ...selectedList, items: updatedItems });
+      setGrowLists(growLists.map(l => 
+        l.id === listId ? { ...l, items: updatedItems } : l
+      ));
+      toast.success('Item removed');
+    } catch (error) {
+      console.error('Error removing item:', error);
+    }
+  };
+
   const handleRemoveItem = async (itemId) => {
     if (!selectedList) return;
 
@@ -340,24 +354,6 @@ export default function GrowLists() {
             </div>
           </div>
           <div className="flex gap-2">
-            <div className="flex border rounded-lg">
-              <Button
-                variant={itemViewMode === 'cards' ? 'default' : 'ghost'}
-                size="sm"
-                onClick={() => setItemViewMode('cards')}
-                className={itemViewMode === 'cards' ? 'bg-emerald-600 hover:bg-emerald-700' : ''}
-              >
-                <Grid3x3 className="w-4 h-4" />
-              </Button>
-              <Button
-                variant={itemViewMode === 'list' ? 'default' : 'ghost'}
-                size="sm"
-                onClick={() => setItemViewMode('list')}
-                className={itemViewMode === 'list' ? 'bg-emerald-600 hover:bg-emerald-700' : ''}
-              >
-                <List className="w-4 h-4" />
-              </Button>
-            </div>
             {selectedList.garden_season_id && (
               <Link to={createPageUrl('Calendar') + `?syncGrowList=${selectedList.id}&season=${selectedList.garden_season_id}`}>
                 <Button 
@@ -386,6 +382,28 @@ export default function GrowLists() {
 
         <AdBanner placement="top_banner" pageType="grow_list" />
 
+        {/* View Mode Toggle */}
+        {selectedList.items?.length > 0 && (
+          <div className="flex items-center gap-2">
+            <Button
+              variant={itemViewMode === 'card' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setItemViewMode('card')}
+              className={itemViewMode === 'card' ? 'bg-emerald-600 hover:bg-emerald-700' : ''}
+            >
+              <LayoutGrid className="w-4 h-4" />
+            </Button>
+            <Button
+              variant={itemViewMode === 'list' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setItemViewMode('list')}
+              className={itemViewMode === 'list' ? 'bg-emerald-600 hover:bg-emerald-700' : ''}
+            >
+              <ListIcon className="w-4 h-4" />
+            </Button>
+          </div>
+        )}
+
         {/* Items */}
         {!selectedList.items?.length ? (
           <Card className="py-12">
@@ -400,8 +418,8 @@ export default function GrowLists() {
               </Button>
             </CardContent>
           </Card>
-        ) : itemViewMode === 'cards' ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        ) : itemViewMode === 'card' ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
             {selectedList.items.map((item, index) => (
               <motion.div
                 key={item.id}
@@ -411,36 +429,39 @@ export default function GrowLists() {
               >
                 <Card>
                   <CardContent className="p-4">
-                    <div className="flex items-center gap-3 mb-3">
-                      <div className="w-10 h-10 rounded-lg bg-emerald-100 flex items-center justify-center">
-                        <Target className="w-5 h-5 text-emerald-600" />
+                    <div className="flex flex-col gap-3">
+                      <div className="flex items-start justify-between">
+                        <div className="flex items-center gap-3 flex-1">
+                          <div className="w-10 h-10 rounded-lg bg-emerald-100 flex items-center justify-center flex-shrink-0">
+                            <Package className="w-5 h-5 text-emerald-600" />
+                          </div>
+                          <div className="min-w-0">
+                            <h3 className="font-semibold text-sm text-gray-900 truncate">
+                              {item.variety_name || item.plant_type_name}
+                            </h3>
+                            {item.variety_name && (
+                              <p className="text-xs text-gray-500 truncate">{item.plant_type_name}</p>
+                            )}
+                          </div>
+                        </div>
+                        <Button 
+                          variant="ghost" 
+                          size="icon"
+                          className="h-8 w-8 flex-shrink-0"
+                          onClick={() => handleRemoveItem(item.id)}
+                        >
+                          <Trash2 className="w-4 h-4 text-gray-400" />
+                        </Button>
                       </div>
-                      <div className="flex-1 min-w-0">
-                        <h3 className="font-semibold text-sm text-gray-900 truncate">
-                          {item.variety_name || item.plant_type_name}
-                        </h3>
-                        {item.variety_name && (
-                          <p className="text-xs text-gray-500 truncate">{item.plant_type_name}</p>
-                        )}
+                      <div className="flex items-center gap-2">
+                        <Badge variant="outline" className="text-xs">
+                          Qty: {item.quantity || item.target_count || 1}
+                        </Badge>
                       </div>
+                      {item.notes && (
+                        <p className="text-xs text-gray-600">{item.notes}</p>
+                      )}
                     </div>
-                    <div className="flex items-center gap-2 mb-3">
-                      <Badge variant="outline" className="text-xs">
-                        Qty: {item.quantity || item.target_count || 1}
-                      </Badge>
-                    </div>
-                    {item.notes && (
-                      <p className="text-xs text-gray-600 mb-3 line-clamp-2">{item.notes}</p>
-                    )}
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleRemoveItem(item.id)}
-                      className="w-full text-red-500 hover:text-red-700 hover:bg-red-50"
-                    >
-                      <Trash2 className="w-3 h-3 mr-1" />
-                      Remove
-                    </Button>
                   </CardContent>
                 </Card>
               </motion.div>
@@ -457,33 +478,35 @@ export default function GrowLists() {
               >
                 <Card>
                   <CardContent className="p-3">
-                    <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-lg bg-emerald-100 flex items-center justify-center flex-shrink-0">
-                        <Target className="w-4 h-4 text-emerald-600" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <h3 className="font-medium text-sm text-gray-900 truncate">
-                          {item.variety_name || item.plant_type_name}
-                        </h3>
-                        <div className="flex items-center gap-2 mt-0.5">
-                          {item.variety_name && (
-                            <p className="text-xs text-gray-500">{item.plant_type_name}</p>
-                          )}
-                          <Badge variant="outline" className="text-xs">
-                            {item.quantity || item.target_count || 1}
-                          </Badge>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3 flex-1 min-w-0">
+                        <div className="w-10 h-10 rounded-lg bg-emerald-100 flex items-center justify-center flex-shrink-0">
+                          <Package className="w-5 h-5 text-emerald-600" />
                         </div>
-                        {item.notes && (
-                          <p className="text-xs text-gray-600 mt-1 truncate">{item.notes}</p>
-                        )}
+                        <div className="min-w-0">
+                          <h3 className="font-semibold text-sm text-gray-900 truncate">
+                            {item.variety_name || item.plant_type_name}
+                          </h3>
+                          <div className="flex items-center gap-2 mt-0.5">
+                            {item.variety_name && (
+                              <span className="text-xs text-gray-500">{item.plant_type_name}</span>
+                            )}
+                            <Badge variant="outline" className="text-xs">
+                              Qty: {item.quantity || item.target_count || 1}
+                            </Badge>
+                          </div>
+                          {item.notes && (
+                            <p className="text-xs text-gray-600 mt-1">{item.notes}</p>
+                          )}
+                        </div>
                       </div>
-                      <Button
-                        variant="ghost"
+                      <Button 
+                        variant="ghost" 
                         size="icon"
+                        className="flex-shrink-0"
                         onClick={() => handleRemoveItem(item.id)}
-                        className="text-red-500 hover:text-red-700 hover:bg-red-50 flex-shrink-0"
                       >
-                        <Trash2 className="w-4 h-4" />
+                        <Trash2 className="w-4 h-4 text-gray-400" />
                       </Button>
                     </div>
                   </CardContent>
