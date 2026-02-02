@@ -26,6 +26,16 @@ export default function AddToStashModal({ open, onOpenChange, variety, plantType
   const [saving, setSaving] = useState(false);
   const [alreadyExists, setAlreadyExists] = useState(false);
   const [existingLotId, setExistingLotId] = useState(null);
+  
+  // V1B-11: Escape closes modal
+  useEffect(() => {
+    const handleEscape = (e) => {
+      if (e.key === 'Escape' && open) onOpenChange(false);
+    };
+    document.addEventListener('keydown', handleEscape);
+    return () => document.removeEventListener('keydown', handleEscape);
+  }, [open, onOpenChange]);
+  
   const [formData, setFormData] = useState({
     quantity: '',
     unit: 'seeds',

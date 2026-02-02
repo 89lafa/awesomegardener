@@ -6,7 +6,6 @@ import TopBar from '@/components/layout/TopBar';
 import BottomNav from '@/components/layout/BottomNav';
 import { cn } from '@/lib/utils';
 import { Loader2 } from 'lucide-react';
-import ErrorBoundary from '@/components/common/ErrorBoundary';
 
 // Public pages that don't require authentication
 const publicPages = ['Landing', 'PublicGarden', 'PublicPlant', 'Community', 'GardeningBasics'];
@@ -116,6 +115,7 @@ export default function Layout({ children, currentPageName }) {
   }
 
   return (
+    <ErrorBoundary>
     <div className="min-h-screen bg-[#FDFBF7]">
       {/* Desktop Sidebar */}
       <div className={cn('hidden lg:block', desktopSidebarCollapsed && 'lg:hidden')}>
@@ -167,12 +167,11 @@ export default function Layout({ children, currentPageName }) {
           sidebarCollapsed={desktopSidebarCollapsed}
         />
         <main className="p-4 lg:p-6">
-          <ErrorBoundary>
-            {children}
-          </ErrorBoundary>
+          {children}
         </main>
       </div>
       {user && <BottomNav />}
     </div>
+    </ErrorBoundary>
   );
 }

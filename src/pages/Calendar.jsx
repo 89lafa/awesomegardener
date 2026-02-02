@@ -43,6 +43,7 @@ import { cn } from '@/lib/utils';
 import { smartQuery } from '@/components/utils/smartQuery';
 import RateLimitBanner from '@/components/common/RateLimitBanner';
 import BuildCalendarWizard from '@/components/ai/BuildCalendarWizard';
+import { getPlantTypesCached } from '@/components/utils/dataCache';
 
 export default function Calendar() {
   const [searchParams] = useSearchParams();
@@ -169,6 +170,7 @@ export default function Calendar() {
     if (!activeSeasonId) return;
     
     try {
+      // V1B-2: Batch query - load all plans and tasks in parallel
       const [plansData, tasksData] = await Promise.all([
         smartQuery(base44, 'CropPlan', { garden_season_id: activeSeasonId }),
         smartQuery(base44, 'CropTask', { garden_season_id: activeSeasonId }, 'start_date')
