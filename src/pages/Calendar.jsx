@@ -578,9 +578,10 @@ export default function Calendar() {
             setActiveGarden(garden);
             localStorage.setItem('calendar_active_garden', id);
             // Load seasons for new garden
+            const currentUser = await base44.auth.me();
             const seasonsData = await base44.entities.GardenSeason.filter({ 
               garden_id: id,
-              created_by: userData.email
+              created_by: currentUser.email
             }, '-year');
             setSeasons(seasonsData);
             if (seasonsData.length > 0) {

@@ -123,6 +123,8 @@ export default function Onboarding() {
         shape_type: 'RECTANGLE'
       });
 
+      // Wait before redirecting to ensure profile is fully saved
+      await new Promise(resolve => setTimeout(resolve, 500));
       navigate(createPageUrl('Dashboard'));
     } catch (error) {
       console.error('Error completing onboarding:', error);
