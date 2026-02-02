@@ -97,7 +97,8 @@ export default function AddFromCatalogDialog({ open, onOpenChange, onSuccess }) 
       toast.error('Please select plant type and variety');
       return;
     }
-
+    
+    if (loading) return; // V1B-11: Prevent double-submit
     setLoading(true);
     try {
       console.log('[AddFromCatalog] Creating for variety:', variety.variety_name);
@@ -347,8 +348,14 @@ export default function AddFromCatalogDialog({ open, onOpenChange, onSuccess }) 
             disabled={loading || !selectedPlantTypeId || !selectedVarietyId}
             className="bg-emerald-600 hover:bg-emerald-700"
           >
-            {loading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
-            Add to Stash
+            {loading ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                Adding...
+              </>
+            ) : (
+              'Add to Stash'
+            )}
           </Button>
         </DialogFooter>
       </DialogContent>

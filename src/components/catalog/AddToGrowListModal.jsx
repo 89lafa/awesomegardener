@@ -68,7 +68,7 @@ export default function AddToGrowListModal({ open, onOpenChange, variety, plantT
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!selectedListId) return;
-
+    if (saving) return; // V1B-11: Prevent double-submit
     setSaving(true);
     try {
       // Create GrowListItem
