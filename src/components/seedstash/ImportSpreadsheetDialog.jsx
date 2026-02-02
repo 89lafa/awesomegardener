@@ -36,40 +36,43 @@ const COLUMN_MAPPINGS = [
   { key: 'source_vendor_url', label: 'Vendor URL', required: false, category: 'inventory', target: 'seed' },
   { key: 'storage_location', label: 'Storage Location', required: false, category: 'inventory', target: 'seed' },
   { key: 'lot_notes', label: 'Notes', required: false, category: 'inventory', target: 'seed' },
+  { key: 'tags', label: 'Tags (comma separated)', required: false, category: 'inventory', target: 'seed' },
   
   // Variety Growing Info
-  { key: 'days_to_maturity', label: 'Days to Maturity', required: false, category: 'growing', target: 'profile' },
-  { key: 'days_to_maturity_min', label: 'DTM Min', required: false, category: 'growing', target: 'profile' },
-  { key: 'days_to_maturity_max', label: 'DTM Max', required: false, category: 'growing', target: 'profile' },
-  { key: 'start_indoors_weeks', label: 'Start Indoors (weeks)', required: false, category: 'growing', target: 'profile' },
+  { key: 'days_to_maturity_seed', label: 'Days to Maturity', required: false, category: 'growing', target: 'profile' },
+  { key: 'start_indoors_weeks_before_last_frost_min', label: 'Start Indoors (weeks)', required: false, category: 'growing', target: 'profile' },
   { key: 'transplant_weeks_after_last_frost_min', label: 'Transplant Week Min', required: false, category: 'growing', target: 'profile' },
   { key: 'transplant_weeks_after_last_frost_max', label: 'Transplant Week Max', required: false, category: 'growing', target: 'profile' },
-  { key: 'direct_sow_weeks_min', label: 'Direct Sow Week Min', required: false, category: 'growing', target: 'profile' },
-  { key: 'direct_sow_weeks_max', label: 'Direct Sow Week Max', required: false, category: 'growing', target: 'profile' },
-  { key: 'spacing_recommended', label: 'Spacing (inches)', required: false, category: 'growing', target: 'profile' },
-  { key: 'spacing_min', label: 'Spacing Min', required: false, category: 'growing', target: 'profile' },
-  { key: 'spacing_max', label: 'Spacing Max', required: false, category: 'growing', target: 'profile' },
+  { key: 'direct_sow_weeks_relative_to_last_frost_min', label: 'Direct Sow Week Min', required: false, category: 'growing', target: 'profile' },
+  { key: 'direct_sow_weeks_relative_to_last_frost_max', label: 'Direct Sow Week Max', required: false, category: 'growing', target: 'profile' },
+  { key: 'spacing_in_min', label: 'Spacing Min (inches)', required: false, category: 'growing', target: 'profile' },
+  { key: 'spacing_in_max', label: 'Spacing Max (inches)', required: false, category: 'growing', target: 'profile' },
   
-  // Variety Characteristics
+  // Tomato-specific & Unified Fields
+  { key: 'tomato_size', label: 'Tomato Size', required: false, category: 'characteristics', target: 'both' },
+  { key: 'tomato_color', label: 'Tomato Color', required: false, category: 'characteristics', target: 'both' },
+  { key: 'plant_growth', label: 'Plant Growth', required: false, category: 'characteristics', target: 'both' },
+  { key: 'leaf_characteristics', label: 'Leaf Characteristics', required: false, category: 'characteristics', target: 'both' },
+  { key: 'breeder', label: 'Breeder', required: false, category: 'characteristics', target: 'both' },
+  { key: 'country_of_origin', label: 'Country of Origin', required: false, category: 'characteristics', target: 'both' },
+  
+  // Other Characteristics
   { key: 'fruit_color', label: 'Fruit Color', required: false, category: 'characteristics', target: 'profile' },
   { key: 'fruit_shape', label: 'Fruit Shape', required: false, category: 'characteristics', target: 'profile' },
   { key: 'fruit_size', label: 'Fruit Size', required: false, category: 'characteristics', target: 'profile' },
   { key: 'pod_color', label: 'Pod Color', required: false, category: 'characteristics', target: 'profile' },
   { key: 'pod_shape', label: 'Pod Shape', required: false, category: 'characteristics', target: 'profile' },
   { key: 'pod_size', label: 'Pod Size', required: false, category: 'characteristics', target: 'profile' },
-  { key: 'scoville_min', label: 'Scoville Min', required: false, category: 'characteristics', target: 'profile' },
-  { key: 'scoville_max', label: 'Scoville Max', required: false, category: 'characteristics', target: 'profile' },
+  { key: 'heat_scoville_min', label: 'Scoville Min', required: false, category: 'characteristics', target: 'profile' },
+  { key: 'heat_scoville_max', label: 'Scoville Max', required: false, category: 'characteristics', target: 'profile' },
   { key: 'flavor_profile', label: 'Flavor Profile', required: false, category: 'characteristics', target: 'profile' },
-  { key: 'uses', label: 'Uses', required: false, category: 'characteristics', target: 'profile' },
   
   // Other
   { key: 'sun_requirement', label: 'Sun (full_sun/partial_sun)', required: false, category: 'requirements', target: 'profile' },
   { key: 'water_requirement', label: 'Water (low/moderate/high)', required: false, category: 'requirements', target: 'profile' },
-  { key: 'growth_habit', label: 'Growth Habit', required: false, category: 'characteristics', target: 'profile' },
+  { key: 'growth_habit', label: 'Growth Habit (legacy)', required: false, category: 'characteristics', target: 'profile' },
   { key: 'trellis_required', label: 'Trellis Required (true/false)', required: false, category: 'requirements', target: 'profile' },
   { key: 'container_friendly', label: 'Container Friendly (true/false)', required: false, category: 'requirements', target: 'profile' },
-  { key: 'seed_line_type', label: 'Seed Type (heirloom/hybrid)', required: false, category: 'characteristics', target: 'profile' },
-  { key: 'breeder_or_origin', label: 'Breeder/Origin', required: false, category: 'characteristics', target: 'profile' },
 ];
 
 export default function ImportSpreadsheetDialog({ open, onOpenChange, onSuccess }) {
@@ -189,9 +192,10 @@ export default function ImportSpreadsheetDialog({ open, onOpenChange, onSuccess 
 
             const commonName = mappings.common_name ? row[mappings.common_name] : null;
 
-            // Try to find existing profile
+            // UPSERT LOGIC: Find existing profile OR seed lot by variety name
             const user = await base44.auth.me();
             let profile = null;
+            let existingSeedLot = null;
 
             const existingProfiles = await base44.entities.PlantProfile.filter({
               variety_name: varietyName,
@@ -200,51 +204,77 @@ export default function ImportSpreadsheetDialog({ open, onOpenChange, onSuccess 
 
             if (existingProfiles.length > 0) {
               profile = existingProfiles[0];
-            } else {
-              // Create new profile with ALL mapped fields
-              const profileData = {
-                variety_name: varietyName,
-                common_name: commonName || 'Unknown',
-                source_type: 'user_private',
-                is_custom: true
-              };
               
-              // Add all profile fields from mappings
-              COLUMN_MAPPINGS.filter(m => m.target === 'profile' && mappings[m.key]).forEach(mapping => {
-                const value = row[mappings[mapping.key]];
-                if (value && value.trim()) {
-                  // Convert boolean strings
-                  if (mapping.key === 'trellis_required' || mapping.key === 'container_friendly') {
-                    profileData[mapping.key] = value.toLowerCase() === 'true';
-                  } else if (mapping.key.includes('days_to_maturity') || mapping.key.includes('weeks') || mapping.key.includes('spacing') || mapping.key.includes('scoville')) {
-                    // Convert to number
-                    const num = parseFloat(value);
-                    if (!isNaN(num)) profileData[mapping.key] = num;
-                  } else {
-                    profileData[mapping.key] = value;
-                  }
-                }
+              // Check if seed lot already exists for this profile
+              const existingSeeds = await base44.entities.SeedLot.filter({
+                plant_profile_id: profile.id,
+                created_by: user.email
               });
-              
+              if (existingSeeds.length > 0) {
+                existingSeedLot = existingSeeds[0];
+              }
+            }
+
+            // Build profile data from CSV
+            const profileData = {
+              variety_name: varietyName,
+              common_name: commonName || 'Unknown',
+              source_type: 'user_private'
+            };
+            
+            // Add all mapped profile fields
+            COLUMN_MAPPINGS.filter(m => (m.target === 'profile' || m.target === 'both') && mappings[m.key]).forEach(mapping => {
+              const value = row[mappings[mapping.key]];
+              if (value && value.trim()) {
+                if (mapping.key === 'trellis_required' || mapping.key === 'container_friendly') {
+                  profileData[mapping.key] = value.toLowerCase() === 'true';
+                } else if (mapping.key.includes('days_to_maturity') || mapping.key.includes('weeks') || mapping.key.includes('spacing') || mapping.key.includes('scoville') || mapping.key.includes('height')) {
+                  const num = parseFloat(value);
+                  if (!isNaN(num)) profileData[mapping.key] = num;
+                } else {
+                  profileData[mapping.key] = value;
+                }
+              }
+            });
+
+            // UPSERT profile: update if exists, create if not
+            if (profile) {
+              await base44.entities.PlantProfile.update(profile.id, profileData);
+            } else {
               profile = await base44.entities.PlantProfile.create(profileData);
             }
 
-            // Create seed lot
+            // Build seed lot data from CSV
             const seedData = {
-              plant_profile_id: profile.id,
-              quantity: mappings.quantity ? parseInt(row[mappings.quantity]) || null : null,
-              unit: mappings.unit ? row[mappings.unit] : 'seeds',
-              year_acquired: mappings.year_acquired ? parseInt(row[mappings.year_acquired]) || null : null,
-              packed_for_year: mappings.packed_for_year ? parseInt(row[mappings.packed_for_year]) || null : null,
-              source_vendor_name: mappings.source_vendor_name ? row[mappings.source_vendor_name] : null,
-              source_vendor_url: mappings.source_vendor_url ? row[mappings.source_vendor_url] : null,
-              storage_location: mappings.storage_location ? row[mappings.storage_location] : null,
-              lot_notes: mappings.lot_notes ? row[mappings.lot_notes] : null,
+              plant_profile_id: profile.id
             };
 
-            await base44.entities.SeedLot.create(seedData);
+            // Add all mapped seed fields
+            COLUMN_MAPPINGS.filter(m => (m.target === 'seed' || m.target === 'both') && mappings[m.key]).forEach(mapping => {
+              const value = row[mappings[mapping.key]];
+              if (value && value.trim()) {
+                if (mapping.key === 'quantity' || mapping.key === 'year_acquired' || mapping.key === 'packed_for_year') {
+                  const num = parseInt(value);
+                  if (!isNaN(num)) seedData[mapping.key] = num;
+                } else if (mapping.key === 'tags') {
+                  // Split comma-separated tags
+                  seedData[mapping.key] = value.split(',').map(t => t.trim()).filter(Boolean);
+                } else {
+                  seedData[mapping.key] = value;
+                }
+              }
+            });
+
+            // UPSERT seed lot: update if exists, create if not
+            if (existingSeedLot) {
+              await base44.entities.SeedLot.update(existingSeedLot.id, seedData);
+              setStatusLog(prev => [...prev, `Row ${i + batch.indexOf(row) + 1}: Updated "${varietyName}"`]);
+            } else {
+              await base44.entities.SeedLot.create(seedData);
+              setStatusLog(prev => [...prev, `Row ${i + batch.indexOf(row) + 1}: Imported "${varietyName}"`]);
+            }
+            
             totalInserted++;
-            setStatusLog(prev => [...prev, `Row ${i + batch.indexOf(row) + 1}: Imported "${varietyName}"`]);
             setResults({ inserted: totalInserted, skipped: totalSkipped, errors: errorsList });
           } catch (error) {
             totalSkipped++;
@@ -276,8 +306,8 @@ export default function ImportSpreadsheetDialog({ open, onOpenChange, onSuccess 
   const handleDownloadTemplate = () => {
     const headers = COLUMN_MAPPINGS.map(c => c.key).join(',');
     const example = [
-      'Cherokee Purple,Tomato,Indeterminate heirloom tomato,25,seeds,2024,2024,Botanical Interests,https://example.com,Fridge Drawer 1,Great variety,80,75,85,6,0,2,-2,4,24,18,30,Dark pink,Round,Large,,,,,,,Sweet and complex,Fresh eating/canning,full_sun,moderate,indeterminate,false,true,heirloom,Unknown origin',
-      'Carolina Reaper,Pepper,Super hot pepper,50,seeds,2023,2023,PepperSeeds.net,https://pepperseeds.net,Seed Box,Extremely hot!,90,,,8,2,4,,,18,,,,,Red,Wrinkled,Medium,1500000,2200000,Intense fruity,Hot sauce,full_sun,moderate,bush,false,true,hybrid,Ed Currie'
+      'Cherokee Purple,Tomato,Indeterminate heirloom tomato,25,seeds,2024,2024,Botanical Interests,https://example.com,Fridge Drawer 1,Great variety,antho;favorite,80,6,0,2,-2,4,18,30,Large,Dark pink,indeterminate,Potato Leaf,Unknown,USA,Dark pink,Round,Large,,,,,Sweet and complex,full_sun,moderate,indeterminate,false,true',
+      'Carolina Reaper,Pepper,Super hot pepper,50,seeds,2023,2023,PepperSeeds.net,https://pepperseeds.net,Seed Box,Extremely hot!,superhot,90,8,2,4,,,18,,,,,bush,,Ed Currie,USA,,,Red,Wrinkled,Medium,1500000,2200000,Intense fruity,full_sun,moderate,bush,false,true'
     ].join('\n');
     const csv = headers + '\n' + example;
 
@@ -316,9 +346,16 @@ export default function ImportSpreadsheetDialog({ open, onOpenChange, onSuccess 
         {step === 1 && (
           <div className="space-y-4">
             <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
-              <p className="text-sm text-blue-800">
-                Upload your Excel (.csv) or CSV file with seed inventory. We'll help you map columns to our fields.
+              <p className="text-sm text-blue-800 font-semibold mb-2">
+                📋 Import Guide
               </p>
+              <ul className="text-sm text-blue-800 space-y-1">
+                <li>• Download template to see all available fields</li>
+                <li>• Only "Variety Name" is required, all other fields optional</li>
+                <li>• Existing seeds will be updated with new data (no duplicates created)</li>
+                <li>• Leave fields blank to keep existing values</li>
+                <li>• For tags, use comma-separated values (e.g., "antho,favorite")</li>
+              </ul>
             </div>
 
             <Button

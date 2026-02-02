@@ -341,7 +341,12 @@ export default function PlotCanvas({ garden, plot, activeSeason, seasonId, onPlo
     return 0;
   };
 
+  const [addingItems, setAddingItems] = useState(false);
+
   const handleAddItem = async () => {
+    if (addingItems) return; // Prevent double-click
+    setAddingItems(true);
+    
     const itemType = ITEM_TYPES.find(t => t.value === newItem.item_type);
     let width, height;
 
@@ -449,6 +454,8 @@ export default function PlotCanvas({ garden, plot, activeSeason, seasonId, onPlo
     } catch (error) {
       console.error('Error adding item:', error);
       toast.error('Failed to add item');
+    } finally {
+      setAddingItems(false);
     }
   };
 
@@ -573,15 +580,19 @@ export default function PlotCanvas({ garden, plot, activeSeason, seasonId, onPlo
     }
   };
 
-  const handleCanvasMouseDown = (e) => {
+  const handleInteractionStart = (e) => {
     // Ignore clicks on buttons/controls
     if (e.target.closest('button') || e.target.closest('.plot-item-controls')) {
       return;
     }
 
+    // Handle both mouse and touch events
+    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+    const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+
     const rect = canvasRef.current.getBoundingClientRect();
-    const x = (e.clientX - rect.left) / zoom;
-    const y = (e.clientY - rect.top) / zoom;
+    const x = (clientX - rect.left) / zoom;
+    const y = (clientY - rect.top) / zoom;
 
     const clickedItem = [...items].reverse().find(item => {
       return x >= item.x && x <= item.x + item.width &&
@@ -592,23 +603,30 @@ export default function PlotCanvas({ garden, plot, activeSeason, seasonId, onPlo
       setSelectedItem(clickedItem);
       if (onItemSelect) onItemSelect(clickedItem);
       setDraggingItem(clickedItem);
-      setDragStartPos({ x: e.clientX, y: e.clientY });
+      setDragStartPos({ x: clientX, y: clientY });
       setDragOffset({ x: x - clickedItem.x, y: y - clickedItem.y });
 
-      // Prevent text selection
+      // Prevent text selection and scrolling
       document.body.style.userSelect = 'none';
+      if (e.touches) {
+        e.preventDefault();
+      }
     } else {
       setSelectedItem(null);
       if (onItemSelect) onItemSelect(null);
     }
   };
 
-  const handleCanvasMouseMove = (e) => {
+  const handleInteractionMove = (e) => {
     if (!draggingItem) return;
 
+    // Handle both mouse and touch events
+    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+    const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+
     // Check if moved threshold (3px) - differentiate click vs drag
-    const dx = e.clientX - dragStartPos.x;
-    const dy = e.clientY - dragStartPos.y;
+    const dx = clientX - dragStartPos.x;
+    const dy = clientY - dragStartPos.y;
     const distance = Math.sqrt(dx * dx + dy * dy);
     
     if (distance < 3) return; // Not dragging yet
@@ -619,8 +637,8 @@ export default function PlotCanvas({ garden, plot, activeSeason, seasonId, onPlo
     }
 
     const rect = canvasRef.current.getBoundingClientRect();
-    let x = (e.clientX - rect.left) / zoom - dragOffset.x;
-    let y = (e.clientY - rect.top) / zoom - dragOffset.y;
+    let x = (clientX - rect.left) / zoom - dragOffset.x;
+    let y = (clientY - rect.top) / zoom - dragOffset.y;
 
     // In chaos mode, only snap if explicitly enabled
     if (snapToGrid && !garden?.chaos_mode) {
@@ -640,9 +658,14 @@ export default function PlotCanvas({ garden, plot, activeSeason, seasonId, onPlo
     setItems(prevItems => prevItems.map(i => 
       i.id === draggingItem.id ? { ...i, x, y } : i
     ));
+
+    // Prevent scrolling on touch
+    if (e.touches) {
+      e.preventDefault();
+    }
   };
 
-  const handleCanvasMouseUp = async () => {
+  const handleInteractionEnd = async () => {
     if (draggingItem) {
       const item = items.find(i => i.id === draggingItem.id);
 
@@ -928,9 +951,9 @@ export default function PlotCanvas({ garden, plot, activeSeason, seasonId, onPlo
   };
 
   return (
-    <div className="flex-1 flex gap-4 mt-4 min-h-0">
+    <div className="flex-1 flex flex-col lg:flex-row gap-4 mt-4 min-h-0">
       {/* Left Toolbar */}
-        <Card className="w-64 flex-shrink-0 h-fit">
+        <Card className="w-full lg:w-64 flex-shrink-0 h-fit relative z-10">
           <CardContent className="p-4 space-y-2">
           <Button 
             onClick={() => setShowAddItem(true)}
@@ -1072,7 +1095,7 @@ export default function PlotCanvas({ garden, plot, activeSeason, seasonId, onPlo
       </Card>
 
       {/* Canvas */}
-      <div className="flex-1 bg-gray-50 rounded-xl overflow-auto p-8">
+      <div className="flex-1 bg-gray-50 rounded-xl overflow-auto p-4 lg:p-8 relative z-0">
         {/* Status Legend */}
         <div className="mb-4 flex items-center gap-4 text-xs">
           <span className="font-medium text-gray-600">Status:</span>
@@ -1092,16 +1115,21 @@ export default function PlotCanvas({ garden, plot, activeSeason, seasonId, onPlo
         
         <div
           ref={canvasRef}
-          className="relative bg-white shadow-lg mx-auto plot-canvas select-none"
+          className="relative bg-white shadow-lg mx-auto plot-canvas select-none touch-none"
           style={{
             width: plot.width * zoom,
             height: plot.height * zoom,
-            backgroundColor: plot.background_color || '#ffffff'
+            backgroundColor: plot.background_color || '#ffffff',
+            touchAction: 'none'
           }}
-          onMouseDown={handleCanvasMouseDown}
-          onMouseMove={handleCanvasMouseMove}
-          onMouseUp={handleCanvasMouseUp}
-          onMouseLeave={handleCanvasMouseUp}
+          onMouseDown={handleInteractionStart}
+          onMouseMove={handleInteractionMove}
+          onMouseUp={handleInteractionEnd}
+          onMouseLeave={handleInteractionEnd}
+          onTouchStart={handleInteractionStart}
+          onTouchMove={handleInteractionMove}
+          onTouchEnd={handleInteractionEnd}
+          onTouchCancel={handleInteractionEnd}
         >
           {/* Grid */}
           {plot.grid_enabled && !showSFGGrid && (
@@ -1485,8 +1513,19 @@ export default function PlotCanvas({ garden, plot, activeSeason, seasonId, onPlo
             <Button variant="outline" onClick={() => { setShowAddItem(false); resetNewItem(); }}>
               Cancel
             </Button>
-            <Button onClick={handleAddItem} className="bg-emerald-600 hover:bg-emerald-700">
-              {newItem.createMultiple ? `Create ${newItem.count}` : 'Add Item'}
+            <Button 
+              onClick={handleAddItem} 
+              disabled={addingItems}
+              className="bg-emerald-600 hover:bg-emerald-700"
+            >
+              {addingItems ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                  Creating...
+                </>
+              ) : (
+                newItem.createMultiple ? `Create ${newItem.count}` : 'Add Item'
+              )}
             </Button>
           </DialogFooter>
         </DialogContent>
