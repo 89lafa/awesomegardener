@@ -61,36 +61,56 @@ export default function IndoorGrowSpaces() {
       }, '-created_date');
       
       // Load stats for each space
-      const spacesWithStats = await Promise.all(spacesData.map(async (space) => {
-        const trays = await base44.entities.SeedTray.filter({ indoor_space_id: space.id });
-        const containers = await base44.entities.IndoorContainer.filter({ indoor_space_id: space.id });
-        const racks = await base44.entities.GrowRack.filter({ indoor_space_id: space.id });
-        
-        // Count active seedlings
-        let activeSeedlings = 0;
-        for (const tray of trays) {
-          const cells = await base44.entities.TrayCell.filter({ 
-            tray_id: tray.id,
-            status: { $in: ['seeded', 'germinated', 'growing'] }
-          });
-          activeSeedlings += cells.length;
+      const spacesWithStats = spacesData.map(space => ({
+        ...space,
+        stats: {
+          racks: 0,
+          trays: 0,
+          containers: 0,
+          activeSeedlings: 0,
+          activePlants: 0
         }
-        
-        // Count plants in containers
-        const activePlants = containers.filter(c => c.status === 'growing' || c.status === 'planted').length;
-        
-        return {
-          ...space,
-          stats: {
-            racks: racks.length,
-            trays: trays.length,
-            containers: containers.length,
-            activeSeedlings,
-            activePlants
-          }
-        };
       }));
-      
+
+      // Then fetch actual stats (non-blocking)
+      Promise.all(spacesData.map(async (space) => {
+        try {
+          const [trays, containers, racks] = await Promise.all([
+            base44.entities.SeedTray.filter({ indoor_space_id: space.id }),
+            base44.entities.IndoorContainer.filter({ indoor_space_id: space.id }),
+            base44.entities.GrowRack.filter({ indoor_space_id: space.id })
+          ]);
+          
+          let activeSeedlings = 0;
+          for (const tray of trays) {
+            const cells = await base44.entities.TrayCell.filter({ 
+              tray_id: tray.id,
+              status: { $in: ['seeded', 'germinated', 'growing'] }
+            });
+            activeSeedlings += cells.length;
+          }
+          
+          const activePlants = containers.filter(c => c.status === 'growing' || c.status === 'planted').length;
+          
+          setSpaces(prev => prev.map(s => 
+            s.id === space.id 
+              ? {
+                  ...s,
+                  stats: {
+                    racks: racks.length,
+                    trays: trays.length,
+                    containers: containers.length,
+                    activeSeedlings,
+                    activePlants
+                  }
+                }
+              : s
+          ));
+        } catch (error) {
+          console.error('Error loading stats for space:', space.id, error);
+        }
+      }));
+
       setSpaces(spacesWithStats);
     } catch (error) {
       console.error('Error loading spaces:', error);
