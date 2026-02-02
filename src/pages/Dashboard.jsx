@@ -18,6 +18,7 @@ import {
 import { createPageUrl } from '@/utils';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
+import { WeatherWidget } from '@/components/weather/WeatherWidget';
 
 export default function Dashboard() {
   const navigate = useNavigate();
@@ -159,6 +160,11 @@ export default function Dashboard() {
             </Button>
           </CardContent>
         </Card>
+      </div>
+
+      {/* Weather Widget */}
+      <div>
+        <WeatherWidget />
       </div>
 
       {/* Quick Access Grid */}

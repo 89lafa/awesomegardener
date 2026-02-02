@@ -6,10 +6,16 @@ import { base44 } from '@/api/base44Client';
 import { toast } from 'sonner';
 
 const RACK_PRESETS = [
-  { name: '6ft × 3ft (Standard)', width: 6, depth: 3 },
-  { name: '4ft × 2ft (Compact)', width: 4, depth: 2 },
-  { name: '8ft × 4ft (Large)', width: 8, depth: 4 },
+  { name: '4ft × 2ft (Standard)', width: 4, depth: 2, trayCapacity: 4 },
+  { name: '6ft × 2ft (Large)', width: 6, depth: 2, trayCapacity: 6 },
+  { name: '8ft × 2ft (Extra Large)', width: 8, depth: 2, trayCapacity: 8 },
 ];
+
+// Calculate tray capacity: trays are 1ft wide × 2ft deep
+// So 2ft depth means 1 row deep, width determines columns
+const calculateTrayCapacity = (widthFt) => {
+  return Math.floor(widthFt); // 4ft = 4 trays, 6ft = 6 trays, etc
+};
 
 export function AddRackDialog({ isOpen, onClose, spaceId, onRackAdded }) {
   const [rackName, setRackName] = useState('');
@@ -38,6 +44,7 @@ export function AddRackDialog({ isOpen, onClose, spaceId, onRackAdded }) {
       });
 
       // Create shelves
+      const capacity = calculateTrayCapacity(width);
       for (let i = 1; i <= numShelves; i++) {
         await base44.entities.GrowShelf.create({
           rack_id: rack.id,
@@ -45,7 +52,7 @@ export function AddRackDialog({ isOpen, onClose, spaceId, onRackAdded }) {
           shelf_number: i,
           width_ft: width,
           depth_ft: depth,
-          max_trays: width >= 4 ? 6 : 4
+          max_trays: capacity
         });
       }
 
@@ -95,6 +102,7 @@ export function AddRackDialog({ isOpen, onClose, spaceId, onRackAdded }) {
                   }`}
                 >
                   <p className="font-medium text-sm">{preset.name}</p>
+                  <p className="text-xs text-gray-600 mt-1">{preset.trayCapacity} trays per shelf</p>
                 </button>
               ))}
             </div>
@@ -144,7 +152,7 @@ export function AddRackDialog({ isOpen, onClose, spaceId, onRackAdded }) {
 
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-sm text-blue-900">
             <p className="font-medium mb-1">Tray capacity:</p>
-            <p>{width >= 4 ? 6 : 4} trays per shelf (each ~2ft long)</p>
+            <p>{calculateTrayCapacity(width)} trays per shelf (1ft wide × 2ft deep each)</p>
           </div>
 
           <div className="flex gap-2 pt-4">

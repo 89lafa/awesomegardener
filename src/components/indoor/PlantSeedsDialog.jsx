@@ -2,32 +2,53 @@ import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { base44 } from '@/api/base44Client';
 import { toast } from 'sonner';
-import { Search, Loader2 } from 'lucide-react';
+import { Search, Loader2, Plus } from 'lucide-react';
 
 export function PlantSeedsDialog({ isOpen, onClose, trayId, trayName, onSeedPlanted }) {
   const [seedLots, setSeedLots] = useState([]);
+  const [growListItems, setGrowListItems] = useState([]);
   const [loadingSeeds, setLoadingSeeds] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedLot, setSelectedLot] = useState(null);
   const [selectedCells, setSelectedCells] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [activeTab, setActiveTab] = useState('stash');
 
   useEffect(() => {
     if (isOpen) {
-      loadSeedLots();
+      loadData();
     }
   }, [isOpen]);
 
-  const loadSeedLots = async () => {
+  const loadData = async () => {
     try {
       setLoadingSeeds(true);
-      const lots = await base44.entities.SeedLot.filter({}, '-updated_date');
+      const user = await base44.auth.me();
+      
+      // Load seed lots from stash
+      const lots = await base44.entities.SeedLot.filter({
+        created_by: user.email
+      }, '-updated_date');
       setSeedLots(lots);
+
+      // Load grow list items
+      const lists = await base44.entities.GrowList.filter({
+        created_by: user.email
+      });
+      
+      const allItems = [];
+      for (const list of lists) {
+        if (list.items && Array.isArray(list.items)) {
+          allItems.push(...list.items.map(item => ({ ...item, source_list: list.name })));
+        }
+      }
+      setGrowListItems(allItems);
     } catch (error) {
-      console.error('Error loading seed lots:', error);
-      toast.error('Failed to load seed lots');
+      console.error('Error loading data:', error);
+      toast.error('Failed to load data');
     } finally {
       setLoadingSeeds(false);
     }
@@ -35,7 +56,7 @@ export function PlantSeedsDialog({ isOpen, onClose, trayId, trayName, onSeedPlan
 
   const handlePlantSeeds = async () => {
     if (!selectedLot) {
-      toast.error('Please select a seed lot');
+      toast.error('Please select a seed');
       return;
     }
     if (selectedCells.length === 0) {
@@ -54,6 +75,7 @@ export function PlantSeedsDialog({ isOpen, onClose, trayId, trayName, onSeedPlan
         if (cells.length > 0) {
           await base44.entities.TrayCell.update(cells[0].id, {
             user_seed_id: selectedLot.id,
+            variety_id: selectedLot.variety_id,
             status: 'seeded',
             seeded_date: new Date().toISOString().split('T')[0]
           });
@@ -84,9 +106,14 @@ export function PlantSeedsDialog({ isOpen, onClose, trayId, trayName, onSeedPlan
     lot.lot_number?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
+  const filteredGrowList = growListItems.filter(item =>
+    item.variety_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    item.plant_type?.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-2xl">
+      <DialogContent className="max-w-3xl">
         <DialogHeader>
           <DialogTitle>Plant Seeds in {trayName}</DialogTitle>
         </DialogHeader>
@@ -97,42 +124,91 @@ export function PlantSeedsDialog({ isOpen, onClose, trayId, trayName, onSeedPlan
           </div>
         ) : (
           <div className="space-y-6">
-            {/* Select Seed Lot */}
-            <div>
-              <label className="block text-sm font-medium mb-2">Select Seed Lot</label>
-              <div className="relative mb-2">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                <Input
-                  placeholder="Search seed lots..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10"
-                />
-              </div>
+            {/* Tabs for Seed Source */}
+            <Tabs value={activeTab} onValueChange={setActiveTab}>
+              <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="stash">My Seed Stash</TabsTrigger>
+                <TabsTrigger value="grow-list">Grow Lists</TabsTrigger>
+              </TabsList>
 
-              <div className="max-h-48 overflow-y-auto space-y-2 border rounded-lg p-2">
-                {filteredLots.length === 0 ? (
-                  <p className="text-sm text-gray-500 p-4 text-center">No seed lots found</p>
-                ) : (
-                  filteredLots.map(lot => (
-                    <button
-                      key={lot.id}
-                      onClick={() => setSelectedLot(lot)}
-                      className={`w-full p-3 border rounded-lg text-left transition ${
-                        selectedLot?.id === lot.id
-                          ? 'border-emerald-600 bg-emerald-50'
-                          : 'border-gray-300 hover:border-emerald-400'
-                      }`}
-                    >
-                      <p className="font-medium text-sm">{lot.custom_label || 'Unlabeled'}</p>
-                      <p className="text-xs text-gray-600">
-                        Lot: {lot.lot_number} • {lot.quantity} {lot.unit}
-                      </p>
-                    </button>
-                  ))
-                )}
-              </div>
-            </div>
+              {/* Seed Stash Tab */}
+              <TabsContent value="stash" className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium mb-2">Search Seeds</label>
+                  <div className="relative mb-2">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                    <Input
+                      placeholder="Search by name or lot number..."
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      className="pl-10"
+                    />
+                  </div>
+
+                  <div className="max-h-48 overflow-y-auto space-y-2 border rounded-lg p-2">
+                    {filteredLots.length === 0 ? (
+                      <p className="text-sm text-gray-500 p-4 text-center">No seeds in your stash</p>
+                    ) : (
+                      filteredLots.map(lot => (
+                        <button
+                          key={lot.id}
+                          onClick={() => setSelectedLot({ ...lot, source: 'stash' })}
+                          className={`w-full p-3 border rounded-lg text-left transition ${
+                            selectedLot?.id === lot.id && selectedLot?.source === 'stash'
+                              ? 'border-emerald-600 bg-emerald-50'
+                              : 'border-gray-300 hover:border-emerald-400'
+                          }`}
+                        >
+                          <p className="font-medium text-sm">{lot.custom_label || 'Unlabeled'}</p>
+                          <p className="text-xs text-gray-600 mt-1">
+                            Lot: {lot.lot_number} • {lot.quantity} {lot.unit}
+                          </p>
+                        </button>
+                      ))
+                    )}
+                  </div>
+                </div>
+              </TabsContent>
+
+              {/* Grow Lists Tab */}
+              <TabsContent value="grow-list" className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium mb-2">Search Grow List Items</label>
+                  <div className="relative mb-2">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                    <Input
+                      placeholder="Search by variety or plant type..."
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      className="pl-10"
+                    />
+                  </div>
+
+                  <div className="max-h-48 overflow-y-auto space-y-2 border rounded-lg p-2">
+                    {filteredGrowList.length === 0 ? (
+                      <p className="text-sm text-gray-500 p-4 text-center">No items in grow lists</p>
+                    ) : (
+                      filteredGrowList.map((item, idx) => (
+                        <button
+                          key={`${item.source_list}-${idx}`}
+                          onClick={() => setSelectedLot({ ...item, source: 'grow-list', id: `${item.source_list}-${idx}` })}
+                          className={`w-full p-3 border rounded-lg text-left transition ${
+                            selectedLot?.source === 'grow-list' && selectedLot?.id === `${item.source_list}-${idx}`
+                              ? 'border-emerald-600 bg-emerald-50'
+                              : 'border-gray-300 hover:border-emerald-400'
+                          }`}
+                        >
+                          <p className="font-medium text-sm">{item.variety_name}</p>
+                          <p className="text-xs text-gray-600 mt-1">
+                            {item.plant_type} • from "{item.source_list}"
+                          </p>
+                        </button>
+                      ))
+                    )}
+                  </div>
+                </div>
+              </TabsContent>
+            </Tabs>
 
             {/* Select Cells */}
             <div>
@@ -141,7 +217,7 @@ export function PlantSeedsDialog({ isOpen, onClose, trayId, trayName, onSeedPlan
               </label>
               <div className="bg-gray-50 border rounded-lg p-4">
                 <div className="text-sm text-gray-600 mb-3">
-                  Click cells to plant. Red = selected.
+                  Click cells to select. Red = selected, Green = already planted.
                 </div>
                 <TrayCellGrid
                   trayId={trayId}
