@@ -557,7 +557,7 @@ export default function MyGarden() {
 
             {/* Selected Item Detail View */}
             {selectedItem && (
-              <Card className="mt-6">
+              <Card className="mt-6 lg:mb-0 mb-32">
                 <CardContent className="p-6">
                   <div className="flex items-start justify-between mb-4">
                     <div>

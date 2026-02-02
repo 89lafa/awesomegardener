@@ -22,6 +22,7 @@ import {
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { AlertCircle, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
+import { Combobox } from '@/components/ui/combobox';
 
 export default function AddVarietyDialog({ plantType, open, onOpenChange, onSuccess, userRole }) {
   const [formData, setFormData] = useState({
