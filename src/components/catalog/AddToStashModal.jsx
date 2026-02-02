@@ -139,7 +139,7 @@ export default function AddToStashModal({ open, onOpenChange, variety, plantType
         console.log('[AddToStashModal] Created PlantProfile with variety_id linkage:', { profileId, varietyId: variety.id });
       }
 
-      // Check for duplicate SeedLots before creating
+      // Check for duplicate SeedLots before creating (user-specific)
       const user = await base44.auth.me();
       const existingSeedLots = await base44.entities.SeedLot.filter({
         plant_profile_id: profileId,

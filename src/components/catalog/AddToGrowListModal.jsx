@@ -37,7 +37,8 @@ export default function AddToGrowListModal({ open, onOpenChange, variety, plantT
 
   const loadGrowLists = async () => {
     try {
-      const lists = await base44.entities.GrowList.list('-created_date');
+      const user = await base44.auth.me();
+      const lists = await base44.entities.GrowList.filter({ created_by: user.email }, '-created_date');
       setGrowLists(lists);
     } catch (error) {
       console.error('Error loading grow lists:', error);
