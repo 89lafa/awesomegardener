@@ -14,6 +14,7 @@ import {
   Trash2,
   Loader2
 } from 'lucide-react';
+import { createPageUrl } from '@/utils';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
@@ -24,6 +25,7 @@ export default function Notifications() {
   const [loading, setLoading] = useState(true);
   const [notifications, setNotifications] = useState([]);
   const [tasks, setTasks] = useState([]);
+  const [adminItems, setAdminItems] = useState([]);
   const [filter, setFilter] = useState('all'); // all, unread
 
   useEffect(() => {
@@ -35,16 +37,92 @@ export default function Notifications() {
       const userData = await base44.auth.me();
       setUser(userData);
 
-      const [notificationsData, tasksData] = await Promise.all([
+      const promises = [
         base44.entities.Notification.filter({ user_email: userData.email }, '-created_date'),
         base44.entities.Task.filter({ 
           created_by: userData.email,
           status: 'open'
         }, 'due_date')
-      ]);
+      ];
 
-      setNotifications(notificationsData);
-      setTasks(tasksData);
+      // Load admin-specific items
+      if (userData.role === 'admin' || userData.role === 'moderator') {
+        promises.push(
+          base44.entities.VarietySuggestion.filter({ status: 'pending' }),
+          base44.entities.FeatureRequest.filter({ status: 'submitted' }),
+          base44.entities.VarietyImageSubmission.filter({ status: 'pending' }),
+          base44.entities.VarietyChangeRequest.filter({ status: 'pending' })
+        );
+
+        // Admin-only: User reports
+        if (userData.role === 'admin') {
+          promises.push(base44.entities.ContentReport.filter({ status: 'open' }));
+        }
+      }
+
+      const results = await Promise.all(promises);
+      
+      setNotifications(results[0]);
+      setTasks(results[1]);
+
+      // Combine admin items
+      if (userData.role === 'admin' || userData.role === 'moderator') {
+        const items = [];
+        
+        // Variety suggestions
+        results[2]?.forEach(item => items.push({
+          id: item.id,
+          type: 'variety_suggestion',
+          title: `New Variety Suggestion: ${item.variety_name || 'Unknown'}`,
+          body: `Submitted by user`,
+          created_date: item.created_date,
+          link_url: createPageUrl('EditorReviewQueue')
+        }));
+
+        // Feature requests
+        results[3]?.forEach(item => items.push({
+          id: item.id,
+          type: 'feature_request',
+          title: `Feature Request: ${item.title}`,
+          body: item.description?.substring(0, 100),
+          created_date: item.created_date,
+          link_url: createPageUrl('FeatureRequests')
+        }));
+
+        // Image submissions
+        results[4]?.forEach(item => items.push({
+          id: item.id,
+          type: 'image_submission',
+          title: `Image Submission for Review`,
+          body: `Variety: ${item.variety_name || 'Unknown'}`,
+          created_date: item.created_date,
+          link_url: createPageUrl('ImageSubmissions')
+        }));
+
+        // Change requests
+        results[5]?.forEach(item => items.push({
+          id: item.id,
+          type: 'change_request',
+          title: `Variety Change Request`,
+          body: `Changes to ${item.variety_name || 'variety'}`,
+          created_date: item.created_date,
+          link_url: createPageUrl('ChangeRequests')
+        }));
+
+        // User reports (admin only)
+        if (userData.role === 'admin' && results[6]) {
+          results[6].forEach(item => items.push({
+            id: item.id,
+            type: 'content_report',
+            title: `Content Report: ${item.report_type}`,
+            body: item.reason?.substring(0, 100),
+            created_date: item.created_date,
+            link_url: createPageUrl('UserReports')
+          }));
+        }
+
+        setAdminItems(items.sort((a, b) => new Date(b.created_date) - new Date(a.created_date)));
+      }
     } catch (error) {
       console.error('Error loading notifications:', error);
     } finally {
@@ -147,6 +225,11 @@ export default function Notifications() {
           <TabsTrigger value="tasks" className="flex-1">
             Tasks {tasks.length > 0 && <Badge className="ml-2" variant="outline">{tasks.length}</Badge>}
           </TabsTrigger>
+          {(user?.role === 'admin' || user?.role === 'moderator') && (
+            <TabsTrigger value="admin" className="flex-1">
+              Action Required {adminItems.length > 0 && <Badge className="ml-2 bg-red-600">{adminItems.length}</Badge>}
+            </TabsTrigger>
+          )}
         </TabsList>
 
         <TabsContent value="notifications" className="mt-4">
@@ -256,6 +339,48 @@ export default function Notifications() {
                         )}
                       </div>
                       <Badge variant="outline">{task.type}</Badge>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
+        </TabsContent>
+
+        <TabsContent value="admin" className="mt-4">
+          {adminItems.length === 0 ? (
+            <Card>
+              <CardContent className="flex flex-col items-center justify-center py-12">
+                <CheckCircle2 className="w-12 h-12 text-gray-300 mb-3" />
+                <p className="text-gray-500">No pending items</p>
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="space-y-2">
+              {adminItems.map(item => (
+                <Card 
+                  key={`${item.type}-${item.id}`}
+                  className="transition-colors cursor-pointer hover:border-emerald-300 border-red-200 bg-red-50/30"
+                  onClick={() => {
+                    if (item.link_url) {
+                      window.location.href = item.link_url;
+                    }
+                  }}
+                >
+                  <CardContent className="p-4">
+                    <div className="flex gap-3">
+                      <div className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 bg-red-100 text-red-600">
+                        <AlertCircle className="w-5 h-5" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-semibold text-sm text-gray-900">{item.title}</p>
+                        {item.body && (
+                          <p className="text-sm text-gray-600 mt-1">{item.body}</p>
+                        )}
+                        <p className="text-xs text-gray-500 mt-2">
+                          {format(new Date(item.created_date), 'MMM d, h:mm a')}
+                        </p>
+                      </div>
                     </div>
                   </CardContent>
                 </Card>
