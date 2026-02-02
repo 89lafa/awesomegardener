@@ -21,13 +21,18 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'Missing garden_season_id' }, { status: 400 });
     }
 
-    // Load season
-    const seasons = await base44.entities.GardenSeason.filter({ id: garden_season_id });
+    // Load season using asServiceRole to bypass user-level filtering
+    const seasons = await base44.asServiceRole.entities.GardenSeason.filter({ id: garden_season_id });
     if (seasons.length === 0) {
       return Response.json({ error: 'Season not found' }, { status: 404 });
     }
 
     const season = seasons[0];
+    
+    // Verify user owns this season
+    if (season.created_by !== user.email) {
+      return Response.json({ error: 'Unauthorized' }, { status: 403 });
+    }
     const lastFrostDate = season.last_frost_date ? new Date(season.last_frost_date) : new Date(season.year, 4, 1);
     
     // Generate season dates (April through October)
@@ -35,7 +40,7 @@ Deno.serve(async (req) => {
     const seasonEnd = new Date(season.year, 9, 31); // October
 
     // Check if maintenance tasks already exist
-    const existingMaintenance = await base44.entities.CropTask.filter({
+    const existingMaintenance = await base44.asServiceRole.entities.CropTask.filter({
       garden_season_id,
       crop_plan_id: null // Maintenance tasks have no crop_plan_id
     });
@@ -98,9 +103,9 @@ Deno.serve(async (req) => {
       taskDate = addWeeks(taskDate, 2);
     }
 
-    // Create all tasks
+    // Create all tasks using asServiceRole
     for (const task of maintenanceTasks) {
-      await base44.entities.CropTask.create(task);
+      await base44.asServiceRole.entities.CropTask.create(task);
     }
 
     return Response.json({
