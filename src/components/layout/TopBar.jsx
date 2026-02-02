@@ -28,6 +28,7 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { base44 } from '@/api/base44Client';
+import ThemeSwitcher from '@/components/common/ThemeSwitcher';
 
 export default function TopBar({ user, onMobileMenuToggle, onSidebarToggle, sidebarCollapsed }) {
   const [searchQuery, setSearchQuery] = useState('');
@@ -144,6 +145,9 @@ export default function TopBar({ user, onMobileMenuToggle, onSidebarToggle, side
       </div>
 
       <div className="flex items-center gap-2">
+        {/* Theme Switcher */}
+        <ThemeSwitcher />
+        
         {/* Quick Add */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
