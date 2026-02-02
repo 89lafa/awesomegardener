@@ -322,7 +322,16 @@ export default function GrowLists() {
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div className="flex-1">
             <div className="flex items-center gap-3 mb-2">
-              <h1 className="text-2xl font-bold text-gray-900">{selectedList.name}</h1>
+              <Input
+                value={selectedList.name}
+                onChange={async (e) => {
+                  const newName = e.target.value;
+                  await base44.entities.GrowList.update(selectedList.id, { name: newName });
+                  setSelectedList({ ...selectedList, name: newName });
+                  setGrowLists(growLists.map(l => l.id === selectedList.id ? { ...l, name: newName } : l));
+                }}
+                className="text-2xl font-bold max-w-md"
+              />
               <Badge className={getStatusColor(selectedList.status)}>
                 {selectedList.status}
               </Badge>
