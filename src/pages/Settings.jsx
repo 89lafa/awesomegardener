@@ -75,6 +75,8 @@ export default function Settings() {
   });
   const [uploadingLogo, setUploadingLogo] = useState(false);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
+  const [nicknameAvailable, setNicknameAvailable] = useState(true);
+  const [checkingNickname, setCheckingNickname] = useState(false);
 
   useEffect(() => {
     loadUser();
@@ -130,31 +132,23 @@ export default function Settings() {
   };
 
   const handleSave = async () => {
-    if (!formData.nickname || formData.nickname.trim().length < 3) {
-      toast.error('Nickname must be at least 3 characters');
-      return;
-    }
-    
-    // Validate nickname is unique before saving
-    try {
-      const { data: validationResult } = await base44.functions.invoke('validateNickname', { 
-        nickname: formData.nickname 
-      });
-      
-      if (!validationResult.available) {
-        toast.error('This nickname is already taken. Please choose a different one.');
-        return;
-      }
-    } catch (error) {
-      console.error('Error validating nickname:', error);
-      toast.error('Failed to validate nickname');
-      return;
-    }
-    
     setSaving(true);
     try {
+      // Validate nickname if changed
+      if (formData.nickname && formData.nickname !== user.nickname) {
+        const { data } = await base44.functions.invoke('validateNickname', { 
+          nickname: formData.nickname 
+        });
+        
+        if (!data.available) {
+          toast.error('This nickname is already taken');
+          setSaving(false);
+          return;
+        }
+      }
+      
       await base44.auth.updateMe({
-        nickname: formData.nickname,
+        nickname: formData.nickname || null,
         profile_logo_url: formData.profile_logo_url,
         avatar_url: formData.avatar_url,
         location_zip: formData.location_zip,
@@ -264,32 +258,49 @@ export default function Settings() {
             </CardHeader>
             <CardContent className="space-y-4">
               <div>
-                <Label htmlFor="nickname">Nickname / Display Name *</Label>
+                <Label htmlFor="nickname">Nickname / Display Name</Label>
                 <Input
                   id="nickname"
                   placeholder="Your public display name"
                   value={formData.nickname}
                   onChange={async (e) => {
-                    const newNickname = e.target.value;
-                    setFormData({ ...formData, nickname: newNickname });
+                    const newNick = e.target.value;
+                    setFormData({ ...formData, nickname: newNick });
                     
-                    // Validate uniqueness
-                    if (newNickname.length >= 3) {
+                    // Check availability as user types
+                    if (newNick.trim() && newNick !== user.nickname) {
+                      setCheckingNickname(true);
                       try {
-                        const { data } = await base44.functions.invoke('validateNickname', { nickname: newNickname });
-                        if (!data.available) {
-                          toast.error('This nickname is already taken');
-                        }
-                      } catch (error) {
-                        console.error('Error validating nickname:', error);
+                        const { data } = await base44.functions.invoke('validateNickname', { 
+                          nickname: newNick.trim() 
+                        });
+                        setNicknameAvailable(data.available);
+                      } catch (err) {
+                        console.error('Error checking nickname:', err);
+                      } finally {
+                        setCheckingNickname(false);
                       }
+                    } else {
+                      setNicknameAvailable(true);
                     }
                   }}
                   className="mt-2"
                 />
-                <p className="text-xs text-gray-500 mt-1">
-                  Must be unique. Used for messaging and forum posts.
-                </p>
+                {formData.nickname && formData.nickname !== user.nickname && (
+                  <p className={`text-xs mt-1 flex items-center gap-1 ${
+                    checkingNickname ? 'text-gray-500' :
+                    nicknameAvailable ? 'text-green-600' : 'text-red-600'
+                  }`}>
+                    {checkingNickname ? (
+                      <><Loader2 className="w-3 h-3 inline animate-spin" />Checking...</>
+                    ) : nicknameAvailable ? (
+                      '✓ Available'
+                    ) : (
+                      <><AlertCircle className="w-3 h-3 inline" />Already taken</>
+                    )}
+                  </p>
+                )}
+                <p className="text-xs text-gray-500 mt-1">Shown on public gardens and forum posts • Others can message you using this</p>
               </div>
               
               <div>

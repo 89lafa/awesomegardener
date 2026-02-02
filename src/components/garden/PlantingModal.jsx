@@ -282,9 +282,9 @@ export default function PlantingModal({ open, onOpenChange, item, itemType, gard
       
       const updatedPlantings = [...plantings, planting];
       setPlantings(updatedPlantings);
-      // DON'T clear selection - keep it for multiple plantings
+      // DON'T clear selection - keep it sticky for multiple plantings
       // setSelectedPlant(null);
-      toast.success('Plant added - click more cells to keep planting');
+      toast.success('Plant added! Click another slot to plant more.');
       
       // Re-run companion analysis with new plantings state
       analyzeCompanionsWithPlantings(updatedPlantings);
@@ -428,8 +428,9 @@ export default function PlantingModal({ open, onOpenChange, item, itemType, gard
 
         const updatedPlantings = [...plantings, planting];
         setPlantings(updatedPlantings);
-        setSelectedPlant(null); // Clear selection
-        toast.success('Plant added');
+        // DON'T clear selection - keep it sticky for multiple plantings
+        // setSelectedPlant(null);
+        toast.success('Plant added! Click another cell to plant more.');
       } catch (error) {
         console.error('[PlantingModal] Error adding plant:', error);
         toast.error('Failed to add plant: ' + (error.message || 'Unknown error'));
