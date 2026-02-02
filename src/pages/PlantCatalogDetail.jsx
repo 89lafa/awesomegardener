@@ -37,7 +37,7 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { toast } from 'sonner';
 import ErrorBoundary from '@/components/common/ErrorBoundary';
-import { useDebouncedValue } from '@/components/utils/useDebouncedValue';
+import { useDebouncedValue } from '../components/utils/useDebouncedValue';
 
 export default function PlantCatalogDetail() {
   const [searchParams] = useSearchParams();
