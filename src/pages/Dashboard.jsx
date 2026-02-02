@@ -103,12 +103,12 @@ export default function Dashboard() {
       )}
 
       {/* Welcome Header */}
-      <GlassCard className="bg-gradient-to-r from-emerald-50 via-green-50 to-blue-50 border-emerald-200">
+      <div className="bg-gradient-to-r from-emerald-50 via-green-50 to-blue-50 rounded-2xl p-8 border border-emerald-200">
         <h1 className="text-3xl font-bold text-gray-900 mb-2">
           Welcome back, {user?.full_name?.split(' ')[0] || 'Gardener'}! 🌱
         </h1>
         <p className="text-gray-700">Here's what's happening in your garden today</p>
-      </GlassCard>
+      </div>
 
       <AdBanner placement="top_banner" pageType="dashboard" />
 
@@ -157,7 +157,7 @@ export default function Dashboard() {
         <NotificationCard user={user} />
 
         {/* Upcoming Tasks */}
-        <GlassCard className="border-l-4 border-l-orange-500">
+        <Card className="border-l-4 border-l-orange-500 bg-white">
           <CardHeader className="flex flex-row items-center justify-between pb-3">
             <div className="flex items-center gap-2">
               <Calendar className="w-5 h-5 text-orange-600" />
@@ -198,10 +198,10 @@ export default function Dashboard() {
               </div>
             )}
           </CardContent>
-        </GlassCard>
+        </Card>
 
         {/* Seed Stash Summary */}
-        <GlassCard className="border-l-4 border-l-emerald-500">
+        <Card className="border-l-4 border-l-emerald-500 bg-white">
           <CardHeader className="flex flex-row items-center justify-between pb-3">
             <div className="flex items-center gap-2">
               <Package className="w-5 h-5 text-emerald-600" />
@@ -234,10 +234,10 @@ export default function Dashboard() {
               </div>
             )}
           </CardContent>
-        </GlassCard>
+        </Card>
 
         {/* Recent Activity */}
-        <GlassCard className="border-l-4 border-l-blue-500">
+        <Card className="border-l-4 border-l-blue-500 bg-white">
           <CardHeader className="flex flex-row items-center justify-between pb-3">
             <div className="flex items-center gap-2">
               <Sprout className="w-5 h-5 text-blue-600" />
@@ -269,10 +269,10 @@ export default function Dashboard() {
               </div>
             )}
           </CardContent>
-        </GlassCard>
+        </Card>
 
         {/* Grow List Summary */}
-        <GlassCard className="border-l-4 border-l-purple-500">
+        <Card className="border-l-4 border-l-purple-500 bg-white">
           <CardHeader className="flex flex-row items-center justify-between pb-3">
             <div className="flex items-center gap-2">
               <ListChecks className="w-5 h-5 text-purple-600" />
@@ -303,7 +303,7 @@ export default function Dashboard() {
               </div>
             )}
           </CardContent>
-        </GlassCard>
+        </Card>
       </div>
 
       {/* Gardens Overview */}
