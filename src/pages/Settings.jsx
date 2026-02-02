@@ -540,6 +540,40 @@ export default function Settings() {
               </div>
             </CardContent>
           </Card>
+
+          <Card className="mt-6">
+            <CardHeader>
+              <CardTitle>Privacy & Messaging</CardTitle>
+              <CardDescription>Control who can contact you</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+                <div>
+                  <Label className="font-medium">Allow Messages from Other Users</Label>
+                  <p className="text-xs text-gray-500 mt-1">Let other gardeners send you messages</p>
+                </div>
+                <Select 
+                  value={user?.allow_messages === false ? 'false' : 'true'} 
+                  onValueChange={async (v) => {
+                    await base44.auth.updateMe({ allow_messages: v === 'true' });
+                    setUser({ ...user, allow_messages: v === 'true' });
+                    toast.success('Messaging preferences updated');
+                  }}
+                >
+                  <SelectTrigger className="w-32">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="true">Enabled</SelectItem>
+                    <SelectItem value="false">Disabled</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <p className="text-xs text-gray-600">
+                Note: Admins can always message you regardless of this setting.
+              </p>
+            </CardContent>
+          </Card>
         </TabsContent>
 
         <TabsContent value="data" className="mt-6">
