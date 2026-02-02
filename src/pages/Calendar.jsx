@@ -370,11 +370,16 @@ export default function Calendar() {
                 return;
               }
               
+              if (syncing) return; // Prevent double-click
+              
               try {
+                console.log('[Calendar] Import button clicked, loading grow lists...');
                 // Load all user's grow lists
                 const userLists = await base44.entities.GrowList.filter({ 
                   created_by: user.email
                 }, '-updated_date');
+                
+                console.log('[Calendar] Found', userLists.length, 'grow lists');
                 
                 if (userLists.length === 0) {
                   toast.error('No grow lists found. Create one first!');
@@ -386,12 +391,15 @@ export default function Calendar() {
                   l.garden_season_id === activeSeasonId || !l.garden_season_id
                 );
 
+                console.log('[Calendar] Found', matchingLists.length, 'matching lists for season', activeSeasonId);
+
                 if (matchingLists.length === 0) {
                   toast.error(`No grow lists for this season. Create one in Grow Lists page.`);
                   return;
                 }
 
                 if (matchingLists.length === 1) {
+                  console.log('[Calendar] Auto-importing single list:', matchingLists[0].name);
                   await handleSyncGrowList(matchingLists[0].id, activeSeasonId);
                 } else {
                   const listNum = prompt(
@@ -400,15 +408,18 @@ export default function Calendar() {
                     ).join('\n')}\n\nEnter number:`
                   );
                   
+                  console.log('[Calendar] User selected:', listNum);
+                  
                   if (listNum) {
                     const list = matchingLists[parseInt(listNum) - 1];
                     if (list) {
+                      console.log('[Calendar] Importing list:', list.name);
                       await handleSyncGrowList(list.id, activeSeasonId);
                     }
                   }
                 }
               } catch (error) {
-                console.error('Import error:', error);
+                console.error('[Calendar] Import error:', error);
                 toast.error('Import failed: ' + error.message);
               }
             }}
