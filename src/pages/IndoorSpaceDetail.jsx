@@ -14,6 +14,10 @@ import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
 import AIGrowAssistant from '@/components/indoor/AIGrowAssistant';
 import GrowLogComponent from '@/components/indoor/GrowLogComponent';
+import { AddRackDialog } from '@/components/indoor/AddRackDialog';
+import { AddTrayDialog } from '@/components/indoor/AddTrayDialog';
+import { AddContainerDialog } from '@/components/indoor/AddContainerDialog';
+import { PlantSeedsDialog } from '@/components/indoor/PlantSeedsDialog';
 
 export default function IndoorSpaceDetail() {
   const navigate = useNavigate();
@@ -22,9 +26,17 @@ export default function IndoorSpaceDetail() {
 
   const [space, setSpace] = useState(null);
   const [racks, setRacks] = useState([]);
+  const [shelves, setShelves] = useState([]);
+  const [trays, setTrays] = useState([]);
   const [containers, setContainers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showAI, setShowAI] = useState(false);
+  const [showAddRack, setShowAddRack] = useState(false);
+  const [showAddTray, setShowAddTray] = useState(false);
+  const [showPlantSeeds, setShowPlantSeeds] = useState(false);
+  const [showAddContainer, setShowAddContainer] = useState(false);
+  const [selectedShelf, setSelectedShelf] = useState(null);
+  const [selectedTray, setSelectedTray] = useState(null);
 
   useEffect(() => {
     if (spaceId) {
@@ -46,13 +58,17 @@ export default function IndoorSpaceDetail() {
       const space = spaceData[0];
       setSpace(space);
 
-      // Load racks and containers
-      const [racksData, containersData] = await Promise.all([
+      // Load racks, shelves, trays and containers
+      const [racksData, shelvesData, traysData, containersData] = await Promise.all([
         base44.entities.GrowRack.filter({ indoor_space_id: spaceId }, 'name'),
+        base44.entities.GrowShelf.filter({}, 'shelf_number'),
+        base44.entities.SeedTray.filter({}, 'name'),
         base44.entities.IndoorContainer.filter({ indoor_space_id: spaceId }, 'name')
       ]);
 
       setRacks(racksData);
+      setShelves(shelvesData);
+      setTrays(traysData);
       setContainers(containersData);
     } catch (error) {
       console.error('Error loading space:', error);
@@ -136,25 +152,7 @@ export default function IndoorSpaceDetail() {
 
         <TabsContent value="racks" className="space-y-4">
           <Button 
-            onClick={async () => {
-              const rackName = prompt('Rack name (e.g., Rack 1):');
-              if (!rackName) return;
-              
-              try {
-                const newRack = await base44.entities.GrowRack.create({
-                  indoor_space_id: spaceId,
-                  name: rackName,
-                  width_ft: 6,
-                  depth_ft: 3,
-                  height_ft: 6,
-                  num_shelves: 4
-                });
-                setRacks([...racks, newRack]);
-                toast.success('Rack added!');
-              } catch (error) {
-                toast.error('Failed to add rack');
-              }
-            }}
+            onClick={() => setShowAddRack(true)}
             className="bg-emerald-600 hover:bg-emerald-700 gap-2"
           >
             <Plus className="w-4 h-4" />
@@ -166,33 +164,103 @@ export default function IndoorSpaceDetail() {
               <p className="text-gray-600">No racks yet. Click "Add Rack" to create one.</p>
             </Card>
           ) : (
-            racks.map(rack => (
-              <Card key={rack.id} className="p-4">
-                <h3 className="font-semibold text-gray-900 mb-2">{rack.name}</h3>
-                <p className="text-sm text-gray-600">
-                  {rack.width_ft}ft × {rack.depth_ft}ft • {rack.num_shelves} shelves
-                </p>
-              </Card>
-            ))
+            <div className="space-y-4">
+              {racks.map(rack => {
+                const rackShelves = shelves.filter(s => s.rack_id === rack.id);
+                return (
+                  <Card key={rack.id} className="p-6">
+                    <div className="flex items-start justify-between mb-4">
+                      <div>
+                        <h3 className="font-semibold text-gray-900">{rack.name}</h3>
+                        <p className="text-sm text-gray-600">
+                          {rack.width_ft}ft × {rack.depth_ft}ft • {rack.num_shelves} shelves
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Shelves */}
+                    <div className="space-y-3">
+                      {rackShelves.map(shelf => {
+                        const shelfTrays = trays.filter(t => t.shelf_id === shelf.id);
+                        return (
+                          <div key={shelf.id} className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                            <div className="flex items-start justify-between mb-2">
+                              <div>
+                                <h4 className="font-medium text-gray-900">{shelf.name}</h4>
+                                <p className="text-xs text-gray-600">
+                                  {shelf.width_ft}ft wide • {shelf.max_trays} max trays
+                                </p>
+                              </div>
+                              <Button
+                                size="sm"
+                                onClick={() => {
+                                  setSelectedShelf(shelf);
+                                  setShowAddTray(true);
+                                }}
+                                className="bg-blue-600 hover:bg-blue-700 gap-1"
+                              >
+                                <Plus className="w-3 h-3" />
+                                Add Tray
+                              </Button>
+                            </div>
+
+                            {/* Trays on this shelf */}
+                            {shelfTrays.length === 0 ? (
+                              <p className="text-xs text-gray-500">No trays yet</p>
+                            ) : (
+                              <div className="grid grid-cols-2 md:grid-cols-3 gap-2 mt-2">
+                                {shelfTrays.map(tray => (
+                                  <button
+                                    key={tray.id}
+                                    onClick={() => {
+                                      setSelectedTray(tray);
+                                      setShowPlantSeeds(true);
+                                    }}
+                                    className="p-2 bg-white border border-emerald-200 rounded hover:border-emerald-600 transition text-left"
+                                  >
+                                    <p className="text-xs font-medium text-gray-900">{tray.name}</p>
+                                    <p className="text-[10px] text-gray-600">{tray.total_cells} cells</p>
+                                    <p className="text-[10px] text-emerald-600 mt-1 font-medium">
+                                      {tray.status === 'seeded' ? '🌱 Seeded' : '📋 Empty'}
+                                    </p>
+                                  </button>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </Card>
+                );
+              })}
+            </div>
           )}
         </TabsContent>
 
         <TabsContent value="containers" className="space-y-4">
+          <Button 
+            onClick={() => setShowAddContainer(true)}
+            className="bg-emerald-600 hover:bg-emerald-700 gap-2"
+          >
+            <Plus className="w-4 h-4" />
+            Add Container
+          </Button>
+
           {containers.length === 0 ? (
             <Card className="p-8 text-center">
-              <p className="text-gray-600 mb-4">No containers yet</p>
-              <Button className="bg-emerald-600 hover:bg-emerald-700 gap-2">
-                <Plus className="w-4 h-4" />
-                Add Container
-              </Button>
+              <p className="text-gray-600">No containers yet</p>
             </Card>
           ) : (
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               {containers.map(container => (
-                <Card key={container.id} className="p-4 text-center">
-                  <p className="text-2xl mb-2">🪴</p>
+                <Card key={container.id} className="p-4 text-center cursor-pointer hover:shadow-md transition">
+                  <p className="text-3xl mb-2">🪴</p>
                   <p className="font-semibold text-sm text-gray-900">{container.name}</p>
-                  <p className="text-xs text-gray-600">{container.container_type}</p>
+                  <p className="text-xs text-gray-600">{container.volume_gallons}gal</p>
+                  <p className="text-[10px] text-emerald-600 mt-2 font-medium">
+                    {container.status === 'planted' ? '🌱 Planted' : '📋 Empty'}
+                  </p>
                 </Card>
               ))}
             </div>
@@ -206,13 +274,52 @@ export default function IndoorSpaceDetail() {
         </TabsContent>
       </Tabs>
 
-      {/* AI Assistant */}
+      {/* Dialogs */}
       {showAI && (
         <AIGrowAssistant 
           onClose={() => setShowAI(false)}
           context={{ space, racks, containers }}
         />
       )}
+
+      <AddRackDialog
+        isOpen={showAddRack}
+        onClose={() => setShowAddRack(false)}
+        spaceId={spaceId}
+        onRackAdded={loadSpaceData}
+      />
+
+      {selectedShelf && (
+        <AddTrayDialog
+          isOpen={showAddTray}
+          onClose={() => {
+            setShowAddTray(false);
+            setSelectedShelf(null);
+          }}
+          shelfId={selectedShelf.id}
+          onTrayAdded={loadSpaceData}
+        />
+      )}
+
+      {selectedTray && (
+        <PlantSeedsDialog
+          isOpen={showPlantSeeds}
+          onClose={() => {
+            setShowPlantSeeds(false);
+            setSelectedTray(null);
+          }}
+          trayId={selectedTray.id}
+          trayName={selectedTray.name}
+          onSeedPlanted={loadSpaceData}
+        />
+      )}
+
+      <AddContainerDialog
+        isOpen={showAddContainer}
+        onClose={() => setShowAddContainer(false)}
+        spaceId={spaceId}
+        onContainerAdded={loadSpaceData}
+      />
     </div>
   );
 }
