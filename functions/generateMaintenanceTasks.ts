@@ -21,18 +21,13 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'Missing garden_season_id' }, { status: 400 });
     }
 
-    // Load season using asServiceRole to bypass user-level filtering
-    const seasons = await base44.asServiceRole.entities.GardenSeason.filter({ id: garden_season_id });
+    // Load season using regular auth (user-scoped)
+    const seasons = await base44.entities.GardenSeason.filter({ id: garden_season_id });
     if (seasons.length === 0) {
-      return Response.json({ error: 'Season not found' }, { status: 404 });
+      return Response.json({ error: 'Season not found or no access' }, { status: 404 });
     }
 
     const season = seasons[0];
-    
-    // Verify user owns this season
-    if (season.created_by !== user.email) {
-      return Response.json({ error: 'Unauthorized' }, { status: 403 });
-    }
     const lastFrostDate = season.last_frost_date ? new Date(season.last_frost_date) : new Date(season.year, 4, 1);
     
     // Generate season dates (April through October)
