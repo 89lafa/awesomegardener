@@ -20,7 +20,8 @@ import {
   List,
   Calendar,
   ExternalLink,
-  FileText
+  FileText,
+  Mic
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -70,6 +71,7 @@ import { smartQuery } from '@/components/utils/smartQuery';
 import RateLimitBanner from '@/components/common/RateLimitBanner';
 import { useDebouncedValue } from '../components/utils/useDebouncedValue';
 import { getPlantTypesCached, getSubcategoriesCached } from '../components/utils/dataCache';
+import AIGrowAssistant from '@/components/indoor/AIGrowAssistant';
 
 const TAGS = [
   { value: 'favorite', label: 'Favorite', icon: Star, color: 'text-yellow-500' },
@@ -89,6 +91,7 @@ export default function SeedStash() {
   const [showImportDialog, setShowImportDialog] = useState(false);
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [editingSeed, setEditingSeed] = useState(null);
+  const [showAIAssistant, setShowAIAssistant] = useState(false);
   const [viewMode, setViewMode] = useState('grid');
   const [filterTab, setFilterTab] = useState('stash');
   const [searchQuery, setSearchQuery] = useState('');
@@ -563,30 +566,37 @@ export default function SeedStash() {
           <p className="text-gray-600 mt-1">Track your seeds and wishlist</p>
         </div>
         <div className="flex gap-2 flex-wrap">
-          <Button 
-            onClick={() => setShowAddCustomDialog(true)}
-            className="bg-emerald-600 hover:bg-emerald-700 gap-2"
-          >
-            <Plus className="w-4 h-4" />
-            Add My Own Seeds
-          </Button>
-          <Button 
-            onClick={() => setShowAddFromCatalogDialog(true)}
-            variant="outline"
-            className="gap-2 border-emerald-600 text-emerald-700 hover:bg-emerald-50"
-          >
-            <Package className="w-4 h-4" />
-            Add from Catalog
-          </Button>
-          <Button 
-            onClick={() => setShowImportDialog(true)}
-            variant="outline"
-            className="gap-2"
-          >
-            <FileText className="w-4 h-4" />
-            Import Spreadsheet
-          </Button>
-        </div>
+           <Button 
+             onClick={() => setShowAIAssistant(true)}
+             className="bg-purple-600 hover:bg-purple-700 gap-2"
+           >
+             <Mic className="w-4 h-4" />
+             AI Voice
+           </Button>
+           <Button 
+             onClick={() => setShowAddCustomDialog(true)}
+             className="bg-emerald-600 hover:bg-emerald-700 gap-2"
+           >
+             <Plus className="w-4 h-4" />
+             Add My Own Seeds
+           </Button>
+           <Button 
+             onClick={() => setShowAddFromCatalogDialog(true)}
+             variant="outline"
+             className="gap-2 border-emerald-600 text-emerald-700 hover:bg-emerald-50"
+           >
+             <Package className="w-4 h-4" />
+             Add from Catalog
+           </Button>
+           <Button 
+             onClick={() => setShowImportDialog(true)}
+             variant="outline"
+             className="gap-2"
+           >
+             <FileText className="w-4 h-4" />
+             Import Spreadsheet
+           </Button>
+         </div>
       </div>
 
       <AdBanner placement="top_banner" pageType="seed_stash" />
@@ -1378,6 +1388,14 @@ export default function SeedStash() {
         onOpenChange={setShowImportDialog}
         onSuccess={loadData}
       />
+
+      {/* AI Assistant */}
+      {showAIAssistant && (
+        <AIGrowAssistant 
+          onClose={() => setShowAIAssistant(false)}
+          context={{ seeds, profiles, plantTypes }}
+        />
+      )}
 
       {/* Column Chooser Dialog */}
       <Dialog open={showColumnChooser} onOpenChange={setShowColumnChooser}>
