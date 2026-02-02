@@ -36,6 +36,7 @@ export default function CalendarPlanner() {
       const userData = await base44.auth.me();
       
       // Load user's gardens and plantings to show on calendar
+      const userData = await base44.auth.me();
       const gardensData = await base44.entities.Garden.filter({ 
         archived: false,
         created_by: userData.email 

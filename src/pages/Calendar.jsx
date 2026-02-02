@@ -136,7 +136,8 @@ export default function Calendar() {
         setActiveGarden(garden);
         
         const seasonsData = await smartQuery(base44, 'GardenSeason', { 
-          garden_id: garden.id 
+          garden_id: garden.id,
+          created_by: userData.email
         }, '-year');
         setSeasons(seasonsData);
         
@@ -578,7 +579,8 @@ export default function Calendar() {
             localStorage.setItem('calendar_active_garden', id);
             // Load seasons for new garden
             const seasonsData = await base44.entities.GardenSeason.filter({ 
-              garden_id: id 
+              garden_id: id,
+              created_by: userData.email
             }, '-year');
             setSeasons(seasonsData);
             if (seasonsData.length > 0) {

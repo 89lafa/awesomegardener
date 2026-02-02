@@ -119,7 +119,7 @@ export default function GrowLists() {
         base44.entities.SeedLot.filter({ is_wishlist: false, created_by: user.email }),
         base44.entities.PlantType.list('common_name', 100),
         base44.entities.PlantProfile.list('variety_name', 500),
-        base44.entities.GardenSeason.list('-year')
+        base44.entities.GardenSeason.filter({ created_by: user.email }, '-year')
       ]);
       setGrowLists(listsData);
       setGardens(gardensData);
@@ -711,7 +711,11 @@ export default function GrowLists() {
                   setNewList({ ...newList, garden_id: v, garden_season_id: '' });
                   // Load seasons for selected garden
                   if (v) {
-                    const gardenSeasons = await base44.entities.GardenSeason.filter({ garden_id: v }, '-year');
+                    const currentUser = await base44.auth.me();
+                    const gardenSeasons = await base44.entities.GardenSeason.filter({ 
+                      garden_id: v,
+                      created_by: currentUser.email
+                    }, '-year');
                     setSeasons(gardenSeasons);
                   }
                 }}
