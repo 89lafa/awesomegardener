@@ -21,6 +21,7 @@ import {
 } from '@/components/ui/select';
 import { toast } from 'sonner';
 import { Loader2, Package } from 'lucide-react';
+import { Combobox } from '@/components/ui/combobox';
 
 export default function AddToStashModal({ open, onOpenChange, variety, plantType, onSuccess }) {
   const [saving, setSaving] = useState(false);
