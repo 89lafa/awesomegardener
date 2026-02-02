@@ -33,6 +33,7 @@ import DayTasksPanel from '@/components/calendar/DayTasksPanel';
 import { format as formatDate, getDaysInMonth, startOfMonth } from 'date-fns';
 import { smartQuery } from '@/components/utils/smartQuery';
 import RateLimitBanner from '@/components/common/RateLimitBanner';
+import { KanbanBoard } from '@/components/tasks/KanbanBoard';
 
 const TASK_TYPE_CONFIG = {
   seed: { icon: Sprout, color: 'bg-purple-100 text-purple-700 border-purple-200', label: 'Start Seeds' },
@@ -331,12 +332,13 @@ export default function CalendarTasks() {
         {/* Filters */}
         <div className="flex flex-wrap gap-3 items-center">
           <Select value={viewMode} onValueChange={setViewMode}>
-            <SelectTrigger className="w-32">
+            <SelectTrigger className="w-36">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="list">List View</SelectItem>
-              <SelectItem value="calendar">Calendar View</SelectItem>
+              <SelectItem value="list">📋 List View</SelectItem>
+              <SelectItem value="calendar">📅 Calendar View</SelectItem>
+              <SelectItem value="kanban">📊 Kanban Board</SelectItem>
             </SelectContent>
           </Select>
 
@@ -433,15 +435,20 @@ export default function CalendarTasks() {
           <p className="text-gray-600 mb-2">No tasks for this season yet</p>
           <p className="text-sm text-gray-500">Add crops in Calendar Planner to generate tasks</p>
         </Card>
+      ) : viewMode === 'kanban' ? (
+       <KanbanBoard 
+         tasks={filteredTasks}
+         onTaskUpdate={loadTasksAndCrops}
+       />
       ) : viewMode === 'calendar' ? (
-        <CalendarView 
-          tasks={filteredTasks}
-          crops={cropPlans}
-          season={activeSeason}
-          onTaskClick={(task) => {
-            handleToggleComplete(task);
-          }}
-        />
+       <CalendarView 
+         tasks={filteredTasks}
+         crops={cropPlans}
+         season={activeSeason}
+         onTaskClick={(task) => {
+           handleToggleComplete(task);
+         }}
+       />
       ) : (
         <div className="space-y-6">
           {/* Summary */}
