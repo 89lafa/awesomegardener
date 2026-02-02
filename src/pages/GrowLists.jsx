@@ -16,7 +16,9 @@ import {
   Loader2,
   ArrowLeft,
   Target,
-  AlertTriangle
+  AlertTriangle,
+  Grid3x3,
+  List
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -391,7 +393,7 @@ export default function GrowLists() {
               onClick={() => setItemViewMode('card')}
               className={itemViewMode === 'card' ? 'bg-emerald-600 hover:bg-emerald-700' : ''}
             >
-              <LayoutGrid className="w-4 h-4" />
+              <Grid3x3 className="w-4 h-4" />
             </Button>
             <Button
               variant={itemViewMode === 'list' ? 'default' : 'outline'}
@@ -399,7 +401,7 @@ export default function GrowLists() {
               onClick={() => setItemViewMode('list')}
               className={itemViewMode === 'list' ? 'bg-emerald-600 hover:bg-emerald-700' : ''}
             >
-              <ListIcon className="w-4 h-4" />
+              <List className="w-4 h-4" />
             </Button>
           </div>
         )}
