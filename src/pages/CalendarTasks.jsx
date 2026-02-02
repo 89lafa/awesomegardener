@@ -112,10 +112,9 @@ export default function CalendarTasks() {
     if (!activeGarden) return;
 
     try {
-      const userData = await base44.auth.me();
       const seasonsData = await base44.entities.GardenSeason.filter({ 
         garden_id: activeGarden.id,
-        created_by: userData.email
+        created_by: user.email
       }, '-year');
       setSeasons(seasonsData);
 
@@ -138,9 +137,16 @@ export default function CalendarTasks() {
     if (!activeSeason) return;
 
     try {
+      const currentUser = await base44.auth.me();
       const [cropsData, tasksData] = await Promise.all([
-        smartQuery(base44, 'CropPlan', { garden_season_id: activeSeason.id }),
-        smartQuery(base44, 'CropTask', { garden_season_id: activeSeason.id }, 'start_date')
+        smartQuery(base44, 'CropPlan', { 
+          garden_season_id: activeSeason.id,
+          created_by: currentUser.email
+        }),
+        smartQuery(base44, 'CropTask', { 
+          garden_season_id: activeSeason.id,
+          created_by: currentUser.email
+        }, 'start_date')
       ]);
 
       setCropPlans(cropsData);

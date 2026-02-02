@@ -178,11 +178,12 @@ export default function Gardens() {
         });
       }
 
-      // Copy plot items
+      // Copy plot items (BATCH QUERY FIX)
       const plotItems = await base44.entities.PlotItem.filter({ garden_id: garden.id });
-      for (const item of plotItems) {
-        const newPlot = await base44.entities.GardenPlot.filter({ garden_id: newGarden.id });
-        if (newPlot.length > 0) {
+      const newPlots = await base44.entities.GardenPlot.filter({ garden_id: newGarden.id });
+      
+      if (newPlots.length > 0) {
+        for (const item of plotItems) {
           await base44.entities.PlotItem.create({
             plot_id: newPlot[0].id,
             garden_id: newGarden.id,
