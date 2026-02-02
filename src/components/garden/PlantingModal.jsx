@@ -24,6 +24,7 @@ import { cn } from '@/lib/utils';
 import StashTypeSelector from './StashTypeSelector';
 import PlanTypeSelector from './PlanTypeSelector';
 import CatalogTypeSelector from './CatalogTypeSelector';
+import CompanionSuggestions from './CompanionSuggestions';
 
 export default function PlantingModal({ open, onOpenChange, item, itemType, garden, onPlantingUpdate, activeSeason, seasonId }) {
   const [plantings, setPlantings] = useState([]);
@@ -42,6 +43,8 @@ export default function PlantingModal({ open, onOpenChange, item, itemType, gard
   const [companionResults, setCompanionResults] = useState([]);
   const [selectedPlanItem, setSelectedPlanItem] = useState(null);
   const [cropPlans, setCropPlans] = useState([]);
+  const [showCompanionPopup, setShowCompanionPopup] = useState(false);
+  const [companionPlantTypeId, setCompanionPlantTypeId] = useState(null);
   
   const [newPlant, setNewPlant] = useState({
     variety_id: '',
@@ -513,6 +516,12 @@ export default function PlantingModal({ open, onOpenChange, item, itemType, gard
     
     setSelectedPlant(plantData);
     checkCompanionAndRotation(plantData);
+    
+    // Show companion suggestions popup
+    if (profile.plant_type_id) {
+      setCompanionPlantTypeId(profile.plant_type_id);
+      setShowCompanionPopup(true);
+    }
   };
 
   const checkCompanionAndRotation = async (plantData) => {
@@ -900,7 +909,7 @@ export default function PlantingModal({ open, onOpenChange, item, itemType, gard
             </Tabs>
             
             {selectedPlant && (
-              <div className="mt-4 space-y-2 flex-shrink-0">
+              <div className="mt-4 space-y-2 flex-shrink-0 relative">
                 <div className="p-3 bg-emerald-50 rounded-lg border border-emerald-200">
                   <p className="text-sm font-medium text-emerald-900">Selected:</p>
                   <p className="text-sm text-emerald-700 truncate">{selectedPlant.variety_name}</p>
@@ -915,12 +924,20 @@ export default function PlantingModal({ open, onOpenChange, item, itemType, gard
                       setSelectedPlant(null);
                       setCompanionWarning(null);
                       setRotationWarning(null);
+                      setShowCompanionPopup(false);
                     }}
                     className="w-full mt-2"
                   >
                     Cancel
                   </Button>
                 </div>
+                
+                {showCompanionPopup && companionPlantTypeId && (
+                  <CompanionSuggestions 
+                    plantTypeId={companionPlantTypeId}
+                    onClose={() => setShowCompanionPopup(false)}
+                  />
+                )}
 
                 {companionWarning && (
                   <div className="p-3 bg-amber-50 rounded-lg border border-amber-300">
