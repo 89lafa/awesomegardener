@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Home, Leaf, Archive, Calendar, MoreHorizontal } from 'lucide-react';
+import { Home, Leaf, Archive, Calendar, MoreHorizontal, Mail } from 'lucide-react';
 
 export default function BottomNav() {
   const navigate = useNavigate();
@@ -11,7 +11,7 @@ export default function BottomNav() {
     { path: '/Dashboard', icon: Home, label: 'Home' },
     { path: '/PlantCatalog', icon: Leaf, label: 'Plants' },
     { path: '/SeedStash', icon: Archive, label: 'Seeds' },
-    { path: '/Calendar', icon: Calendar, label: 'Calendar' },
+    { path: '/Messages', icon: Mail, label: 'Messages' },
   ];
   
   return (
