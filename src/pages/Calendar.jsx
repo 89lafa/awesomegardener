@@ -47,6 +47,7 @@ import { smartQuery } from '@/components/utils/smartQuery';
 import RateLimitBanner from '@/components/common/RateLimitBanner';
 import BuildCalendarWizard from '@/components/ai/BuildCalendarWizard';
 import { getPlantTypesCached } from '@/components/utils/dataCache';
+import { createPageUrl } from '@/utils';
 
 export default function Calendar() {
   const [searchParams] = useSearchParams();
