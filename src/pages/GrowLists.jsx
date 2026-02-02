@@ -50,6 +50,7 @@ import { motion } from 'framer-motion';
 import AdBanner from '@/components/monetization/AdBanner';
 import PlantRecommendations from '@/components/ai/PlantRecommendations';
 import { Sparkles } from 'lucide-react';
+import { getPlantTypesCached } from '@/components/utils/dataCache';
 
 export default function GrowLists() {
   const [searchParams] = useSearchParams();
@@ -117,14 +118,28 @@ export default function GrowLists() {
   const loadData = async () => {
     try {
       const user = await base44.auth.me();
-      const [listsData, gardensData, seedsData, typesData, profilesData, seasonsData] = await Promise.all([
+      
+      // V1B-2: Load lists and seeds first, then batch fetch only needed profiles
+      const [listsData, gardensData, seedsData, seasonsData] = await Promise.all([
         base44.entities.GrowList.filter({ created_by: user.email }, '-created_date'),
         base44.entities.Garden.filter({ archived: false, created_by: user.email }),
         base44.entities.SeedLot.filter({ is_wishlist: false, created_by: user.email }),
-        base44.entities.PlantType.list('common_name', 100),
-        base44.entities.PlantProfile.list('variety_name', 500),
         base44.entities.GardenSeason.filter({ created_by: user.email }, '-year')
       ]);
+      
+      // Extract unique profile IDs from seeds
+      const uniqueProfileIds = [...new Set(seedsData.map(s => s.plant_profile_id).filter(Boolean))];
+      
+      // Batch fetch only needed profiles
+      const profilesData = uniqueProfileIds.length > 0
+        ? await base44.entities.PlantProfile.filter({ id: { $in: uniqueProfileIds } })
+        : [];
+      
+      // Use cached plant types
+      const typesData = await getPlantTypesCached(() => 
+        base44.entities.PlantType.list('common_name', 100)
+      );
+      
       setGrowLists(listsData);
       setGardens(gardensData);
       setSeeds(seedsData);
@@ -142,9 +157,13 @@ export default function GrowLists() {
     }
   };
 
+  const [creatingList, setCreatingList] = useState(false);
+
   const handleCreateList = async () => {
     if (!newList.name.trim()) return;
-
+    if (creatingList) return; // Prevent double-submit
+    
+    setCreatingList(true);
     try {
       const list = await base44.entities.GrowList.create({
         name: newList.name,
@@ -166,6 +185,8 @@ export default function GrowLists() {
     } catch (error) {
       console.error('Error creating grow list:', error);
       toast.error('Failed to create grow list');
+    } finally {
+      setCreatingList(false);
     }
   };
 
@@ -181,9 +202,13 @@ export default function GrowLists() {
     }
   };
 
+  const [addingItem, setAddingItem] = useState(false);
+
   const handleAddItem = async () => {
     if (!selectedList || !newItem.plant_type_name) return;
-
+    if (addingItem) return; // Prevent double-submit
+    
+    setAddingItem(true);
     const item = {
       id: Date.now().toString(),
       plant_type_id: newItem.plant_type_id,
@@ -216,6 +241,8 @@ export default function GrowLists() {
       toast.success('Item added!');
     } catch (error) {
       console.error('Error adding item:', error);
+    } finally {
+      setAddingItem(false);
     }
   };
 
@@ -648,11 +675,19 @@ export default function GrowLists() {
                 onClick={handleAddItem}
                 disabled={
                   !newItem.plant_type_id || 
+                  addingItem ||
                   (newItem.seed_lot_id && newItem.available_quantity !== undefined && newItem.quantity > newItem.available_quantity)
                 }
                 className="bg-emerald-600 hover:bg-emerald-700"
               >
-                Add Item
+                {addingItem ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                    Adding...
+                  </>
+                ) : (
+                  'Add Item'
+                )}
               </Button>
             </DialogFooter>
           </DialogContent>
@@ -922,10 +957,17 @@ export default function GrowLists() {
             <Button variant="outline" onClick={() => setShowNewDialog(false)}>Cancel</Button>
             <Button 
               onClick={handleCreateList}
-              disabled={!newList.name.trim()}
+              disabled={!newList.name.trim() || creatingList}
               className="bg-emerald-600 hover:bg-emerald-700"
             >
-              Create List
+              {creatingList ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                  Creating...
+                </>
+              ) : (
+                'Create List'
+              )}
             </Button>
           </DialogFooter>
         </DialogContent>

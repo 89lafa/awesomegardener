@@ -68,7 +68,7 @@ import ImportFromURLDialog from '@/components/seedstash/ImportFromURLDialog';
 import ImportSpreadsheetDialog from '@/components/seedstash/ImportSpreadsheetDialog';
 import { smartQuery } from '@/components/utils/smartQuery';
 import RateLimitBanner from '@/components/common/RateLimitBanner';
-import { useDebouncedValue } from '@/lib/useDebouncedValue';
+import { useDebouncedValue } from '@/components/utils/useDebouncedValue';
 import { getPlantTypesCached, getSubcategoriesCached } from '@/components/utils/dataCache';
 
 const TAGS = [

@@ -52,7 +52,7 @@ import PlantRecommendations from '@/components/ai/PlantRecommendations';
 import { Sparkles } from 'lucide-react';
 import { smartQuery } from '@/components/utils/smartQuery';
 import RateLimitBanner from '@/components/common/RateLimitBanner';
-import { useDebouncedValue } from '@/lib/useDebouncedValue';
+import { useDebouncedValue } from '@/components/utils/useDebouncedValue';
 
 const CATEGORIES = ['vegetable', 'fruit', 'herb', 'flower', 'other'];
 
