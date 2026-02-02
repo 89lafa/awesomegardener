@@ -416,9 +416,9 @@ export default function SeedStashDetail() {
             </Button>
           </CardHeader>
           {profile && (
-            <CardContent className="space-y-6">{hasRichData ? (
-              <>
             <CardContent className="space-y-6">
+              {hasRichData ? (
+              <>
               {/* Variety Info Banner */}
               {variety && (
                 <div className="p-4 bg-gradient-to-r from-emerald-50 to-green-50 rounded-lg border border-emerald-200">
@@ -611,22 +611,23 @@ export default function SeedStashDetail() {
                   <p className="font-semibold text-gray-900 mb-2">Growing Notes</p>
                   <p className="text-gray-700 whitespace-pre-wrap leading-relaxed">{profile?.notes_public || variety?.grower_notes}</p>
                 </div>
-                )}
-                </>
-                ) : (
+              )}
+              </>
+              ) : (
                 <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-                <p className="text-sm font-medium text-yellow-900 mb-2">
-                This is a custom variety without catalog data. Add details using "Edit Details" above.
-                </p>
-                <div className="text-xs text-yellow-700 space-y-1">
-                <p>• Add description, days to maturity, spacing, etc.</p>
-                <p>• Your edits are private to your stash</p>
-                <p>• You can suggest this variety to the public catalog later</p>
+                  <p className="text-sm font-medium text-yellow-900 mb-2">
+                    This is a custom variety without catalog data. Add details using "Edit Details" above.
+                  </p>
+                  <div className="text-xs text-yellow-700 space-y-1">
+                    <p>• Add description, days to maturity, spacing, etc.</p>
+                    <p>• Your edits are private to your stash</p>
+                    <p>• You can suggest this variety to the public catalog later</p>
+                  </div>
                 </div>
-                </div>
-                )}
-                </CardContent>
-                </Card>
+              )}
+            </CardContent>
+          )}
+        </Card>
 
         {/* Lot Details Card */}
         <Card className="bg-gradient-to-br from-white to-gray-50">
@@ -646,6 +647,26 @@ export default function SeedStashDetail() {
                 </span>
                 <Badge className="bg-emerald-600 text-white text-sm px-3 py-1">
                   {seed.quantity} {seed.unit}
+                </Badge>
+              </div>
+            )}
+            {seed.quantity_available_trade > 0 && (
+              <div className="flex items-center justify-between py-3 px-4 bg-white rounded-lg border">
+                <span className="text-gray-700 font-medium flex items-center gap-2">
+                  🔄 Available for Trade
+                </span>
+                <Badge className="bg-blue-600 text-white text-sm px-3 py-1">
+                  {seed.quantity_available_trade} {seed.unit}
+                </Badge>
+              </div>
+            )}
+            {seed.quantity_available_sale > 0 && (
+              <div className="flex items-center justify-between py-3 px-4 bg-white rounded-lg border">
+                <span className="text-gray-700 font-medium flex items-center gap-2">
+                  💰 Available for Sale
+                </span>
+                <Badge className="bg-purple-600 text-white text-sm px-3 py-1">
+                  {seed.quantity_available_sale} {seed.unit}
                 </Badge>
               </div>
             )}
