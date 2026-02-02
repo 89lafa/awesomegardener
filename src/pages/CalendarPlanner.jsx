@@ -35,26 +35,18 @@ export default function CalendarPlanner() {
     try {
       const userData = await base44.auth.me();
       
-      // Load user's gardens and plantings to show on calendar
-      const userData = await base44.auth.me();
       const gardensData = await base44.entities.Garden.filter({ 
         archived: false,
         created_by: userData.email 
       });
       
-      // Load all plantings from user's gardens (BATCH QUERY)
-      let allPlantings = [];
-      if (gardensData.length > 0) {
-        const gardenIds = gardensData.map(g => g.id);
-        allPlantings = await base44.entities.PlantInstance.filter({ 
-          garden_id: { $in: gardenIds },
-          created_by: userData.email
-        });
-      }
-      
-      const [seedsData, profilesData] = await Promise.all([
+      // Batch load all plantings for user's gardens
+      const [seedsData, profilesData, allPlantings] = await Promise.all([
         base44.entities.SeedLot.filter({ is_wishlist: false, created_by: userData.email }),
-        base44.entities.PlantProfile.list('variety_name', 500)
+        base44.entities.PlantProfile.list('variety_name', 500),
+        gardensData.length > 0 
+          ? base44.entities.PlantInstance.filter({ created_by: userData.email })
+          : Promise.resolve([])
       ]);
       
       setUser(userData);
