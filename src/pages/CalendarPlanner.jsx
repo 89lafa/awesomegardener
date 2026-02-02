@@ -42,19 +42,13 @@ export default function CalendarPlanner() {
         created_by: userData.email 
       });
       
-      // Load all plantings from user's gardens
-      let allPlantings = [];
-      if (gardensData.length > 0) {
-        const gardenIds = gardensData.map(g => g.id);
-        for (const gardenId of gardenIds) {
-          const plantings = await base44.entities.PlantInstance.filter({ garden_id: gardenId });
-          allPlantings = [...allPlantings, ...plantings];
-        }
-      }
-      
-      const [seedsData, profilesData] = await Promise.all([
+      // Batch load all plantings for user's gardens
+      const [seedsData, profilesData, allPlantings] = await Promise.all([
         base44.entities.SeedLot.filter({ is_wishlist: false, created_by: userData.email }),
-        base44.entities.PlantProfile.list('variety_name', 500)
+        base44.entities.PlantProfile.list('variety_name', 500),
+        gardensData.length > 0 
+          ? base44.entities.PlantInstance.filter({ created_by: userData.email })
+          : Promise.resolve([])
       ]);
       
       setUser(userData);

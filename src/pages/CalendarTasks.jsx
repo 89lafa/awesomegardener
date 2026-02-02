@@ -112,8 +112,10 @@ export default function CalendarTasks() {
     if (!activeGarden) return;
 
     try {
+      const userData = await base44.auth.me();
       const seasonsData = await base44.entities.GardenSeason.filter({ 
-        garden_id: activeGarden.id 
+        garden_id: activeGarden.id,
+        created_by: userData.email
       }, '-year');
       setSeasons(seasonsData);
 
