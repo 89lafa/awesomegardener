@@ -811,6 +811,10 @@ export default function PlantingModal({ open, onOpenChange, item, itemType, gard
                   selectedPlant={selectedPlant}
                   getSpacingForPlant={getSpacingForPlant}
                   getDefaultSpacing={getDefaultSpacing}
+                  stashPlants={stashPlants}
+                  profiles={profiles}
+                  varieties={varieties}
+                  plantTypes={plantTypes}
                 />
               </TabsContent>
               

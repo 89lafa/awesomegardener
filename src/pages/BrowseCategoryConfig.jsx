@@ -285,6 +285,77 @@ export default function BrowseCategoryConfig() {
           </Card>
         ))}
       </div>
+
+      {/* New Category Dialog */}
+      {showNewDialog && (
+        <Dialog open={showNewDialog} onOpenChange={setShowNewDialog}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Create New Browse Category</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div>
+                <Label>Category Code (unique identifier) *</Label>
+                <Input
+                  placeholder="e.g., HERBS, NIGHTSHADES"
+                  value={newCategory.category_code}
+                  onChange={(e) => setNewCategory({ ...newCategory, category_code: e.target.value.toUpperCase() })}
+                  className="mt-2"
+                />
+              </div>
+              <div>
+                <Label>Display Name *</Label>
+                <Input
+                  placeholder="e.g., Herbs, Nightshade Vegetables"
+                  value={newCategory.name}
+                  onChange={(e) => setNewCategory({ ...newCategory, name: e.target.value })}
+                  className="mt-2"
+                />
+              </div>
+              <div>
+                <Label>Icon (emoji)</Label>
+                <Input
+                  placeholder="🌿"
+                  value={newCategory.icon}
+                  onChange={(e) => setNewCategory({ ...newCategory, icon: e.target.value })}
+                  className="mt-2"
+                />
+              </div>
+              <div>
+                <Label>Info Banner</Label>
+                <Textarea
+                  placeholder="Description shown on category page"
+                  value={newCategory.info_banner}
+                  onChange={(e) => setNewCategory({ ...newCategory, info_banner: e.target.value })}
+                  className="mt-2"
+                  rows={3}
+                />
+              </div>
+              <div>
+                <Label>Sort Order</Label>
+                <Input
+                  type="number"
+                  value={newCategory.sort_order}
+                  onChange={(e) => setNewCategory({ ...newCategory, sort_order: parseInt(e.target.value) || 0 })}
+                  className="mt-2"
+                />
+              </div>
+            </div>
+            <div className="flex gap-2 mt-6">
+              <Button variant="outline" onClick={() => setShowNewDialog(false)} className="flex-1">
+                Cancel
+              </Button>
+              <Button 
+                onClick={handleCreate}
+                className="flex-1 bg-emerald-600 hover:bg-emerald-700"
+                disabled={!newCategory.category_code || !newCategory.name}
+              >
+                Create Category
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
     </div>
   );
 }
