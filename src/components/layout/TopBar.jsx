@@ -27,7 +27,6 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
-import { ThemeToggleCompact } from '@/components/ui/ThemeToggle';
 import { base44 } from '@/api/base44Client';
 export default function TopBar({ user, onMobileMenuToggle, onSidebarToggle, sidebarCollapsed }) {
   const [searchQuery, setSearchQuery] = useState('');
@@ -92,7 +91,7 @@ export default function TopBar({ user, onMobileMenuToggle, onSidebarToggle, side
   };
 
   return (
-    <header className="h-16 bg-[var(--bg-card-solid)] border-b border-[var(--border-default)] flex items-center justify-between px-4 lg:px-6 transition-colors duration-300">
+    <header className="h-16 bg-white border-b border-gray-200 flex items-center justify-between px-4 lg:px-6">
       {/* Sidebar Toggle - Works on all screens */}
       <div className="flex items-center gap-2">
         <Button
@@ -138,19 +137,16 @@ export default function TopBar({ user, onMobileMenuToggle, onSidebarToggle, side
                 }
               }
             }}
-            className="pl-10 bg-[var(--surface-hover)] border-[var(--border-default)] focus:bg-[var(--bg-primary)] transition-colors"
+            className="pl-10 bg-gray-50 border-gray-200 focus:bg-white"
           />
         </form>
       </div>
 
       <div className="flex items-center gap-2">
-         {/* Theme Toggle */}
-         <ThemeToggleCompact />
-
-         {/* Quick Add */}
-         <DropdownMenu>
+        {/* Quick Add */}
+        <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button size="sm" className="bg-[var(--primary)] hover:bg-[var(--primary-dark)] gap-2 touch-feedback">
+            <Button size="sm" className="bg-emerald-600 hover:bg-emerald-700 gap-2">
               <Plus className="w-4 h-4" />
               <span className="hidden sm:inline">Quick Add</span>
             </Button>
