@@ -12,6 +12,7 @@ import RateLimitBanner from '@/components/common/RateLimitBanner';
 import { Skeleton } from '@/components/ui/skeleton';
 import { format, isAfter, isBefore, addDays, isPast } from 'date-fns';
 import NotificationCard from '@/components/dashboard/NotificationCard';
+import { getPlantTypesCached } from '@/components/utils/dataCache';
 
 export default function Dashboard() {
   const [user, setUser] = useState(null);
@@ -343,7 +344,7 @@ export default function Dashboard() {
                 <Card className="hover:shadow-lg transition-all cursor-pointer bg-gradient-to-br from-white to-emerald-50/30 border-emerald-200">
                   {garden.cover_image && (
                     <div className="h-32 bg-gray-200 rounded-t-xl overflow-hidden">
-                      <img src={garden.cover_image} alt={garden.name} className="w-full h-full object-cover" />
+                      <img src={garden.cover_image} alt={garden.name} loading="lazy" className="w-full h-full object-cover" />
                     </div>
                   )}
                   <CardContent className="p-4">
