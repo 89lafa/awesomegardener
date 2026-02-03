@@ -879,3 +879,50 @@ a,
   from { transform: rotate(0deg); }
   to { transform: rotate(360deg); }
 }
+
+/* ═══════════════════════════════════════════════════════════════
+   GLASSMORPHIC CARD - THE EMERALD GREEN BLUR EFFECT
+   ═══════════════════════════════════════════════════════════════ */
+
+.glass-card {
+  /* THIS IS THE MAGIC - Semi-transparent emerald green */
+  background: rgba(30, 50, 30, 0.6) !important;
+  
+  /* THIS CREATES THE BLUR - Both are needed for cross-browser */
+  backdrop-filter: blur(12px) !important;
+  -webkit-backdrop-filter: blur(12px) !important;
+  
+  /* Rounded corners */
+  border-radius: 16px !important;
+  
+  /* Subtle glowing border */
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  
+  /* Padding */
+  padding: 20px !important;
+  
+  /* Shadow with green glow */
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3), 
+              0 0 40px rgba(16, 185, 129, 0.1) !important;
+  
+  /* Smooth transitions */
+  transition: all 0.3s ease !important;
+}
+
+.glass-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4),
+              0 0 60px rgba(16, 185, 129, 0.15) !important;
+}
+
+/* Compact glass card without padding (for components that manage their own padding) */
+.glass-card-no-padding {
+  background: rgba(30, 50, 30, 0.6) !important;
+  backdrop-filter: blur(12px) !important;
+  -webkit-backdrop-filter: blur(12px) !important;
+  border-radius: 16px !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3), 
+              0 0 40px rgba(16, 185, 129, 0.1) !important;
+  transition: all 0.3s ease !important;
+}
