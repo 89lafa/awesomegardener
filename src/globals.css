@@ -1,3 +1,4 @@
+css
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -20,7 +21,7 @@
   
   /* ═══ STATUS COLORS ═══ */
   --success: #22c55e;
-  --warning: #f59e0b;
+  --warning: #f59e0b; /* This will be overridden by the new @layer base definition below for --warning */
   --danger: #ef4444;
   --info: #3b82f6;
   --purple: #8b5cf6;
@@ -66,189 +67,113 @@
   --z-toast: 500;
 }
 
-/* ═══════════════════════════════════════════════════════════════
-   LIGHT THEME (DEFAULT)
-   ═══════════════════════════════════════════════════════════════ */
-   
-:root, [data-theme="light"] {
-  /* Backgrounds */
-  --bg-body: #f8faf8;
-  --bg-card: rgba(255, 255, 255, 0.85);
-  --bg-card-solid: #ffffff;
-  --bg-elevated: #ffffff;
-  --bg-muted: #f0f5f0;
-  --bg-sidebar: linear-gradient(180deg, #ffffff 0%, #f8faf8 100%);
-  --bg-header: rgba(255, 255, 255, 0.9);
-  
-  /* Text */
-  --text-primary: #1a2e1a;
-  --text-secondary: #374937;
-  --text-muted: #5c6e5c;
-  --text-disabled: #9ca3af;
-  --text-inverse: #ffffff;
-  --text-link: #10b981;
-  
-  /* Borders */
-  --border-default: #e5e7eb;
-  --border-subtle: rgba(16, 185, 129, 0.15);
-  --border-strong: rgba(16, 185, 129, 0.25);
-  --border-focus: #10b981;
-  
-  /* Glassmorphism */
-  --glass-bg: rgba(255, 255, 255, 0.7);
-  --glass-border: rgba(16, 185, 129, 0.15);
-  --glass-blur: 12px;
-  
-  /* Shadows */
-  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
-  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.08);
-  --shadow-lg: 0 10px 25px rgba(0, 0, 0, 0.1);
-  --shadow-xl: 0 20px 40px rgba(0, 0, 0, 0.12);
-  --shadow-glow: 0 4px 20px rgba(16, 185, 129, 0.25);
-  
-  /* Surfaces */
-  --surface-hover: rgba(16, 185, 129, 0.05);
-  --surface-active: rgba(16, 185, 129, 0.1);
-  --surface-selected: rgba(16, 185, 129, 0.15);
-  
-  /* Inputs */
-  --input-bg: #ffffff;
-  --input-border: #e5e7eb;
-  --input-focus: #10b981;
-  --input-placeholder: #9ca3af;
-  
-  /* Status badge backgrounds */
-  --badge-success-bg: rgba(34, 197, 94, 0.15);
-  --badge-warning-bg: rgba(245, 158, 11, 0.15);
-  --badge-danger-bg: rgba(239, 68, 68, 0.15);
-  --badge-info-bg: rgba(59, 130, 246, 0.15);
-  
-  /* Scrollbar */
-  --scrollbar-bg: #f0f0f0;
-  --scrollbar-thumb: #c0c0c0;
-}
+@layer base {
+  :root {
+    /* Light mode HSL colors */
+    --background: 0 0% 100%;
+    --foreground: 222.2 84% 4.9%;
+    --card: 0 0% 100%;
+    --card-foreground: 222.2 84% 4.9%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222.2 84% 4.9%;
+    --primary: 221.2 83.2% 53.3%; /* This will be a new HSL primary, separate from AWESOMEGARDENER's hex primary */
+    --primary-foreground: 210 40% 98%;
+    --secondary: 210 40% 96.1%;
+    --secondary-foreground: 222.2 47.4% 11.2%;
+    --muted: 210 40% 96.1%;
+    --muted-foreground: 215.4 16.3% 46.9%;
+    --accent: 210 40% 96.1%;
+    --accent-foreground: 222.2 47.4% 11.2%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 214.3 31.8% 91.4%;
+    --input: 214.3 31.8% 91.4%;
+    --ring: 221.2 83.2% 53.3%;
+    --radius: 0.5rem;
+    --chart-1: 12 76% 61%;
+    --chart-2: 173 58% 39%;
+    --chart-3: 197 37% 24%;
+    --chart-4: 43 74% 66%;
+    --chart-5: 27 87% 67%;
 
-/* ═══════════════════════════════════════════════════════════════
-   DARK THEME
-   ═══════════════════════════════════════════════════════════════ */
+    /* Custom theme variables (these override or replace original theme vars for light mode) */
+    --bg-body: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #334155 100%); /* Makes default theme dark */
+    --bg-card: rgba(30, 41, 59, 0.8);
+    --bg-card-solid: #111a11; /* Added based on dark theme variables from original file */
+    --bg-elevated: #1a2e1a; /* Added based on dark theme variables from original file */
+    --bg-muted: rgba(51, 65, 85, 0.5);
+    --bg-sidebar: linear-gradient(180deg, #111a11 0%, #0a0f0a 100%); /* Added based on dark theme variables from original file */
+    --bg-header: rgba(17, 26, 17, 0.9); /* Added based on dark theme variables from original file */
+    --text-primary: #f8fafc;
+    --text-secondary: #cbd5e1;
+    --text-muted: #94a3b8;
+    --text-disabled: #374937; /* Added based on dark theme variables from original file */
+    --text-inverse: #0a0f0a; /* Added based on dark theme variables from original file */
+    --text-link: #34d399; /* Added based on dark theme variables from original file */
+    --border-default: rgba(16, 185, 129, 0.15); /* Added based on dark theme variables from original file */
+    --border-subtle: rgba(16, 185, 129, 0.2); /* Added based on dark theme variables from original file */
+    --border-strong: rgba(16, 185, 129, 0.3); /* Added based on dark theme variables from original file */
+    --border-focus: #10b981; /* Added based on dark theme variables from original file */
+    --border-color: rgba(148, 163, 184, 0.2); /* New custom variable */
+    --glass-bg: rgba(20, 40, 25, 0.7); /* Added based on dark theme variables from original file */
+    --glass-border: rgba(16, 185, 129, 0.25); /* Added based on dark theme variables from original file */
+    --glass-blur: 12px; /* Added based on dark theme variables from original file */
+    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.2); /* Added based on dark theme variables from original file */
+    --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.3); /* Added based on dark theme variables from original file */
+    --shadow-lg: 0 10px 25px rgba(0, 0, 0, 0.4); /* Added based on dark theme variables from original file */
+    --shadow-xl: 0 20px 40px rgba(0, 0, 0, 0.5); /* Added based on dark theme variables from original file */
+    --shadow-glow: 0 4px 20px rgba(16, 185, 129, 0.4); /* Added based on dark theme variables from original file */
+    --surface-hover: rgba(51, 65, 85, 0.3);
+    --surface-active: rgba(16, 185, 129, 0.15); /* Added based on dark theme variables from original file */
+    --surface-selected: rgba(16, 185, 129, 0.2); /* Added based on dark theme variables from original file */
+    --input-bg: #1a2e1a; /* Added based on dark theme variables from original file */
+    --input-border: rgba(255, 255, 255, 0.1); /* Added based on dark theme variables from original file */
+    --input-focus: #10b981; /* Added based on dark theme variables from original file */
+    --input-placeholder: #4ade80; /* Added based on dark theme variables from original file */
+    --badge-success-bg: rgba(34, 197, 94, 0.2); /* Added based on dark theme variables from original file */
+    --badge-warning-bg: rgba(245, 158, 11, 0.3);
+    --badge-danger-bg: rgba(239, 68, 68, 0.2); /* Added based on dark theme variables from original file */
+    --badge-info-bg: rgba(59, 130, 246, 0.2); /* Added based on dark theme variables from original file */
+    --scrollbar-bg: #1a2e1a; /* Added based on dark theme variables from original file */
+    --scrollbar-thumb: #374937; /* Added based on dark theme variables from original file */
+    --warning: #fbbf24;
+  }
 
-/* Auto dark mode based on system preference */
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) {
-    /* Backgrounds */
-    --bg-body: #0a0f0a;
-    --bg-card: rgba(20, 40, 25, 0.7);
-    --bg-card-solid: #111a11;
-    --bg-elevated: #1a2e1a;
-    --bg-muted: #1a2e1a;
-    --bg-sidebar: linear-gradient(180deg, #111a11 0%, #0a0f0a 100%);
-    --bg-header: rgba(17, 26, 17, 0.9);
-
-    /* Text */
-    --text-primary: #f0fdf4;
-    --text-secondary: #d1fae5;
-    --text-muted: #86efac;
-    --text-disabled: #374937;
-    --text-inverse: #0a0f0a;
-    --text-link: #34d399;
-
-    /* Borders */
-    --border-default: rgba(16, 185, 129, 0.15);
-    --border-subtle: rgba(16, 185, 129, 0.2);
-    --border-strong: rgba(16, 185, 129, 0.3);
-    --border-focus: #10b981;
-
-    /* Glassmorphism */
-    --glass-bg: rgba(20, 40, 25, 0.7);
-    --glass-border: rgba(16, 185, 129, 0.25);
-    --glass-blur: 12px;
-
-    /* Shadows */
-    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.2);
-    --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.3);
-    --shadow-lg: 0 10px 25px rgba(0, 0, 0, 0.4);
-    --shadow-xl: 0 20px 40px rgba(0, 0, 0, 0.5);
-    --shadow-glow: 0 4px 20px rgba(16, 185, 129, 0.4);
-
-    /* Surfaces */
-    --surface-hover: rgba(16, 185, 129, 0.1);
-    --surface-active: rgba(16, 185, 129, 0.15);
-    --surface-selected: rgba(16, 185, 129, 0.2);
-
-    /* Inputs */
-    --input-bg: #1a2e1a;
-    --input-border: rgba(255, 255, 255, 0.1);
-    --input-focus: #10b981;
-    --input-placeholder: #4ade80;
-
-    /* Status badge backgrounds */
-    --badge-success-bg: rgba(34, 197, 94, 0.2);
-    --badge-warning-bg: rgba(245, 158, 11, 0.2);
-    --badge-danger-bg: rgba(239, 68, 68, 0.2);
-    --badge-info-bg: rgba(59, 130, 246, 0.2);
-
-    /* Scrollbar */
-    --scrollbar-bg: #1a2e1a;
-    --scrollbar-thumb: #374937;
+  .dark {
+    --background: 222.2 84% 4.9%;
+    --foreground: 210 40% 98%;
+    --card: 222.2 84% 4.9%;
+    --card-foreground: 210 40% 98%;
+    --popover: 222.2 84% 4.9%;
+    --popover-foreground: 210 40% 98%;
+    --primary: 217.2 91.2% 59.8%;
+    --primary-foreground: 222.2 47.4% 11.2%;
+    --secondary: 217.2 32.6% 17.5%;
+    --secondary-foreground: 210 40% 98%;
+    --muted: 217.2 32.6% 17.5%;
+    --muted-foreground: 215 20.2% 65.1%;
+    --accent: 217.2 32.6% 17.5%;
+    --accent-foreground: 210 40% 98%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 217.2 32.6% 17.5%;
+    --input: 217.2 32.6% 17.5%;
+    --ring: 224.3 76.3% 48%;
+    --chart-1: 220 70% 50%;
+    --chart-2: 160 60% 45%;
+    --chart-3: 30 80% 55%;
+    --chart-4: 280 65% 60%;
+    --chart-5: 340 75% 55%;
   }
 }
 
-[data-theme="dark"] {
-  /* Backgrounds */
-  --bg-body: #0a0f0a;
-  --bg-card: rgba(20, 40, 25, 0.7);
-  --bg-card-solid: #111a11;
-  --bg-elevated: #1a2e1a;
-  --bg-muted: #1a2e1a;
-  --bg-sidebar: linear-gradient(180deg, #111a11 0%, #0a0f0a 100%);
-  --bg-header: rgba(17, 26, 17, 0.9);
-
-  /* Text */
-  --text-primary: #f0fdf4;
-  --text-secondary: #d1fae5;
-  --text-muted: #86efac;
-  --text-disabled: #374937;
-  --text-inverse: #0a0f0a;
-  --text-link: #34d399;
-
-  /* Borders */
-  --border-default: rgba(16, 185, 129, 0.15);
-  --border-subtle: rgba(16, 185, 129, 0.2);
-  --border-strong: rgba(16, 185, 129, 0.3);
-  --border-focus: #10b981;
-
-  /* Glassmorphism */
-  --glass-bg: rgba(20, 40, 25, 0.7);
-  --glass-border: rgba(16, 185, 129, 0.25);
-  --glass-blur: 12px;
-  
-  /* Shadows */
-  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.2);
-  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.3);
-  --shadow-lg: 0 10px 25px rgba(0, 0, 0, 0.4);
-  --shadow-xl: 0 20px 40px rgba(0, 0, 0, 0.5);
-  --shadow-glow: 0 4px 20px rgba(16, 185, 129, 0.4);
-  
-  /* Surfaces */
-  --surface-hover: rgba(16, 185, 129, 0.1);
-  --surface-active: rgba(16, 185, 129, 0.15);
-  --surface-selected: rgba(16, 185, 129, 0.2);
-  
-  /* Inputs */
-  --input-bg: #1a2e1a;
-  --input-border: rgba(255, 255, 255, 0.1);
-  --input-focus: #10b981;
-  --input-placeholder: #4ade80;
-  
-  /* Status badge backgrounds */
-  --badge-success-bg: rgba(34, 197, 94, 0.2);
-  --badge-warning-bg: rgba(245, 158, 11, 0.2);
-  --badge-danger-bg: rgba(239, 68, 68, 0.2);
-  --badge-info-bg: rgba(59, 130, 246, 0.2);
-  
-  /* Scrollbar */
-  --scrollbar-bg: #1a2e1a;
-  --scrollbar-thumb: #374937;
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
 }
 
 /* ═══════════════════════════════════════════════════════════════
@@ -257,7 +182,8 @@
 
 * {
   box-sizing: border-box;
-  border-color: var(--border-default);
+  /* Original: border-color: var(--border-default);
+     Now handled by @apply border-border in @layer base */
 }
 
 html {
@@ -268,8 +194,8 @@ html {
 body {
   font-family: var(--font-family);
   font-size: var(--font-size-base);
-  color: var(--text-primary);
-  background: var(--bg-body);
+  /* Original: color: var(--text-primary); background: var(--bg-body);
+     Now handled by @apply bg-background text-foreground in @layer base */
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
@@ -338,7 +264,7 @@ html, body {
 
 /* Borders */
 .border-default { border-color: var(--border-default); }
-.border-subtle { border-color: var(--border-subtle); }
+/* .border-subtle is now defined in @layer components */
 
 /* Touch target */
 .touch-target {
@@ -357,20 +283,7 @@ html, body {
   border: 1px solid var(--glass-border);
 }
 
-.glass-card {
-  background: var(--glass-bg);
-  backdrop-filter: blur(var(--glass-blur));
-  -webkit-backdrop-filter: blur(var(--glass-blur));
-  border: 1px solid var(--glass-border);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-md);
-  transition: all var(--transition-base);
-}
-
-.glass-card:hover {
-  box-shadow: var(--shadow-lg);
-  transform: translateY(-2px);
-}
+/* Original .glass-card definitions are moved to @layer components */
 
 /* Gradient cards */
 .gradient-primary {
@@ -555,7 +468,8 @@ html, body {
   cursor: pointer;
   -webkit-appearance: none;
   appearance: none;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%235c6e5c' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+  /* Updated stroke color for consistency with new theme variables */
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='hsl(var(--muted-foreground))' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
   background-repeat: no-repeat;
   background-position: right 12px center;
   background-size: 18px;
@@ -880,49 +794,46 @@ a,
   to { transform: rotate(360deg); }
 }
 
-/* ═══════════════════════════════════════════════════════════════
-   GLASSMORPHIC CARD - THE EMERALD GREEN BLUR EFFECT
-   ═══════════════════════════════════════════════════════════════ */
+@layer components {
+  /* GLASSMORPHIC CARD STYLES - EMERALD GREEN WITH BLUR */
+  .glass-card {
+    /* THIS IS THE MAGIC - Semi-transparent emerald green */
+    background: rgba(16, 185, 129, 0.15) !important;
+    backdrop-filter: blur(12px) !important;
+    -webkit-backdrop-filter: blur(12px) !important;
+    border: 1px solid rgba(16, 185, 129, 0.2) !important;
+    border-radius: 16px !important;
+    padding: 20px !important;
+    box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37) !important;
+    transition: all var(--transition-base); /* Preserve original transition */
+  }
 
-.glass-card {
-  /* THIS IS THE MAGIC - Semi-transparent emerald green */
-  background: rgba(30, 50, 30, 0.6) !important;
-  
-  /* THIS CREATES THE BLUR - Both are needed for cross-browser */
-  backdrop-filter: blur(12px) !important;
-  -webkit-backdrop-filter: blur(12px) !important;
-  
-  /* Rounded corners */
-  border-radius: 16px !important;
-  
-  /* Subtle glowing border */
-  border: 1px solid rgba(255, 255, 255, 0.1) !important;
-  
-  /* Padding */
-  padding: 20px !important;
-  
-  /* Shadow with green glow */
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3), 
-              0 0 40px rgba(16, 185, 129, 0.1) !important;
-  
-  /* Smooth transitions */
-  transition: all 0.3s ease !important;
-}
+  .glass-card:hover {
+    transform: translateY(-2px); /* Preserve original hover effect */
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4), /* Adjusted to match new shadow aesthetic while enhancing on hover */
+                0 0 60px rgba(16, 185, 129, 0.15) !important;
+  }
 
-.glass-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4),
-              0 0 60px rgba(16, 185, 129, 0.15) !important;
-}
+  .glass-card-no-padding {
+    background: rgba(16, 185, 129, 0.15) !important;
+    backdrop-filter: blur(12px) !important;
+    -webkit-backdrop-filter: blur(12px) !important;
+    border: 1px solid rgba(16, 185, 129, 0.2) !important;
+    border-radius: 16px !important;
+    box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37) !important;
+    transition: all 0.3s ease !important; /* Preserve original transition */
+  }
 
-/* Compact glass card without padding (for components that manage their own padding) */
-.glass-card-no-padding {
-  background: rgba(30, 50, 30, 0.6) !important;
-  backdrop-filter: blur(12px) !important;
-  -webkit-backdrop-filter: blur(12px) !important;
-  border-radius: 16px !important;
-  border: 1px solid rgba(255, 255, 255, 0.1) !important;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3), 
-              0 0 40px rgba(16, 185, 129, 0.1) !important;
-  transition: all 0.3s ease !important;
+  /* Utility classes for borders and backgrounds */
+  .border-subtle {
+    border-color: rgba(16, 185, 129, 0.3) !important;
+  }
+
+  .border-border-default {
+    border-color: var(--border-color) !important;
+  }
+
+  .bg-surface-hover {
+    background-color: var(--surface-hover) !important;
+  }
 }
