@@ -10,7 +10,7 @@ import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import TrayGrid from '@/components/indoor/TrayGrid';
 import TransplantDialog from '@/components/indoor/TransplantDialog';
-import PlantSeedsDialog from '@/components/indoor/PlantSeedsDialog';
+import { PlantSeedsDialog } from '@/components/indoor/PlantSeedsDialog';
 import GrowLogComponent from '@/components/indoor/GrowLogComponent';
 
 export default function TrayDetail() {
