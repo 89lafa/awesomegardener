@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { base44 } from '@/api/base44Client';
 import {
@@ -12,7 +11,8 @@ import {
   Settings,
   Loader2,
   Palette,
-  Sprout
+  Sprout,
+  Edit
 } from 'lucide-react';
 import PlotSettingsDialog from './PlotSettingsDialog';
 import PlantingModal from './PlantingModal';
@@ -35,9 +35,20 @@ import {
   DialogTitle,
   DialogFooter,
 } from '@/components/ui/dialog';
+import {
+  Drawer,
+  DrawerClose,
+  DrawerContent,
+  DrawerDescription,
+  DrawerFooter,
+  DrawerHeader,
+  DrawerTitle,
+} from '@/components/ui/drawer';
 import { Card, CardContent } from '@/components/ui/card';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
+import useLongPress from '@/components/utils/useLongPress';
+import { useIsMobile } from '@/components/ui/use-mobile';
 
 const ITEM_TYPES = [
   { value: 'RAISED_BED', label: 'Raised Bed', color: '#8B7355', defaultDims: '4x8', defaultUnit: 'ft', usesGrid: true, plantable: true },
@@ -69,7 +80,10 @@ const GALLON_SIZES = [
 ];
 
 export default function PlotCanvas({ garden, plot, activeSeason, seasonId, onPlotUpdate, onDeleteGarden, onItemSelect }) {
+  const isMobile = useIsMobile();
   const [cropPlans, setCropPlans] = useState([]);
+  const [longPressedItem, setLongPressedItem] = useState(null);
+  const [showContextMenu, setShowContextMenu] = useState(false);
   
   useEffect(() => {
     if (seasonId) {
@@ -364,6 +378,7 @@ export default function PlotCanvas({ garden, plot, activeSeason, seasonId, onPlo
       const planterSize = RAISED_PLANTER_SIZES.find(p => p.label === newItem.planterSize);
       if (!planterSize) {
         toast.error('Please select a planter size');
+        setAddingItems(false);
         return;
       }
       width = planterSize.width;
@@ -372,6 +387,7 @@ export default function PlotCanvas({ garden, plot, activeSeason, seasonId, onPlo
       const parsed = parseDimensions(newItem.dimensions);
       if (!parsed) {
         toast.error('Invalid dimensions. Use "4x8" format.');
+        setAddingItems(false);
         return;
       }
       width = toInches(parsed.width, newItem.unit);
@@ -732,6 +748,7 @@ export default function PlotCanvas({ garden, plot, activeSeason, seasonId, onPlo
       await base44.entities.PlotItem.delete(item.id);
       setItems(items.filter(i => i.id !== item.id));
       setSelectedItem(null);
+      setShowContextMenu(false);
       toast.success('Item deleted');
     } catch (error) {
       console.error('Error deleting:', error);
@@ -840,6 +857,7 @@ export default function PlotCanvas({ garden, plot, activeSeason, seasonId, onPlo
       planting_pattern: item.metadata?.planting_pattern || 'square_foot'
     });
     setShowEditItem(true);
+    setShowContextMenu(false);
   };
 
   const handleEditItemSave = async () => {
@@ -876,7 +894,7 @@ export default function PlotCanvas({ garden, plot, activeSeason, seasonId, onPlo
       metadata.rowCount = editItemData.rowCount;
       metadata.planting_pattern = editItemData.planting_pattern;
     }
-    if (itemType.usesGrid || itemType.usesPredefinedSizes) { // Added usesPredefinedSizes here
+    if (itemType.usesGrid || itemType.usesPredefinedSizes) {
       metadata.planting_pattern = editItemData.planting_pattern;
     }
 
@@ -966,6 +984,144 @@ export default function PlotCanvas({ garden, plot, activeSeason, seasonId, onPlo
     if (percentage === 0) return { status: 'empty', label: 'Empty', color: 'gray' };
     if (percentage >= 100) return { status: 'full', label: 'Full', color: 'emerald' };
     return { status: 'partial', label: 'Partial', color: 'amber' };
+  };
+
+  // Item Context Menu Component
+  const ItemContextMenu = ({ item, onClose }) => {
+    const itemType = ITEM_TYPES.find(t => t.value === item.item_type);
+    const isPlantable = itemType?.plantable;
+    
+    const ContextContent = (
+      <>
+        <DrawerHeader>
+          <DrawerTitle>{item.label}</DrawerTitle>
+          <DrawerDescription>{item.width}" × {item.height}"</DrawerDescription>
+        </DrawerHeader>
+        <div className="px-4 space-y-2 pb-4">
+          <Button
+            variant="outline"
+            className="w-full justify-start gap-2"
+            onClick={() => {
+              openEditItem(item);
+              onClose();
+            }}
+          >
+            <Edit className="w-4 h-4" />
+            Edit
+          </Button>
+          {isPlantable && (
+            <Button
+              className="w-full justify-start gap-2 bg-emerald-600 hover:bg-emerald-700 text-white h-12 font-semibold"
+              onClick={() => {
+                setShowPlantingModal(true);
+                onClose();
+              }}
+            >
+              <Sprout className="w-5 h-5" />
+              Plant Seeds
+            </Button>
+          )}
+          <Button
+            variant="outline"
+            className="w-full justify-start gap-2"
+            onClick={() => {
+              handleRotate();
+              onClose();
+            }}
+          >
+            <RotateCw className="w-4 h-4" />
+            Rotate
+          </Button>
+          <Button
+            variant="outline"
+            className="w-full justify-start gap-2 text-red-600 hover:text-red-700 hover:bg-red-50"
+            onClick={() => {
+              handleDeleteItem(item);
+              onClose();
+            }}
+          >
+            <Trash2 className="w-4 h-4" />
+            Delete
+          </Button>
+        </div>
+        <DrawerFooter>
+          <DrawerClose asChild>
+            <Button variant="outline">Close</Button>
+          </DrawerClose>
+        </DrawerFooter>
+      </>
+    );
+    
+    if (isMobile) {
+      return (
+        <Drawer open={showContextMenu} onOpenChange={setShowContextMenu}>
+          <DrawerContent>
+            {ContextContent}
+          </DrawerContent>
+        </Drawer>
+      );
+    }
+    
+    // Desktop: Use regular dialog
+    return (
+      <Dialog open={showContextMenu} onOpenChange={setShowContextMenu}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>{item.label}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-2">
+            <Button
+              variant="outline"
+              className="w-full justify-start gap-2"
+              onClick={() => {
+                openEditItem(item);
+                onClose();
+              }}
+            >
+              <Edit className="w-4 h-4" />
+              Edit
+            </Button>
+            {isPlantable && (
+              <Button
+                className="w-full justify-start gap-2 bg-emerald-600 hover:bg-emerald-700 text-white h-12 font-semibold"
+                onClick={() => {
+                  setShowPlantingModal(true);
+                  onClose();
+                }}
+              >
+                <Sprout className="w-5 h-5" />
+                Plant Seeds
+              </Button>
+            )}
+            <Button
+              variant="outline"
+              className="w-full justify-start gap-2"
+              onClick={() => {
+                handleRotate();
+                onClose();
+              }}
+            >
+              <RotateCw className="w-4 h-4" />
+              Rotate
+            </Button>
+            <Button
+              variant="outline"
+              className="w-full justify-start gap-2 text-red-600 hover:text-red-700 hover:bg-red-50"
+              onClick={() => {
+                handleDeleteItem(item);
+                onClose();
+              }}
+            >
+              <Trash2 className="w-4 h-4" />
+              Delete
+            </Button>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={onClose}>Close</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    );
   };
 
   return (
@@ -1059,7 +1215,7 @@ export default function PlotCanvas({ garden, plot, activeSeason, seasonId, onPlo
               </Button>
             )}
           </div>
-          {selectedItem && (
+          {selectedItem && !isMobile && (
             <div className="pt-4 border-t space-y-3">
               <div>
                 <h4 className="font-semibold text-sm mb-1">Selected</h4>
@@ -1243,9 +1399,32 @@ export default function PlotCanvas({ garden, plot, activeSeason, seasonId, onPlo
             const isGrowBagOrContainer = itemType?.usesGallons;
             const isFull = status?.status === 'full';
 
+            // Long-press handler for touch devices
+            const longPressHandlers = useLongPress(
+              () => {
+                // Long press detected
+                if (!isDragging) {
+                  setLongPressedItem(item);
+                  setSelectedItem(item);
+                  setShowContextMenu(true);
+                }
+              },
+              {
+                threshold: 500,
+                onClick: () => {
+                  // Regular click (short tap)
+                  if (!isDragging) {
+                    setSelectedItem(item);
+                    if (onItemSelect) onItemSelect(item);
+                  }
+                }
+              }
+            );
+
             return (
             <div
               key={item.id}
+              {...(isMobile ? longPressHandlers : {})}
               className={cn(
                 "absolute border-4 rounded-lg flex items-center justify-center text-sm font-medium overflow-hidden plot-item group",
                 selectedItem?.id === item.id && "ring-4 ring-emerald-300",
@@ -1335,6 +1514,11 @@ export default function PlotCanvas({ garden, plot, activeSeason, seasonId, onPlo
           })}
         </div>
       </div>
+
+      {/* Item Context Menu (Mobile Drawer / Desktop Dialog) */}
+      {longPressedItem && (
+        <ItemContextMenu item={longPressedItem} onClose={() => { setShowContextMenu(false); setLongPressedItem(null); }} />
+      )}
 
       {/* Remove Bulk Add Dialog - now integrated into Add Item */}
       <Dialog open={showAddItem} onOpenChange={setShowAddItem}>
@@ -1653,7 +1837,7 @@ export default function PlotCanvas({ garden, plot, activeSeason, seasonId, onPlo
                     </SelectContent>
                   </Select>
                 </div>
-              ) : !ITEM_TYPES.find(t => t.value === selectedItem.item_type)?.usesPredefinedSizes ? ( // Corrected condition
+              ) : !ITEM_TYPES.find(t => t.value === selectedItem.item_type)?.usesPredefinedSizes ? (
                 <>
                   <div>
                     <Label>Dimensions</Label>
