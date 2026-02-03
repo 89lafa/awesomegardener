@@ -22,6 +22,105 @@ import { createPageUrl } from '@/utils';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 
+const QuickAccessCard = ({ icon: Icon, title, count, color, page }) => {
+  const navigate = useNavigate();
+  const colorMap = {
+    'bg-emerald-500': '#10b981',
+    'bg-blue-500': '#3b82f6',
+    'bg-amber-500': '#f59e0b',
+    'bg-green-600': '#059669',
+    'bg-purple-500': '#8b5cf6',
+    'bg-pink-500': '#ec4899'
+  };
+  
+  const iconColor = colorMap[color] || '#10b981';
+  
+  return (
+    <div 
+      className="glass-card cursor-pointer"
+      onClick={() => navigate(createPageUrl(page))}
+    >
+      <div className="flex items-center justify-between">
+        <div className="flex-1">
+          <p className="text-sm mb-1" style={{ color: '#86efac' }}>{title}</p>
+          <p className="text-3xl font-bold" style={{ color: iconColor }}>{count}</p>
+        </div>
+        <div style={{ 
+          padding: '12px', 
+          borderRadius: '12px',
+          color: iconColor
+        }}>
+          <Icon className="w-6 h-6" />
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const WeatherCard = ({ weather, weatherLoading }) => {
+  if (weatherLoading) {
+    return (
+      <div className="glass-card p-6">
+        <div className="animate-pulse space-y-2">
+          <div className="h-4 rounded w-20 bg-gray-700"></div>
+          <div className="h-8 rounded w-16 bg-gray-600"></div>
+        </div>
+      </div>
+    );
+  }
+
+  if (!weather) {
+    return (
+      <div className="glass-card p-6 text-center">
+        <Cloud className="w-8 h-8 mx-auto mb-2 text-gray-400" />
+        <p className="text-xs text-gray-400">Set ZIP in Settings</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="glass-card relative overflow-hidden cursor-pointer">
+      {/* Decorative circle */}
+      <div style={{
+        position: 'absolute',
+        right: '-20px',
+        top: '-20px',
+        width: '100px',
+        height: '100px',
+        borderRadius: '50%',
+        background: 'rgba(255, 255, 255, 0.1)',
+      }} />
+      
+      <div style={{ position: 'relative', zIndex: 1, color: 'white' }}>
+        <p className="text-xs mb-1 opacity-80">Today</p>
+        <p className="text-3xl font-bold mb-1">{weather.current_temp}°</p>
+        <p className="text-xs opacity-90">{weather.conditions}</p>
+        <div className="flex gap-3 mt-3 text-xs opacity-80">
+          <span>H: {weather.high_temp}°</span>
+          <span>L: {weather.low_temp}°</span>
+        </div>
+        {weather.frost_warning && (
+          <div className="mt-2 flex items-center gap-1 text-xs rounded px-2 py-1 bg-yellow-400/20 text-yellow-400">
+            <AlertTriangle className="w-3 h-3" />
+            <span>Frost risk!</span>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+function getWeatherIcon(code) {
+  const codeNum = parseInt(code) || 0;
+  if (codeNum >= 200 && codeNum < 300) return '⛈️';
+  if (codeNum >= 300 && codeNum < 600) return '🌧️';
+  if (codeNum >= 600 && codeNum < 700) return '❄️';
+  if (codeNum >= 700 && codeNum < 800) return '🌫️';
+  if (codeNum === 800) return '☀️';
+  if (codeNum > 800) return '⛅';
+  return '🌤️';
+}
+
 export default function Dashboard() {
   const navigate = useNavigate();
   const [user, setUser] = useState(null);
@@ -160,93 +259,6 @@ export default function Dashboard() {
     );
   }
 
-  const QuickAccessCard = ({ icon: Icon, title, count, color, page }) => {
-    const colorMap = {
-      'bg-emerald-500': '#10b981',
-      'bg-blue-500': '#3b82f6',
-      'bg-amber-500': '#f59e0b',
-      'bg-green-600': '#059669',
-      'bg-purple-500': '#8b5cf6',
-      'bg-pink-500': '#ec4899'
-    };
-    
-    const iconColor = colorMap[color] || '#10b981';
-    
-    return (
-      <div 
-        className="glass-card cursor-pointer"
-        onClick={() => navigate(createPageUrl(page))}
-      >
-        <div className="flex items-center justify-between">
-          <div className="flex-1">
-            <p className="text-sm mb-1" style={{ color: '#86efac' }}>{title}</p>
-            <p className="text-3xl font-bold" style={{ color: iconColor }}>{count}</p>
-          </div>
-          <div style={{ 
-            padding: '12px', 
-            borderRadius: '12px',
-            color: iconColor
-          }}>
-            <Icon className="w-6 h-6" />
-          </div>
-        </div>
-      </div>
-    );
-  };
-
-  const WeatherCard = () => {
-    if (weatherLoading) {
-      return (
-        <div className="glass-card p-6">
-          <div className="animate-pulse space-y-2">
-            <div className="h-4 rounded w-20 bg-gray-700"></div>
-            <div className="h-8 rounded w-16 bg-gray-600"></div>
-          </div>
-        </div>
-      );
-    }
-
-    if (!weather) {
-      return (
-        <div className="glass-card p-6 text-center">
-          <Cloud className="w-8 h-8 mx-auto mb-2 text-gray-400" />
-          <p className="text-xs text-gray-400">Set ZIP in Settings</p>
-        </div>
-      );
-    }
-
-    return (
-      <div className="glass-card relative overflow-hidden cursor-pointer">
-        {/* Decorative circle */}
-        <div style={{
-          position: 'absolute',
-          right: '-20px',
-          top: '-20px',
-          width: '100px',
-          height: '100px',
-          borderRadius: '50%',
-          background: 'rgba(255, 255, 255, 0.1)',
-        }} />
-        
-        <div style={{ position: 'relative', zIndex: 1, color: 'white' }}>
-          <p className="text-xs mb-1 opacity-80">Today</p>
-          <p className="text-3xl font-bold mb-1">{weather.current_temp}°</p>
-          <p className="text-xs opacity-90">{weather.conditions}</p>
-          <div className="flex gap-3 mt-3 text-xs opacity-80">
-            <span>H: {weather.high_temp}°</span>
-            <span>L: {weather.low_temp}°</span>
-          </div>
-          {weather.frost_warning && (
-            <div className="mt-2 flex items-center gap-1 text-xs rounded px-2 py-1 bg-yellow-400/20 text-yellow-400">
-              <AlertTriangle className="w-3 h-3" />
-              <span>Frost risk!</span>
-            </div>
-          )}
-        </div>
-      </div>
-    );
-  };
-
   return (
     <div className="space-y-6 max-w-6xl">
         {/* Header */}
@@ -284,7 +296,7 @@ export default function Dashboard() {
           color="bg-amber-500"
           page="SeedStash"
         />
-        <WeatherCard />
+        <WeatherCard weather={weather} weatherLoading={weatherLoading} />
       </div>
 
       {/* More Stats */}
@@ -509,15 +521,4 @@ export default function Dashboard() {
       )}
       </div>
   );
-}
-
-function getWeatherIcon(code) {
-  const codeNum = parseInt(code) || 0;
-  if (codeNum >= 200 && codeNum < 300) return '⛈️';
-  if (codeNum >= 300 && codeNum < 600) return '🌧️';
-  if (codeNum >= 600 && codeNum < 700) return '❄️';
-  if (codeNum >= 700 && codeNum < 800) return '🌫️';
-  if (codeNum === 800) return '☀️';
-  if (codeNum > 800) return '⛅';
-  return '🌤️';
 }
