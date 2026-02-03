@@ -31,6 +31,8 @@ export default function GlobalSearch() {
 
     setLoading(true);
     try {
+      const user = await base44.auth.me();
+      
       // Search across Variety and PlantProfile entities
       const [varieties, profiles, plantTypes] = await Promise.all([
         base44.entities.Variety.list(),
@@ -43,18 +45,20 @@ export default function GlobalSearch() {
       // Create plant type lookup
       const typeMap = new Map(plantTypes.map(t => [t.id, t]));
       
-      // Search varieties
+      // Search varieties (public catalog only)
       const matchingVarieties = varieties.filter(v => 
         v.variety_name?.toLowerCase().includes(searchLower) ||
         v.name?.toLowerCase().includes(searchLower) ||
         v.description?.toLowerCase().includes(searchLower)
       );
 
-      // Search profiles
-      const matchingProfiles = profiles.filter(p =>
-        p.variety_name?.toLowerCase().includes(searchLower) ||
-        p.common_name?.toLowerCase().includes(searchLower)
-      );
+      // Search profiles - ONLY user's own profiles (not other users' private stash)
+      const matchingProfiles = profiles.filter(p => {
+        const matchesSearch = p.variety_name?.toLowerCase().includes(searchLower) ||
+          p.common_name?.toLowerCase().includes(searchLower);
+        const isUsersOwn = p.created_by === user.email;
+        return matchesSearch && isUsersOwn && p.plant_type_id; // Must have plant_type_id
+      });
 
       // Combine and deduplicate
       const combined = [];

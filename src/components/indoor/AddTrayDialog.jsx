@@ -14,6 +14,7 @@ const TRAY_PRESETS = [
 
 export function AddTrayDialog({ isOpen, onClose, shelfId, onTrayAdded }) {
   const [trayName, setTrayName] = useState('');
+  const [quantity, setQuantity] = useState(1);
   const [totalCells, setTotalCells] = useState(72);
   const [rows, setRows] = useState(8);
   const [cols, setCols] = useState(9);
@@ -29,37 +30,56 @@ export function AddTrayDialog({ isOpen, onClose, shelfId, onTrayAdded }) {
 
     setLoading(true);
     try {
-      const tray = await base44.entities.SeedTray.create({
-        shelf_id: shelfId,
-        name: trayName,
-        tray_code: `T-${Date.now().toString(36)}`,
-        total_cells: parseInt(totalCells),
-        cells_rows: parseInt(rows),
-        cells_cols: parseInt(cols),
-        insert_type: insertType,
-        width_inches: 20,
-        length_inches: 10,
-        status: 'empty',
-        notes: notes || null
-      });
+      const qty = parseInt(quantity) || 1;
+      
+      // Extract base name and starting number
+      const match = trayName.match(/^(.*?)(\d+)$/);
+      const baseName = match ? match[1].trim() : trayName;
+      const startNum = match ? parseInt(match[2]) : 1;
+      
+      for (let i = 0; i < qty; i++) {
+        const currentName = qty > 1 ? `${baseName} ${startNum + i}` : trayName;
+        
+        const tray = await base44.entities.SeedTray.create({
+          shelf_id: shelfId,
+          name: currentName,
+          tray_code: `T-${Date.now().toString(36)}-${i}`,
+          total_cells: parseInt(totalCells),
+          cells_rows: parseInt(rows),
+          cells_cols: parseInt(cols),
+          insert_type: insertType,
+          width_inches: 20,
+          length_inches: 10,
+          status: 'empty',
+          notes: notes || null
+        });
 
-      // Create individual tray cells
-      for (let r = 0; r < rows; r++) {
-        for (let c = 0; c < cols; c++) {
-          await base44.entities.TrayCell.create({
-            tray_id: tray.id,
-            row: r,
-            col: c,
-            cell_number: r * cols + c + 1,
-            status: 'empty'
-          });
+        // Create individual tray cells
+        const cellPromises = [];
+        for (let r = 0; r < rows; r++) {
+          for (let c = 0; c < cols; c++) {
+            cellPromises.push(
+              base44.entities.TrayCell.create({
+                tray_id: tray.id,
+                row: r,
+                col: c,
+                cell_number: r * cols + c + 1,
+                status: 'empty'
+              })
+            );
+          }
         }
+        await Promise.all(cellPromises);
       }
 
-      toast.success(`Tray "${trayName}" created with ${totalCells} cells!`);
+      toast.success(qty > 1 
+        ? `Created ${qty} trays with ${totalCells} cells each!`
+        : `Tray "${trayName}" created with ${totalCells} cells!`
+      );
       onTrayAdded?.();
       onClose();
       setTrayName('');
+      setQuantity(1);
       setNotes('');
     } catch (error) {
       console.error('Error creating tray:', error);
@@ -77,13 +97,29 @@ export function AddTrayDialog({ isOpen, onClose, shelfId, onTrayAdded }) {
         </DialogHeader>
 
         <div className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium mb-2">Tray Name</label>
-            <Input
-              placeholder="e.g., Tomato Tray, Seedling Tray 1"
-              value={trayName}
-              onChange={(e) => setTrayName(e.target.value)}
-            />
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-sm font-medium mb-2">Tray Name</label>
+              <Input
+                placeholder="e.g., Tray 1"
+                value={trayName}
+                onChange={(e) => setTrayName(e.target.value)}
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-2">Quantity</label>
+              <Input
+                type="number"
+                min="1"
+                max="50"
+                value={quantity}
+                onChange={(e) => setQuantity(parseInt(e.target.value) || 1)}
+                placeholder="1"
+              />
+              <p className="text-xs text-gray-500 mt-1">
+                {quantity > 1 && `Will create: ${trayName.replace(/\d+$/, '')} ${(trayName.match(/\d+$/) || ['1'])[0]}-${parseInt((trayName.match(/\d+$/) || ['1'])[0]) + quantity - 1}`}
+              </p>
+            </div>
           </div>
           
           <div>

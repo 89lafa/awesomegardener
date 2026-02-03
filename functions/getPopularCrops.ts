@@ -14,12 +14,16 @@ Deno.serve(async (req) => {
     const varietyUsers = new Map(); // variety_id => Set of user emails
 
     // Process grow list items
-    for (const item of growListItems) {
-      if (item.variety_id && item.created_by) {
-        if (!varietyUsers.has(item.variety_id)) {
-          varietyUsers.set(item.variety_id, new Set());
+    for (const list of growListItems) {
+      if (list.items && Array.isArray(list.items)) {
+        for (const item of list.items) {
+          if (item.variety_id && list.created_by) {
+            if (!varietyUsers.has(item.variety_id)) {
+              varietyUsers.set(item.variety_id, new Set());
+            }
+            varietyUsers.get(item.variety_id).add(list.created_by);
+          }
         }
-        varietyUsers.get(item.variety_id).add(item.created_by);
       }
     }
 

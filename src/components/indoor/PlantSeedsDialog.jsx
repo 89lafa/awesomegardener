@@ -72,28 +72,40 @@ export function PlantSeedsDialog({ isOpen, onClose, trayId, trayName, onSeedPlan
 
   const loadDisplayNames = async (items) => {
     const names = {};
+    
+    // Collect all unique IDs we need to fetch
+    const varietyIds = new Set();
+    const profileIds = new Set();
+    
     for (const item of items) {
-      if (item.variety_id || item.plant_profile_id) {
-        try {
-          const variety = item.variety_id 
-            ? await base44.entities.Variety.filter({ id: item.variety_id }).then(v => v[0])
-            : item.plant_profile_id
-            ? await base44.entities.PlantProfile.filter({ id: item.plant_profile_id }).then(p => p[0])
-            : null;
-          
-          if (variety) {
-            names[item.id] = await getVarietyDisplayName(variety);
-          } else if (item.variety_name) {
-            names[item.id] = item.variety_name;
-          }
-        } catch (error) {
-          console.error('Error loading display name:', error);
+      if (item.variety_id) varietyIds.add(item.variety_id);
+      if (item.plant_profile_id) profileIds.add(item.plant_profile_id);
+    }
+    
+    // Batch fetch all varieties and profiles at once
+    const [varieties, profiles] = await Promise.all([
+      varietyIds.size > 0 ? base44.entities.Variety.list() : Promise.resolve([]),
+      profileIds.size > 0 ? base44.entities.PlantProfile.list() : Promise.resolve([])
+    ]);
+    
+    const varietyMap = new Map(varieties.map(v => [v.id, v]));
+    const profileMap = new Map(profiles.map(p => [p.id, p]));
+    
+    // Build display names from cached data
+    for (const item of items) {
+      try {
+        if (item.variety_id && varietyMap.has(item.variety_id)) {
+          names[item.id] = await getVarietyDisplayName(varietyMap.get(item.variety_id));
+        } else if (item.plant_profile_id && profileMap.has(item.plant_profile_id)) {
+          names[item.id] = await getVarietyDisplayName(profileMap.get(item.plant_profile_id));
+        } else {
           names[item.id] = item.variety_name || item.custom_label || item.name || 'Unknown';
         }
-      } else if (item.variety_name || item.custom_label || item.name) {
-        names[item.id] = item.variety_name || item.custom_label || item.name;
+      } catch (error) {
+        names[item.id] = item.variety_name || item.custom_label || item.name || 'Unknown';
       }
     }
+    
     setDisplayNames(names);
   };
 

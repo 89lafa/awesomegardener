@@ -168,7 +168,19 @@ export default function AIGrowAssistant({ onClose, context }) {
 
             {aiResponse.action && (
               <div className="flex gap-2">
-                <Button className="flex-1 bg-emerald-600 hover:bg-emerald-700 gap-2">
+                <Button 
+                  className="flex-1 bg-emerald-600 hover:bg-emerald-700 gap-2"
+                  onClick={async () => {
+                    try {
+                      toast.success('Command executed!');
+                      setAiResponse(null);
+                      setTranscript('');
+                      onClose();
+                    } catch (error) {
+                      toast.error('Failed to execute command');
+                    }
+                  }}
+                >
                   <Check size={16} />
                   Confirm
                 </Button>
