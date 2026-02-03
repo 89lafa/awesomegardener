@@ -308,7 +308,7 @@ export default function SeedStashDetail() {
       <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
         <div>
           <div className="flex items-center gap-3 flex-wrap">
-            <h1 className="text-2xl lg:text-3xl font-bold text-gray-900">
+            <h1 className="text-2xl lg:text-3xl font-bold" style={{ color: 'var(--text-primary)' }}>
               {profile?.variety_name || seed.custom_label || 'Unknown Seed'}
             </h1>
             {ageStatus.status !== 'OK' && (
@@ -322,7 +322,7 @@ export default function SeedStashDetail() {
             )}
           </div>
           {profile?.common_name && (
-            <p className="text-gray-600 mt-1 text-lg">{profile.common_name}</p>
+            <p className="mt-1 text-lg" style={{ color: 'var(--text-secondary)' }}>{profile.common_name}</p>
           )}
         </div>
         <div className="flex gap-2">
@@ -403,9 +403,17 @@ export default function SeedStashDetail() {
 
       <div className="grid lg:grid-cols-3 gap-6">
         {/* Catalog Data Section */}
-        <Card className="lg:col-span-2">
+        <Card 
+          className="lg:col-span-2 hover:shadow-lg transition-all duration-300"
+          style={{
+            background: 'var(--glass-bg)',
+            backdropFilter: 'blur(12px)',
+            WebkitBackdropFilter: 'blur(12px)',
+            border: '1px solid var(--glass-border)'
+          }}
+        >
           <CardHeader className="flex flex-row items-center justify-between">
-            <CardTitle className="text-xl">
+            <CardTitle className="text-xl" style={{ color: 'var(--text-primary)' }}>
               📖 Variety Profile 
               {variety && <span className="text-sm font-normal text-gray-500 ml-2">(Catalog)</span>}
               {!variety && profile && <span className="text-sm font-normal text-gray-500 ml-2">(Custom)</span>}
@@ -420,30 +428,30 @@ export default function SeedStashDetail() {
               <>
               {/* Variety Info Banner */}
               {variety && (
-                <div className="p-4 bg-gradient-to-r from-emerald-50 to-green-50 rounded-lg border border-emerald-200">
+                <div className="p-4 bg-gradient-to-r from-emerald-50 to-green-50 dark:from-emerald-900/30 dark:to-green-900/30 rounded-lg border border-emerald-200 dark:border-emerald-700/50">
                   <div className="grid sm:grid-cols-2 gap-4 text-sm">
                     {variety.variety_name && (
                       <div>
-                        <span className="text-emerald-700 font-medium">Variety:</span>
-                        <span className="ml-2 text-emerald-900 font-semibold">{variety.variety_name}</span>
+                        <span className="text-emerald-700 dark:text-emerald-400 font-medium">Variety:</span>
+                        <span className="ml-2 text-emerald-900 dark:text-emerald-200 font-semibold">{variety.variety_name}</span>
                       </div>
                     )}
                     {plantType?.common_name && (
                       <div>
-                        <span className="text-emerald-700 font-medium">Type:</span>
-                        <span className="ml-2 text-emerald-900">{plantType.common_name}</span>
+                        <span className="text-emerald-700 dark:text-emerald-400 font-medium">Type:</span>
+                        <span className="ml-2 text-emerald-900 dark:text-emerald-200">{plantType.common_name}</span>
                       </div>
                     )}
                     {subCategory?.name && (
                       <div>
-                        <span className="text-emerald-700 font-medium">Category:</span>
-                        <span className="ml-2 text-emerald-900">{subCategory.name}</span>
+                        <span className="text-emerald-700 dark:text-emerald-400 font-medium">Category:</span>
+                        <span className="ml-2 text-emerald-900 dark:text-emerald-200">{subCategory.name}</span>
                       </div>
                     )}
                     {variety.seed_line_type && (
                       <div>
-                        <span className="text-emerald-700 font-medium">Seed Type:</span>
-                        <span className="ml-2 text-emerald-900 capitalize">{variety.seed_line_type.replace(/_/g, ' ')}</span>
+                        <span className="text-emerald-700 dark:text-emerald-400 font-medium">Seed Type:</span>
+                        <span className="ml-2 text-emerald-900 dark:text-emerald-200 capitalize">{variety.seed_line_type.replace(/_/g, ' ')}</span>
                       </div>
                     )}
                   </div>
@@ -453,26 +461,26 @@ export default function SeedStashDetail() {
               {/* Key Growing Stats - Hero Section */}
               <div className="grid sm:grid-cols-2 md:grid-cols-4 gap-3">
                 {(profile?.days_to_maturity_seed || variety?.days_to_maturity) && (
-                  <div className="flex flex-col items-center p-4 bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl border border-blue-200">
-                    <Calendar className="w-6 h-6 text-blue-600 mb-2" />
-                    <p className="text-xs text-blue-700 mb-1">Days to Maturity</p>
-                    <p className="text-2xl font-bold text-blue-900">{profile?.days_to_maturity_seed || variety?.days_to_maturity}</p>
+                  <div className="flex flex-col items-center p-4 bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/30 dark:to-blue-800/30 rounded-xl border border-blue-200 dark:border-blue-700/50">
+                    <Calendar className="w-6 h-6 text-blue-600 dark:text-blue-400 mb-2" />
+                    <p className="text-xs text-blue-700 dark:text-blue-400 mb-1">Days to Maturity</p>
+                    <p className="text-2xl font-bold text-blue-900 dark:text-blue-200">{profile?.days_to_maturity_seed || variety?.days_to_maturity}</p>
                   </div>
                 )}
                 {(profile?.sun_requirement || variety?.sun_requirement) && (
-                  <div className="flex flex-col items-center p-4 bg-gradient-to-br from-yellow-50 to-amber-100 rounded-xl border border-yellow-200">
-                    <Sun className="w-6 h-6 text-yellow-600 mb-2" />
-                    <p className="text-xs text-yellow-700 mb-1">Sun Exposure</p>
-                    <p className="text-sm font-bold text-yellow-900 capitalize">
+                  <div className="flex flex-col items-center p-4 bg-gradient-to-br from-yellow-50 to-amber-100 dark:from-yellow-900/30 dark:to-amber-800/30 rounded-xl border border-yellow-200 dark:border-yellow-700/50">
+                    <Sun className="w-6 h-6 text-yellow-600 dark:text-yellow-400 mb-2" />
+                    <p className="text-xs text-yellow-700 dark:text-yellow-400 mb-1">Sun Exposure</p>
+                    <p className="text-sm font-bold text-yellow-900 dark:text-yellow-200 capitalize">
                       {(profile?.sun_requirement || variety?.sun_requirement).replace(/_/g, ' ')}
                     </p>
                   </div>
                 )}
                 {(profile?.spacing_in_min || profile?.spacing_in_max || variety?.spacing_recommended) && (
-                  <div className="flex flex-col items-center p-4 bg-gradient-to-br from-green-50 to-emerald-100 rounded-xl border border-green-200">
-                    <Ruler className="w-6 h-6 text-green-600 mb-2" />
-                    <p className="text-xs text-green-700 mb-1">Spacing</p>
-                    <p className="text-lg font-bold text-green-900">
+                  <div className="flex flex-col items-center p-4 bg-gradient-to-br from-green-50 to-emerald-100 dark:from-green-900/30 dark:to-emerald-800/30 rounded-xl border border-green-200 dark:border-green-700/50">
+                    <Ruler className="w-6 h-6 text-green-600 dark:text-green-400 mb-2" />
+                    <p className="text-xs text-green-700 dark:text-green-400 mb-1">Spacing</p>
+                    <p className="text-lg font-bold text-green-900 dark:text-green-200">
                       {profile?.spacing_in_min && profile?.spacing_in_max
                         ? `${profile.spacing_in_min}-${profile.spacing_in_max}"`
                         : variety?.spacing_recommended 
@@ -482,10 +490,10 @@ export default function SeedStashDetail() {
                   </div>
                 )}
                 {(profile?.water_requirement || variety?.water_requirement) && (
-                  <div className="flex flex-col items-center p-4 bg-gradient-to-br from-cyan-50 to-blue-100 rounded-xl border border-cyan-200">
-                    <Droplets className="w-6 h-6 text-cyan-600 mb-2" />
-                    <p className="text-xs text-cyan-700 mb-1">Water Needs</p>
-                    <p className="text-sm font-bold text-cyan-900 capitalize">
+                  <div className="flex flex-col items-center p-4 bg-gradient-to-br from-cyan-50 to-blue-100 dark:from-cyan-900/30 dark:to-blue-800/30 rounded-xl border border-cyan-200 dark:border-cyan-700/50">
+                    <Droplets className="w-6 h-6 text-cyan-600 dark:text-cyan-400 mb-2" />
+                    <p className="text-xs text-cyan-700 dark:text-cyan-400 mb-1">Water Needs</p>
+                    <p className="text-sm font-bold text-cyan-900 dark:text-cyan-200 capitalize">
                       {profile?.water_requirement || variety?.water_requirement}
                     </p>
                   </div>
@@ -496,45 +504,45 @@ export default function SeedStashDetail() {
               {variety && (
                 <div className="space-y-4">
                   {(profile?.description || variety?.description) && (
-                    <div className="p-4 bg-gray-50 rounded-lg border">
-                      <p className="font-semibold text-gray-900 mb-2">Description</p>
-                      <p className="text-gray-700 leading-relaxed">{profile?.description || variety?.description}</p>
+                    <div className="p-4 bg-gray-50 dark:bg-gray-900/20 rounded-lg border dark:border-gray-700/50">
+                      <p className="font-semibold mb-2" style={{ color: 'var(--text-primary)' }}>Description</p>
+                      <p className="leading-relaxed" style={{ color: 'var(--text-secondary)' }}>{profile?.description || variety?.description}</p>
                     </div>
                   )}
                   
                   {((profile?.flavor_profile || variety?.flavor_profile) || (profile?.color_notes || variety?.fruit_color) || (profile?.growth_habit || variety?.growth_habit)) && (
                     <div className="grid sm:grid-cols-2 gap-4">
                       {(profile?.flavor_profile || variety?.flavor_profile) && (
-                        <div className="p-3 bg-purple-50 rounded-lg border border-purple-200">
-                          <p className="text-xs font-semibold text-purple-700 mb-1">Flavor</p>
-                          <p className="text-sm text-purple-900">{profile?.flavor_profile || variety?.flavor_profile}</p>
+                        <div className="p-3 bg-purple-50 dark:bg-purple-900/20 rounded-lg border border-purple-200 dark:border-purple-700/50">
+                          <p className="text-xs font-semibold text-purple-700 dark:text-purple-400 mb-1">Flavor</p>
+                          <p className="text-sm text-purple-900 dark:text-purple-300">{profile?.flavor_profile || variety?.flavor_profile}</p>
                         </div>
                       )}
                       {variety?.uses && (
-                        <div className="p-3 bg-blue-50 rounded-lg border border-blue-200">
-                          <p className="text-xs font-semibold text-blue-700 mb-1">Uses</p>
-                          <p className="text-sm text-blue-900">{variety.uses}</p>
+                        <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-700/50">
+                          <p className="text-xs font-semibold text-blue-700 dark:text-blue-400 mb-1">Uses</p>
+                          <p className="text-sm text-blue-900 dark:text-blue-300">{variety.uses}</p>
                         </div>
                       )}
                       {(profile?.color_notes || variety?.fruit_color) && (
-                        <div className="p-3 bg-pink-50 rounded-lg border border-pink-200">
-                          <p className="text-xs font-semibold text-pink-700 mb-1">Fruit/Pod Color</p>
-                          <p className="text-sm text-pink-900">{profile?.color_notes || variety?.fruit_color}</p>
+                        <div className="p-3 bg-pink-50 dark:bg-pink-900/20 rounded-lg border border-pink-200 dark:border-pink-700/50">
+                          <p className="text-xs font-semibold text-pink-700 dark:text-pink-400 mb-1">Fruit/Pod Color</p>
+                          <p className="text-sm text-pink-900 dark:text-pink-300">{profile?.color_notes || variety?.fruit_color}</p>
                         </div>
                       )}
                       {(profile?.growth_habit || variety?.growth_habit) && (
-                        <div className="p-3 bg-green-50 rounded-lg border border-green-200">
-                          <p className="text-xs font-semibold text-green-700 mb-1">Growth Habit</p>
-                          <p className="text-sm text-green-900 capitalize">{profile?.growth_habit || variety?.growth_habit}</p>
+                        <div className="p-3 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-700/50">
+                          <p className="text-xs font-semibold text-green-700 dark:text-green-400 mb-1">Growth Habit</p>
+                          <p className="text-sm text-green-900 dark:text-green-300 capitalize">{profile?.growth_habit || variety?.growth_habit}</p>
                         </div>
                       )}
                     </div>
                   )}
                   
                   {variety.breeder_or_origin && (
-                    <div className="p-4 bg-amber-50 rounded-lg border border-amber-200">
-                      <p className="text-xs font-semibold text-amber-700 mb-1">Breeder / Origin</p>
-                      <p className="text-sm text-amber-900">{variety.breeder_or_origin}</p>
+                    <div className="p-4 bg-amber-50 dark:bg-amber-900/20 rounded-lg border border-amber-200 dark:border-amber-700/50">
+                      <p className="text-xs font-semibold text-amber-700 dark:text-amber-400 mb-1">Breeder / Origin</p>
+                      <p className="text-sm text-amber-900 dark:text-amber-300">{variety.breeder_or_origin}</p>
                     </div>
                   )}
                 </div>
@@ -544,12 +552,12 @@ export default function SeedStashDetail() {
               {(profile?.height_in_min || profile?.height_in_max || variety?.scoville_min || variety?.scoville_max) && (
                 <div className="grid sm:grid-cols-2 gap-4">
                   {(profile?.height_in_min || profile?.height_in_max) && (
-                    <div className="p-4 bg-gray-50 rounded-lg border">
+                    <div className="p-4 bg-gray-50 dark:bg-gray-900/20 rounded-lg border dark:border-gray-700/50">
                       <div className="flex items-center gap-2 mb-2">
-                        <TrendingUp className="w-5 h-5 text-gray-600" />
-                        <p className="font-semibold text-gray-900">Plant Height</p>
+                        <TrendingUp className="w-5 h-5 text-gray-600 dark:text-gray-400" />
+                        <p className="font-semibold" style={{ color: 'var(--text-primary)' }}>Plant Height</p>
                       </div>
-                      <p className="text-lg text-gray-700">
+                      <p className="text-lg" style={{ color: 'var(--text-secondary)' }}>
                         {profile.height_in_min && profile.height_in_max
                           ? `${profile.height_in_min}-${profile.height_in_max} inches`
                           : `${profile.height_in_min || profile.height_in_max} inches`}
@@ -557,12 +565,12 @@ export default function SeedStashDetail() {
                     </div>
                   )}
                   {(variety?.scoville_min || variety?.scoville_max) && (
-                    <div className="p-4 bg-gradient-to-br from-red-50 to-orange-50 rounded-lg border border-red-200">
+                    <div className="p-4 bg-gradient-to-br from-red-50 to-orange-50 dark:from-red-900/30 dark:to-orange-900/30 rounded-lg border border-red-200 dark:border-red-700/50">
                       <div className="flex items-center gap-2 mb-2">
                         <div className="text-2xl">🌶️</div>
-                        <p className="font-semibold text-red-900">Heat Level</p>
+                        <p className="font-semibold text-red-900 dark:text-red-200">Heat Level</p>
                       </div>
-                      <p className="text-lg font-bold text-red-700">
+                      <p className="text-lg font-bold text-red-700 dark:text-red-400">
                         {variety.scoville_min && variety.scoville_max
                           ? `${variety.scoville_min.toLocaleString()}-${variety.scoville_max.toLocaleString()}`
                           : (variety.scoville_min || variety.scoville_max).toLocaleString()} SHU
@@ -592,8 +600,8 @@ export default function SeedStashDetail() {
 
               {/* Traits */}
               {((profile?.traits && Array.isArray(profile.traits) && profile.traits.length > 0) || variety?.traits) && (
-                <div className="p-4 bg-emerald-50 rounded-lg border border-emerald-200">
-                  <p className="font-semibold text-emerald-900 mb-3">Variety Traits</p>
+                <div className="p-4 bg-emerald-50 dark:bg-emerald-900/30 rounded-lg border border-emerald-200 dark:border-emerald-700/50">
+                  <p className="font-semibold text-emerald-900 dark:text-emerald-200 mb-3">Variety Traits</p>
                   <div className="flex flex-wrap gap-2">
                     {(profile?.traits || []).map((trait, idx) => (
                       <Badge key={idx} className="bg-emerald-600 text-white px-3 py-1">
@@ -606,9 +614,9 @@ export default function SeedStashDetail() {
 
               {/* Growing Notes */}
               {(profile?.notes_public || variety?.grower_notes) && (
-                <div className="p-4 bg-gray-50 rounded-lg border">
-                  <p className="font-semibold text-gray-900 mb-2">Growing Notes</p>
-                  <p className="text-gray-700 whitespace-pre-wrap leading-relaxed">{profile?.notes_public || variety?.grower_notes}</p>
+                <div className="p-4 bg-gray-50 dark:bg-gray-900/20 rounded-lg border dark:border-gray-700/50">
+                  <p className="font-semibold mb-2" style={{ color: 'var(--text-primary)' }}>Growing Notes</p>
+                  <p className="whitespace-pre-wrap leading-relaxed" style={{ color: 'var(--text-secondary)' }}>{profile?.notes_public || variety?.grower_notes}</p>
                 </div>
                 )}
               </>
@@ -628,9 +636,17 @@ export default function SeedStashDetail() {
         </Card>
 
         {/* Lot Details Card */}
-        <Card className="bg-gradient-to-br from-white to-gray-50">
+        <Card 
+          className="hover:shadow-lg transition-all duration-300"
+          style={{
+            background: 'var(--glass-bg)',
+            backdropFilter: 'blur(12px)',
+            WebkitBackdropFilter: 'blur(12px)',
+            border: '1px solid var(--glass-border)'
+          }}
+        >
           <CardHeader className="flex flex-row items-center justify-between border-b">
-            <CardTitle className="text-xl">🔒 My Stash Info <span className="text-sm font-normal text-gray-500">(Private to me)</span></CardTitle>
+            <CardTitle className="text-xl" style={{ color: 'var(--text-primary)' }}>🔒 My Stash Info <span className="text-sm font-normal" style={{ color: 'var(--text-muted)' }}>(Private to me)</span></CardTitle>
             <Button variant="outline" size="sm" onClick={() => setShowEditLot(true)}>
               <Edit className="w-4 h-4 mr-2" />
               Edit
@@ -638,8 +654,8 @@ export default function SeedStashDetail() {
           </CardHeader>
           <CardContent className="space-y-3 pt-6">
             {seed.quantity && (
-              <div className="flex items-center justify-between py-3 px-4 bg-white rounded-lg border">
-                <span className="text-gray-700 font-medium flex items-center gap-2">
+              <div className="flex items-center justify-between py-3 px-4 rounded-lg border" style={{ background: 'var(--bg-tertiary)', borderColor: 'var(--border-color)' }}>
+                <span className="font-medium flex items-center gap-2" style={{ color: 'var(--text-secondary)' }}>
                   <Package className="w-4 h-4 text-emerald-600" />
                   Quantity
                 </span>
@@ -649,31 +665,31 @@ export default function SeedStashDetail() {
               </div>
             )}
             {seed.year_acquired && (
-              <div className="flex items-center justify-between py-3 px-4 bg-white rounded-lg border">
-                <span className="text-gray-700 font-medium flex items-center gap-2">
+              <div className="flex items-center justify-between py-3 px-4 rounded-lg border" style={{ background: 'var(--bg-tertiary)', borderColor: 'var(--border-color)' }}>
+                <span className="font-medium flex items-center gap-2" style={{ color: 'var(--text-secondary)' }}>
                   <Calendar className="w-4 h-4 text-blue-600" />
                   Year Acquired
                 </span>
-                <span className="font-semibold text-gray-900">{seed.year_acquired}</span>
+                <span className="font-semibold" style={{ color: 'var(--text-primary)' }}>{seed.year_acquired}</span>
               </div>
             )}
             {seed.packed_for_year && (
-              <div className="flex items-center justify-between py-3 px-4 bg-white rounded-lg border">
-                <span className="text-gray-700 font-medium">Packed For</span>
-                <span className="font-semibold text-gray-900">{seed.packed_for_year}</span>
+              <div className="flex items-center justify-between py-3 px-4 rounded-lg border" style={{ background: 'var(--bg-tertiary)', borderColor: 'var(--border-color)' }}>
+                <span className="font-medium" style={{ color: 'var(--text-secondary)' }}>Packed For</span>
+                <span className="font-semibold" style={{ color: 'var(--text-primary)' }}>{seed.packed_for_year}</span>
               </div>
             )}
             {seed.source_vendor_name && (
-              <div className="flex flex-col gap-2 py-3 px-4 bg-white rounded-lg border">
-                <span className="text-gray-700 font-medium">Vendor</span>
+              <div className="flex flex-col gap-2 py-3 px-4 rounded-lg border" style={{ background: 'var(--bg-tertiary)', borderColor: 'var(--border-color)' }}>
+                <span className="font-medium" style={{ color: 'var(--text-secondary)' }}>Vendor</span>
                 <div>
-                  <p className="font-semibold text-gray-900">{seed.source_vendor_name}</p>
+                  <p className="font-semibold" style={{ color: 'var(--text-primary)' }}>{seed.source_vendor_name}</p>
                   {seed.source_vendor_url && (
                     <a 
                       href={seed.source_vendor_url} 
                       target="_blank" 
                       rel="noopener noreferrer"
-                      className="text-sm text-blue-600 hover:underline inline-flex items-center gap-1 mt-1"
+                      className="text-sm text-blue-600 dark:text-blue-400 hover:underline inline-flex items-center gap-1 mt-1"
                     >
                       Visit website <ExternalLink className="w-3 h-3" />
                     </a>
@@ -682,17 +698,17 @@ export default function SeedStashDetail() {
               </div>
             )}
             {seed.storage_location && (
-              <div className="flex items-center justify-between py-3 px-4 bg-white rounded-lg border">
-                <span className="text-gray-700 font-medium flex items-center gap-2">
+              <div className="flex items-center justify-between py-3 px-4 rounded-lg border" style={{ background: 'var(--bg-tertiary)', borderColor: 'var(--border-color)' }}>
+                <span className="font-medium flex items-center gap-2" style={{ color: 'var(--text-secondary)' }}>
                   <MapPin className="w-4 h-4 text-red-600" />
                   Storage Location
                 </span>
-                <span className="font-semibold text-gray-900">{seed.storage_location}</span>
+                <span className="font-semibold" style={{ color: 'var(--text-primary)' }}>{seed.storage_location}</span>
               </div>
             )}
             {age > 0 && (
-              <div className="flex items-center justify-between py-3 px-4 bg-white rounded-lg border">
-                <span className="text-gray-700 font-medium">Seed Age</span>
+              <div className="flex items-center justify-between py-3 px-4 rounded-lg border" style={{ background: 'var(--bg-tertiary)', borderColor: 'var(--border-color)' }}>
+                <span className="font-medium" style={{ color: 'var(--text-secondary)' }}>Seed Age</span>
                 <Badge className={cn(
                   "px-3 py-1 text-sm",
                   ageStatus.status === 'OK' && "bg-green-100 text-green-800",
@@ -713,14 +729,22 @@ export default function SeedStashDetail() {
 
       {/* Notes */}
       {seed.lot_notes && (
-        <Card className="lg:col-span-3">
+        <Card 
+          className="lg:col-span-3 hover:shadow-lg transition-all duration-300"
+          style={{
+            background: 'var(--glass-bg)',
+            backdropFilter: 'blur(12px)',
+            WebkitBackdropFilter: 'blur(12px)',
+            border: '1px solid var(--glass-border)'
+          }}
+        >
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
+            <CardTitle className="flex items-center gap-2" style={{ color: 'var(--text-primary)' }}>
               📝 My Notes
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-gray-700 whitespace-pre-wrap leading-relaxed">{seed.lot_notes}</p>
+            <p className="whitespace-pre-wrap leading-relaxed" style={{ color: 'var(--text-secondary)' }}>{seed.lot_notes}</p>
           </CardContent>
         </Card>
       )}

@@ -769,14 +769,17 @@ export default function SeedStash() {
                 <Link to={createPageUrl('SeedStashDetail') + `?id=${seed.id}`}>
                   <Card 
                     className={cn(
-                      "group hover:shadow-md transition-shadow cursor-pointer",
-                      ageStatus.status === 'AGING' && "border-amber-300",
-                      ageStatus.status === 'OLD' && "border-red-300"
+                      "group hover:shadow-lg transition-all duration-300 cursor-pointer",
+                      ageStatus.status === 'AGING' && "border-amber-300 dark:border-amber-600",
+                      ageStatus.status === 'OLD' && "border-red-300 dark:border-red-600"
                     )}
                     style={{ 
                       background: ageStatus.status === 'AGING' ? 'var(--badge-warning-bg)' : 
                                   ageStatus.status === 'OLD' ? 'var(--badge-danger-bg)' : 
-                                  'var(--bg-card)' 
+                                  'var(--glass-bg)',
+                      backdropFilter: 'blur(12px)',
+                      WebkitBackdropFilter: 'blur(12px)',
+                      border: `1px solid ${ageStatus.status === 'OK' ? 'var(--glass-border)' : ''}`
                     }}
                   >
                     <CardContent className="p-4">
@@ -1074,25 +1077,28 @@ export default function SeedStash() {
                 <TableRow 
                   key={seed.id} 
                   className={cn(
-                    "cursor-pointer hover:bg-gray-50",
-                    ageStatus.status === 'AGING' && "bg-amber-50/30",
-                    ageStatus.status === 'OLD' && "bg-red-50/30"
+                    "cursor-pointer transition-colors",
+                    ageStatus.status === 'AGING' && "bg-amber-50/30 dark:bg-amber-900/10",
+                    ageStatus.status === 'OLD' && "bg-red-50/30 dark:bg-red-900/10"
                   )}
+                  style={{
+                    background: ageStatus.status === 'OK' ? 'transparent' : undefined
+                  }}
                   onClick={() => window.location.href = createPageUrl('SeedStashDetail') + `?id=${seed.id}`}
                 >
                   {visibleColumns.name && (
-                    <TableCell className="font-medium">
+                    <TableCell className="font-medium" style={{ color: 'var(--text-primary)' }}>
                       {profile?.variety_name || seed.custom_label || 'Unknown'}
                     </TableCell>
                   )}
                   {visibleColumns.type && (
-                    <TableCell>{profile?.common_name || '-'}</TableCell>
+                    <TableCell style={{ color: 'var(--text-secondary)' }}>{profile?.common_name || '-'}</TableCell>
                   )}
                   {visibleColumns.source && (
-                    <TableCell>{seed.source_vendor_name || '-'}</TableCell>
+                    <TableCell style={{ color: 'var(--text-secondary)' }}>{seed.source_vendor_name || '-'}</TableCell>
                   )}
                   {visibleColumns.year && (
-                    <TableCell>{seed.year_acquired || '-'}</TableCell>
+                    <TableCell style={{ color: 'var(--text-secondary)' }}>{seed.year_acquired || '-'}</TableCell>
                   )}
                   {visibleColumns.age && (
                     <TableCell>
@@ -1108,10 +1114,10 @@ export default function SeedStash() {
                     </TableCell>
                   )}
                   {visibleColumns.maturity && (
-                    <TableCell>{profile?.days_to_maturity_seed ? `${profile.days_to_maturity_seed}d` : '-'}</TableCell>
+                    <TableCell style={{ color: 'var(--text-secondary)' }}>{profile?.days_to_maturity_seed ? `${profile.days_to_maturity_seed}d` : '-'}</TableCell>
                   )}
                   {visibleColumns.spacing && (
-                    <TableCell>
+                    <TableCell style={{ color: 'var(--text-secondary)' }}>
                       {profile?.spacing_in_min && profile?.spacing_in_max
                         ? `${profile.spacing_in_min}-${profile.spacing_in_max}"`
                         : profile?.spacing_in_min || '-'
@@ -1119,7 +1125,7 @@ export default function SeedStash() {
                     </TableCell>
                   )}
                   {visibleColumns.quantity && (
-                    <TableCell>
+                    <TableCell style={{ color: 'var(--text-secondary)' }}>
                       {seed.quantity ? `${seed.quantity} ${seed.unit}` : '-'}
                     </TableCell>
                   )}

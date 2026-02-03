@@ -87,8 +87,8 @@ export default function PlantCatalogBrowse() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl lg:text-3xl font-bold text-gray-900">Plant Catalog</h1>
-          <p className="text-gray-600 mt-1">{filteredProfiles.length} varieties</p>
+          <h1 className="text-2xl lg:text-3xl font-bold" style={{ color: 'var(--text-primary)' }}>Plant Catalog</h1>
+          <p className="mt-1" style={{ color: 'var(--text-secondary)' }}>{filteredProfiles.length} varieties</p>
         </div>
         <Link to={createPageUrl('AddPlantProfile')}>
           <Button className="bg-emerald-600 hover:bg-emerald-700 gap-2">
@@ -99,7 +99,14 @@ export default function PlantCatalogBrowse() {
       </div>
 
       {/* Filters */}
-      <Card>
+      <Card 
+        style={{
+          background: 'var(--glass-bg)',
+          backdropFilter: 'blur(12px)',
+          WebkitBackdropFilter: 'blur(12px)',
+          border: '1px solid var(--glass-border)'
+        }}
+      >
         <CardContent className="p-4 space-y-3">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
@@ -174,14 +181,22 @@ export default function PlantCatalogBrowse() {
           
           return (
           <Link key={profile.id} to={createPageUrl('PlantProfileDetail') + `?id=${profile.id}`}>
-            <Card className="hover:shadow-lg transition-all cursor-pointer h-full">
+            <Card 
+              className="hover:shadow-lg transition-all duration-300 cursor-pointer h-full"
+              style={{
+                background: 'var(--glass-bg)',
+                backdropFilter: 'blur(12px)',
+                WebkitBackdropFilter: 'blur(12px)',
+                border: '1px solid var(--glass-border)'
+              }}
+            >
               <CardContent className="p-4">
                 <div className="flex items-center gap-2 mb-1">
                   {plantType?.icon && <span className="text-xl">{plantType.icon}</span>}
                   {subcat?.icon && <span className="text-lg">{subcat.icon}</span>}
                 </div>
-                <h3 className="font-semibold text-gray-900">{profile.variety_name}</h3>
-                <p className="text-sm text-gray-600">{profile.common_name}</p>
+                <h3 className="font-semibold" style={{ color: 'var(--text-primary)' }}>{profile.variety_name}</h3>
+                <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>{profile.common_name}</p>
                 {subcat && (
                   <Badge variant="outline" className="mt-1 text-xs">{subcat.name}</Badge>
                 )}
@@ -216,11 +231,19 @@ export default function PlantCatalogBrowse() {
       </div>
 
       {filteredProfiles.length === 0 && (
-        <Card className="py-16">
+        <Card 
+          className="py-16"
+          style={{
+            background: 'var(--glass-bg)',
+            backdropFilter: 'blur(12px)',
+            WebkitBackdropFilter: 'blur(12px)',
+            border: '1px solid var(--glass-border)'
+          }}
+        >
           <CardContent className="text-center">
-            <Sprout className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">No varieties found</h3>
-            <p className="text-gray-600">Try adjusting your filters</p>
+            <Sprout className="w-16 h-16 mx-auto mb-4" style={{ color: 'var(--text-muted)' }} />
+            <h3 className="text-lg font-semibold mb-2" style={{ color: 'var(--text-primary)' }}>No varieties found</h3>
+            <p style={{ color: 'var(--text-secondary)' }}>Try adjusting your filters</p>
           </CardContent>
         </Card>
       )}
