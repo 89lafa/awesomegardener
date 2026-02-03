@@ -820,10 +820,16 @@ export default function GrowLists() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: index * 0.05 }}
             >
-              <Card 
-                className="cursor-pointer hover:shadow-md transition-shadow"
-                onClick={() => setSelectedList(list)}
-              >
+            <Card 
+              className="cursor-pointer hover:shadow-lg transition-all duration-300"
+              onClick={() => setSelectedList(list)}
+              style={{ 
+                background: 'var(--glass-bg)',
+                backdropFilter: 'blur(12px)',
+                WebkitBackdropFilter: 'blur(12px)',
+                border: '1px solid var(--glass-border)'
+              }}
+            >
                 <CardHeader className="pb-3">
                   <div className="flex items-start justify-between">
                     <div>
