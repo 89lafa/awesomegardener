@@ -120,6 +120,8 @@ import VarietyReviewQueue from './pages/VarietyReviewQueue';
 import ViewVariety from './pages/ViewVariety';
 import ZoneMap from './pages/ZoneMap';
 import AIAssistants from './pages/AIAssistants';
+import GlobalSearch from './pages/GlobalSearch';
+import TrayDetail from './pages/TrayDetail';
 import __Layout from './Layout.jsx';
 
 
@@ -197,6 +199,8 @@ export const PAGES = {
     "ViewVariety": ViewVariety,
     "ZoneMap": ZoneMap,
     "AIAssistants": AIAssistants,
+    "GlobalSearch": GlobalSearch,
+    "TrayDetail": TrayDetail,
 }
 
 export const pagesConfig = {

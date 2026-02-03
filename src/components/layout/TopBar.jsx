@@ -128,7 +128,7 @@ export default function TopBar({ user, onMobileMenuToggle, onSidebarToggle, side
           onSubmit={(e) => {
             e.preventDefault();
             if (searchQuery.trim()) {
-              window.location.href = createPageUrl('PlantCatalog') + '?search=' + encodeURIComponent(searchQuery);
+              window.location.href = createPageUrl('GlobalSearch') + '?q=' + encodeURIComponent(searchQuery);
             }
           }}
         >
@@ -141,7 +141,7 @@ export default function TopBar({ user, onMobileMenuToggle, onSidebarToggle, side
               if (e.key === 'Enter') {
                 e.preventDefault();
                 if (searchQuery.trim()) {
-                  window.location.href = createPageUrl('PlantCatalog') + '?search=' + encodeURIComponent(searchQuery);
+                  window.location.href = createPageUrl('GlobalSearch') + '?q=' + encodeURIComponent(searchQuery);
                 }
               }
             }}
