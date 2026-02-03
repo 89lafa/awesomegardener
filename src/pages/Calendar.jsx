@@ -778,7 +778,6 @@ export default function Calendar() {
           toast.success('AI crop plans created! Review them in the sidebar.');
         }}
       />
-      </div>
     </div>
   );
 }
