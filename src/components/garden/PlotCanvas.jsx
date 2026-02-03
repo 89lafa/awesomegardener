@@ -1399,32 +1399,14 @@ export default function PlotCanvas({ garden, plot, activeSeason, seasonId, onPlo
             const isGrowBagOrContainer = itemType?.usesGallons;
             const isFull = status?.status === 'full';
 
-            // Long-press handler for touch devices
-            const longPressHandlers = useLongPress(
-              () => {
-                // Long press detected
-                if (!isDragging) {
-                  setLongPressedItem(item);
-                  setSelectedItem(item);
-                  setShowContextMenu(true);
-                }
-              },
-              {
-                threshold: 500,
-                onClick: () => {
-                  // Regular click (short tap)
-                  if (!isDragging) {
-                    setSelectedItem(item);
-                    if (onItemSelect) onItemSelect(item);
-                  }
-                }
-              }
-            );
-
             return (
             <div
               key={item.id}
-              {...(isMobile ? longPressHandlers : {})}
+              onDoubleClick={isMobile ? () => {
+                setLongPressedItem(item);
+                setSelectedItem(item);
+                setShowContextMenu(true);
+              } : undefined}
               className={cn(
                 "absolute border-4 rounded-lg flex items-center justify-center text-sm font-medium overflow-hidden plot-item group",
                 selectedItem?.id === item.id && "ring-4 ring-emerald-300",
