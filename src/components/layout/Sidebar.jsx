@@ -59,6 +59,10 @@ const getNavItems = (userRole, isEditor, user) => {
     { name: 'Browse Gardens', icon: Globe, page: 'BrowseGardens' },
     { name: 'Zone Map', icon: MapPin, page: 'ZoneMap' },
     
+    // AI Tools
+    { category: true, label: 'AI TOOLS' },
+    { name: 'AI Assistants', icon: Lightbulb, page: 'AIAssistants' },
+    
     // Resources
     { category: true, label: 'LEARN & EXPLORE' },
     { name: 'Resources', icon: Link2, page: 'Resources' },
