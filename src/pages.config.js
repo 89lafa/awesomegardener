@@ -68,6 +68,7 @@ import CommunityBoard from './pages/CommunityBoard';
 import CompanionPlanner from './pages/CompanionPlanner';
 import CompanionRuleImport from './pages/CompanionRuleImport';
 import CompanionRulesAudit from './pages/CompanionRulesAudit';
+import Dashboard from './pages/Dashboard';
 import DebugFeatures from './pages/DebugFeatures';
 import EditPlantType from './pages/EditPlantType';
 import EditVariety from './pages/EditVariety';
@@ -99,6 +100,7 @@ import MyPlants from './pages/MyPlants';
 import NeedToBuy from './pages/NeedToBuy';
 import Notifications from './pages/Notifications';
 import Onboarding from './pages/Onboarding';
+import PlantCatalog from './pages/PlantCatalog';
 import PlantCatalogBrowse from './pages/PlantCatalogBrowse';
 import PlantCatalogDetail from './pages/PlantCatalogDetail';
 import PlantCatalogV2 from './pages/PlantCatalogV2';
@@ -108,6 +110,8 @@ import PublicPlant from './pages/PublicPlant';
 import PublicSeed from './pages/PublicSeed';
 import Resources from './pages/Resources';
 import SeedInventory from './pages/SeedInventory';
+import SeedStash from './pages/SeedStash';
+import SeedStashDetail from './pages/SeedStashDetail';
 import SeedTrading from './pages/SeedTrading';
 import Settings from './pages/Settings';
 import ShipAudit from './pages/ShipAudit';
@@ -118,10 +122,6 @@ import Users from './pages/Users';
 import VarietyReviewQueue from './pages/VarietyReviewQueue';
 import ViewVariety from './pages/ViewVariety';
 import ZoneMap from './pages/ZoneMap';
-import Dashboard from './pages/Dashboard';
-import PlantCatalog from './pages/PlantCatalog';
-import SeedStash from './pages/SeedStash';
-import SeedStashDetail from './pages/SeedStashDetail';
 import __Layout from './Layout.jsx';
 
 
@@ -147,6 +147,7 @@ export const PAGES = {
     "CompanionPlanner": CompanionPlanner,
     "CompanionRuleImport": CompanionRuleImport,
     "CompanionRulesAudit": CompanionRulesAudit,
+    "Dashboard": Dashboard,
     "DebugFeatures": DebugFeatures,
     "EditPlantType": EditPlantType,
     "EditVariety": EditVariety,
@@ -178,6 +179,7 @@ export const PAGES = {
     "NeedToBuy": NeedToBuy,
     "Notifications": Notifications,
     "Onboarding": Onboarding,
+    "PlantCatalog": PlantCatalog,
     "PlantCatalogBrowse": PlantCatalogBrowse,
     "PlantCatalogDetail": PlantCatalogDetail,
     "PlantCatalogV2": PlantCatalogV2,
@@ -187,6 +189,8 @@ export const PAGES = {
     "PublicSeed": PublicSeed,
     "Resources": Resources,
     "SeedInventory": SeedInventory,
+    "SeedStash": SeedStash,
+    "SeedStashDetail": SeedStashDetail,
     "SeedTrading": SeedTrading,
     "Settings": Settings,
     "ShipAudit": ShipAudit,
@@ -197,10 +201,6 @@ export const PAGES = {
     "VarietyReviewQueue": VarietyReviewQueue,
     "ViewVariety": ViewVariety,
     "ZoneMap": ZoneMap,
-    "Dashboard": Dashboard,
-    "PlantCatalog": PlantCatalog,
-    "SeedStash": SeedStash,
-    "SeedStashDetail": SeedStashDetail,
 }
 
 export const pagesConfig = {
