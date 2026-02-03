@@ -197,30 +197,26 @@ export default function Dashboard() {
   const WeatherCard = () => {
     if (weatherLoading) {
       return (
-        <Card>
-          <CardContent className="p-6">
-            <div className="animate-pulse space-y-2">
-              <div className="h-4 rounded w-20" style={{ background: 'var(--bg-muted)' }}></div>
-              <div className="h-8 rounded w-16" style={{ background: 'var(--bg-muted)' }}></div>
-            </div>
-          </CardContent>
-        </Card>
+        <div className="glass-card p-6">
+          <div className="animate-pulse space-y-2">
+            <div className="h-4 rounded w-20 bg-gray-700"></div>
+            <div className="h-8 rounded w-16 bg-gray-600"></div>
+          </div>
+        </div>
       );
     }
 
     if (!weather) {
       return (
-        <Card>
-          <CardContent className="p-6 text-center">
-            <Cloud className="w-8 h-8 mx-auto mb-2" style={{ color: 'var(--text-muted)' }} />
-            <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Set ZIP in Settings</p>
-          </CardContent>
-        </Card>
+        <div className="glass-card p-6 text-center">
+          <Cloud className="w-8 h-8 mx-auto mb-2 text-gray-400" />
+          <p className="text-xs text-gray-400">Set ZIP in Settings</p>
+        </div>
       );
     }
 
     return (
-      <div className="glass-card relative overflow-hidden cursor-pointer transition-all">
+      <div className="glass-card relative overflow-hidden cursor-pointer">
         {/* Decorative circle */}
         <div style={{
           position: 'absolute',
@@ -233,18 +229,15 @@ export default function Dashboard() {
         }} />
         
         <div style={{ position: 'relative', zIndex: 1, color: 'white' }}>
-          <p className="text-xs mb-1" style={{ opacity: 0.8 }}>Today</p>
+          <p className="text-xs mb-1 opacity-80">Today</p>
           <p className="text-3xl font-bold mb-1">{weather.current_temp}°</p>
-          <p className="text-xs" style={{ opacity: 0.9 }}>{weather.conditions}</p>
-          <div className="flex gap-3 mt-3 text-xs" style={{ opacity: 0.8 }}>
+          <p className="text-xs opacity-90">{weather.conditions}</p>
+          <div className="flex gap-3 mt-3 text-xs opacity-80">
             <span>H: {weather.high_temp}°</span>
             <span>L: {weather.low_temp}°</span>
           </div>
           {weather.frost_warning && (
-            <div className="mt-2 flex items-center gap-1 text-xs rounded px-2 py-1" style={{
-              backgroundColor: 'rgba(251, 191, 36, 0.2)',
-              color: '#fbbf24'
-            }}>
+            <div className="mt-2 flex items-center gap-1 text-xs rounded px-2 py-1 bg-yellow-400/20 text-yellow-400">
               <AlertTriangle className="w-3 h-3" />
               <span>Frost risk!</span>
             </div>
@@ -500,10 +493,10 @@ export default function Dashboard() {
       {stats.gardens === 0 && (
         <div className="glass-card">
           <div className="flex items-center gap-2 mb-4">
-            <AlertTriangle className="w-5 h-5" style={{ color: '#10b981' }} />
-            <h3 className="text-lg font-semibold" style={{ color: '#f0fdf4' }}>Getting Started</h3>
+            <AlertTriangle className="w-5 h-5 text-emerald-500" />
+            <h3 className="text-lg font-semibold text-emerald-50">Getting Started</h3>
           </div>
-          <p className="text-sm mb-4" style={{ color: '#d1fae5' }}>
+          <p className="text-sm mb-4 text-emerald-100">
             Create your first garden to start planning crops, tracking seeds, and managing your growing space.
           </p>
           <Button

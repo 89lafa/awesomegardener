@@ -311,7 +311,7 @@ export default function Gardens() {
                 exit={{ opacity: 0, scale: 0.95 }}
                 transition={{ delay: index * 0.05 }}
               >
-                <Card className="group hover:shadow-lg transition-all duration-200 overflow-hidden">
+                <Card className="group transition-all duration-200 overflow-hidden">
                   {/* Cover Image */}
                   <div className="aspect-video bg-gradient-to-br from-emerald-100 to-green-50 relative">
                     {garden.cover_image ? (

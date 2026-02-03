@@ -722,15 +722,7 @@ export default function SeedStash() {
 
       {/* Seeds Display */}
       {filteredSeeds.length === 0 ? (
-        <Card 
-          className="py-16"
-          style={{ 
-            background: 'var(--glass-bg)',
-            backdropFilter: 'blur(12px)',
-            WebkitBackdropFilter: 'blur(12px)',
-            border: '1px solid var(--glass-border)'
-          }}
-        >
+        <Card className="py-16">
           <CardContent className="text-center">
             <Package className="w-16 h-16 mx-auto mb-4" style={{ color: 'var(--text-muted)' }} />
             <h3 className="text-lg font-semibold mb-2" style={{ color: 'var(--text-primary)' }}>
@@ -777,17 +769,13 @@ export default function SeedStash() {
                 <Link to={createPageUrl('SeedStashDetail') + `?id=${seed.id}`}>
                   <Card 
                     className={cn(
-                      "group hover:shadow-lg transition-all duration-300 cursor-pointer",
+                      "group transition-all duration-300 cursor-pointer",
                       ageStatus.status === 'AGING' && "border-amber-300 dark:border-amber-600",
                       ageStatus.status === 'OLD' && "border-red-300 dark:border-red-600"
                     )}
                     style={{ 
                       background: ageStatus.status === 'AGING' ? 'var(--badge-warning-bg)' : 
-                                  ageStatus.status === 'OLD' ? 'var(--badge-danger-bg)' : 
-                                  'var(--glass-bg)',
-                      backdropFilter: 'blur(12px)',
-                      WebkitBackdropFilter: 'blur(12px)',
-                      border: `1px solid ${ageStatus.status === 'OK' ? 'var(--glass-border)' : ''}`
+                                  ageStatus.status === 'OLD' ? 'var(--badge-danger-bg)' : undefined
                     }}
                   >
                     <CardContent className="p-4">
@@ -892,14 +880,7 @@ export default function SeedStash() {
                     </AnimatePresence>
         </div>
       ) : (
-        <Card
-          style={{ 
-            background: 'var(--glass-bg)',
-            backdropFilter: 'blur(12px)',
-            WebkitBackdropFilter: 'blur(12px)',
-            border: '1px solid var(--glass-border)'
-          }}
-        >
+        <Card>
           <Table>
             <TableHeader>
               <TableRow>
