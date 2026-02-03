@@ -5,7 +5,10 @@ import {
   ArrowLeft,
   Plus,
   Loader2,
-  Mic
+  Mic,
+  MoveHorizontal,
+  Edit,
+  FileText
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -18,6 +21,8 @@ import { AddRackDialog } from '@/components/indoor/AddRackDialog';
 import { AddTrayDialog } from '@/components/indoor/AddTrayDialog';
 import { AddContainerDialog } from '@/components/indoor/AddContainerDialog';
 import { PlantSeedsDialog } from '@/components/indoor/PlantSeedsDialog';
+import MoveTrayDialog from '@/components/indoor/MoveTrayDialog';
+import { createPageUrl } from '@/utils';
 
 export default function IndoorSpaceDetail() {
   const navigate = useNavigate();
@@ -37,6 +42,8 @@ export default function IndoorSpaceDetail() {
   const [showAddContainer, setShowAddContainer] = useState(false);
   const [selectedShelf, setSelectedShelf] = useState(null);
   const [selectedTray, setSelectedTray] = useState(null);
+  const [showMoveTray, setShowMoveTray] = useState(false);
+  const [trayToMove, setTrayToMove] = useState(null);
 
   useEffect(() => {
     if (spaceId) {
@@ -175,6 +182,12 @@ export default function IndoorSpaceDetail() {
                         <p className="text-sm text-gray-600">
                           {rack.width_ft}ft × {rack.depth_ft}ft • {rack.num_shelves} shelves
                         </p>
+                        {rack.notes && (
+                          <p className="text-xs text-gray-500 mt-1 flex items-center gap-1">
+                            <FileText className="w-3 h-3" />
+                            {rack.notes}
+                          </p>
+                        )}
                       </div>
                     </div>
 
@@ -210,20 +223,35 @@ export default function IndoorSpaceDetail() {
                             ) : (
                               <div className="grid grid-cols-2 md:grid-cols-3 gap-2 mt-2">
                                 {shelfTrays.map(tray => (
-                                  <button
-                                    key={tray.id}
-                                    onClick={() => {
-                                      setSelectedTray(tray);
-                                      setShowPlantSeeds(true);
-                                    }}
-                                    className="p-2 bg-white border border-emerald-200 rounded hover:border-emerald-600 transition text-left"
-                                  >
-                                    <p className="text-xs font-medium text-gray-900">{tray.name}</p>
-                                    <p className="text-[10px] text-gray-600">{tray.total_cells} cells</p>
-                                    <p className="text-[10px] text-emerald-600 mt-1 font-medium">
-                                      {tray.status === 'seeded' ? '🌱 Seeded' : '📋 Empty'}
-                                    </p>
-                                  </button>
+                                 <div key={tray.id} className="relative group">
+                                   <button
+                                     onClick={() => {
+                                       window.location.href = createPageUrl('TrayDetail') + `?id=${tray.id}`;
+                                     }}
+                                     className="w-full p-2 bg-white border border-emerald-200 rounded hover:border-emerald-600 transition text-left"
+                                   >
+                                     <p className="text-xs font-medium text-gray-900">{tray.name}</p>
+                                     <p className="text-[10px] text-gray-600">{tray.total_cells} cells</p>
+                                     <p className="text-[10px] text-emerald-600 mt-1 font-medium">
+                                       {tray.status === 'seeded' ? '🌱 Seeded' : '📋 Empty'}
+                                     </p>
+                                     {tray.notes && (
+                                       <p className="text-[9px] text-gray-500 mt-1 truncate">📝 {tray.notes}</p>
+                                     )}
+                                   </button>
+                                   <Button
+                                     size="sm"
+                                     variant="ghost"
+                                     className="absolute top-1 right-1 h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition"
+                                     onClick={(e) => {
+                                       e.stopPropagation();
+                                       setTrayToMove(tray);
+                                       setShowMoveTray(true);
+                                     }}
+                                   >
+                                     <MoveHorizontal className="w-3 h-3" />
+                                   </Button>
+                                 </div>
                                 ))}
                               </div>
                             )}
@@ -320,6 +348,22 @@ export default function IndoorSpaceDetail() {
         spaceId={spaceId}
         onContainerAdded={loadSpaceData}
       />
+
+      {trayToMove && (
+        <MoveTrayDialog
+          isOpen={showMoveTray}
+          onClose={() => {
+            setShowMoveTray(false);
+            setTrayToMove(null);
+          }}
+          tray={trayToMove}
+          onMoved={() => {
+            loadSpaceData();
+            setShowMoveTray(false);
+            setTrayToMove(null);
+          }}
+        />
+      )}
     </div>
   );
 }

@@ -208,7 +208,53 @@ export function PlantSeedsDialog({ isOpen, onClose, trayId, trayName, onSeedPlan
                   </div>
                 </div>
               </TabsContent>
-            </Tabs>
+
+              {/* Seedlings Tab */}
+              <TabsContent value="seedlings" className="space-y-4">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                  <Input
+                    placeholder="Search seedlings..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="pl-10"
+                  />
+                </div>
+
+                <div className="space-y-2 max-h-64 overflow-y-auto">
+                  {seedlings.filter(s => 
+                    !searchQuery || 
+                    s.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                    displayNames[s.id]?.toLowerCase().includes(searchQuery.toLowerCase())
+                  ).map((seedling, idx) => (
+                    <Card
+                      key={seedling.id || idx}
+                      onClick={() => setSelectedSource(seedling)}
+                      className={cn(
+                        "p-3 border rounded-lg cursor-pointer transition",
+                        selectedSource?.id === seedling.id 
+                          ? "border-emerald-600 bg-emerald-50" 
+                          : "border-gray-200 hover:border-emerald-400"
+                      )}
+                    >
+                      <p className="font-medium text-sm">
+                        {displayNames[seedling.id] || seedling.name}
+                      </p>
+                      <p className="text-xs text-gray-600">
+                        {seedling.source === 'container' ? `Container: ${seedling.container_type}` : 'From tray cell'}
+                      </p>
+                      <Badge variant="outline" className="text-[10px] mt-1">Ready to Transplant</Badge>
+                    </Card>
+                  ))}
+
+                  {seedlings.length === 0 && (
+                    <p className="text-sm text-gray-500 text-center py-6">
+                      No seedlings ready to transplant yet
+                    </p>
+                  )}
+                </div>
+              </TabsContent>
+              </Tabs>
 
             {/* Select Cells */}
             <div>

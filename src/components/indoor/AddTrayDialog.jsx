@@ -18,6 +18,7 @@ export function AddTrayDialog({ isOpen, onClose, shelfId, onTrayAdded }) {
   const [rows, setRows] = useState(8);
   const [cols, setCols] = useState(9);
   const [insertType, setInsertType] = useState('72-cell');
+  const [notes, setNotes] = useState('');
   const [loading, setLoading] = useState(false);
 
   const handleCreate = async () => {
@@ -38,7 +39,8 @@ export function AddTrayDialog({ isOpen, onClose, shelfId, onTrayAdded }) {
         insert_type: insertType,
         width_inches: 20,
         length_inches: 10,
-        status: 'empty'
+        status: 'empty',
+        notes: notes || null
       });
 
       // Create individual tray cells
@@ -58,6 +60,7 @@ export function AddTrayDialog({ isOpen, onClose, shelfId, onTrayAdded }) {
       onTrayAdded?.();
       onClose();
       setTrayName('');
+      setNotes('');
     } catch (error) {
       console.error('Error creating tray:', error);
       toast.error('Failed to create tray');
@@ -80,6 +83,15 @@ export function AddTrayDialog({ isOpen, onClose, shelfId, onTrayAdded }) {
               placeholder="e.g., Tomato Tray, Seedling Tray 1"
               value={trayName}
               onChange={(e) => setTrayName(e.target.value)}
+            />
+          </div>
+          
+          <div>
+            <label className="block text-sm font-medium mb-2">Notes (optional)</label>
+            <Input
+              placeholder="Any notes about this tray..."
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
             />
           </div>
 

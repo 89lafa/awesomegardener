@@ -544,7 +544,9 @@ export default function Calendar() {
                     style={{ backgroundColor: crop.color_hex || '#10b981' }}
                   />
                   <div className="flex-1 min-w-0">
-                    <p className="font-medium text-sm truncate">{crop.label || 'Unnamed Crop'}</p>
+                    <p className="font-medium text-sm truncate" title={crop.label || 'Unnamed Crop'}>
+                      {crop.label || 'Unnamed Crop'}
+                    </p>
                     <p className="text-xs text-gray-500">
                       Qty: {crop.quantity_planted || crop.quantity_scheduled || 0}/{crop.quantity_planned}
                     </p>

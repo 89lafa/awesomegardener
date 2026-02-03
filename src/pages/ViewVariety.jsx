@@ -18,6 +18,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { ArrowLeft, ExternalLink, Loader2, Edit, Package, Plus, Sprout, Sun, Calendar, Ruler, Droplets, TrendingUp } from 'lucide-react';
 import { toast } from 'sonner';
 import AddToStashModal from '@/components/catalog/AddToStashModal';
+import ReviewSection from '@/components/variety/ReviewSection';
 
 export default function ViewVariety() {
   const [searchParams] = useSearchParams();
@@ -616,6 +617,16 @@ export default function ViewVariety() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Reviews Section */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-xl">⭐ Community Reviews</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <ReviewSection varietyId={varietyId} plantProfileId={variety.plant_profile_id} />
+        </CardContent>
+      </Card>
 
       <AddToStashModal
         open={showAddToStash}
