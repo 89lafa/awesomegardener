@@ -42,15 +42,15 @@ const QuickAccessCard = ({ icon: Icon, title, count, color, page }) => {
     >
       <div className="flex items-center justify-between">
         <div className="flex-1">
-          <p className="text-sm mb-1" style={{ color: '#86efac' }}>{title}</p>
-          <p className="text-3xl font-bold" style={{ color: iconColor }}>{count}</p>
+          <p className="text-sm mb-1 text-gray-700 font-medium">{title}</p>
+          <p className="text-2xl md:text-3xl font-bold" style={{ color: iconColor }}>{count}</p>
         </div>
         <div style={{ 
-          padding: '12px', 
+          padding: '8px md:12px', 
           borderRadius: '12px',
           color: iconColor
         }}>
-          <Icon className="w-6 h-6" />
+          <Icon className="w-5 h-5 md:w-6 md:h-6" />
         </div>
       </div>
     </div>
@@ -91,11 +91,11 @@ const WeatherCard = ({ weather, weatherLoading }) => {
         background: 'rgba(255, 255, 255, 0.1)',
       }} />
       
-      <div style={{ position: 'relative', zIndex: 1, color: 'white' }}>
-        <p className="text-xs mb-1 opacity-80">Today</p>
-        <p className="text-3xl font-bold mb-1">{weather.current_temp}°</p>
-        <p className="text-xs opacity-90">{weather.conditions}</p>
-        <div className="flex gap-3 mt-3 text-xs opacity-80">
+      <div style={{ position: 'relative', zIndex: 1 }}>
+        <p className="text-xs mb-1 text-gray-700 font-medium">Today</p>
+        <p className="text-2xl md:text-3xl font-bold mb-1 text-gray-900">{weather.current_temp}°</p>
+        <p className="text-xs text-gray-700">{weather.conditions}</p>
+        <div className="flex gap-3 mt-3 text-xs text-gray-700">
           <span>H: {weather.high_temp}°</span>
           <span>L: {weather.low_temp}°</span>
         </div>
@@ -274,7 +274,7 @@ export default function Dashboard() {
         </div>
 
       {/* Top Row - Quick Stats + Weather */}
-      <div className="grid md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
         <QuickAccessCard
           icon={Sprout}
           title="Active Crops"
@@ -300,7 +300,7 @@ export default function Dashboard() {
       </div>
 
       {/* More Stats */}
-      <div className="grid md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
         <QuickAccessCard
           icon={ListChecks}
           title="Gardens"
@@ -336,7 +336,7 @@ export default function Dashboard() {
       </div>
 
       {/* Quick Access Grid */}
-      <div className="grid md:grid-cols-2 gap-6 mt-8">
+      <div className="grid md:grid-cols-2 gap-4 md:gap-6 mt-6 md:mt-8">
         {/* Top Actions */}
         <div className="glass-card-no-padding">
           <div className="p-6">
