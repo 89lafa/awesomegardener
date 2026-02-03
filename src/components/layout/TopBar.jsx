@@ -82,7 +82,15 @@ export default function TopBar({ user, onMobileMenuToggle, onSidebarToggle, side
   }, [user]);
 
   const handleLogout = async () => {
-    await base44.auth.logout();
+    try {
+      await base44.auth.logout();
+      // Force clear all state and redirect
+      window.location.href = createPageUrl('Landing');
+    } catch (error) {
+      console.error('Logout error:', error);
+      // Force redirect even if logout fails
+      window.location.href = createPageUrl('Landing');
+    }
   };
 
   const getInitials = (name) => {

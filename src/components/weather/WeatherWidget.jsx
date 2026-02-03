@@ -19,7 +19,10 @@ export function WeatherWidget() {
         created_by: user.email
       }).then(results => results[0]);
 
-      if (!userSettings?.zip_code) {
+      // Check both location_zip and zip_code fields
+      const zipCode = userSettings?.location_zip || userSettings?.zip_code;
+      
+      if (!zipCode) {
         setError('Set your ZIP code in Settings to see weather');
         setLoading(false);
         return;
@@ -29,7 +32,7 @@ export function WeatherWidget() {
       
       // Check cache
       const cached = await base44.entities.WeatherCache.filter({
-        zip_code: userSettings.zip_code,
+        zip_code: zipCode,
         date: today
       }).then(results => results[0]);
 
@@ -40,14 +43,14 @@ export function WeatherWidget() {
       }
 
       // Fetch from wttr.in (free weather API)
-      const response = await fetch(`https://wttr.in/${userSettings.zip_code}?format=j1`);
+      const response = await fetch(`https://wttr.in/${zipCode}?format=j1`);
       const data = await response.json();
       
       const current = data.current_condition?.[0];
       const forecast = data.weather?.[0];
       
       const weatherData = {
-        zip_code: userSettings.zip_code,
+        zip_code: zipCode,
         date: today,
         high_temp: parseInt(forecast?.maxtempF),
         low_temp: parseInt(forecast?.mintempF),

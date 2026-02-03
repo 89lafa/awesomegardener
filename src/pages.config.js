@@ -60,6 +60,7 @@ import BrowseGardens from './pages/BrowseGardens';
 import Calendar from './pages/Calendar';
 import CalendarPlanner from './pages/CalendarPlanner';
 import CalendarTasks from './pages/CalendarTasks';
+import CalendarTasksKanban from './pages/CalendarTasksKanban';
 import ChangeRequests from './pages/ChangeRequests';
 import Community from './pages/Community';
 import CommunityBoard from './pages/CommunityBoard';
@@ -78,6 +79,7 @@ import ForumTopic from './pages/ForumTopic';
 import GardenBuilder from './pages/GardenBuilder';
 import GardenCare from './pages/GardenCare';
 import GardenDiary from './pages/GardenDiary';
+import GardenExpenses from './pages/GardenExpenses';
 import GardenPlanting from './pages/GardenPlanting';
 import GardeningBasics from './pages/GardeningBasics';
 import Gardens from './pages/Gardens';
@@ -108,6 +110,7 @@ import Resources from './pages/Resources';
 import SeedInventory from './pages/SeedInventory';
 import SeedStash from './pages/SeedStash';
 import SeedStashDetail from './pages/SeedStashDetail';
+import SeedTrading from './pages/SeedTrading';
 import Settings from './pages/Settings';
 import ShipAudit from './pages/ShipAudit';
 import SubcategoryMapping from './pages/SubcategoryMapping';
@@ -116,9 +119,6 @@ import Users from './pages/Users';
 import VarietyReviewQueue from './pages/VarietyReviewQueue';
 import ViewVariety from './pages/ViewVariety';
 import ZoneMap from './pages/ZoneMap';
-import SeedTrading from './pages/SeedTrading';
-import GardenExpenses from './pages/GardenExpenses';
-import CalendarTasksKanban from './pages/CalendarTasksKanban';
 import __Layout from './Layout.jsx';
 
 
@@ -136,6 +136,7 @@ export const PAGES = {
     "Calendar": Calendar,
     "CalendarPlanner": CalendarPlanner,
     "CalendarTasks": CalendarTasks,
+    "CalendarTasksKanban": CalendarTasksKanban,
     "ChangeRequests": ChangeRequests,
     "Community": Community,
     "CommunityBoard": CommunityBoard,
@@ -154,6 +155,7 @@ export const PAGES = {
     "GardenBuilder": GardenBuilder,
     "GardenCare": GardenCare,
     "GardenDiary": GardenDiary,
+    "GardenExpenses": GardenExpenses,
     "GardenPlanting": GardenPlanting,
     "GardeningBasics": GardeningBasics,
     "Gardens": Gardens,
@@ -184,6 +186,7 @@ export const PAGES = {
     "SeedInventory": SeedInventory,
     "SeedStash": SeedStash,
     "SeedStashDetail": SeedStashDetail,
+    "SeedTrading": SeedTrading,
     "Settings": Settings,
     "ShipAudit": ShipAudit,
     "SubcategoryMapping": SubcategoryMapping,
@@ -192,9 +195,6 @@ export const PAGES = {
     "VarietyReviewQueue": VarietyReviewQueue,
     "ViewVariety": ViewVariety,
     "ZoneMap": ZoneMap,
-    "SeedTrading": SeedTrading,
-    "GardenExpenses": GardenExpenses,
-    "CalendarTasksKanban": CalendarTasksKanban,
 }
 
 export const pagesConfig = {

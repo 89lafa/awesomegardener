@@ -678,7 +678,7 @@ export default function Calendar() {
         </div>
         
         {/* Calendar/Timeline View */}
-        <div className="flex-1 overflow-auto bg-gray-50">
+        <div className="flex-1 overflow-auto bg-gray-50 relative">
           {viewMode === 'calendar' ? (
             <CalendarGridView
               tasks={filteredTasks}
@@ -691,12 +691,14 @@ export default function Calendar() {
               }}
             />
           ) : (
-            <TimelineView 
-              tasks={filteredTasks}
-              crops={cropPlans}
-              season={getCurrentSeason()}
-              onTaskClick={setSelectedTask}
-            />
+            <div className="overflow-x-auto">
+              <TimelineView 
+                tasks={filteredTasks}
+                crops={cropPlans}
+                season={getCurrentSeason()}
+                onTaskClick={setSelectedTask}
+              />
+            </div>
           )}
         </div>
       </div>
@@ -969,14 +971,14 @@ function TimelineView({ tasks, crops, season, onTaskClick }) {
   };
   
   return (
-    <div className="min-w-max">
+    <div className="min-w-max relative">
       {/* Month Headers */}
-      <div className="flex sticky top-0 bg-white border-b z-10">
-        <div className="w-40 flex-shrink-0 border-r p-2 font-semibold text-sm">
+      <div className="flex sticky top-0 bg-white border-b z-20">
+        <div className="w-40 flex-shrink-0 border-r p-2 font-semibold text-sm bg-white">
           Crop
         </div>
         {months.map((month, idx) => (
-          <div key={idx} className="flex-1 min-w-[200px] border-r p-2 text-center">
+          <div key={idx} className="flex-1 min-w-[200px] border-r p-2 text-center bg-white">
             <div className="font-semibold">{format(month, 'MMM yyyy')}</div>
           </div>
         ))}
