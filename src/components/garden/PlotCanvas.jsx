@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { base44 } from '@/api/base44Client';
 import {
@@ -111,7 +112,8 @@ export default function PlotCanvas({ garden, plot, activeSeason, seasonId, onPlo
     gallonSize: 5,
     rowSpacing: 18,
     rowCount: null,
-    capacity: 20
+    capacity: 20,
+    planting_pattern: 'square_foot'
   });
 
   const [newItem, setNewItem] = useState({
@@ -120,6 +122,7 @@ export default function PlotCanvas({ garden, plot, activeSeason, seasonId, onPlo
     dimensions: '4x8',
     unit: 'ft',
     useSquareFootGrid: true,
+    planting_pattern: 'square_foot',
     gallonSize: 5,
     planterSize: '4ft x 8ft',
     rowSpacing: 18,
@@ -305,7 +308,8 @@ export default function PlotCanvas({ garden, plot, activeSeason, seasonId, onPlo
         type: 'grid',
         grid_size: gridSize,
         columns: Math.floor(width / gridSize),
-        rows: Math.floor(height / gridSize)
+        rows: Math.floor(height / gridSize),
+        planting_pattern: metadata.planting_pattern || 'square_foot'
       };
     }
     if (itemType.usesPredefinedSizes) {
@@ -314,14 +318,16 @@ export default function PlotCanvas({ garden, plot, activeSeason, seasonId, onPlo
         type: 'grid',
         grid_size: gridSize,
         columns: Math.floor(width / gridSize),
-        rows: Math.floor(height / gridSize)
+        rows: Math.floor(height / gridSize),
+        planting_pattern: metadata.planting_pattern || 'square_foot'
       };
     }
     if (itemType.usesRows) {
       return {
         type: 'rows',
         rows: metadata.rowCount || Math.floor(width / (metadata.rowSpacing || 18)),
-        row_spacing: metadata.rowSpacing || 18
+        row_spacing: metadata.rowSpacing || 18,
+        planting_pattern: metadata.planting_pattern || 'square_foot'
       };
     }
     return { type: 'slots', slots: 10 };
@@ -400,12 +406,16 @@ export default function PlotCanvas({ garden, plot, activeSeason, seasonId, onPlo
 
         const metadata = {};
         if (itemType.usesGrid) {
-          metadata.gridEnabled = true;
-          metadata.gridSize = 12;
+          metadata.gridEnabled = newItem.useSquareFootGrid;
+          if (newItem.useSquareFootGrid) {
+            metadata.gridSize = 12;
+          }
+          metadata.planting_pattern = newItem.planting_pattern;
         }
         if (itemType.usesRows) {
           metadata.rowSpacing = newItem.rowSpacing;
           metadata.rowCount = newItem.rowCount || Math.floor(width / newItem.rowSpacing);
+          metadata.planting_pattern = newItem.planting_pattern;
         }
         if (itemType.usesGallons) {
           metadata.gallonSize = newItem.gallonSize;
@@ -466,6 +476,7 @@ export default function PlotCanvas({ garden, plot, activeSeason, seasonId, onPlo
       dimensions: '4x8',
       unit: 'ft',
       useSquareFootGrid: true,
+      planting_pattern: 'square_foot',
       gallonSize: 5,
       planterSize: '4ft x 8ft',
       rowSpacing: 18,
@@ -488,6 +499,7 @@ export default function PlotCanvas({ garden, plot, activeSeason, seasonId, onPlo
       dimensions: itemType.defaultDims || '4x8',
       unit: itemType.defaultUnit || 'ft',
       useSquareFootGrid: itemType.usesGrid || false,
+      planting_pattern: 'square_foot',
       gallonSize: 5,
       planterSize: '4ft x 8ft',
       rowSpacing: 18,
@@ -536,6 +548,7 @@ export default function PlotCanvas({ garden, plot, activeSeason, seasonId, onPlo
         if (itemType?.usesGrid) {
           metadata.gridEnabled = true;
           metadata.gridSize = 12;
+          metadata.planting_pattern = 'square_foot'; // Default for bulk add
         }
 
         const item = await base44.entities.PlotItem.create({
@@ -823,7 +836,8 @@ export default function PlotCanvas({ garden, plot, activeSeason, seasonId, onPlo
       gallonSize: item.metadata?.gallonSize || 5,
       rowSpacing: item.metadata?.rowSpacing || 18,
       rowCount: item.metadata?.rowCount || null,
-      capacity: item.metadata?.capacity || 20
+      capacity: item.metadata?.capacity || 20,
+      planting_pattern: item.metadata?.planting_pattern || 'square_foot'
     });
     setShowEditItem(true);
   };
@@ -843,7 +857,7 @@ export default function PlotCanvas({ garden, plot, activeSeason, seasonId, onPlo
     }
 
     // Recalculate dimensions if changed
-    if (!itemType.usesGallons && !itemType.usesSize) {
+    if (!itemType.usesGallons && !itemType.usesPredefinedSizes) {
       const parsed = parseDimensions(editItemData.dimensions);
       if (parsed) {
         width = toInches(parsed.width, editItemData.unit);
@@ -860,6 +874,10 @@ export default function PlotCanvas({ garden, plot, activeSeason, seasonId, onPlo
     if (itemType.usesRows) {
       metadata.rowSpacing = editItemData.rowSpacing;
       metadata.rowCount = editItemData.rowCount;
+      metadata.planting_pattern = editItemData.planting_pattern;
+    }
+    if (itemType.usesGrid || itemType.usesPredefinedSizes) { // Added usesPredefinedSizes here
+      metadata.planting_pattern = editItemData.planting_pattern;
     }
 
     try {
@@ -1450,6 +1468,31 @@ export default function PlotCanvas({ garden, plot, activeSeason, seasonId, onPlo
                   </label>
                 )}
 
+                {/* Planting Pattern */}
+                {(newItem.item_type === 'RAISED_BED' || newItem.item_type === 'GREENHOUSE' || newItem.item_type === 'IN_GROUND_BED' || newItem.item_type === 'OPEN_PLOT') && (
+                  <div>
+                    <Label>Planting Pattern</Label>
+                    <Select 
+                      value={newItem.planting_pattern || 'square_foot'} 
+                      onValueChange={(v) => setNewItem({ ...newItem, planting_pattern: v })}
+                    >
+                      <SelectTrigger className="mt-2">
+                        <SelectValue placeholder="Select pattern" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="square_foot">Square Foot Grid</SelectItem>
+                        <SelectItem value="diagonal">Diagonal (Offset Rows) - Intensive</SelectItem>
+                        <SelectItem value="rows">Traditional Rows</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    {newItem.planting_pattern === 'diagonal' && (
+                      <p className="text-sm text-gray-500 mt-1">
+                        Odd rows will be offset by 50% for intensive planting.
+                      </p>
+                    )}
+                  </div>
+                )}
+
                 {/* Row options for in-ground and open plot */}
                 {(newItem.item_type === 'IN_GROUND_BED' || newItem.item_type === 'OPEN_PLOT') && (
                   <div className="space-y-3 p-3 bg-gray-50 rounded-lg">
@@ -1610,7 +1653,7 @@ export default function PlotCanvas({ garden, plot, activeSeason, seasonId, onPlo
                     </SelectContent>
                   </Select>
                 </div>
-              ) : !ITEM_TYPES.find(t => t.value === selectedItem.item_type)?.usesSize ? (
+              ) : !ITEM_TYPES.find(t => t.value === selectedItem.item_type)?.usesPredefinedSizes ? ( // Corrected condition
                 <>
                   <div>
                     <Label>Dimensions</Label>
@@ -1634,6 +1677,31 @@ export default function PlotCanvas({ garden, plot, activeSeason, seasonId, onPlo
                       </Select>
                     </div>
                   </div>
+
+                  {/* Planting Pattern for Edit */}
+                  {(selectedItem.item_type === 'RAISED_BED' || selectedItem.item_type === 'GREENHOUSE' || selectedItem.item_type === 'IN_GROUND_BED' || selectedItem.item_type === 'OPEN_PLOT') && (
+                    <div className="space-y-3 p-3 bg-gray-50 rounded-lg">
+                      <h4 className="text-sm font-semibold">Planting Pattern</h4>
+                      <Select 
+                        value={editItemData.planting_pattern || 'square_foot'}
+                        onValueChange={(v) => setEditItemData({ ...editItemData, planting_pattern: v })}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select pattern" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="square_foot">Square Foot Grid</SelectItem>
+                          <SelectItem value="diagonal">Diagonal (Offset Rows) - Intensive</SelectItem>
+                          <SelectItem value="rows">Traditional Rows</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      {editItemData.planting_pattern === 'diagonal' && (
+                        <p className="text-xs text-gray-500 mt-1">
+                          Odd rows will be offset by 50% for intensive planting.
+                        </p>
+                      )}
+                    </div>
+                  )}
 
                   {(selectedItem.item_type === 'IN_GROUND_BED' || selectedItem.item_type === 'OPEN_PLOT') && (
                     <div className="space-y-3 p-3 bg-gray-50 rounded-lg">
@@ -1660,8 +1728,6 @@ export default function PlotCanvas({ garden, plot, activeSeason, seasonId, onPlo
                       </div>
                     </div>
                   )}
-
-
                 </>
               ) : null}
             </div>
