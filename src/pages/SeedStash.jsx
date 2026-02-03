@@ -722,7 +722,15 @@ export default function SeedStash() {
 
       {/* Seeds Display */}
       {filteredSeeds.length === 0 ? (
-        <Card className="py-16" style={{ background: 'var(--bg-card)' }}>
+        <Card 
+          className="py-16"
+          style={{ 
+            background: 'var(--glass-bg)',
+            backdropFilter: 'blur(12px)',
+            WebkitBackdropFilter: 'blur(12px)',
+            border: '1px solid var(--glass-border)'
+          }}
+        >
           <CardContent className="text-center">
             <Package className="w-16 h-16 mx-auto mb-4" style={{ color: 'var(--text-muted)' }} />
             <h3 className="text-lg font-semibold mb-2" style={{ color: 'var(--text-primary)' }}>
@@ -884,13 +892,28 @@ export default function SeedStash() {
                     </AnimatePresence>
         </div>
       ) : (
-        <Card>
+        <Card
+          style={{ 
+            background: 'var(--glass-bg)',
+            backdropFilter: 'blur(12px)',
+            WebkitBackdropFilter: 'blur(12px)',
+            border: '1px solid var(--glass-border)'
+          }}
+        >
           <Table>
             <TableHeader>
               <TableRow>
                 {visibleColumns.name && (
                   <TableHead 
-                    className="cursor-pointer hover:bg-gray-50 group"
+                    className="cursor-pointer group"
+                    style={{
+                      transition: 'background-color 0.2s',
+                      '&:hover': {
+                        backgroundColor: 'var(--surface-hover)'
+                      }
+                    }}
+                    onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--surface-hover)'}
+                    onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
                     onClick={() => {
                       if (sortBy === 'name') {
                         setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
@@ -911,9 +934,11 @@ export default function SeedStash() {
                   </TableHead>
                 )}
                 {visibleColumns.type && (
-                  <TableHead 
-                    className="cursor-pointer hover:bg-gray-50 group"
-                    onClick={() => {
+                 <TableHead 
+                   className="cursor-pointer group"
+                   onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--surface-hover)'}
+                   onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                   onClick={() => {
                       if (sortBy === 'type') {
                         setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
                       } else {
@@ -933,9 +958,11 @@ export default function SeedStash() {
                   </TableHead>
                 )}
                 {visibleColumns.source && (
-                  <TableHead 
-                    className="cursor-pointer hover:bg-gray-50 group"
-                    onClick={() => {
+                 <TableHead 
+                   className="cursor-pointer group"
+                   onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--surface-hover)'}
+                   onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                   onClick={() => {
                       if (sortBy === 'source') {
                         setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
                       } else {
@@ -955,9 +982,11 @@ export default function SeedStash() {
                   </TableHead>
                 )}
                 {visibleColumns.year && (
-                  <TableHead 
-                    className="cursor-pointer hover:bg-gray-50 group"
-                    onClick={() => {
+                 <TableHead 
+                   className="cursor-pointer group"
+                   onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--surface-hover)'}
+                   onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                   onClick={() => {
                       if (sortBy === 'year') {
                         setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
                       } else {
@@ -977,9 +1006,11 @@ export default function SeedStash() {
                   </TableHead>
                 )}
                 {visibleColumns.age && (
-                  <TableHead 
-                    className="cursor-pointer hover:bg-gray-50 group"
-                    onClick={() => {
+                 <TableHead 
+                   className="cursor-pointer group"
+                   onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--surface-hover)'}
+                   onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                   onClick={() => {
                       if (sortBy === 'age') {
                         setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
                       } else {
@@ -999,9 +1030,11 @@ export default function SeedStash() {
                   </TableHead>
                 )}
                 {visibleColumns.maturity && (
-                  <TableHead 
-                    className="cursor-pointer hover:bg-gray-50 group"
-                    onClick={() => {
+                 <TableHead 
+                   className="cursor-pointer group"
+                   onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--surface-hover)'}
+                   onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                   onClick={() => {
                       if (sortBy === 'maturity') {
                         setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
                       } else {
@@ -1021,9 +1054,11 @@ export default function SeedStash() {
                   </TableHead>
                 )}
                 {visibleColumns.spacing && (
-                  <TableHead 
-                    className="cursor-pointer hover:bg-gray-50 group"
-                    onClick={() => {
+                 <TableHead 
+                   className="cursor-pointer group"
+                   onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--surface-hover)'}
+                   onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                   onClick={() => {
                       if (sortBy === 'spacing') {
                         setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
                       } else {
@@ -1043,9 +1078,11 @@ export default function SeedStash() {
                   </TableHead>
                 )}
                 {visibleColumns.quantity && (
-                  <TableHead 
-                    className="cursor-pointer hover:bg-gray-50 group"
-                    onClick={() => {
+                 <TableHead 
+                   className="cursor-pointer group"
+                   onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--surface-hover)'}
+                   onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                   onClick={() => {
                       if (sortBy === 'quantity') {
                         setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
                       } else {

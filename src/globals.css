@@ -137,7 +137,7 @@
   :root:not([data-theme="light"]) {
     /* Backgrounds */
     --bg-body: #0a0f0a;
-    --bg-card: rgba(30, 50, 30, 0.6);
+    --bg-card: rgba(20, 40, 25, 0.7);
     --bg-card-solid: #111a11;
     --bg-elevated: #1a2e1a;
     --bg-muted: #1a2e1a;
@@ -146,21 +146,21 @@
 
     /* Text */
     --text-primary: #f0fdf4;
-    --text-secondary: #86efac;
-    --text-muted: #4ade80;
+    --text-secondary: #d1fae5;
+    --text-muted: #86efac;
     --text-disabled: #374937;
     --text-inverse: #0a0f0a;
     --text-link: #34d399;
 
     /* Borders */
-    --border-default: rgba(255, 255, 255, 0.1);
+    --border-default: rgba(16, 185, 129, 0.15);
     --border-subtle: rgba(16, 185, 129, 0.2);
     --border-strong: rgba(16, 185, 129, 0.3);
     --border-focus: #10b981;
 
     /* Glassmorphism */
-    --glass-bg: rgba(30, 50, 30, 0.6);
-    --glass-border: rgba(255, 255, 255, 0.1);
+    --glass-bg: rgba(20, 40, 25, 0.7);
+    --glass-border: rgba(16, 185, 129, 0.25);
     --glass-blur: 12px;
 
     /* Shadows */
@@ -196,30 +196,30 @@
 [data-theme="dark"] {
   /* Backgrounds */
   --bg-body: #0a0f0a;
-  --bg-card: rgba(30, 50, 30, 0.6);
+  --bg-card: rgba(20, 40, 25, 0.7);
   --bg-card-solid: #111a11;
   --bg-elevated: #1a2e1a;
   --bg-muted: #1a2e1a;
   --bg-sidebar: linear-gradient(180deg, #111a11 0%, #0a0f0a 100%);
   --bg-header: rgba(17, 26, 17, 0.9);
-  
+
   /* Text */
   --text-primary: #f0fdf4;
-  --text-secondary: #86efac;
-  --text-muted: #4ade80;
+  --text-secondary: #d1fae5;
+  --text-muted: #86efac;
   --text-disabled: #374937;
   --text-inverse: #0a0f0a;
   --text-link: #34d399;
-  
+
   /* Borders */
-  --border-default: rgba(255, 255, 255, 0.1);
+  --border-default: rgba(16, 185, 129, 0.15);
   --border-subtle: rgba(16, 185, 129, 0.2);
   --border-strong: rgba(16, 185, 129, 0.3);
   --border-focus: #10b981;
-  
+
   /* Glassmorphism */
-  --glass-bg: rgba(30, 50, 30, 0.6);
-  --glass-border: rgba(255, 255, 255, 0.1);
+  --glass-bg: rgba(20, 40, 25, 0.7);
+  --glass-border: rgba(16, 185, 129, 0.25);
   --glass-blur: 12px;
   
   /* Shadows */
