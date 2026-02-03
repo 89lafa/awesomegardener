@@ -90,7 +90,7 @@ export default function Layout({ children, currentPageName }) {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#FDFBF7] flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center" style={{ background: 'var(--bg-body)' }}>
         <div className="text-center">
           <Loader2 className="w-8 h-8 animate-spin text-emerald-600 mx-auto mb-3" />
           <p className="text-gray-600">Loading AwesomeGardener...</p>
@@ -101,12 +101,12 @@ export default function Layout({ children, currentPageName }) {
 
   // Landing page has its own layout
   if (isLandingPage) {
-    return <div className="min-h-screen bg-[#FDFBF7]">{children}</div>;
+    return <div className="min-h-screen" style={{ background: 'var(--bg-body)' }}>{children}</div>;
   }
 
   // Public pages without sidebar
   if (isPublicPage && !user) {
-    return <div className="min-h-screen bg-[#FDFBF7]">{children}</div>;
+    return <div className="min-h-screen" style={{ background: 'var(--bg-body)' }}>{children}</div>;
   }
 
   // Check if onboarding is needed (only after auth is fully resolved)
@@ -117,7 +117,7 @@ export default function Layout({ children, currentPageName }) {
 
   return (
     <ErrorBoundary>
-    <div className="min-h-screen bg-[#FDFBF7]">
+    <div className="min-h-screen" style={{ background: 'var(--bg-body)' }}>
       {/* Desktop Sidebar */}
       <div className={cn('hidden lg:block', desktopSidebarCollapsed && 'lg:hidden')}>
         <Sidebar 

@@ -72,6 +72,8 @@ import RateLimitBanner from '@/components/common/RateLimitBanner';
 import { useDebouncedValue } from '../components/utils/useDebouncedValue';
 import { getPlantTypesCached, getSubcategoriesCached } from '../components/utils/dataCache';
 import AIGrowAssistant from '@/components/indoor/AIGrowAssistant';
+import { usePullToRefresh } from '@/components/utils/usePullToRefresh';
+import PullToRefreshIndicator from '@/components/common/PullToRefreshIndicator';
 
 const TAGS = [
   { value: 'favorite', label: 'Favorite', icon: Star, color: 'text-yellow-500' },
@@ -132,6 +134,11 @@ export default function SeedStash() {
     tags: [],
     lot_images: [],
     is_wishlist: false
+  });
+
+  const { isPulling, pullDistance, isRefreshing } = usePullToRefresh(async () => {
+    await loadData();
+    toast.success('Seeds refreshed');
   });
 
   useEffect(() => {
@@ -551,20 +558,26 @@ export default function SeedStash() {
   }
 
   return (
-    <div className="space-y-6">
-      {rateLimitError && (
-        <RateLimitBanner 
-          retryInMs={rateLimitError.retryInMs || 5000} 
-          onRetry={() => loadData(true)}
-          retrying={retrying}
-        />
-      )}
-      
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h1 className="text-2xl lg:text-3xl font-bold text-gray-900">Seed Stash</h1>
-          <p className="text-gray-600 mt-1">Track your seeds and wishlist</p>
-        </div>
+    <>
+      <PullToRefreshIndicator 
+        isPulling={isPulling} 
+        pullDistance={pullDistance} 
+        isRefreshing={isRefreshing} 
+      />
+      <div className="space-y-6">
+        {rateLimitError && (
+          <RateLimitBanner 
+            retryInMs={rateLimitError.retryInMs || 5000} 
+            onRetry={() => loadData(true)}
+            retrying={retrying}
+          />
+        )}
+        
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div>
+            <h1 className="text-2xl lg:text-3xl font-bold text-gray-900">Seed Stash</h1>
+            <p className="text-gray-600 mt-1">Track your seeds and wishlist</p>
+          </div>
         <div className="flex gap-2 flex-wrap">
            <Button 
              onClick={() => setShowAIAssistant(true)}
@@ -1473,6 +1486,7 @@ export default function SeedStash() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </div>
+      </div>
+    </>
   );
 }

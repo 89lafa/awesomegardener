@@ -213,6 +213,7 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   transition: background-color var(--transition-slow), color var(--transition-slow);
+  overscroll-behavior: none; /* Prevent iOS bounce on main scroll */
 }
 
 /* Prevent horizontal overflow */
@@ -591,6 +592,20 @@ textarea.input {
 
 .toggle.active::after {
   left: 26px;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   IOS SAFE AREA INSETS (App Store Ready)
+   ═══════════════════════════════════════════════════════════════ */
+
+/* Top bar safe area */
+header {
+  padding-top: env(safe-area-inset-top);
+}
+
+/* Bottom nav safe area */
+nav.fixed.bottom-0 {
+  padding-bottom: env(safe-area-inset-bottom);
 }
 
 /* ═══════════════════════════════════════════════════════════════

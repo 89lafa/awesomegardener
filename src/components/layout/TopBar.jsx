@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
 import { 
   Search, 
@@ -14,7 +14,8 @@ import {
   Settings,
   Menu,
   PanelLeftClose,
-  PanelLeft
+  PanelLeft,
+  ArrowLeft
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -29,8 +30,17 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { base44 } from '@/api/base44Client';
 export default function TopBar({ user, onMobileMenuToggle, onSidebarToggle, sidebarCollapsed }) {
+  const navigate = useNavigate();
+  const location = useLocation();
   const [searchQuery, setSearchQuery] = useState('');
   const [unreadCount, setUnreadCount] = useState(0);
+  
+  // Determine if this is a child page (should show back button)
+  const childPages = ['SeedStashDetail', 'TrayDetail', 'IndoorSpaceDetail', 'ViewVariety', 
+                      'PlantCatalogDetail', 'ForumTopic', 'MyPlants', 'PublicGarden', 
+                      'EditVariety', 'GardenDiary', 'HarvestLog', 'IssuesLog'];
+  const currentPage = location.pathname.split('/').pop();
+  const isChildPage = childPages.includes(currentPage);
 
   useEffect(() => {
     if (user) {
@@ -100,16 +110,27 @@ export default function TopBar({ user, onMobileMenuToggle, onSidebarToggle, side
 
   return (
     <header className="h-16 bg-white border-b border-gray-200 flex items-center justify-between px-4 lg:px-6">
-      {/* Sidebar Toggle - Works on all screens */}
+      {/* Sidebar Toggle OR Back Button */}
       <div className="flex items-center gap-2">
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={onMobileMenuToggle}
-          className="lg:hidden"
-        >
-          <Menu className="w-5 h-5" />
-        </Button>
+        {isChildPage ? (
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => navigate(-1)}
+            className="lg:hidden"
+          >
+            <ArrowLeft className="w-5 h-5" />
+          </Button>
+        ) : (
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={onMobileMenuToggle}
+            className="lg:hidden"
+          >
+            <Menu className="w-5 h-5" />
+          </Button>
+        )}
         <Button
           variant="ghost"
           size="icon"

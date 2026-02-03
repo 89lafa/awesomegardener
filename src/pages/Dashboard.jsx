@@ -21,6 +21,8 @@ import {
 import { createPageUrl } from '@/utils';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
+import { usePullToRefresh } from '@/components/utils/usePullToRefresh';
+import PullToRefreshIndicator from '@/components/common/PullToRefreshIndicator';
 
 export default function Dashboard() {
   const navigate = useNavigate();
@@ -37,6 +39,11 @@ export default function Dashboard() {
   const [weatherLoading, setWeatherLoading] = useState(true);
   const [popularCrops, setPopularCrops] = useState(null);
   const [loading, setLoading] = useState(true);
+
+  const { isPulling, pullDistance, isRefreshing } = usePullToRefresh(async () => {
+    await Promise.all([loadDashboard(), loadWeather()]);
+    toast.success('Dashboard refreshed');
+  });
 
   useEffect(() => {
     loadDashboard();
@@ -226,12 +233,18 @@ export default function Dashboard() {
   };
 
   return (
-    <div className="space-y-6 max-w-6xl">
-      {/* Header */}
-      <div>
-        <h1 className="text-3xl font-bold text-gray-900">Welcome back, {user?.full_name}!</h1>
-        <p className="text-gray-600 mt-1">Here's what's happening in your garden</p>
-      </div>
+    <>
+      <PullToRefreshIndicator 
+        isPulling={isPulling} 
+        pullDistance={pullDistance} 
+        isRefreshing={isRefreshing} 
+      />
+      <div className="space-y-6 max-w-6xl">
+        {/* Header */}
+        <div>
+          <h1 className="text-3xl font-bold text-gray-900">Welcome back, {user?.full_name}!</h1>
+          <p className="text-gray-600 mt-1">Here's what's happening in your garden</p>
+        </div>
 
       {/* Top Row - Quick Stats + Weather */}
       <div className="grid md:grid-cols-4 gap-4">
@@ -491,7 +504,8 @@ export default function Dashboard() {
           </CardContent>
         </Card>
       )}
-    </div>
+      </div>
+    </>
   );
 }
 

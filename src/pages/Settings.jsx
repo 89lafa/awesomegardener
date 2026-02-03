@@ -12,7 +12,9 @@ import {
   Users,
   Wrench,
   Sprout,
-  Copy
+  Copy,
+  AlertCircle,
+  Trash2
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
@@ -247,6 +249,10 @@ export default function Settings() {
           <TabsTrigger value="debug" className="gap-2">
             <Wrench className="w-4 h-4" />
             Debug
+          </TabsTrigger>
+          <TabsTrigger value="danger" className="gap-2 text-red-600">
+            <AlertCircle className="w-4 h-4" />
+            Danger Zone
           </TabsTrigger>
         </TabsList>
 
@@ -751,6 +757,58 @@ export default function Settings() {
                     🧹 Clear All Storage
                   </Button>
                 </div>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="danger" className="mt-6">
+          <Card className="border-red-200 bg-red-50">
+            <CardHeader>
+              <CardTitle className="text-red-900 flex items-center gap-2">
+                <AlertCircle className="w-5 h-5" />
+                Danger Zone
+              </CardTitle>
+              <CardDescription className="text-red-700">
+                Irreversible actions that will permanently delete your data
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="p-4 bg-white rounded-lg border border-red-200">
+                <h4 className="font-semibold text-red-900 mb-2">Delete Account</h4>
+                <p className="text-sm text-red-700 mb-4">
+                  This will permanently delete your account, all your gardens, seeds, plans, and data. 
+                  This action cannot be undone.
+                </p>
+                <Button
+                  variant="destructive"
+                  onClick={async () => {
+                    const confirmed = confirm(
+                      '⚠️ WARNING ⚠️\n\nThis will PERMANENTLY DELETE your account and ALL your data:\n\n• All gardens and plantings\n• Entire seed stash\n• Calendar plans and tasks\n• Indoor grow spaces and trays\n• All logs and diary entries\n\nThis CANNOT be undone.\n\nType "DELETE" to confirm.'
+                    );
+                    
+                    if (!confirmed) return;
+                    
+                    const typed = prompt('Type DELETE in all caps to confirm:');
+                    if (typed !== 'DELETE') {
+                      toast.error('Account deletion cancelled');
+                      return;
+                    }
+                    
+                    try {
+                      await base44.auth.deleteMe();
+                      toast.success('Account deleted. Goodbye.');
+                      window.location.href = '/Landing';
+                    } catch (error) {
+                      console.error('Error deleting account:', error);
+                      toast.error('Failed to delete account: ' + error.message);
+                    }
+                  }}
+                  className="gap-2"
+                >
+                  <Trash2 className="w-4 h-4" />
+                  Delete My Account
+                </Button>
               </div>
             </CardContent>
           </Card>
