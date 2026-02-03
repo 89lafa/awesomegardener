@@ -7,11 +7,14 @@ import BottomNav from '@/components/layout/BottomNav';
 import { cn } from '@/lib/utils';
 import { Loader2 } from 'lucide-react';
 import ErrorBoundary from '@/components/common/ErrorBoundary';
+import { motion, AnimatePresence } from 'framer-motion';
+import { useLocation } from 'react-router-dom';
 
 // Public pages that don't require authentication
 const publicPages = ['Landing', 'PublicGarden', 'PublicPlant', 'Community', 'GardeningBasics'];
 
 export default function Layout({ children, currentPageName }) {
+  const location = useLocation();
   const [authState, setAuthState] = useState('loading');
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -168,7 +171,17 @@ export default function Layout({ children, currentPageName }) {
           sidebarCollapsed={desktopSidebarCollapsed}
         />
         <main className="p-4 lg:p-6">
-          {children}
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={location.pathname}
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -20 }}
+              transition={{ duration: 0.2 }}
+            >
+              {children}
+            </motion.div>
+          </AnimatePresence>
         </main>
       </div>
       {user && <BottomNav />}

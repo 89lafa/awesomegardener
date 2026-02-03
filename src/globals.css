@@ -28,8 +28,8 @@
   /* ═══ TYPOGRAPHY ═══ */
   --font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   --font-size-xs: 11px;
-  --font-size-sm: 13px;
-  --font-size-base: 15px;
+  --font-size-sm: 14px;
+  --font-size-base: 16px;
   --font-size-lg: 17px;
   --font-size-xl: 20px;
   --font-size-2xl: 24px;
@@ -131,7 +131,68 @@
 /* ═══════════════════════════════════════════════════════════════
    DARK THEME
    ═══════════════════════════════════════════════════════════════ */
-   
+
+/* Auto dark mode based on system preference */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    /* Backgrounds */
+    --bg-body: #0a0f0a;
+    --bg-card: rgba(30, 50, 30, 0.6);
+    --bg-card-solid: #111a11;
+    --bg-elevated: #1a2e1a;
+    --bg-muted: #1a2e1a;
+    --bg-sidebar: linear-gradient(180deg, #111a11 0%, #0a0f0a 100%);
+    --bg-header: rgba(17, 26, 17, 0.9);
+
+    /* Text */
+    --text-primary: #f0fdf4;
+    --text-secondary: #86efac;
+    --text-muted: #4ade80;
+    --text-disabled: #374937;
+    --text-inverse: #0a0f0a;
+    --text-link: #34d399;
+
+    /* Borders */
+    --border-default: rgba(255, 255, 255, 0.1);
+    --border-subtle: rgba(16, 185, 129, 0.2);
+    --border-strong: rgba(16, 185, 129, 0.3);
+    --border-focus: #10b981;
+
+    /* Glassmorphism */
+    --glass-bg: rgba(30, 50, 30, 0.6);
+    --glass-border: rgba(255, 255, 255, 0.1);
+    --glass-blur: 12px;
+
+    /* Shadows */
+    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.2);
+    --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.3);
+    --shadow-lg: 0 10px 25px rgba(0, 0, 0, 0.4);
+    --shadow-xl: 0 20px 40px rgba(0, 0, 0, 0.5);
+    --shadow-glow: 0 4px 20px rgba(16, 185, 129, 0.4);
+
+    /* Surfaces */
+    --surface-hover: rgba(16, 185, 129, 0.1);
+    --surface-active: rgba(16, 185, 129, 0.15);
+    --surface-selected: rgba(16, 185, 129, 0.2);
+
+    /* Inputs */
+    --input-bg: #1a2e1a;
+    --input-border: rgba(255, 255, 255, 0.1);
+    --input-focus: #10b981;
+    --input-placeholder: #4ade80;
+
+    /* Status badge backgrounds */
+    --badge-success-bg: rgba(34, 197, 94, 0.2);
+    --badge-warning-bg: rgba(245, 158, 11, 0.2);
+    --badge-danger-bg: rgba(239, 68, 68, 0.2);
+    --badge-info-bg: rgba(59, 130, 246, 0.2);
+
+    /* Scrollbar */
+    --scrollbar-bg: #1a2e1a;
+    --scrollbar-thumb: #374937;
+  }
+}
+
 [data-theme="dark"] {
   /* Backgrounds */
   --bg-body: #0a0f0a;

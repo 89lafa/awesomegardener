@@ -4,20 +4,33 @@ import { Button } from '@/components/ui/button';
 
 export default function DarkModeToggle() {
   const [darkMode, setDarkMode] = useState(() => {
-    // Check localStorage or default to light
-    return localStorage.getItem('theme') === 'dark';
+    const saved = localStorage.getItem('theme');
+    return saved === 'dark';
   });
 
   useEffect(() => {
-    // Apply theme on mount and when changed
+    // Apply immediately on mount
+    const root = document.documentElement;
     if (darkMode) {
-      document.documentElement.setAttribute('data-theme', 'dark');
+      root.setAttribute('data-theme', 'dark');
+      root.classList.add('dark');
       localStorage.setItem('theme', 'dark');
     } else {
-      document.documentElement.setAttribute('data-theme', 'light');
+      root.setAttribute('data-theme', 'light');
+      root.classList.remove('dark');
       localStorage.setItem('theme', 'light');
     }
   }, [darkMode]);
+
+  // Apply on initial mount
+  useEffect(() => {
+    const root = document.documentElement;
+    const saved = localStorage.getItem('theme');
+    if (saved === 'dark') {
+      root.setAttribute('data-theme', 'dark');
+      root.classList.add('dark');
+    }
+  }, []);
 
   return (
     <Button
@@ -25,12 +38,11 @@ export default function DarkModeToggle() {
       size="icon"
       onClick={() => setDarkMode(!darkMode)}
       title={darkMode ? 'Switch to light mode' : 'Switch to dark mode'}
-      className="relative"
     >
       {darkMode ? (
         <Sun className="w-5 h-5 text-amber-500" />
       ) : (
-        <Moon className="w-5 h-5 text-gray-500" />
+        <Moon className="w-5 h-5" style={{ color: 'var(--text-secondary)' }} />
       )}
     </Button>
   );

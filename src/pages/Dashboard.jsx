@@ -54,16 +54,13 @@ export default function Dashboard() {
     try {
       const user = await base44.auth.me();
       
-      // FIXED: User entity doesn't have location_zip - ONLY check UserSettings
-      const userSettings = await base44.entities.UserSettings.filter({
-        user_email: user.email
-      }).then(results => results[0]);
+      // User entity stores location_zip directly
+      const zipCode = user?.location_zip;
       
-      const zipCode = userSettings?.location_zip;
-      
-      console.log('[Dashboard] Weather lookup - UserSettings:', userSettings, 'ZIP:', zipCode);
+      console.log('[Dashboard] Weather lookup - User:', user.email, 'ZIP:', zipCode);
       
       if (!zipCode) {
+        console.warn('[Dashboard] No ZIP code found on user');
         setWeatherLoading(false);
         return;
       }
