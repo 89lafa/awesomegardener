@@ -13,12 +13,14 @@ import {
   TrendingUp,
   CloudRain,
   AlertTriangle,
-  ArrowRight
+  ArrowRight,
+  Cloud,
+  Wind,
+  Droplets
 } from 'lucide-react';
 import { createPageUrl } from '@/utils';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
-import { WeatherWidget } from '@/components/weather/WeatherWidget';
 
 export default function Dashboard() {
   const navigate = useNavigate();
@@ -32,12 +34,77 @@ export default function Dashboard() {
     tradesPending: 0
   });
   const [weather, setWeather] = useState(null);
+  const [weatherLoading, setWeatherLoading] = useState(true);
   const [popularCrops, setPopularCrops] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     loadDashboard();
+    loadWeather();
   }, []);
+
+  const loadWeather = async () => {
+    try {
+      const user = await base44.auth.me();
+      let zipCode = user?.zip_code || user?.location_zip;
+      
+      if (!zipCode) {
+        const userSettings = await base44.entities.UserSettings.filter({
+          user_email: user.email
+        }).then(results => results[0]);
+        zipCode = userSettings?.location_zip;
+      }
+      
+      if (!zipCode) {
+        setWeatherLoading(false);
+        return;
+      }
+
+      const today = new Date().toISOString().split('T')[0];
+      const cached = await base44.entities.WeatherCache.filter({
+        zip_code: zipCode,
+        date: today
+      }).then(results => results[0]);
+
+      if (cached && new Date(cached.expires_at) > new Date()) {
+        setWeather(cached);
+        setWeatherLoading(false);
+        return;
+      }
+
+      const response = await fetch(`https://wttr.in/${zipCode}?format=j1`);
+      const data = await response.json();
+      const current = data.current_condition?.[0];
+      const forecast = data.weather?.[0];
+      
+      const weatherData = {
+        zip_code: zipCode,
+        date: today,
+        high_temp: parseInt(forecast?.maxtempF),
+        low_temp: parseInt(forecast?.mintempF),
+        current_temp: parseInt(current?.temp_F),
+        conditions: current?.weatherDesc?.[0]?.value || 'Unknown',
+        conditions_icon: getWeatherIcon(current?.weatherCode),
+        precipitation_chance: parseInt(forecast?.hourly?.[0]?.chanceofrain) || 0,
+        wind_speed_mph: parseInt(current?.windspeedMiles) || 0,
+        humidity_percent: parseInt(current?.humidity) || 0,
+        frost_warning: parseInt(forecast?.mintempF) <= 32,
+        heat_warning: parseInt(forecast?.maxtempF) >= 95
+      };
+
+      if (cached) {
+        await base44.entities.WeatherCache.update(cached.id, weatherData);
+      } else {
+        await base44.entities.WeatherCache.create(weatherData);
+      }
+
+      setWeather(weatherData);
+    } catch (err) {
+      console.error('Weather fetch failed:', err);
+    } finally {
+      setWeatherLoading(false);
+    }
+  };
 
   const loadDashboard = async () => {
     try {
@@ -100,6 +167,64 @@ export default function Dashboard() {
     </Card>
   );
 
+  const WeatherCard = () => {
+    if (weatherLoading) {
+      return (
+        <Card>
+          <CardContent className="p-6">
+            <div className="animate-pulse space-y-2">
+              <div className="h-4 bg-gray-200 rounded w-20"></div>
+              <div className="h-8 bg-gray-200 rounded w-16"></div>
+            </div>
+          </CardContent>
+        </Card>
+      );
+    }
+
+    if (!weather) {
+      return (
+        <Card className="bg-gray-50">
+          <CardContent className="p-6 text-center">
+            <Cloud className="w-8 h-8 text-gray-300 mx-auto mb-2" />
+            <p className="text-xs text-gray-500">Set ZIP in Settings</p>
+          </CardContent>
+        </Card>
+      );
+    }
+
+    return (
+      <Card 
+        className="relative overflow-hidden cursor-pointer hover:shadow-lg transition-all"
+        style={{
+          background: weather.frost_warning
+            ? 'linear-gradient(135deg, #3b82f6, #8b5cf6)'
+            : weather.heat_warning
+            ? 'linear-gradient(135deg, #f59e0b, #ef4444)'
+            : 'linear-gradient(135deg, #10b981, #059669)'
+        }}
+      >
+        <CardContent className="p-6 text-white relative">
+          <div className="absolute -right-2 -top-2 text-4xl opacity-20">{weather.conditions_icon}</div>
+          <div className="relative z-10">
+            <p className="text-xs opacity-80 mb-1">Today</p>
+            <p className="text-3xl font-bold mb-1">{weather.current_temp}°</p>
+            <p className="text-xs opacity-90">{weather.conditions}</p>
+            <div className="flex gap-3 mt-3 text-xs opacity-80">
+              <span>H: {weather.high_temp}°</span>
+              <span>L: {weather.low_temp}°</span>
+            </div>
+            {weather.frost_warning && (
+              <div className="mt-2 flex items-center gap-1 text-xs bg-white/20 rounded px-2 py-1">
+                <AlertTriangle className="w-3 h-3" />
+                <span>Frost!</span>
+              </div>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+    );
+  };
+
   return (
     <div className="space-y-6 max-w-6xl">
       {/* Header */}
@@ -108,8 +233,8 @@ export default function Dashboard() {
         <p className="text-gray-600 mt-1">Here's what's happening in your garden</p>
       </div>
 
-      {/* Quick Stats */}
-      <div className="grid md:grid-cols-3 gap-4">
+      {/* Top Row - Quick Stats + Weather */}
+      <div className="grid md:grid-cols-4 gap-4">
         <QuickAccessCard
           icon={Sprout}
           title="Active Crops"
@@ -131,6 +256,7 @@ export default function Dashboard() {
           color="bg-amber-500"
           page="SeedStash"
         />
+        <WeatherCard />
       </div>
 
       {/* More Stats */}
@@ -169,11 +295,6 @@ export default function Dashboard() {
             </Button>
           </CardContent>
         </Card>
-      </div>
-
-      {/* Weather Widget */}
-      <div>
-        <WeatherWidget />
       </div>
 
       {/* Quick Access Grid */}
@@ -284,7 +405,7 @@ export default function Dashboard() {
                       </div>
                     ))
                   ) : (
-                    <p className="text-sm text-gray-500">No data yet</p>
+                    <p className="text-sm text-gray-500">Not enough data yet</p>
                   )}
                 </div>
               </CardContent>
@@ -310,7 +431,7 @@ export default function Dashboard() {
                       </div>
                     ))
                   ) : (
-                    <p className="text-sm text-gray-500">No data yet</p>
+                    <p className="text-sm text-gray-500">Not enough data yet</p>
                   )}
                 </div>
               </CardContent>
@@ -339,7 +460,7 @@ export default function Dashboard() {
                       </div>
                     ))
                   ) : (
-                    <p className="text-sm text-gray-500">No data yet</p>
+                    <p className="text-sm text-gray-500">Not enough data yet</p>
                   )}
                 </div>
               </CardContent>
@@ -372,4 +493,15 @@ export default function Dashboard() {
       )}
     </div>
   );
+}
+
+function getWeatherIcon(code) {
+  const codeNum = parseInt(code) || 0;
+  if (codeNum >= 200 && codeNum < 300) return '⛈️';
+  if (codeNum >= 300 && codeNum < 600) return '🌧️';
+  if (codeNum >= 600 && codeNum < 700) return '❄️';
+  if (codeNum >= 700 && codeNum < 800) return '🌫️';
+  if (codeNum === 800) return '☀️';
+  if (codeNum > 800) return '⛅';
+  return '🌤️';
 }
