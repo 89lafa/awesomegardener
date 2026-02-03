@@ -21,8 +21,6 @@ import {
 import { createPageUrl } from '@/utils';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
-import { usePullToRefresh } from '@/components/utils/usePullToRefresh';
-import PullToRefreshIndicator from '@/components/common/PullToRefreshIndicator';
 
 export default function Dashboard() {
   const navigate = useNavigate();
@@ -48,10 +46,7 @@ export default function Dashboard() {
     else setGreeting('Good evening');
   }, []);
 
-  const { isPulling, pullDistance, isRefreshing } = usePullToRefresh(async () => {
-    await Promise.all([loadDashboard(), loadWeather()]);
-    toast.success('Dashboard refreshed');
-  });
+
 
   useEffect(() => {
     loadDashboard();
@@ -260,13 +255,7 @@ export default function Dashboard() {
   };
 
   return (
-    <>
-      <PullToRefreshIndicator 
-        isPulling={isPulling} 
-        pullDistance={pullDistance} 
-        isRefreshing={isRefreshing} 
-      />
-      <div className="space-y-6 max-w-6xl">
+    <div className="space-y-6 max-w-6xl">
         {/* Header */}
         <div>
           <h1 className="text-3xl font-bold" style={{ color: 'var(--text-primary)' }}>
@@ -526,7 +515,6 @@ export default function Dashboard() {
         </div>
       )}
       </div>
-    </>
   );
 }
 
