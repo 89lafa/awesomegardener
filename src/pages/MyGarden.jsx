@@ -389,15 +389,15 @@ export default function MyGarden() {
 
   return (
     <ErrorBoundary fallbackTitle="Garden Error">
-      <div className="h-[calc(100vh-8rem)] flex flex-col">
+      <div className="h-[calc(100vh-8rem)] flex flex-col pb-20 lg:pb-0">
         {/* Header with Garden Selector */}
-        <div className="flex flex-col gap-3 pb-4 border-b">
-          <div className="flex items-center justify-between gap-4">
-            <div className="flex items-center gap-3 flex-1">
-              <TreeDeciduous className="w-6 h-6 text-emerald-600" />
+        <div className="flex flex-col gap-2 lg:gap-3 pb-3 lg:pb-4 border-b">
+          <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-3 lg:gap-4">
+            <div className="flex items-center gap-2 lg:gap-3 flex-1 w-full lg:w-auto">
+              <TreeDeciduous className="w-5 h-5 lg:w-6 lg:h-6 text-emerald-600 flex-shrink-0" />
               {gardens.length > 1 ? (
                 <Select value={activeGarden?.id} onValueChange={handleGardenChange}>
-                  <SelectTrigger className="w-64">
+                  <SelectTrigger className="w-full lg:w-64 text-sm lg:text-base">
                     <SelectValue placeholder="Select a garden" />
                   </SelectTrigger>
                   <SelectContent>
@@ -409,12 +409,12 @@ export default function MyGarden() {
                   </SelectContent>
                 </Select>
               ) : (
-                <h1 className="text-xl lg:text-2xl font-bold text-gray-900">{activeGarden?.name}</h1>
+                <h1 className="text-lg lg:text-2xl font-bold text-gray-900">{activeGarden?.name}</h1>
               )}
             </div>
             
-            {/* Public Toggle + Share Buttons */}
-            <div className="flex items-center gap-2">
+            {/* Desktop Only - Public Toggle + Share Buttons */}
+            <div className="hidden lg:flex items-center gap-2">
               <div className="flex items-center gap-2 px-3 py-2 rounded-lg border bg-white">
                 <Label className="text-sm cursor-pointer flex items-center gap-2">
                   <Switch
@@ -424,7 +424,7 @@ export default function MyGarden() {
                         await base44.entities.Garden.update(activeGarden.id, { is_public: checked });
                         setActiveGarden({ ...activeGarden, is_public: checked });
                         toast.success(checked ? 'Garden is now public' : 'Garden is now private');
-                        loadData(); // Refresh
+                        loadData();
                       } catch (error) {
                         console.error('Error updating privacy:', error);
                         toast.error('Failed to update privacy');
@@ -474,21 +474,22 @@ export default function MyGarden() {
             <Button 
               onClick={() => setShowCreateGarden(true)}
               variant="outline"
-              className="gap-2"
+              size="sm"
+              className="gap-1 lg:gap-2 hidden lg:flex"
             >
-              <Plus className="w-4 h-4" />
+              <Plus className="w-3 h-3 lg:w-4 lg:h-4" />
               New Garden
             </Button>
           </div>
 
           {/* Season Selector + Mode Selector */}
-          <div className="flex items-center gap-4 flex-wrap">
+          <div className="flex items-center gap-2 lg:gap-4 flex-wrap text-sm lg:text-base">
             {availableSeasons.length > 0 && (
-              <div className="flex items-center gap-2">
-                <Calendar className="w-4 h-4 text-gray-500" />
-                <Label className="text-sm font-medium">Season:</Label>
+              <div className="flex items-center gap-1 lg:gap-2 flex-1 lg:flex-none">
+                <Calendar className="w-3 h-3 lg:w-4 lg:h-4 text-gray-500 flex-shrink-0" />
+                <Label className="text-xs lg:text-sm font-medium hidden lg:inline">Season:</Label>
                 <Select value={activeSeason} onValueChange={setActiveSeason}>
-                  <SelectTrigger className="w-36">
+                  <SelectTrigger className="w-28 lg:w-36 text-xs lg:text-sm h-8 lg:h-9">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -503,7 +504,7 @@ export default function MyGarden() {
                   size="sm"
                   variant="outline"
                   onClick={() => setShowAddSeason(true)}
-                  className="gap-1"
+                  className="gap-1 hidden lg:flex h-8"
                 >
                   <Plus className="w-3 h-3" />
                   Add Season
@@ -511,8 +512,8 @@ export default function MyGarden() {
               </div>
             )}
             
-            <div className="flex items-center gap-2">
-              <Label className="text-sm font-medium">Mode:</Label>
+            <div className="flex items-center gap-1 lg:gap-2 flex-1 lg:flex-none">
+              <Label className="text-xs lg:text-sm font-medium hidden lg:inline">Mode:</Label>
               <Select 
                 value={activeGarden?.chaos_mode ? 'chaos' : 'standard'}
                 onValueChange={async (value) => {
@@ -523,7 +524,7 @@ export default function MyGarden() {
                   toast.success(chaosMode ? 'Chaos Mode enabled! Freeform planting.' : 'Standard mode restored');
                 }}
               >
-                <SelectTrigger className="w-40">
+                <SelectTrigger className="w-32 lg:w-40 text-xs lg:text-sm h-8 lg:h-9">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>

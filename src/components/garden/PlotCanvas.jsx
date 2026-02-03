@@ -1126,8 +1126,8 @@ export default function PlotCanvas({ garden, plot, activeSeason, seasonId, onPlo
 
   return (
     <div className="flex-1 flex flex-col lg:flex-row gap-4 mt-4 min-h-0">
-      {/* Left Toolbar */}
-        <Card className="w-full lg:w-64 flex-shrink-0 h-fit relative z-10">
+      {/* Left Toolbar - Hidden on Mobile */}
+        <Card className="hidden lg:block w-64 flex-shrink-0 h-fit relative z-10">
           <CardContent className="p-4 space-y-2">
           <Button 
             onClick={() => setShowAddItem(true)}
@@ -1268,10 +1268,55 @@ export default function PlotCanvas({ garden, plot, activeSeason, seasonId, onPlo
         </CardContent>
       </Card>
 
+      {/* Mobile Toolbar */}
+      <div className="lg:hidden flex gap-2 mb-3 overflow-x-auto pb-2">
+        <Button 
+          onClick={() => setShowAddItem(true)}
+          size="sm"
+          className="bg-emerald-600 hover:bg-emerald-700 gap-1 whitespace-nowrap"
+        >
+          <Plus className="w-3 h-3" />
+          Add
+        </Button>
+        <Button 
+          onClick={() => setShowPlotSettings(true)}
+          variant="outline"
+          size="sm"
+          className="gap-1 whitespace-nowrap"
+        >
+          <Settings className="w-3 h-3" />
+          Settings
+        </Button>
+        <Button
+          variant={snapToGrid ? 'secondary' : 'outline'}
+          size="sm"
+          onClick={() => setSnapToGrid(!snapToGrid)}
+          className="gap-1 whitespace-nowrap"
+        >
+          <Grid3X3 className="w-3 h-3" />
+          Snap
+        </Button>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => setZoom(Math.max(0.5, zoom - 0.1))}
+        >
+          <ZoomOut className="w-3 h-3" />
+        </Button>
+        <span className="text-xs flex items-center px-2">{Math.round(zoom * 100)}%</span>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => setZoom(Math.min(2, zoom + 0.1))}
+        >
+          <ZoomIn className="w-3 h-3" />
+        </Button>
+      </div>
+
       {/* Canvas */}
-      <div className="flex-1 bg-gray-50 rounded-xl overflow-auto p-4 lg:p-8 relative z-0">
+      <div className="flex-1 bg-gray-50 rounded-xl overflow-auto p-2 lg:p-8 relative z-0">
         {/* Status Legend */}
-        <div className="mb-4 flex items-center gap-4 text-xs">
+        <div className="mb-2 lg:mb-4 flex items-center gap-2 lg:gap-4 text-xs">
           <span className="font-medium text-gray-600">Status:</span>
           <div className="flex items-center gap-1.5">
             <div className="w-3 h-3 border-2 border-gray-400 rounded"></div>
