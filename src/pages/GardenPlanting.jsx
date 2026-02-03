@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
 import { base44 } from '@/api/base44Client';
@@ -40,7 +40,18 @@ import PlantingModal from '@/components/garden/PlantingModal';
 import { smartQuery } from '@/components/utils/smartQuery';
 import RateLimitBanner from '@/components/common/RateLimitBanner';
 
-function SpaceCard({ space, garden, activeSeason, seasonId }) {
+// PAGE-LEVEL DATA CACHE: Shared across all SpaceCards on this page
+const PAGE_DATA_CACHE = {
+  varieties: null,
+  plantTypes: null,
+  plantingRules: null,
+  cropPlans: null,
+  stashPlants: null,
+  profiles: null,
+  lastFetch: 0
+};
+
+function SpaceCard({ space, garden, activeSeason, seasonId, sharedData }) {
   const [plantings, setPlantings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showPlantingModal, setShowPlantingModal] = useState(false);
@@ -117,15 +128,16 @@ function SpaceCard({ space, garden, activeSeason, seasonId }) {
   // Create a pseudo-item for PlantingModal that looks like a PlotItem
   const pseudoItem = {
     id: space.plot_item_id,
+    item_type: space.space_type,
     label: space.name,
     width: isGridSpace ? columns * 12 : 120,
     height: isGridSpace ? rows * 12 : 120,
-    metadata: isSlotsSpace ? {
-      gridEnabled: false,
-      capacity: slots
-    } : {
+    metadata: {
+      ...space.layout_schema,
       gridEnabled: isGridSpace,
-      gridSize: 12
+      gridSize: 12,
+      capacity: isSlotsSpace ? slots : undefined,
+      planting_pattern: space.layout_schema?.planting_pattern || 'square_foot'
     }
   };
 
@@ -253,6 +265,7 @@ function SpaceCard({ space, garden, activeSeason, seasonId }) {
         activeSeason={activeSeason}
         seasonId={seasonId}
         onPlantingUpdate={handlePlantingUpdate}
+        sharedData={sharedData}
       />
     </Card>
   );
@@ -278,6 +291,16 @@ export default function GardenPlanting() {
     season: 'Spring'
   });
 
+  // CRITICAL: Page-level data cache loaded ONCE and passed to all modals
+  const [sharedData, setSharedData] = useState({
+    varieties: [],
+    plantTypes: [],
+    plantingRules: [],
+    cropPlans: [],
+    stashPlants: [],
+    profiles: {}
+  });
+
   useEffect(() => {
     loadData();
   }, []);
@@ -288,14 +311,66 @@ export default function GardenPlanting() {
       loadSeasons();
       loadPlantingSpaces();
       syncFromPlotBuilder(true);
+      loadSharedData(); // Load once for all modals
     }
   }, [activeGarden]);
   
   useEffect(() => {
     if (activeSeason) {
       loadPlantingSpaces();
+      loadSharedData(); // Refresh when season changes
     }
   }, [activeSeason]);
+
+  // Load shared data ONCE for the entire page
+  const loadSharedData = async () => {
+    try {
+      const user = await base44.auth.me();
+      
+      console.log('[GardenPlanting] Loading shared data for all modals...');
+      const [varietiesData, typesData, rulesData, stashData] = await Promise.all([
+        smartQuery(base44, 'Variety', {}, 'variety_name', 500),
+        smartQuery(base44, 'PlantType', {}, 'common_name', 100),
+        smartQuery(base44, 'PlantingRule', {}),
+        base44.entities.SeedLot.filter({ is_wishlist: false, created_by: user.email })
+      ]);
+      
+      let cropPlansData = [];
+      if (seasonId) {
+        cropPlansData = await base44.entities.CropPlan.filter({ garden_season_id: seasonId });
+      }
+      
+      // Load profiles for stash
+      const uniqueProfileIds = [...new Set(stashData.map(s => s.plant_profile_id).filter(Boolean))];
+      const profilesData = uniqueProfileIds.length > 0
+        ? await base44.entities.PlantProfile.filter({ id: { $in: uniqueProfileIds } })
+        : [];
+      
+      const profilesMap = {};
+      profilesData.forEach(p => {
+        profilesMap[p.id] = p;
+      });
+      
+      setSharedData({
+        varieties: varietiesData,
+        plantTypes: typesData,
+        plantingRules: rulesData,
+        cropPlans: cropPlansData.filter(p => (p.quantity_planted || 0) < (p.quantity_planned || 0)),
+        stashPlants: stashData,
+        profiles: profilesMap
+      });
+      
+      console.log('[GardenPlanting] Shared data loaded:', {
+        varieties: varietiesData.length,
+        types: typesData.length,
+        rules: rulesData.length,
+        stash: stashData.length,
+        profiles: Object.keys(profilesMap).length
+      });
+    } catch (error) {
+      console.error('Error loading shared data:', error);
+    }
+  };
 
   const loadData = async (isRetry = false) => {
     if (isRetry) setRetrying(true);
@@ -488,7 +563,8 @@ export default function GardenPlanting() {
         type: 'grid',
         grid_size: gridSize,
         columns: Math.floor(item.width / gridSize),
-        rows: Math.floor(item.height / gridSize)
+        rows: Math.floor(item.height / gridSize),
+        planting_pattern: metadata.planting_pattern || 'square_foot'
       };
     }
 
@@ -497,7 +573,8 @@ export default function GardenPlanting() {
       return {
         type: 'rows',
         rows: metadata.rowCount || Math.floor(item.width / (metadata.rowSpacing || 18)),
-        row_spacing: metadata.rowSpacing || 18
+        row_spacing: metadata.rowSpacing || 18,
+        planting_pattern: metadata.planting_pattern || 'square_foot'
       };
     }
 
@@ -585,6 +662,10 @@ export default function GardenPlanting() {
       toast.error('Failed to create season');
     }
   };
+
+  const seasonId = useMemo(() => {
+    return availableSeasons.find(s => s.season_key === activeSeason)?.id;
+  }, [availableSeasons, activeSeason]);
 
   if (loading) {
     return (
@@ -764,7 +845,8 @@ export default function GardenPlanting() {
                   space={space} 
                   garden={activeGarden} 
                   activeSeason={activeSeason}
-                  seasonId={availableSeasons.find(s => s.season_key === activeSeason)?.id}
+                  seasonId={seasonId}
+                  sharedData={sharedData}
                 />
               ))}
           </div>

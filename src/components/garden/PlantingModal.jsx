@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import {
@@ -22,22 +23,21 @@ import { Plus, X, Trash2, Move, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import StashTypeSelector from './StashTypeSelector';
-import PlanTypeSelector from './PlanTypeSelector';
 import CatalogTypeSelector from './CatalogTypeSelector';
 import CompanionSuggestions from './CompanionSuggestions';
 import DiagonalPlantingPattern from './DiagonalPlantingPattern';
-import { smartQuery } from '@/components/utils/smartQuery';
 
-// GLOBAL CACHE: Shared across all PlantingModal instances to prevent rate limits
-const MODAL_CACHE = {
-  varieties: null,
-  plantTypes: null,
-  plantingRules: null,
-  lastFetch: 0
-};
-const CACHE_TTL = 60000; // 1 minute
-
-export default function PlantingModal({ open, onOpenChange, item, itemType, garden, onPlantingUpdate, activeSeason, seasonId }) {
+export default function PlantingModal({ 
+  open, 
+  onOpenChange, 
+  item, 
+  itemType, 
+  garden, 
+  onPlantingUpdate, 
+  activeSeason, 
+  seasonId,
+  sharedData // CRITICAL: Pre-loaded data from parent page to prevent rate limits
+}) {
   const [plantings, setPlantings] = useState([]);
   const [stashPlants, setStashPlants] = useState([]);
   const [profiles, setProfiles] = useState({});
@@ -109,39 +109,54 @@ export default function PlantingModal({ open, onOpenChange, item, itemType, gard
       const user = await base44.auth.me();
       const seasonKey = activeSeason || `${new Date().getFullYear()}-Spring`;
 
-      // FIXED: Use global cache to prevent rate limits when opening multiple bags
-      const now = Date.now();
-      const cacheValid = MODAL_CACHE.lastFetch && (now - MODAL_CACHE.lastFetch < CACHE_TTL);
-
-      console.log('[PlantingModal] Cache valid:', cacheValid, 'age:', now - MODAL_CACHE.lastFetch);
-
-      let varietiesData, typesData, rulesData;
-      
-      if (cacheValid) {
-        // Use cached data
-        varietiesData = MODAL_CACHE.varieties;
-        typesData = MODAL_CACHE.plantTypes;
-        rulesData = MODAL_CACHE.plantingRules;
-        console.log('[PlantingModal] Using cached reference data');
-      } else {
-        // Fetch fresh data and update cache
-        [varietiesData, typesData, rulesData] = await Promise.all([
-          base44.entities.Variety.list('variety_name', 500),
-          base44.entities.PlantType.list('common_name', 100),
-          base44.entities.PlantingRule.list()
-        ]);
+      // CRITICAL FIX: Use shared data from parent if available (GardenPlanting page pre-loads it)
+      if (sharedData) {
+        console.log('[PlantingModal] Using pre-loaded shared data from parent page');
+        setVarieties(sharedData.varieties || []);
+        setPlantTypes(sharedData.plantTypes || []);
+        setPlantingRules(sharedData.plantingRules || []);
+        setStashPlants(sharedData.stashPlants || []);
+        setProfiles(sharedData.profiles || {});
         
-        MODAL_CACHE.varieties = varietiesData;
-        MODAL_CACHE.plantTypes = typesData;
-        MODAL_CACHE.plantingRules = rulesData;
-        MODAL_CACHE.lastFetch = now;
-        console.log('[PlantingModal] Fetched and cached reference data');
+        // Filter crop plans from shared data
+        const filteredCropPlans = (sharedData.cropPlans || []).filter(p => 
+          (p.quantity_planted || 0) < (p.quantity_planned || 0) &&
+          p.garden_season_id === seasonId // Ensure crop plans are for the current season
+        );
+        setCropPlans(filteredCropPlans);
+        
+        // Only fetch plantings (user-specific to this bed)
+        const allPlantings = await base44.entities.PlantInstance.filter({ bed_id: item.id });
+        
+        // Filter by season
+        let plantingsData = allPlantings;
+        if (seasonKey) {
+          const currentYear = new Date().getFullYear();
+          const isCurrentYearSeason = seasonKey && seasonKey.startsWith(currentYear.toString());
+
+          plantingsData = allPlantings.filter(p => {
+            if (!p.season_year) {
+              return isCurrentYearSeason;
+            }
+            return p.season_year === seasonKey;
+          });
+        }
+
+        console.log('[PlantingModal] Loaded:', plantingsData.length, 'plantings for bed:', item.id);
+        setPlantings(plantingsData);
+        setLoading(false);
+        return;
       }
 
-      // Always fetch user-specific data (plantings, stash, crop plans)
-      const [allPlantings, stashData] = await Promise.all([
+      // Fallback: Load everything (for modals opened from MyGarden/PlotCanvas without sharedData)
+      console.log('[PlantingModal] No shared data, loading all data...');
+      
+      const [allPlantings, stashData, varietiesData, typesData, rulesData] = await Promise.all([
         base44.entities.PlantInstance.filter({ bed_id: item.id }),
-        base44.entities.SeedLot.filter({ is_wishlist: false, created_by: user.email })
+        base44.entities.SeedLot.filter({ is_wishlist: false, created_by: user.email }),
+        base44.entities.Variety.list('variety_name', 500),
+        base44.entities.PlantType.list('common_name', 100),
+        base44.entities.PlantingRule.list()
       ]);
       
       // Extract unique profile IDs
@@ -159,18 +174,16 @@ export default function PlantingModal({ open, onOpenChange, item, itemType, gard
         setCropPlans(cropPlansData.filter(p => (p.quantity_planted || 0) < (p.quantity_planned || 0)));
       }
 
-      // Filter by season - same logic as PlotCanvas to handle old data without season_year
+      // Filter by season
       let plantingsData = allPlantings;
       if (seasonKey) {
         const currentYear = new Date().getFullYear();
         const isCurrentYearSeason = seasonKey && seasonKey.startsWith(currentYear.toString());
 
         plantingsData = allPlantings.filter(p => {
-          // If planting has no season_year (old data), only show in current year's season
           if (!p.season_year) {
             return isCurrentYearSeason;
           }
-          // Otherwise, match the selected season exactly
           return p.season_year === seasonKey;
         });
       }
@@ -190,7 +203,7 @@ export default function PlantingModal({ open, onOpenChange, item, itemType, gard
       setPlantingRules(rulesData || []);
     } catch (error) {
       console.error('Error loading planting data:', error);
-      toast.error('Failed to load data - try again');
+      toast.error('Failed to load data - try refreshing');
     } finally {
       setLoading(false);
     }
@@ -299,10 +312,13 @@ export default function PlantingModal({ open, onOpenChange, item, itemType, gard
             crop_plan_id: selectedPlant.crop_plan_id,
             quantity_to_add: plantsAdded
           });
-          // Reload crop plans
-          if (seasonId) {
+          // Reload crop plans if not using sharedData, or update sharedData if it's mutable
+          if (!sharedData && seasonId) {
             const updatedPlans = await base44.entities.CropPlan.filter({ garden_season_id: seasonId });
             setCropPlans(updatedPlans.filter(p => (p.quantity_planted || 0) < (p.quantity_planned || 0)));
+          } else if (sharedData && onPlantingUpdate) {
+            // Signal parent to update shared data or crop plan if it manages that state
+            onPlantingUpdate();
           }
         } catch (error) {
           console.error('Error updating quantities:', error);
@@ -446,9 +462,11 @@ export default function PlantingModal({ open, onOpenChange, item, itemType, gard
               quantity_to_add: plantsAdded
             });
             // Reload crop plans to show updated counts
-            if (seasonId) {
+            if (!sharedData && seasonId) {
               const updatedPlans = await base44.entities.CropPlan.filter({ garden_season_id: seasonId });
               setCropPlans(updatedPlans.filter(p => (p.quantity_planted || 0) < (p.quantity_planned || 0)));
+            } else if (sharedData && onPlantingUpdate) {
+              onPlantingUpdate();
             }
           } catch (error) {
             console.error('Error updating quantities:', error);
@@ -482,14 +500,19 @@ export default function PlantingModal({ open, onOpenChange, item, itemType, gard
       analyzeCompanionsWithPlantings(updatedPlantings);
       
       // Update crop plan quantities
-      if (selectedPlant?.crop_plan_id) {
+      // Note: selectedPlant might not be the deleted one if multiple plants were placed.
+      // This logic should probably be based on the deleted `planting`'s crop_plan_id.
+      if (planting.crop_plan_id) {
         try {
           await base44.functions.invoke('updateCropPlantedQuantity', { 
-            crop_plan_id: selectedPlant.crop_plan_id 
+            crop_plan_id: planting.crop_plan_id,
+            quantity_to_add: -1 // Decrement by one
           });
-          if (seasonId) {
+          if (!sharedData && seasonId) {
             const updatedPlans = await base44.entities.CropPlan.filter({ garden_season_id: seasonId });
             setCropPlans(updatedPlans.filter(p => (p.quantity_planted || 0) < (p.quantity_planned || 0)));
+          } else if (sharedData && onPlantingUpdate) {
+            onPlantingUpdate();
           }
         } catch (error) {
           console.error('Error updating quantities after delete:', error);
@@ -683,103 +706,14 @@ export default function PlantingModal({ open, onOpenChange, item, itemType, gard
   const analyzeCompanions = () => analyzeCompanionsWithPlantings(plantings);
   
   const handleCreateNewPlant = async () => {
-    if (!newPlant.variety_id) return;
-    if (creating) return; // Prevent double-submit
-    
-    console.log('[PlantingModal] Creating new plant from variety:', newPlant.variety_id);
-    setCreating(true);
-    try {
-      const variety = varieties.find(v => v.id === newPlant.variety_id);
-      if (!variety) {
-        toast.error('Variety not found');
-        setCreating(false);
-        return;
-      }
-      
-      const spacing = getSpacingForPlant(variety.plant_type_id, variety.spacing_recommended);
-      console.log('[PlantingModal] Creating SeedLot with variety:', variety.id, variety.variety_name);
-      
-      // Find or create PlantProfile from Variety
-      let profileId = variety.id;
-      const plantType = plantTypes.find(t => t.id === variety.plant_type_id);
-      
-      // Check if this is a Variety record (has plant_type_name field)
-      if (variety.plant_type_name) {
-        const existingProfiles = await base44.entities.PlantProfile.filter({
-          variety_name: variety.variety_name,
-          plant_type_id: variety.plant_type_id
-        });
-        
-        if (existingProfiles.length > 0) {
-          profileId = existingProfiles[0].id;
-        } else {
-          const newProfile = await base44.entities.PlantProfile.create({
-            plant_type_id: variety.plant_type_id,
-            plant_subcategory_id: variety.plant_subcategory_id,
-            plant_family: plantType?.plant_family_id,
-            common_name: plantType?.common_name || variety.plant_type_name,
-            variety_name: variety.variety_name,
-            days_to_maturity_seed: variety.days_to_maturity,
-            spacing_in_min: variety.spacing_recommended,
-            spacing_in_max: variety.spacing_recommended,
-            sun_requirement: variety.sun_requirement,
-            trellis_required: variety.trellis_required || false,
-            container_friendly: variety.container_friendly || false,
-            notes_private: variety.grower_notes,
-            source_type: 'user_private'
-          });
-          profileId = newProfile.id;
-        }
-      }
-      
-      // Check if already in stash to prevent duplicates
-      const currentUser = await base44.auth.me();
-      const existingStash = await base44.entities.SeedLot.filter({
-        plant_profile_id: profileId,
-        is_wishlist: false,
-        created_by: currentUser.email
-      });
-      
-      let newSeedLot;
-      if (existingStash.length > 0) {
-        newSeedLot = existingStash[0];
-        console.log('[PlantingModal] Using existing SeedLot:', newSeedLot.id);
-      } else {
-        newSeedLot = await base44.entities.SeedLot.create({
-          plant_profile_id: profileId,
-          is_wishlist: false
-        });
-        console.log('[PlantingModal] Created new SeedLot:', newSeedLot.id);
-      }
-      
-      // Select for placing
-      const selectedPlantData = {
-        variety_id: variety.id,
-        variety_name: variety.variety_name,
-        plant_type_id: variety.plant_type_id || null,
-        plant_type_name: variety.plant_type_name || variety.variety_name,
-        plant_family: plantType?.plant_family_id,
-        spacing_cols: spacing.cols,
-        spacing_rows: spacing.rows,
-        plantsPerSlot: spacing.plantsPerSlot
-      };
-      console.log('[PlantingModal] Setting selected plant:', selectedPlantData);
-      setSelectedPlant(selectedPlantData);
-      checkCompanionAndRotation(selectedPlantData);
-      
-      setNewPlant({ variety_id: '', variety_name: '', plant_type_name: '', spacing_cols: 1, spacing_rows: 1 });
-      toast.success('Added to stash - now click a cell to place');
-      
-      // Reload stash
-      const stashData = await base44.entities.SeedLot.filter({ is_wishlist: false, created_by: currentUser.email });
-      setStashPlants(stashData);
-      console.log('[PlantingModal] Reloaded stash, count:', stashData.length);
-    } catch (error) {
-      console.error('[PlantingModal] Error creating plant:', error);
-      toast.error('Failed to add plant: ' + (error.message || 'Unknown error'));
-    } finally {
-      setCreating(false);
-    }
+    // This function is not used but kept for compatibility.
+    // The "Add New" tab now uses CatalogTypeSelector which handles selection and potential creation
+    // of seed lots/profiles implicitly through its onSelect callback.
+    // If future UI elements need to directly trigger new plant creation,
+    // this logic can be re-enabled or modified.
+    console.warn("handleCreateNewPlant was called but is currently a no-op as its functionality is handled elsewhere.");
+    toast.info("Functionality to directly create new plants is handled by the Catalog Selector.");
+    return;
   };
 
   const getCellContent = (col, row) => {
