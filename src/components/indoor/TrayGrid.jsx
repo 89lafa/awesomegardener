@@ -49,8 +49,8 @@ export default function TrayGrid({
       <div className="inline-grid gap-1 bg-amber-50 p-4 rounded-lg" 
            style={{ gridTemplateColumns: `repeat(${tray.cells_cols}, 40px)` }}>
         {Array.from({ length: tray.total_cells }).map((_, idx) => {
-          const row = Math.floor(idx / tray.cells_cols) + 1;
-          const col = (idx % tray.cells_cols) + 1;
+          const row = Math.floor(idx / tray.cells_cols);
+          const col = (idx % tray.cells_cols);
           const key = `${row}-${col}`;
           const cell = cellsByPosition[key];
           const isSelected = selectedCells.some(c => c.id === cell?.id);

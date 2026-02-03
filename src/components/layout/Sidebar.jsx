@@ -45,6 +45,7 @@ const getNavItems = (userRole, isEditor, user) => {
     { name: 'Tasks', icon: ListChecks, page: 'CalendarTasks' },
     { name: 'Indoor Grow', icon: Sprout, page: 'IndoorGrowSpaces' },
     { name: 'Plot Layout', icon: Hammer, page: 'MyGarden' },
+    { name: 'Garden Planting', icon: TreeDeciduous, page: 'GardenPlanting' },
     
     // Tracking
     { category: true, label: 'TRACKING' },
