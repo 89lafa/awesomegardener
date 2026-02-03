@@ -1,96 +1,93 @@
 import React from 'react';
-import { Info } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
-export function DiagonalPlantingPattern({ pattern, gridRows, gridCols, cellSize = 40 }) {
-  const getCellPosition = (row, col) => {
-    let x = col * cellSize;
-    let y = row * cellSize;
+/**
+ * Diagonal/Offset Planting Pattern Component
+ * 50% offset every other row for intensive planting
+ */
+export default function DiagonalPlantingPattern({ 
+  rows, 
+  columns, 
+  plantings = [], 
+  cellSize = 28,
+  onCellClick,
+  selectedCells = [],
+  readOnly = false
+}) {
+  // Calculate position for diagonal pattern
+  const getCellPosition = (rowIdx, colIdx) => {
+    const isOddRow = rowIdx % 2 === 1;
+    const xOffset = isOddRow ? cellSize / 2 : 0;
     
-    if (pattern === 'diagonal' && row % 2 === 1) {
-      x += cellSize / 2;
-    }
-    
-    return { x, y };
+    return {
+      x: colIdx * cellSize + xOffset,
+      y: rowIdx * cellSize
+    };
+  };
+
+  // Check if a cell is planted
+  const getCellPlant = (rowIdx, colIdx) => {
+    return plantings.find(p => 
+      (p.cell_row ?? p.cell_y) === rowIdx && 
+      (p.cell_col ?? p.cell_x) === colIdx
+    );
+  };
+
+  // Check if a cell is selected
+  const isCellSelected = (rowIdx, colIdx) => {
+    return selectedCells.some(c => c.row === rowIdx && c.col === colIdx);
   };
 
   return (
-    <div className="space-y-4">
-      <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 flex items-start gap-2">
-        <Info className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
-        <div className="text-sm">
-          {pattern === 'diagonal' && (
-            <>
-              <p className="font-medium text-blue-900">Diagonal Pattern (50% Offset)</p>
-              <p className="text-blue-700 mt-1">Odd rows offset by 50% for intensive planting (~15% more capacity)</p>
-            </>
-          )}
-          {pattern === 'square_foot' && (
-            <>
-              <p className="font-medium text-blue-900">Square Foot Grid</p>
-              <p className="text-blue-700 mt-1">Traditional grid layout with uniform spacing</p>
-            </>
-          )}
-          {pattern === 'rows' && (
-            <>
-              <p className="font-medium text-blue-900">Traditional Rows</p>
-              <p className="text-blue-700 mt-1">Plants arranged in straight rows</p>
-            </>
-          )}
-        </div>
+    <div className="relative bg-amber-50 border-2 border-amber-300 rounded-lg p-4 overflow-auto">
+      <div className="relative" style={{ 
+        width: (columns + 0.5) * cellSize, 
+        height: rows * cellSize,
+        minWidth: '100%'
+      }}>
+        {Array.from({ length: rows }).map((_, rowIdx) => 
+          Array.from({ length: columns }).map((_, colIdx) => {
+            // Skip last column on odd rows (extends beyond boundary)
+            const isOddRow = rowIdx % 2 === 1;
+            if (isOddRow && colIdx === columns - 1) {
+              return null;
+            }
+
+            const pos = getCellPosition(rowIdx, colIdx);
+            const plant = getCellPlant(rowIdx, colIdx);
+            const isSelected = isCellSelected(rowIdx, colIdx);
+
+            return (
+              <button
+                key={`${rowIdx}-${colIdx}`}
+                onClick={() => !readOnly && onCellClick?.(rowIdx, colIdx)}
+                disabled={readOnly}
+                className={cn(
+                  "absolute rounded border-2 flex items-center justify-center text-xs font-bold transition-all",
+                  plant 
+                    ? "bg-emerald-500 border-emerald-600 text-white" 
+                    : "bg-white border-amber-400 hover:bg-emerald-50",
+                  isSelected && "ring-2 ring-blue-500 scale-105",
+                  !readOnly && "cursor-pointer"
+                )}
+                style={{
+                  left: pos.x,
+                  top: pos.y,
+                  width: cellSize,
+                  height: cellSize
+                }}
+                title={plant ? (plant.display_name || 'Plant') : `Row ${rowIdx + 1}, Col ${colIdx + 1}`}
+              >
+                {plant ? (plant.plant_type_icon || '🌱') : ''}
+              </button>
+            );
+          })
+        )}
       </div>
-
-      {/* Grid visualization */}
-      <div className="border rounded-lg p-4 bg-gray-50 overflow-auto">
-        <svg
-          width={Math.max(400, gridCols * cellSize + 20)}
-          height={Math.max(300, gridRows * cellSize + 20)}
-          className="mx-auto"
-        >
-          {/* Grid lines */}
-          {Array.from({ length: gridRows }).map((_, row) =>
-            Array.from({ length: gridCols }).map((_, col) => {
-              // Skip last column in odd rows for diagonal
-              if (pattern === 'diagonal' && row % 2 === 1 && col === gridCols - 1) {
-                return null;
-              }
-
-              const { x, y } = getCellPosition(row, col);
-              return (
-                <rect
-                  key={`${row}-${col}`}
-                  x={x + 10}
-                  y={y + 10}
-                  width={cellSize}
-                  height={cellSize}
-                  fill="white"
-                  stroke="#ccc"
-                  strokeWidth="1"
-                />
-              );
-            })
-          )}
-
-          {/* Sample plants */}
-          {Array.from({ length: Math.min(3, gridRows) }).map((_, row) =>
-            Array.from({ length: Math.min(3, gridCols) }).map((_, col) => {
-              if (pattern === 'diagonal' && row % 2 === 1 && col === gridCols - 1) {
-                return null;
-              }
-
-              const { x, y } = getCellPosition(row, col);
-              return (
-                <circle
-                  key={`plant-${row}-${col}`}
-                  cx={x + 10 + cellSize / 2}
-                  cy={y + 10 + cellSize / 2}
-                  r="8"
-                  fill="#10b981"
-                  opacity="0.7"
-                />
-              );
-            })
-          )}
-        </svg>
+      
+      {/* Pattern Info */}
+      <div className="mt-3 text-xs text-gray-600 italic">
+        ℹ️ Diagonal pattern: odd rows offset by 50% for intensive planting
       </div>
     </div>
   );
