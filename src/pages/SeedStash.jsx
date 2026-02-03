@@ -573,41 +573,53 @@ export default function SeedStash() {
           />
         )}
         
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <div>
-            <h1 className="text-2xl lg:text-3xl font-bold" style={{ color: 'var(--text-primary)' }}>Seed Stash</h1>
-            <p className="mt-1" style={{ color: 'var(--text-secondary)' }}>Track your seeds and wishlist</p>
+        <div className="flex flex-col gap-3 lg:gap-4">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <h1 className="text-xl lg:text-3xl font-bold" style={{ color: 'var(--text-primary)' }}>Seed Stash</h1>
+              <p className="mt-1 text-xs lg:text-sm" style={{ color: 'var(--text-secondary)' }}>Track your seeds and wishlist</p>
+            </div>
           </div>
-        <div className="flex gap-2 flex-wrap">
+        
+        {/* Compact Mobile Action Row */}
+        <div className="flex gap-1.5 lg:gap-2 flex-wrap">
            <Button 
              onClick={() => setShowAIAssistant(true)}
-             className="bg-purple-600 hover:bg-purple-700 gap-2"
+             size="sm"
+             className="bg-purple-600 hover:bg-purple-700 gap-1 lg:gap-2 text-xs lg:text-sm h-8 lg:h-9"
            >
-             <Mic className="w-4 h-4" />
-             AI Voice
+             <Mic className="w-3 h-3 lg:w-4 lg:h-4" />
+             <span className="hidden sm:inline">AI Voice</span>
+             <span className="sm:hidden">AI</span>
            </Button>
            <Button 
              onClick={() => setShowAddCustomDialog(true)}
-             className="bg-emerald-600 hover:bg-emerald-700 gap-2"
+             size="sm"
+             className="bg-emerald-600 hover:bg-emerald-700 gap-1 lg:gap-2 text-xs lg:text-sm h-8 lg:h-9"
            >
-             <Plus className="w-4 h-4" />
-             Add My Own Seeds
+             <Plus className="w-3 h-3 lg:w-4 lg:h-4" />
+             <span className="hidden sm:inline">Add My Own Seeds</span>
+             <span className="sm:hidden">Add</span>
            </Button>
            <Button 
              onClick={() => setShowAddFromCatalogDialog(true)}
              variant="outline"
-             className="gap-2 border-emerald-600 text-emerald-700 hover:bg-emerald-50"
+             size="sm"
+             className="gap-1 lg:gap-2 border-emerald-600 text-emerald-700 hover:bg-emerald-50 text-xs lg:text-sm h-8 lg:h-9"
            >
-             <Package className="w-4 h-4" />
-             Add from Catalog
+             <Package className="w-3 h-3 lg:w-4 lg:h-4" />
+             <span className="hidden sm:inline">Add from Catalog</span>
+             <span className="sm:hidden">Catalog</span>
            </Button>
            <Button 
              onClick={() => setShowImportDialog(true)}
              variant="outline"
-             className="gap-2"
+             size="sm"
+             className="gap-1 lg:gap-2 text-xs lg:text-sm h-8 lg:h-9 hidden md:flex"
            >
-             <FileText className="w-4 h-4" />
-             Import Spreadsheet
+             <FileText className="w-3 h-3 lg:w-4 lg:h-4" />
+             <span className="hidden lg:inline">Import Spreadsheet</span>
+             <span className="lg:hidden">Import</span>
            </Button>
          </div>
       </div>
@@ -615,63 +627,67 @@ export default function SeedStash() {
       <AdBanner placement="top_banner" pageType="seed_stash" />
 
       {/* Tabs */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 lg:gap-4">
         <Tabs value={filterTab} onValueChange={setFilterTab}>
-          <TabsList>
-            <TabsTrigger value="stash" className="gap-2">
-              <Package className="w-4 h-4" />
-              Stash ({stashCount})
+          <TabsList className="h-8 lg:h-9">
+            <TabsTrigger value="stash" className="gap-1 lg:gap-2 text-xs lg:text-sm px-2 lg:px-3">
+              <Package className="w-3 h-3 lg:w-4 lg:h-4" />
+              <span className="hidden sm:inline">Stash ({stashCount})</span>
+              <span className="sm:hidden">({stashCount})</span>
             </TabsTrigger>
-            <TabsTrigger value="wishlist" className="gap-2">
-              <Heart className="w-4 h-4" />
-              Wishlist ({wishlistCount})
+            <TabsTrigger value="wishlist" className="gap-1 lg:gap-2 text-xs lg:text-sm px-2 lg:px-3">
+              <Heart className="w-3 h-3 lg:w-4 lg:h-4" />
+              <span className="hidden sm:inline">Wishlist ({wishlistCount})</span>
+              <span className="sm:hidden">({wishlistCount})</span>
             </TabsTrigger>
           </TabsList>
         </Tabs>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1 lg:gap-2">
           <Button
             variant={viewMode === 'grid' ? 'secondary' : 'ghost'}
-            size="icon"
+            size="sm"
             onClick={() => handleViewModeChange('grid')}
+            className="h-8 w-8 lg:h-9 lg:w-9 p-0"
           >
-            <Grid3X3 className="w-4 h-4" />
+            <Grid3X3 className="w-3 h-3 lg:w-4 lg:h-4" />
           </Button>
           <Button
             variant={viewMode === 'table' ? 'secondary' : 'ghost'}
-            size="icon"
+            size="sm"
             onClick={() => handleViewModeChange('table')}
+            className="h-8 w-8 lg:h-9 lg:w-9 p-0"
           >
-            <List className="w-4 h-4" />
+            <List className="w-3 h-3 lg:w-4 lg:h-4" />
           </Button>
           {viewMode === 'table' && (
             <Button
               variant="outline"
               size="sm"
               onClick={() => setShowColumnChooser(true)}
-              className="gap-2"
+              className="gap-1 lg:gap-2 hidden sm:flex text-xs lg:text-sm h-8 lg:h-9"
             >
-              <Filter className="w-4 h-4" />
-              Columns
+              <Filter className="w-3 h-3 lg:w-4 lg:h-4" />
+              <span className="hidden lg:inline">Columns</span>
             </Button>
           )}
         </div>
       </div>
 
       {/* Filters & Sorting */}
-      <div className="flex flex-col sm:flex-row gap-4">
+      <div className="flex flex-col sm:flex-row gap-2 lg:gap-4">
         <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+          <Search className="absolute left-2 lg:left-3 top-1/2 -translate-y-1/2 w-3 h-3 lg:w-4 lg:h-4 text-gray-400" />
           <Input
             placeholder="Search seeds..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-10"
+            className="pl-7 lg:pl-10 text-xs lg:text-sm h-8 lg:h-9"
           />
         </div>
         <Select value={filterType} onValueChange={setFilterType}>
-          <SelectTrigger className="w-full sm:w-40">
-            <SelectValue placeholder="Plant Type" />
+          <SelectTrigger className="w-full sm:w-32 lg:w-40 text-xs lg:text-sm h-8 lg:h-9">
+            <SelectValue placeholder="All Types" />
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All Types</SelectItem>
@@ -684,8 +700,8 @@ export default function SeedStash() {
           </SelectContent>
         </Select>
         <Select value={filterTag} onValueChange={setFilterTag}>
-          <SelectTrigger className="w-full sm:w-40">
-            <SelectValue placeholder="Tag" />
+          <SelectTrigger className="w-full sm:w-28 lg:w-40 text-xs lg:text-sm h-8 lg:h-9">
+            <SelectValue placeholder="All Tags" />
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All Tags</SelectItem>
@@ -694,30 +710,33 @@ export default function SeedStash() {
             ))}
           </SelectContent>
         </Select>
-        <Select value={sortBy} onValueChange={setSortBy}>
-          <SelectTrigger className="w-full sm:w-48">
-            <SelectValue placeholder="Sort by..." />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="name">Name</SelectItem>
-            <SelectItem value="type">Crop Type</SelectItem>
-            <SelectItem value="age">Seed Age</SelectItem>
-            <SelectItem value="year">Year Acquired</SelectItem>
-            <SelectItem value="maturity">Days to Maturity</SelectItem>
-            <SelectItem value="spacing">Spacing</SelectItem>
-            <SelectItem value="source">Vendor</SelectItem>
-            <SelectItem value="quantity">Quantity</SelectItem>
-            <SelectItem value="created_date">Date Added</SelectItem>
-          </SelectContent>
-        </Select>
-        <Button
-          variant="outline"
-          size="icon"
-          onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
-          title={sortOrder === 'asc' ? 'Ascending' : 'Descending'}
-        >
-          {sortOrder === 'asc' ? '↑' : '↓'}
-        </Button>
+        <div className="flex gap-1 lg:gap-2">
+          <Select value={sortBy} onValueChange={setSortBy}>
+            <SelectTrigger className="w-32 lg:w-48 text-xs lg:text-sm h-8 lg:h-9">
+              <SelectValue placeholder="Sort by..." />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="name">Name</SelectItem>
+              <SelectItem value="type">Crop Type</SelectItem>
+              <SelectItem value="age">Seed Age</SelectItem>
+              <SelectItem value="year">Year Acquired</SelectItem>
+              <SelectItem value="maturity">Days to Maturity</SelectItem>
+              <SelectItem value="spacing">Spacing</SelectItem>
+              <SelectItem value="source">Vendor</SelectItem>
+              <SelectItem value="quantity">Quantity</SelectItem>
+              <SelectItem value="created_date">Date Added</SelectItem>
+            </SelectContent>
+          </Select>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
+            title={sortOrder === 'asc' ? 'Ascending' : 'Descending'}
+            className="h-8 w-8 lg:h-9 lg:w-9 p-0"
+          >
+            {sortOrder === 'asc' ? '↑' : '↓'}
+          </Button>
+        </div>
       </div>
 
       {/* Seeds Display */}
