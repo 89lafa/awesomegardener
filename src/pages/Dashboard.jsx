@@ -39,6 +39,14 @@ export default function Dashboard() {
   const [weatherLoading, setWeatherLoading] = useState(true);
   const [popularCrops, setPopularCrops] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [greeting, setGreeting] = useState('Good morning');
+  
+  useEffect(() => {
+    const hour = new Date().getHours();
+    if (hour < 12) setGreeting('Good morning');
+    else if (hour < 17) setGreeting('Good afternoon');
+    else setGreeting('Good evening');
+  }, []);
 
   const { isPulling, pullDistance, isRefreshing } = usePullToRefresh(async () => {
     await Promise.all([loadDashboard(), loadWeather()]);
@@ -159,16 +167,21 @@ export default function Dashboard() {
 
   const QuickAccessCard = ({ icon: Icon, title, count, color, page }) => (
     <Card 
-      className="cursor-pointer hover:shadow-lg transition-all" 
+      className="cursor-pointer hover:shadow-lg transition-all duration-300" 
       onClick={() => navigate(createPageUrl(page))}
-      style={{ background: 'var(--bg-card)' }}
+      style={{ 
+        background: 'var(--glass-bg)',
+        backdropFilter: 'blur(12px)',
+        WebkitBackdropFilter: 'blur(12px)',
+        border: '1px solid var(--glass-border)'
+      }}
     >
       <CardContent className="p-6 text-center">
         <div className={`w-12 h-12 rounded-lg ${color} flex items-center justify-center mx-auto mb-3`}>
           <Icon className="w-6 h-6 text-white" />
         </div>
-        <p className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>{count}</p>
-        <p className="text-sm mt-1" style={{ color: 'var(--text-secondary)' }}>{title}</p>
+        <p className="text-2xl font-bold" style={{ color: 'var(--brand-primary)' }}>{count}</p>
+        <p className="text-sm mt-1" style={{ color: 'var(--text-muted)' }}>{title}</p>
       </CardContent>
     </Card>
   );
@@ -241,8 +254,14 @@ export default function Dashboard() {
       <div className="space-y-6 max-w-6xl">
         {/* Header */}
         <div>
-          <h1 className="text-3xl font-bold" style={{ color: 'var(--text-primary)' }}>Welcome back, {user?.full_name}!</h1>
-          <p style={{ color: 'var(--text-secondary)' }} className="mt-1">Here's what's happening in your garden</p>
+          <h1 className="text-3xl font-bold" style={{ color: 'var(--text-primary)' }}>
+            {greeting}, {user?.full_name?.split(' ')[0] || 'Gardener'}! 🌅
+          </h1>
+          <p style={{ color: 'var(--text-muted)' }} className="mt-1">
+            {format(new Date(), 'MMMM d, yyyy')}
+            {user?.zone && ` • Zone ${user.zone}`}
+            {user?.last_frost_date && ` • Last frost: ${format(new Date(user.last_frost_date), 'MMM d')}`}
+          </p>
         </div>
 
       {/* Top Row - Quick Stats + Weather */}
@@ -294,10 +313,17 @@ export default function Dashboard() {
           color="bg-pink-500"
           page="SeedTrading"
         />
-        <Card className="bg-gradient-to-br from-emerald-50 to-green-50">
+        <Card 
+          className="bg-gradient-to-br from-emerald-50 to-green-50 dark:from-emerald-900/30 dark:to-green-900/30 hover:shadow-lg transition-all duration-300"
+          style={{ 
+            backdropFilter: 'blur(12px)',
+            WebkitBackdropFilter: 'blur(12px)',
+            border: '1px solid var(--glass-border)'
+          }}
+        >
           <CardContent className="p-6 text-center">
-            <TrendingUp className="w-12 h-12 text-emerald-600 mx-auto mb-3" />
-            <p className="text-sm text-gray-600 font-medium">Ready to plan?</p>
+            <TrendingUp className="w-12 h-12 text-emerald-600 dark:text-emerald-400 mx-auto mb-3" />
+            <p className="text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>Ready to plan?</p>
             <Button
               onClick={() => navigate(createPageUrl('Calendar'))}
               className="mt-3 w-full bg-emerald-600 hover:bg-emerald-700"
@@ -312,7 +338,15 @@ export default function Dashboard() {
       {/* Quick Access Grid */}
       <div className="grid md:grid-cols-2 gap-6 mt-8">
         {/* Top Actions */}
-        <Card style={{ background: 'var(--bg-card)' }}>
+        <Card 
+          className="hover:shadow-lg transition-all duration-300"
+          style={{ 
+            background: 'var(--glass-bg)',
+            backdropFilter: 'blur(12px)',
+            WebkitBackdropFilter: 'blur(12px)',
+            border: '1px solid var(--glass-border)'
+          }}
+        >
           <CardHeader>
             <CardTitle className="flex items-center gap-2" style={{ color: 'var(--text-primary)' }}>
               <Sprout className="w-5 h-5" />
@@ -356,16 +390,24 @@ export default function Dashboard() {
         </Card>
 
         {/* New Features */}
-        <Card className="border-blue-200" style={{ background: 'var(--badge-info-bg)' }}>
+        <Card 
+          className="border-blue-200 dark:border-blue-700/50 hover:shadow-lg transition-all duration-300"
+          style={{ 
+            background: 'var(--glass-bg)',
+            backdropFilter: 'blur(12px)',
+            WebkitBackdropFilter: 'blur(12px)',
+            border: '1px solid var(--glass-border)'
+          }}
+        >
           <CardHeader>
-            <CardTitle className="flex items-center gap-2" style={{ color: 'var(--info)' }}>
+            <CardTitle className="flex items-center gap-2" style={{ color: 'var(--text-primary)' }}>
               ✨ New Features
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-3 text-sm">
             <div>
-              <p className="font-medium" style={{ color: 'var(--info)' }}>🌾 Seed Trading</p>
-              <p className="text-xs mt-1" style={{ color: 'var(--info)' }}>Propose trades with other gardeners</p>
+              <p className="font-medium" style={{ color: 'var(--text-primary)' }}>🌾 Seed Trading</p>
+              <p className="text-xs mt-1" style={{ color: 'var(--text-secondary)' }}>Propose trades with other gardeners</p>
               <Button
                 onClick={() => navigate(createPageUrl('SeedTrading'))}
                 size="sm"
@@ -375,9 +417,9 @@ export default function Dashboard() {
                 Browse Trades
               </Button>
             </div>
-            <div className="border-t pt-3" style={{ borderColor: 'var(--border-default)' }}>
-              <p className="font-medium" style={{ color: 'var(--info)' }}>💰 Expense Tracking</p>
-              <p className="text-xs mt-1" style={{ color: 'var(--info)' }}>Track garden spending by season</p>
+            <div className="border-t pt-3" style={{ borderColor: 'var(--border-color)' }}>
+              <p className="font-medium" style={{ color: 'var(--text-primary)' }}>💰 Expense Tracking</p>
+              <p className="text-xs mt-1" style={{ color: 'var(--text-secondary)' }}>Track garden spending by season</p>
               <Button
                 onClick={() => navigate(createPageUrl('GardenExpenses'))}
                 size="sm"
@@ -398,7 +440,15 @@ export default function Dashboard() {
           
           <div className="grid md:grid-cols-3 gap-6">
             {/* Top Tomatoes */}
-            <Card style={{ background: 'var(--bg-card)' }}>
+            <Card 
+              className="hover:shadow-lg transition-all duration-300"
+              style={{ 
+                background: 'var(--glass-bg)',
+                backdropFilter: 'blur(12px)',
+                WebkitBackdropFilter: 'blur(12px)',
+                border: '1px solid var(--glass-border)'
+              }}
+            >
               <CardHeader>
                 <CardTitle className="text-lg flex items-center gap-2" style={{ color: 'var(--text-primary)' }}>
                   🍅 Top Tomatoes
@@ -424,7 +474,15 @@ export default function Dashboard() {
             </Card>
 
             {/* Top Peppers */}
-            <Card style={{ background: 'var(--bg-card)' }}>
+            <Card 
+              className="hover:shadow-lg transition-all duration-300"
+              style={{ 
+                background: 'var(--glass-bg)',
+                backdropFilter: 'blur(12px)',
+                WebkitBackdropFilter: 'blur(12px)',
+                border: '1px solid var(--glass-border)'
+              }}
+            >
               <CardHeader>
                 <CardTitle className="text-lg flex items-center gap-2" style={{ color: 'var(--text-primary)' }}>
                   🌶️ Top Peppers
@@ -450,7 +508,15 @@ export default function Dashboard() {
             </Card>
 
             {/* Top Other Crops */}
-            <Card style={{ background: 'var(--bg-card)' }}>
+            <Card 
+              className="hover:shadow-lg transition-all duration-300"
+              style={{ 
+                background: 'var(--glass-bg)',
+                backdropFilter: 'blur(12px)',
+                WebkitBackdropFilter: 'blur(12px)',
+                border: '1px solid var(--glass-border)'
+              }}
+            >
               <CardHeader>
                 <CardTitle className="text-lg flex items-center gap-2" style={{ color: 'var(--text-primary)' }}>
                   🥬 Top Other Crops
@@ -483,15 +549,23 @@ export default function Dashboard() {
 
       {/* Getting Started */}
       {stats.gardens === 0 && (
-        <Card className="border-amber-200" style={{ background: 'var(--badge-warning-bg)' }}>
+        <Card 
+          className="border-amber-200 dark:border-amber-700/50 hover:shadow-lg transition-all duration-300"
+          style={{ 
+            background: 'var(--glass-bg)',
+            backdropFilter: 'blur(12px)',
+            WebkitBackdropFilter: 'blur(12px)',
+            border: '1px solid var(--glass-border)'
+          }}
+        >
           <CardHeader>
-            <CardTitle className="flex items-center gap-2" style={{ color: 'var(--warning)' }}>
-              <AlertTriangle className="w-5 h-5" />
+            <CardTitle className="flex items-center gap-2" style={{ color: 'var(--text-primary)' }}>
+              <AlertTriangle className="w-5 h-5 text-emerald-600" />
               Getting Started
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-sm mb-4" style={{ color: 'var(--warning)' }}>
+            <p className="text-sm mb-4" style={{ color: 'var(--text-secondary)' }}>
               Create your first garden to start planning crops, tracking seeds, and managing your growing space.
             </p>
             <Button
