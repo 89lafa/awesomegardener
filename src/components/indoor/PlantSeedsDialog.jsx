@@ -3,19 +3,25 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Badge } from '@/components/ui/badge';
+import { Card } from '@/components/ui/card';
 import { base44 } from '@/api/base44Client';
 import { toast } from 'sonner';
 import { Search, Loader2, Plus } from 'lucide-react';
+import { cn } from '@/lib/utils';
+import { getVarietyDisplayName } from '@/components/utils/varietyHelpers';
 
 export function PlantSeedsDialog({ isOpen, onClose, trayId, trayName, onSeedPlanted }) {
   const [seedLots, setSeedLots] = useState([]);
   const [growListItems, setGrowListItems] = useState([]);
+  const [seedlings, setSeedlings] = useState([]);
   const [loadingSeeds, setLoadingSeeds] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedLot, setSelectedLot] = useState(null);
   const [selectedCells, setSelectedCells] = useState([]);
   const [loading, setLoading] = useState(false);
   const [activeTab, setActiveTab] = useState('stash');
+  const [displayNames, setDisplayNames] = useState({});
 
   useEffect(() => {
     if (isOpen) {
@@ -28,17 +34,17 @@ export function PlantSeedsDialog({ isOpen, onClose, trayId, trayName, onSeedPlan
       setLoadingSeeds(true);
       const user = await base44.auth.me();
       
-      // Load seed lots from stash
-      const lots = await base44.entities.SeedLot.filter({
-        created_by: user.email
-      }, '-updated_date');
+      // Load all sources
+      const [lots, lists, containers, trayCells] = await Promise.all([
+        base44.entities.SeedLot.filter({ created_by: user.email }, '-updated_date'),
+        base44.entities.GrowList.filter({ created_by: user.email }),
+        base44.entities.IndoorContainer.filter({ created_by: user.email, status: 'ready_to_transplant' }),
+        base44.entities.TrayCell.filter({ created_by: user.email, status: 'ready_to_transplant' })
+      ]);
+      
       setSeedLots(lots);
 
-      // Load grow list items
-      const lists = await base44.entities.GrowList.filter({
-        created_by: user.email
-      });
-      
+      // Extract grow list items
       const allItems = [];
       for (const list of lists) {
         if (list.items && Array.isArray(list.items)) {
@@ -46,12 +52,49 @@ export function PlantSeedsDialog({ isOpen, onClose, trayId, trayName, onSeedPlan
         }
       }
       setGrowListItems(allItems);
+      
+      // Combine seedlings
+      const allSeedlings = [
+        ...containers.map(c => ({ ...c, source: 'container', type: 'container' })),
+        ...trayCells.map(c => ({ ...c, source: 'tray', type: 'cell' }))
+      ];
+      setSeedlings(allSeedlings);
+      
+      // Load display names
+      await loadDisplayNames([...lots, ...allItems, ...allSeedlings]);
     } catch (error) {
       console.error('Error loading data:', error);
       toast.error('Failed to load data');
     } finally {
       setLoadingSeeds(false);
     }
+  };
+
+  const loadDisplayNames = async (items) => {
+    const names = {};
+    for (const item of items) {
+      if (item.variety_id || item.plant_profile_id) {
+        try {
+          const variety = item.variety_id 
+            ? await base44.entities.Variety.filter({ id: item.variety_id }).then(v => v[0])
+            : item.plant_profile_id
+            ? await base44.entities.PlantProfile.filter({ id: item.plant_profile_id }).then(p => p[0])
+            : null;
+          
+          if (variety) {
+            names[item.id] = await getVarietyDisplayName(variety);
+          } else if (item.variety_name) {
+            names[item.id] = item.variety_name;
+          }
+        } catch (error) {
+          console.error('Error loading display name:', error);
+          names[item.id] = item.variety_name || item.custom_label || item.name || 'Unknown';
+        }
+      } else if (item.variety_name || item.custom_label || item.name) {
+        names[item.id] = item.variety_name || item.custom_label || item.name;
+      }
+    }
+    setDisplayNames(names);
   };
 
   const handlePlantSeeds = async () => {
@@ -126,9 +169,10 @@ export function PlantSeedsDialog({ isOpen, onClose, trayId, trayName, onSeedPlan
           <div className="space-y-6">
             {/* Tabs for Seed Source */}
             <Tabs value={activeTab} onValueChange={setActiveTab}>
-              <TabsList className="grid w-full grid-cols-2">
-                <TabsTrigger value="stash">My Seed Stash</TabsTrigger>
+              <TabsList className="grid w-full grid-cols-3">
+                <TabsTrigger value="stash">Seed Stash</TabsTrigger>
                 <TabsTrigger value="grow-list">Grow Lists</TabsTrigger>
+                <TabsTrigger value="seedlings">Seedlings</TabsTrigger>
               </TabsList>
 
               {/* Seed Stash Tab */}
@@ -159,7 +203,9 @@ export function PlantSeedsDialog({ isOpen, onClose, trayId, trayName, onSeedPlan
                               : 'border-gray-300 hover:border-emerald-400'
                           }`}
                         >
-                          <p className="font-medium text-sm">{lot.custom_label || 'Unlabeled'}</p>
+                          <p className="font-medium text-sm">
+                            {displayNames[lot.id] || lot.custom_label || 'Unlabeled'}
+                          </p>
                           <p className="text-xs text-gray-600 mt-1">
                             Lot: {lot.lot_number} • {lot.quantity} {lot.unit}
                           </p>
@@ -198,9 +244,11 @@ export function PlantSeedsDialog({ isOpen, onClose, trayId, trayName, onSeedPlan
                               : 'border-gray-300 hover:border-emerald-400'
                           }`}
                         >
-                          <p className="font-medium text-sm">{item.variety_name}</p>
+                          <p className="font-medium text-sm">
+                            {displayNames[item.id] || item.variety_name}
+                          </p>
                           <p className="text-xs text-gray-600 mt-1">
-                            {item.plant_type} • from "{item.source_list}"
+                            from "{item.source_list}"
                           </p>
                         </button>
                       ))
@@ -209,32 +257,32 @@ export function PlantSeedsDialog({ isOpen, onClose, trayId, trayName, onSeedPlan
                 </div>
               </TabsContent>
 
-              {/* Seedlings Tab */}
+              {/* Seedlings Tab - Ready to transplant from indoor grow */}
               <TabsContent value="seedlings" className="space-y-4">
                 <div className="relative">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                   <Input
                     placeholder="Search seedlings..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
                     className="pl-10"
                   />
                 </div>
 
-                <div className="space-y-2 max-h-64 overflow-y-auto">
+                <div className="space-y-2 max-h-64 overflow-y-auto border rounded-lg p-2">
                   {seedlings.filter(s => 
-                    !searchQuery || 
-                    s.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                    displayNames[s.id]?.toLowerCase().includes(searchQuery.toLowerCase())
+                    !searchTerm || 
+                    s.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                    displayNames[s.id]?.toLowerCase().includes(searchTerm.toLowerCase())
                   ).map((seedling, idx) => (
-                    <Card
+                    <button
                       key={seedling.id || idx}
-                      onClick={() => setSelectedSource(seedling)}
+                      onClick={() => setSelectedLot({ ...seedling, source: 'seedling' })}
                       className={cn(
-                        "p-3 border rounded-lg cursor-pointer transition",
-                        selectedSource?.id === seedling.id 
-                          ? "border-emerald-600 bg-emerald-50" 
-                          : "border-gray-200 hover:border-emerald-400"
+                        "w-full p-3 border rounded-lg text-left transition",
+                        selectedLot?.id === seedling.id && selectedLot?.source === 'seedling'
+                          ? "border-emerald-600 bg-emerald-50"
+                          : "border-gray-300 hover:border-emerald-400"
                       )}
                     >
                       <p className="font-medium text-sm">
@@ -244,7 +292,7 @@ export function PlantSeedsDialog({ isOpen, onClose, trayId, trayName, onSeedPlan
                         {seedling.source === 'container' ? `Container: ${seedling.container_type}` : 'From tray cell'}
                       </p>
                       <Badge variant="outline" className="text-[10px] mt-1">Ready to Transplant</Badge>
-                    </Card>
+                    </button>
                   ))}
 
                   {seedlings.length === 0 && (
