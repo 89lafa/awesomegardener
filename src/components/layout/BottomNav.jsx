@@ -148,7 +148,7 @@ export default function BottomNav() {
   
   return (
     <>
-      <nav className="fixed bottom-0 left-0 right-0 border-t lg:hidden z-50" style={{ background: 'var(--bg-elevated)', borderColor: 'var(--border-default)', paddingBottom: 'env(safe-area-inset-bottom)' }}>
+      <nav className="fixed bottom-0 left-0 right-0 border-t lg:hidden z-50 backdrop-blur-md" style={{ background: 'rgba(255, 255, 255, 0.95)', borderColor: 'var(--border-default)', paddingBottom: 'env(safe-area-inset-bottom)' }}>
         <div className="flex justify-around h-16">
           {items.map(item => {
             const isActive = location.pathname.startsWith(item.path);
