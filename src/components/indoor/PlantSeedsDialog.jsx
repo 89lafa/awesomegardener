@@ -44,11 +44,18 @@ export function PlantSeedsDialog({ isOpen, onClose, trayId, trayName, onSeedPlan
       
       setSeedLots(lots);
 
-      // Extract grow list items
+      // Extract unique grow list items (deduplicate by variety_id)
       const allItems = [];
+      const seen = new Set();
       for (const list of lists) {
         if (list.items && Array.isArray(list.items)) {
-          allItems.push(...list.items.map(item => ({ ...item, source_list: list.name })));
+          for (const item of list.items) {
+            const key = item.variety_id || item.plant_profile_id || item.variety_name;
+            if (key && !seen.has(key)) {
+              seen.add(key);
+              allItems.push({ ...item, source_list: list.name });
+            }
+          }
         }
       }
       setGrowListItems(allItems);
@@ -121,16 +128,17 @@ export function PlantSeedsDialog({ isOpen, onClose, trayId, trayName, onSeedPlan
 
     setLoading(true);
     try {
-      // Update tray cells with seed
+      // Get all cells first to avoid multiple queries
+      const allCells = await base44.entities.TrayCell.filter({ tray_id: trayId });
+      
+      // Update selected cells
       for (const cellNum of selectedCells) {
-        const cells = await base44.entities.TrayCell.filter({
-          tray_id: trayId,
-          cell_number: cellNum
-        });
-        if (cells.length > 0) {
-          await base44.entities.TrayCell.update(cells[0].id, {
+        const cell = allCells.find(c => c.cell_number === cellNum);
+        if (cell) {
+          await base44.entities.TrayCell.update(cell.id, {
             user_seed_id: selectedLot.id,
             variety_id: selectedLot.variety_id,
+            plant_profile_id: selectedLot.plant_profile_id,
             status: 'seeded',
             seeded_date: new Date().toISOString().split('T')[0]
           });
@@ -156,15 +164,21 @@ export function PlantSeedsDialog({ isOpen, onClose, trayId, trayName, onSeedPlan
     }
   };
 
-  const filteredLots = seedLots.filter(lot =>
-    lot.custom_label?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    lot.lot_number?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredLots = seedLots.filter(lot => {
+    if (!searchTerm) return true;
+    const searchLower = searchTerm.toLowerCase();
+    return lot.custom_label?.toLowerCase().includes(searchLower) ||
+      lot.lot_number?.toLowerCase().includes(searchLower) ||
+      displayNames[lot.id]?.toLowerCase().includes(searchLower);
+  });
 
-  const filteredGrowList = growListItems.filter(item =>
-    item.variety_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    item.plant_type?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredGrowList = growListItems.filter(item => {
+    if (!searchTerm) return true;
+    const searchLower = searchTerm.toLowerCase();
+    return item.variety_name?.toLowerCase().includes(searchLower) ||
+      item.plant_type?.toLowerCase().includes(searchLower) ||
+      displayNames[item.id]?.toLowerCase().includes(searchLower);
+  });
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -248,20 +262,21 @@ export function PlantSeedsDialog({ isOpen, onClose, trayId, trayName, onSeedPlan
                     ) : (
                       filteredGrowList.map((item, idx) => (
                         <button
-                          key={`${item.source_list}-${idx}`}
-                          onClick={() => setSelectedLot({ ...item, source: 'grow-list', id: `${item.source_list}-${idx}` })}
-                          className={`w-full p-3 border rounded-lg text-left transition ${
-                            selectedLot?.source === 'grow-list' && selectedLot?.id === `${item.source_list}-${idx}`
-                              ? 'border-emerald-600 bg-emerald-50'
-                              : 'border-gray-300 hover:border-emerald-400'
-                          }`}
+                         key={`growlist-${item.variety_id || item.plant_profile_id}-${idx}`}
+                         onClick={() => setSelectedLot({ ...item, source: 'grow-list' })}
+                         className={`w-full p-3 border rounded-lg text-left transition ${
+                           selectedLot?.source === 'grow-list' && 
+                           (selectedLot?.variety_id === item.variety_id || selectedLot?.plant_profile_id === item.plant_profile_id)
+                             ? 'border-emerald-600 bg-emerald-50'
+                             : 'border-gray-300 hover:border-emerald-400'
+                         }`}
                         >
-                          <p className="font-medium text-sm">
-                            {displayNames[item.id] || item.variety_name}
-                          </p>
-                          <p className="text-xs text-gray-600 mt-1">
-                            from "{item.source_list}"
-                          </p>
+                         <p className="font-medium text-sm">
+                           {item.variety_name || 'Unnamed Variety'}
+                         </p>
+                         <p className="text-xs text-gray-600 mt-1">
+                           from "{item.source_list}"
+                         </p>
                         </button>
                       ))
                     )}
@@ -360,24 +375,32 @@ export function PlantSeedsDialog({ isOpen, onClose, trayId, trayName, onSeedPlan
 
 function TrayCellGrid({ trayId, selectedCells, onCellToggle }) {
   const [cells, setCells] = useState([]);
+  const [tray, setTray] = useState(null);
 
   useEffect(() => {
-    loadCells();
+    loadData();
   }, [trayId]);
 
-  const loadCells = async () => {
+  const loadData = async () => {
     try {
-      const cellData = await base44.entities.TrayCell.filter({ tray_id: trayId });
+      const [trayData, cellData] = await Promise.all([
+        base44.entities.SeedTray.filter({ id: trayId }),
+        base44.entities.TrayCell.filter({ tray_id: trayId })
+      ]);
+      
+      if (trayData.length > 0) {
+        setTray(trayData[0]);
+      }
       setCells(cellData.sort((a, b) => a.cell_number - b.cell_number));
     } catch (error) {
       console.error('Error loading cells:', error);
     }
   };
 
-  if (cells.length === 0) return <p className="text-gray-500">Loading tray...</p>;
+  if (!tray || cells.length === 0) return <p className="text-gray-500">Loading tray...</p>;
 
-  const cols = Math.max(...cells.map(c => c.col + 1));
-  const rows = Math.max(...cells.map(c => c.row + 1));
+  const cols = tray.cells_cols;
+  const rows = tray.cells_rows;
 
   return (
     <div className="inline-block border border-gray-300 rounded bg-white overflow-auto max-h-80">

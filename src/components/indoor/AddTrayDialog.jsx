@@ -6,10 +6,21 @@ import { base44 } from '@/api/base44Client';
 import { toast } from 'sonner';
 
 const TRAY_PRESETS = [
-  { name: '72-cell tray', cells: 72, rows: 6, cols: 12, insert: '72-cell' },
+  { name: '72-cell (1206)', cells: 72, rows: 6, cols: 12, insert: '72-cell' },
+  { name: '72-cell (1804)', cells: 72, rows: 6, cols: 12, insert: '72-cell' },
   { name: '50-cell tray', cells: 50, rows: 5, cols: 10, insert: '50-cell' },
-  { name: '36-cell tray', cells: 36, rows: 6, cols: 6, insert: '36-cell' },
-  { name: '18-cell tray', cells: 18, rows: 3, cols: 6, insert: '18-cell' },
+  { name: '48-cell (806)', cells: 48, rows: 4, cols: 12, insert: '48-cell' },
+  { name: '48-cell (1204)', cells: 48, rows: 4, cols: 12, insert: '48-cell' },
+  { name: '36-cell (606)', cells: 36, rows: 4, cols: 9, insert: '36-cell' },
+  { name: '36-cell (1203)', cells: 36, rows: 6, cols: 6, insert: '36-cell' },
+  { name: '36-cell (3601)', cells: 36, rows: 4, cols: 9, insert: '36-cell' },
+  { name: '32-cell (804)', cells: 32, rows: 4, cols: 8, insert: '32-cell' },
+  { name: '24-cell (2401)', cells: 24, rows: 4, cols: 6, insert: '24-cell' },
+  { name: '18-cell (1801)', cells: 18, rows: 3, cols: 6, insert: '18-cell' },
+  { name: '18-cell (18)', cells: 18, rows: 3, cols: 6, insert: '18-cell' },
+  { name: '12-cell (12)', cells: 12, rows: 2, cols: 6, insert: '12-cell' },
+  { name: '8-cell (801)', cells: 8, rows: 2, cols: 4, insert: '8-cell' },
+  { name: '288-cell', cells: 288, rows: 12, cols: 24, insert: '288-cell' },
 ];
 
 export function AddTrayDialog({ isOpen, onClose, shelfId, onTrayAdded }) {
@@ -54,22 +65,20 @@ export function AddTrayDialog({ isOpen, onClose, shelfId, onTrayAdded }) {
           notes: notes || null
         });
 
-        // Create individual tray cells
-        const cellPromises = [];
+        // Create individual tray cells using bulkCreate to avoid rate limits
+        const cellsToCreate = [];
         for (let r = 0; r < rows; r++) {
           for (let c = 0; c < cols; c++) {
-            cellPromises.push(
-              base44.entities.TrayCell.create({
-                tray_id: tray.id,
-                row: r,
-                col: c,
-                cell_number: r * cols + c + 1,
-                status: 'empty'
-              })
-            );
+            cellsToCreate.push({
+              tray_id: tray.id,
+              row: r,
+              col: c,
+              cell_number: r * cols + c + 1,
+              status: 'empty'
+            });
           }
         }
-        await Promise.all(cellPromises);
+        await base44.entities.TrayCell.bulkCreate(cellsToCreate);
       }
 
       toast.success(qty > 1 
