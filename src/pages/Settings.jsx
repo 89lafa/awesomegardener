@@ -30,6 +30,17 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 import { toast } from 'sonner';
 import FrostDateLookup from '@/components/ai/FrostDateLookup';
 
@@ -780,35 +791,39 @@ export default function Settings() {
                   This will permanently delete your account, all your gardens, seeds, plans, and data. 
                   This action cannot be undone.
                 </p>
-                <Button
-                  variant="destructive"
-                  onClick={async () => {
-                    const confirmed = confirm(
-                      '⚠️ WARNING ⚠️\n\nThis will PERMANENTLY DELETE your account and ALL your data:\n\n• All gardens and plantings\n• Entire seed stash\n• Calendar plans and tasks\n• Indoor grow spaces and trays\n• All logs and diary entries\n\nThis CANNOT be undone.\n\nType "DELETE" to confirm.'
-                    );
-                    
-                    if (!confirmed) return;
-                    
-                    const typed = prompt('Type DELETE in all caps to confirm:');
-                    if (typed !== 'DELETE') {
-                      toast.error('Account deletion cancelled');
-                      return;
-                    }
-                    
-                    try {
-                      await base44.auth.deleteMe();
-                      toast.success('Account deleted. Goodbye.');
-                      window.location.href = '/Landing';
-                    } catch (error) {
-                      console.error('Error deleting account:', error);
-                      toast.error('Failed to delete account: ' + error.message);
-                    }
-                  }}
-                  className="gap-2"
-                >
-                  <Trash2 className="w-4 h-4" />
-                  Delete My Account
-                </Button>
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button variant="destructive" className="gap-2">
+                      <Trash2 className="w-4 h-4" />
+                      Delete My Account
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        This action cannot be undone. This will permanently delete your account
+                        and all your data (gardens, seeds, plans, etc.) from our servers.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                      <AlertDialogAction 
+                        className="bg-red-600 hover:bg-red-700"
+                        onClick={async () => {
+                          try {
+                            await base44.auth.deleteMe();
+                            toast.success('Account deleted. Goodbye.');
+                            window.location.href = createPageUrl('Landing');
+                          } catch (error) {
+                            console.error('Error deleting account:', error);
+                            toast.error('Failed to delete account: ' + error.message);
+                          }
+                        }}
+                      >Continue</AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
               </div>
             </CardContent>
           </Card>

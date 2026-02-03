@@ -30,6 +30,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { base44 } from '@/api/base44Client';
 import DarkModeToggle from '@/components/common/DarkModeToggle';
+
 export default function TopBar({ user, onMobileMenuToggle, onSidebarToggle, sidebarCollapsed }) {
   const navigate = useNavigate();
   const location = useLocation();
@@ -37,11 +38,8 @@ export default function TopBar({ user, onMobileMenuToggle, onSidebarToggle, side
   const [unreadCount, setUnreadCount] = useState(0);
   
   // Determine if this is a child page (should show back button)
-  const childPages = ['SeedStashDetail', 'TrayDetail', 'IndoorSpaceDetail', 'ViewVariety', 
-                      'PlantCatalogDetail', 'ForumTopic', 'MyPlants', 'PublicGarden', 
-                      'EditVariety', 'GardenDiary', 'HarvestLog', 'IssuesLog'];
-  const currentPage = location.pathname.split('/').pop();
-  const isChildPage = childPages.includes(currentPage);
+  const rootPaths = ['/Dashboard', '/PlantCatalog', '/SeedStash', '/Messages', '/'];
+  const isChildPage = !rootPaths.includes(location.pathname);
 
   useEffect(() => {
     if (user) {
