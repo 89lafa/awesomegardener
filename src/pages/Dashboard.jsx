@@ -203,7 +203,7 @@ export default function Dashboard() {
   const WeatherCard = () => {
     if (weatherLoading) {
       return (
-        <Card style={{ background: 'var(--bg-card)' }}>
+        <Card>
           <CardContent className="p-6">
             <div className="animate-pulse space-y-2">
               <div className="h-4 rounded w-20" style={{ background: 'var(--bg-muted)' }}></div>
@@ -216,7 +216,7 @@ export default function Dashboard() {
 
     if (!weather) {
       return (
-        <Card style={{ background: 'var(--bg-muted)' }}>
+        <Card>
           <CardContent className="p-6 text-center">
             <Cloud className="w-8 h-8 mx-auto mb-2" style={{ color: 'var(--text-muted)' }} />
             <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Set ZIP in Settings</p>
@@ -523,10 +523,7 @@ export default function Dashboard() {
 
       {/* Getting Started */}
       {stats.gardens === 0 && (
-        <div className="glass-card" style={{ 
-          background: 'rgba(16, 185, 129, 0.15) !important',
-          border: '2px solid rgba(16, 185, 129, 0.3) !important'
-        }}>
+        <div className="glass-card border-2 border-emerald-500/30">
           <div className="flex items-center gap-2 mb-4">
             <AlertTriangle className="w-5 h-5" style={{ color: '#10b981' }} />
             <h3 className="text-lg font-semibold" style={{ color: '#f0fdf4' }}>Getting Started</h3>
