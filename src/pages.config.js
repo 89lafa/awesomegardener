@@ -47,6 +47,7 @@
  *
  * The mainPage value must match a key in the PAGES object exactly.
  */
+import AIAssistants from './pages/AIAssistants';
 import AdminAuditLog from './pages/AdminAuditLog';
 import AdminBulkEdit from './pages/AdminBulkEdit';
 import AdminDataCleanup from './pages/AdminDataCleanup';
@@ -83,6 +84,7 @@ import GardenExpenses from './pages/GardenExpenses';
 import GardenPlanting from './pages/GardenPlanting';
 import GardeningBasics from './pages/GardeningBasics';
 import Gardens from './pages/Gardens';
+import GlobalSearch from './pages/GlobalSearch';
 import GrowLists from './pages/GrowLists';
 import GrowingProfile from './pages/GrowingProfile';
 import HarvestLog from './pages/HarvestLog';
@@ -114,18 +116,17 @@ import SeedTrading from './pages/SeedTrading';
 import Settings from './pages/Settings';
 import ShipAudit from './pages/ShipAudit';
 import SubcategoryMapping from './pages/SubcategoryMapping';
+import TrayDetail from './pages/TrayDetail';
 import UserReports from './pages/UserReports';
 import Users from './pages/Users';
 import VarietyReviewQueue from './pages/VarietyReviewQueue';
 import ViewVariety from './pages/ViewVariety';
 import ZoneMap from './pages/ZoneMap';
-import AIAssistants from './pages/AIAssistants';
-import GlobalSearch from './pages/GlobalSearch';
-import TrayDetail from './pages/TrayDetail';
 import __Layout from './Layout.jsx';
 
 
 export const PAGES = {
+    "AIAssistants": AIAssistants,
     "AdminAuditLog": AdminAuditLog,
     "AdminBulkEdit": AdminBulkEdit,
     "AdminDataCleanup": AdminDataCleanup,
@@ -162,6 +163,7 @@ export const PAGES = {
     "GardenPlanting": GardenPlanting,
     "GardeningBasics": GardeningBasics,
     "Gardens": Gardens,
+    "GlobalSearch": GlobalSearch,
     "GrowLists": GrowLists,
     "GrowingProfile": GrowingProfile,
     "HarvestLog": HarvestLog,
@@ -193,14 +195,12 @@ export const PAGES = {
     "Settings": Settings,
     "ShipAudit": ShipAudit,
     "SubcategoryMapping": SubcategoryMapping,
+    "TrayDetail": TrayDetail,
     "UserReports": UserReports,
     "Users": Users,
     "VarietyReviewQueue": VarietyReviewQueue,
     "ViewVariety": ViewVariety,
     "ZoneMap": ZoneMap,
-    "AIAssistants": AIAssistants,
-    "GlobalSearch": GlobalSearch,
-    "TrayDetail": TrayDetail,
 }
 
 export const pagesConfig = {

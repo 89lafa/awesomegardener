@@ -1009,6 +1009,7 @@ export default function PlantingModal({ open, onOpenChange, item, itemType, gard
               </div>
             ) : (
               // Grid-based layout for raised beds
+              <div className="space-y-2">
               <div 
                 className="grid gap-1 p-4 bg-amber-50 border-2 border-amber-200 rounded-lg inline-block grid-container"
                 style={{
@@ -1110,6 +1111,10 @@ export default function PlantingModal({ open, onOpenChange, item, itemType, gard
                   }
                   })
                   )}
+                  </div>
+                  <p className="text-xs text-gray-500 italic ml-4">
+                    💡 Tip: For diagonal planting patterns, configure in Plot Layout settings
+                  </p>
                   </div>
                   )}
 

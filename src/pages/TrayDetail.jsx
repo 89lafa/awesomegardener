@@ -238,7 +238,7 @@ export default function TrayDetail() {
           Plant Seeds
         </Button>
         <Button
-          onClick={() => setSelectedCells(cells)}
+          onClick={() => setSelectedCells([...cells])}
           variant="outline"
         >
           Select All
