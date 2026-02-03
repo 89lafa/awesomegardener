@@ -435,6 +435,7 @@ export default function Dashboard() {
           </div>
         </div>
       </div>
+      </div>
 
       {/* Popular Crops */}
       {popularCrops && (
