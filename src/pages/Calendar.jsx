@@ -338,7 +338,7 @@ export default function Calendar() {
   }
   
   return (
-    <div className="flex h-[calc(100vh-8rem)] flex-col">
+    <div className="flex h-[calc(100vh-8rem)] flex-col lg:flex-row">
       {rateLimitError && (
         <RateLimitBanner 
           retryInMs={rateLimitError.retryInMs || 5000} 
@@ -347,9 +347,11 @@ export default function Calendar() {
         />
       )}
       
-      <div className="flex flex-1">
-      {/* Left Sidebar - My Crops */}
-      <div className="w-80 border-r bg-white flex flex-col">
+      {/* Left Sidebar - My Crops - Hidden on mobile when timeline view */}
+      <div className={cn(
+        "w-full lg:w-80 border-r bg-white flex flex-col",
+        viewMode === 'timeline' && "hidden lg:flex"
+      )}>
         <div className="p-4 border-b space-y-2">
           <h2 className="font-semibold text-lg">My Crops</h2>
           <Input
@@ -605,8 +607,8 @@ export default function Calendar() {
         </div>
       </div>
       
-      {/* Main Timeline Area */}
-      <div className="flex-1 flex flex-col">
+      {/* Main Timeline/Calendar Area */}
+      <div className="flex-1 flex flex-col overflow-hidden">
         {/* Top Controls */}
         <div className="p-4 border-b bg-white flex items-center gap-3">
           <Select value={activeGarden?.id} onValueChange={async (id) => {
@@ -682,18 +684,20 @@ export default function Calendar() {
         {/* Calendar/Timeline View */}
         <div className="flex-1 overflow-auto bg-gray-50 relative">
           {viewMode === 'calendar' ? (
-            <CalendarGridView
-              tasks={filteredTasks}
-              crops={cropPlans}
-              season={getCurrentSeason()}
-              onTaskClick={setSelectedTask}
-              onDayClick={(date) => {
-                setSelectedDate(date);
-                setShowDayPanel(true);
-              }}
-            />
+            <div className="p-2 md:p-4">
+              <CalendarGridView
+                tasks={filteredTasks}
+                crops={cropPlans}
+                season={getCurrentSeason()}
+                onTaskClick={setSelectedTask}
+                onDayClick={(date) => {
+                  setSelectedDate(date);
+                  setShowDayPanel(true);
+                }}
+              />
+            </div>
           ) : (
-            <div className="overflow-x-auto">
+            <div className="overflow-x-auto overflow-y-hidden pb-4">
               <TimelineView 
                 tasks={filteredTasks}
                 crops={cropPlans}
@@ -973,15 +977,15 @@ function TimelineView({ tasks, crops, season, onTaskClick }) {
   };
   
   return (
-    <div className="min-w-max relative">
-      {/* Month Headers */}
-      <div className="flex sticky top-0 bg-white border-b z-20">
-        <div className="w-40 flex-shrink-0 border-r p-2 font-semibold text-sm bg-white">
+    <div className="min-w-[1400px] md:min-w-[1800px] relative">
+      {/* Month Headers - Sticky */}
+      <div className="flex sticky top-0 bg-white border-b z-30 shadow-sm">
+        <div className="w-32 md:w-40 flex-shrink-0 border-r p-2 font-semibold text-xs md:text-sm bg-white sticky left-0 z-40">
           Crop
         </div>
         {months.map((month, idx) => (
-          <div key={idx} className="flex-1 min-w-[200px] border-r p-2 text-center bg-white">
-            <div className="font-semibold">{format(month, 'MMM yyyy')}</div>
+          <div key={idx} className="flex-1 min-w-[150px] md:min-w-[200px] border-r p-2 text-center bg-white">
+            <div className="font-semibold text-xs md:text-sm">{format(month, 'MMM yyyy')}</div>
           </div>
         ))}
       </div>
@@ -992,12 +996,12 @@ function TimelineView({ tasks, crops, season, onTaskClick }) {
         
         return (
           <div key={crop.id} className="flex border-b hover:bg-gray-50">
-            <div className="w-40 flex-shrink-0 border-r p-2 flex items-center gap-2">
+            <div className="w-32 md:w-40 flex-shrink-0 border-r p-2 flex items-center gap-2 bg-white sticky left-0 z-10">
               <div 
-                className="w-3 h-3 rounded-full"
+                className="w-2 md:w-3 h-2 md:h-3 rounded-full flex-shrink-0"
                 style={{ backgroundColor: crop.color_hex || '#10b981' }}
               />
-              <span className="text-sm truncate">{crop.label}</span>
+              <span className="text-xs md:text-sm truncate">{crop.label}</span>
             </div>
             
             <div 
