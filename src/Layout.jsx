@@ -9,7 +9,6 @@ import { Loader2 } from 'lucide-react';
 import ErrorBoundary from '@/components/common/ErrorBoundary';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useLocation } from 'react-router-dom';
-import './globals.css';
 
 // Public pages that don't require authentication
 const publicPages = ['Landing', 'PublicGarden', 'PublicPlant', 'Community', 'GardeningBasics'];
@@ -56,6 +55,36 @@ export default function Layout({ children, currentPageName }) {
       document.body.style.overflow = '';
     };
   }, [mobileMenuOpen]);
+
+  // Inject glassmorphic card styles
+  useEffect(() => {
+    const styleId = 'glassmorphic-styles';
+    if (!document.getElementById(styleId)) {
+      const style = document.createElement('style');
+      style.id = styleId;
+      style.textContent = `
+        .glass-card {
+          background: rgba(16, 185, 129, 0.15) !important;
+          backdrop-filter: blur(12px) !important;
+          -webkit-backdrop-filter: blur(12px) !important;
+          border: 1px solid rgba(16, 185, 129, 0.2) !important;
+          border-radius: 16px !important;
+          padding: 20px !important;
+          box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37) !important;
+        }
+        
+        .glass-card-no-padding {
+          background: rgba(16, 185, 129, 0.15) !important;
+          backdrop-filter: blur(12px) !important;
+          -webkit-backdrop-filter: blur(12px) !important;
+          border: 1px solid rgba(16, 185, 129, 0.2) !important;
+          border-radius: 16px !important;
+          box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37) !important;
+        }
+      `;
+      document.head.appendChild(style);
+    }
+  }, []);
 
   const loadUser = async () => {
     try {
