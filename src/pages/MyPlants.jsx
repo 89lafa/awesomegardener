@@ -24,6 +24,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import PlantDetailModal from '@/components/myplants/PlantDetailModal';
+import { usePullToRefresh } from '@/components/utils/usePullToRefresh';
+import PullToRefreshIndicator from '@/components/common/PullToRefreshIndicator';
 
 const STATUS_OPTIONS = [
   { value: 'seed', label: '🌰 Seed', color: 'bg-gray-100 text-gray-800' },
@@ -64,6 +66,11 @@ export default function MyPlants() {
     name: '',
     status: 'seed',
     notes: ''
+  });
+
+  const { isPulling, pullDistance, isRefreshing } = usePullToRefresh(async () => {
+    await Promise.all([loadData(), activeSeason && loadMyPlants()]);
+    toast.success('Plants refreshed');
   });
 
   useEffect(() => {
@@ -262,7 +269,13 @@ export default function MyPlants() {
   }
 
   return (
-    <div className="max-w-7xl mx-auto space-y-6">
+    <>
+      <PullToRefreshIndicator 
+        isPulling={isPulling} 
+        pullDistance={pullDistance} 
+        isRefreshing={isRefreshing} 
+      />
+      <div className="max-w-7xl mx-auto space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
@@ -562,5 +575,6 @@ export default function MyPlants() {
         onUpdate={loadMyPlants}
       />
     </div>
+    </>
   );
 }

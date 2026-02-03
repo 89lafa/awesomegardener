@@ -553,5 +553,6 @@ export default function Gardens() {
         </DialogContent>
       </Dialog>
     </div>
+    </>
   );
 }

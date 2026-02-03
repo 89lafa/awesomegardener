@@ -97,6 +97,15 @@ export default function ForumTopic() {
 
   const handleVote = async (itemId, itemType, currentValue) => {
     const newValue = userVotes[itemId] === 1 ? 0 : 1;
+    const newCount = Math.max(0, (currentValue || 0) + (newValue - (userVotes[itemId] || 0)));
+    
+    // Optimistic UI update
+    setUserVotes({ ...userVotes, [itemId]: newValue });
+    if (itemType === 'topic' && topic?.id === itemId) {
+      setTopic({ ...topic, like_count: newCount });
+    } else if (itemType === 'post') {
+      setPosts(posts.map(p => p.id === itemId ? { ...p, like_count: newCount } : p));
+    }
     
     try {
       const existing = await base44.entities.ForumVote.filter({
@@ -120,17 +129,22 @@ export default function ForumTopic() {
       }
 
       // Update like count
-      const newCount = Math.max(0, (currentValue || 0) + (newValue - (userVotes[itemId] || 0)));
       if (itemType === 'topic') {
         await base44.entities.ForumTopic.update(itemId, { like_count: newCount });
       } else if (itemType === 'post') {
         await base44.entities.ForumPost.update(itemId, { like_count: newCount });
       }
-
-      setUserVotes({ ...userVotes, [itemId]: newValue });
-      loadData();
     } catch (error) {
       console.error('Error voting:', error);
+      // Revert on error
+      const oldValue = newValue === 1 ? 0 : 1;
+      const revertCount = Math.max(0, (currentValue || 0) + (oldValue - newValue));
+      setUserVotes({ ...userVotes, [itemId]: oldValue });
+      if (itemType === 'topic' && topic?.id === itemId) {
+        setTopic({ ...topic, like_count: revertCount });
+      } else if (itemType === 'post') {
+        setPosts(posts.map(p => p.id === itemId ? { ...p, like_count: revertCount } : p));
+      }
       toast.error('Failed to vote');
     }
   };
