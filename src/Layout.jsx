@@ -67,19 +67,23 @@ export default function Layout({ children, currentPageName }) {
           background: rgba(16, 185, 129, 0.15) !important;
           backdrop-filter: blur(12px) !important;
           -webkit-backdrop-filter: blur(12px) !important;
-          border: 1px solid rgba(16, 185, 129, 0.2) !important;
+          border: 1px solid rgba(16, 185, 129, 0.25) !important;
           border-radius: 16px !important;
           padding: 20px !important;
-          box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37) !important;
+          box-shadow: 0 4px 12px 0 rgba(0, 0, 0, 0.15) !important;
+          transform: translateZ(0) !important;
+          isolation: isolate !important;
         }
         
         .glass-card-no-padding {
           background: rgba(16, 185, 129, 0.15) !important;
           backdrop-filter: blur(12px) !important;
           -webkit-backdrop-filter: blur(12px) !important;
-          border: 1px solid rgba(16, 185, 129, 0.2) !important;
+          border: 1px solid rgba(16, 185, 129, 0.25) !important;
           border-radius: 16px !important;
-          box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37) !important;
+          box-shadow: 0 4px 12px 0 rgba(0, 0, 0, 0.15) !important;
+          transform: translateZ(0) !important;
+          isolation: isolate !important;
         }
       `;
       document.head.appendChild(style);

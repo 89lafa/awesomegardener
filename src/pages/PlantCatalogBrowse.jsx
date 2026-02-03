@@ -99,14 +99,7 @@ export default function PlantCatalogBrowse() {
       </div>
 
       {/* Filters */}
-      <Card 
-        style={{
-          background: 'var(--glass-bg)',
-          backdropFilter: 'blur(12px)',
-          WebkitBackdropFilter: 'blur(12px)',
-          border: '1px solid var(--glass-border)'
-        }}
-      >
+      <Card>
         <CardContent className="p-4 space-y-3">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
@@ -182,13 +175,7 @@ export default function PlantCatalogBrowse() {
           return (
           <Link key={profile.id} to={createPageUrl('PlantProfileDetail') + `?id=${profile.id}`}>
             <Card 
-              className="hover:shadow-lg transition-all duration-300 cursor-pointer h-full"
-              style={{
-                background: 'var(--glass-bg)',
-                backdropFilter: 'blur(12px)',
-                WebkitBackdropFilter: 'blur(12px)',
-                border: '1px solid var(--glass-border)'
-              }}
+              className="hover:shadow-lg transition-shadow duration-300 cursor-pointer h-full"
             >
               <CardContent className="p-4">
                 <div className="flex items-center gap-2 mb-1">
@@ -231,15 +218,7 @@ export default function PlantCatalogBrowse() {
       </div>
 
       {filteredProfiles.length === 0 && (
-        <Card 
-          className="py-16"
-          style={{
-            background: 'var(--glass-bg)',
-            backdropFilter: 'blur(12px)',
-            WebkitBackdropFilter: 'blur(12px)',
-            border: '1px solid var(--glass-border)'
-          }}
-        >
+        <Card className="py-16">
           <CardContent className="text-center">
             <Sprout className="w-16 h-16 mx-auto mb-4" style={{ color: 'var(--text-muted)' }} />
             <h3 className="text-lg font-semibold mb-2" style={{ color: 'var(--text-primary)' }}>No varieties found</h3>
