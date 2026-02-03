@@ -6,7 +6,7 @@ import { base44 } from '@/api/base44Client';
 import { toast } from 'sonner';
 
 const TRAY_PRESETS = [
-  { name: '72-cell tray', cells: 72, rows: 8, cols: 9, insert: '72-cell' },
+  { name: '72-cell tray', cells: 72, rows: 6, cols: 12, insert: '72-cell' },
   { name: '50-cell tray', cells: 50, rows: 5, cols: 10, insert: '50-cell' },
   { name: '36-cell tray', cells: 36, rows: 6, cols: 6, insert: '36-cell' },
   { name: '18-cell tray', cells: 18, rows: 3, cols: 6, insert: '18-cell' },
@@ -16,8 +16,8 @@ export function AddTrayDialog({ isOpen, onClose, shelfId, onTrayAdded }) {
   const [trayName, setTrayName] = useState('');
   const [quantity, setQuantity] = useState(1);
   const [totalCells, setTotalCells] = useState(72);
-  const [rows, setRows] = useState(8);
-  const [cols, setCols] = useState(9);
+  const [rows, setRows] = useState(6);
+  const [cols, setCols] = useState(12);
   const [insertType, setInsertType] = useState('72-cell');
   const [notes, setNotes] = useState('');
   const [loading, setLoading] = useState(false);
