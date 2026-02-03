@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { base44 } from '@/api/base44Client';
 import { toast } from 'sonner';
 
@@ -26,12 +28,12 @@ const TRAY_PRESETS = [
 export function AddTrayDialog({ isOpen, onClose, shelfId, onTrayAdded }) {
   const [trayName, setTrayName] = useState('');
   const [quantity, setQuantity] = useState(1);
-  const [totalCells, setTotalCells] = useState(72);
-  const [rows, setRows] = useState(6);
-  const [cols, setCols] = useState(12);
-  const [insertType, setInsertType] = useState('72-cell');
+  const [selectedPreset, setSelectedPreset] = useState('72-cell-1206'); // Unique key
   const [notes, setNotes] = useState('');
   const [loading, setLoading] = useState(false);
+
+  // Get current preset data
+  const currentPreset = TRAY_PRESETS[parseInt(selectedPreset.split('-').pop())] || TRAY_PRESETS[0];
 
   const handleCreate = async () => {
     if (!trayName.trim()) {
@@ -55,10 +57,10 @@ export function AddTrayDialog({ isOpen, onClose, shelfId, onTrayAdded }) {
           shelf_id: shelfId,
           name: currentName,
           tray_code: `T-${Date.now().toString(36)}-${i}`,
-          total_cells: parseInt(totalCells),
-          cells_rows: parseInt(rows),
-          cells_cols: parseInt(cols),
-          insert_type: insertType,
+          total_cells: parseInt(currentPreset.cells),
+          cells_rows: parseInt(currentPreset.rows),
+          cells_cols: parseInt(currentPreset.cols),
+          insert_type: currentPreset.insert,
           width_inches: 20,
           length_inches: 10,
           status: 'empty',
@@ -67,13 +69,13 @@ export function AddTrayDialog({ isOpen, onClose, shelfId, onTrayAdded }) {
 
         // Create individual tray cells using bulkCreate to avoid rate limits
         const cellsToCreate = [];
-        for (let r = 0; r < rows; r++) {
-          for (let c = 0; c < cols; c++) {
+        for (let r = 0; r < currentPreset.rows; r++) {
+          for (let c = 0; c < currentPreset.cols; c++) {
             cellsToCreate.push({
               tray_id: tray.id,
               row: r,
               col: c,
-              cell_number: r * cols + c + 1,
+              cell_number: r * currentPreset.cols + c + 1,
               status: 'empty'
             });
           }
@@ -82,14 +84,15 @@ export function AddTrayDialog({ isOpen, onClose, shelfId, onTrayAdded }) {
       }
 
       toast.success(qty > 1 
-        ? `Created ${qty} trays with ${totalCells} cells each!`
-        : `Tray "${trayName}" created with ${totalCells} cells!`
+        ? `Created ${qty} trays with ${currentPreset.cells} cells each!`
+        : `Tray "${trayName}" created with ${currentPreset.cells} cells!`
       );
       onTrayAdded?.();
       onClose();
       setTrayName('');
       setQuantity(1);
       setNotes('');
+      setSelectedPreset('72-cell-1206');
     } catch (error) {
       console.error('Error creating tray:', error);
       toast.error('Failed to create tray');
@@ -108,96 +111,67 @@ export function AddTrayDialog({ isOpen, onClose, shelfId, onTrayAdded }) {
         <div className="space-y-4">
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-sm font-medium mb-2">Tray Name</label>
+              <Label htmlFor="trayName">Tray Name</Label>
               <Input
+                id="trayName"
                 placeholder="e.g., Tray 1"
                 value={trayName}
                 onChange={(e) => setTrayName(e.target.value)}
+                className="mt-2"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium mb-2">Quantity</label>
+              <Label htmlFor="quantity">Quantity</Label>
               <Input
+                id="quantity"
                 type="number"
                 min="1"
                 max="50"
                 value={quantity}
                 onChange={(e) => setQuantity(parseInt(e.target.value) || 1)}
                 placeholder="1"
+                className="mt-2"
               />
-              <p className="text-xs text-gray-500 mt-1">
-                {quantity > 1 && `Will create: ${trayName.replace(/\d+$/, '')} ${(trayName.match(/\d+$/) || ['1'])[0]}-${parseInt((trayName.match(/\d+$/) || ['1'])[0]) + quantity - 1}`}
-              </p>
+              {quantity > 1 && (
+                <p className="text-xs text-gray-500 mt-1">
+                  Will create: {trayName.replace(/\d+$/, '')} {(trayName.match(/\d+$/) || ['1'])[0]}-{parseInt((trayName.match(/\d+$/) || ['1'])[0]) + quantity - 1}
+                </p>
+              )}
             </div>
           </div>
           
           <div>
-            <label className="block text-sm font-medium mb-2">Notes (optional)</label>
+            <Label htmlFor="notes">Notes (optional)</Label>
             <Input
+              id="notes"
               placeholder="Any notes about this tray..."
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
+              className="mt-2"
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium mb-2">Tray Size (Preset)</label>
-            <div className="space-y-2">
-              {TRAY_PRESETS.map(preset => (
-                <button
-                  key={preset.insert}
-                  onClick={() => {
-                    setTotalCells(preset.cells);
-                    setRows(preset.rows);
-                    setCols(preset.cols);
-                    setInsertType(preset.insert);
-                  }}
-                  className={`w-full p-3 border rounded-lg text-left transition ${
-                    totalCells === preset.cells
-                      ? 'border-emerald-600 bg-emerald-50'
-                      : 'border-gray-300 hover:border-emerald-400'
-                  }`}
-                >
-                  <p className="font-medium text-sm">{preset.name}</p>
-                  <p className="text-xs text-gray-600">{preset.rows} rows × {preset.cols} cols</p>
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div className="grid grid-cols-3 gap-3">
-            <div>
-              <label className="block text-xs font-medium mb-1">Rows</label>
-              <Input
-                type="number"
-                value={rows}
-                onChange={(e) => setRows(parseInt(e.target.value))}
-                min="1"
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-medium mb-1">Cols</label>
-              <Input
-                type="number"
-                value={cols}
-                onChange={(e) => setCols(parseInt(e.target.value))}
-                min="1"
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-medium mb-1">Total</label>
-              <Input
-                type="number"
-                value={totalCells}
-                onChange={(e) => setTotalCells(parseInt(e.target.value))}
-                disabled
-                className="bg-gray-50"
-              />
-            </div>
+            <Label htmlFor="trayPreset">Tray Size (Preset)</Label>
+            <Select 
+              value={selectedPreset} 
+              onValueChange={setSelectedPreset}
+            >
+              <SelectTrigger className="mt-2">
+                <SelectValue placeholder="Select tray size" />
+              </SelectTrigger>
+              <SelectContent>
+                {TRAY_PRESETS.map((preset, idx) => (
+                  <SelectItem key={`${preset.insert}-${idx}`} value={`${preset.insert}-${idx}`}>
+                    {preset.name} - {preset.rows} rows × {preset.cols} cols
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
 
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-sm text-blue-900">
-            <p>Total cells: <span className="font-bold">{rows * cols}</span></p>
+            <p>Selected: <span className="font-bold">{currentPreset.rows} rows × {currentPreset.cols} cols = {currentPreset.cells} cells</span></p>
           </div>
 
           <div className="flex gap-2 pt-4">

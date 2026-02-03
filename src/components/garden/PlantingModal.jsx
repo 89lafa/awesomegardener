@@ -26,6 +26,16 @@ import PlanTypeSelector from './PlanTypeSelector';
 import CatalogTypeSelector from './CatalogTypeSelector';
 import CompanionSuggestions from './CompanionSuggestions';
 import DiagonalPlantingPattern from './DiagonalPlantingPattern';
+import { smartQuery } from '@/components/utils/smartQuery';
+
+// GLOBAL CACHE: Shared across all PlantingModal instances to prevent rate limits
+const MODAL_CACHE = {
+  varieties: null,
+  plantTypes: null,
+  plantingRules: null,
+  lastFetch: 0
+};
+const CACHE_TTL = 60000; // 1 minute
 
 export default function PlantingModal({ open, onOpenChange, item, itemType, garden, onPlantingUpdate, activeSeason, seasonId }) {
   const [plantings, setPlantings] = useState([]);
@@ -99,14 +109,42 @@ export default function PlantingModal({ open, onOpenChange, item, itemType, gard
       const user = await base44.auth.me();
       const seasonKey = activeSeason || `${new Date().getFullYear()}-Spring`;
 
-      const [allPlantings, stashData, varietiesData, typesData, rulesData] = await Promise.all([
+      // FIXED: Use global cache to prevent rate limits when opening multiple bags
+      const now = Date.now();
+      const cacheValid = MODAL_CACHE.lastFetch && (now - MODAL_CACHE.lastFetch < CACHE_TTL);
+
+      console.log('[PlantingModal] Cache valid:', cacheValid, 'age:', now - MODAL_CACHE.lastFetch);
+
+      let varietiesData, typesData, rulesData;
+      
+      if (cacheValid) {
+        // Use cached data
+        varietiesData = MODAL_CACHE.varieties;
+        typesData = MODAL_CACHE.plantTypes;
+        rulesData = MODAL_CACHE.plantingRules;
+        console.log('[PlantingModal] Using cached reference data');
+      } else {
+        // Fetch fresh data and update cache
+        [varietiesData, typesData, rulesData] = await Promise.all([
+          base44.entities.Variety.list('variety_name', 500),
+          base44.entities.PlantType.list('common_name', 100),
+          base44.entities.PlantingRule.list()
+        ]);
+        
+        MODAL_CACHE.varieties = varietiesData;
+        MODAL_CACHE.plantTypes = typesData;
+        MODAL_CACHE.plantingRules = rulesData;
+        MODAL_CACHE.lastFetch = now;
+        console.log('[PlantingModal] Fetched and cached reference data');
+      }
+
+      // Always fetch user-specific data (plantings, stash, crop plans)
+      const [allPlantings, stashData] = await Promise.all([
         base44.entities.PlantInstance.filter({ bed_id: item.id }),
-        base44.entities.SeedLot.filter({ is_wishlist: false, created_by: user.email }),
-        base44.entities.Variety.list('variety_name', 500),
-        base44.entities.PlantType.list('common_name', 100),
-        base44.entities.PlantingRule.list()
+        base44.entities.SeedLot.filter({ is_wishlist: false, created_by: user.email })
       ]);
       
+      // Extract unique profile IDs
       const uniqueProfileIds = [...new Set(stashData.map(s => s.plant_profile_id).filter(Boolean))];
       const profilesData = uniqueProfileIds.length > 0
         ? await base44.entities.PlantProfile.filter({ id: { $in: uniqueProfileIds } })
@@ -121,20 +159,23 @@ export default function PlantingModal({ open, onOpenChange, item, itemType, gard
         setCropPlans(cropPlansData.filter(p => (p.quantity_planted || 0) < (p.quantity_planned || 0)));
       }
 
+      // Filter by season - same logic as PlotCanvas to handle old data without season_year
       let plantingsData = allPlantings;
       if (seasonKey) {
         const currentYear = new Date().getFullYear();
         const isCurrentYearSeason = seasonKey && seasonKey.startsWith(currentYear.toString());
 
         plantingsData = allPlantings.filter(p => {
+          // If planting has no season_year (old data), only show in current year's season
           if (!p.season_year) {
             return isCurrentYearSeason;
           }
+          // Otherwise, match the selected season exactly
           return p.season_year === seasonKey;
         });
       }
 
-      console.log('[PlantingModal] Loaded:', plantingsData.length, 'plantings for season:', seasonKey);
+      console.log('[PlantingModal] Loaded:', plantingsData.length, 'plantings (filtered from', allPlantings.length, 'total) for season:', seasonKey);
       setPlantings(plantingsData);
       setStashPlants(stashData);
       
@@ -149,12 +190,14 @@ export default function PlantingModal({ open, onOpenChange, item, itemType, gard
       setPlantingRules(rulesData || []);
     } catch (error) {
       console.error('Error loading planting data:', error);
+      toast.error('Failed to load data - try again');
     } finally {
       setLoading(false);
     }
   };
 
   const getSpacingForPlant = (plantTypeId, varietySpacing) => {
+    // First, check if there's a PlantingRule for this plant type and container
     const containerType = itemType || item.item_type;
     const rule = plantingRules.find(r => 
       r.plant_type_id === plantTypeId && 
@@ -169,6 +212,7 @@ export default function PlantingModal({ open, onOpenChange, item, itemType, gard
       };
     }
     
+    // Fallback to old logic if no rule exists
     const method = garden.planting_method || 'STANDARD';
     
     if (method === 'SQUARE_FOOT') {
@@ -183,14 +227,15 @@ export default function PlantingModal({ open, onOpenChange, item, itemType, gard
   };
 
   const checkCollision = (col, row, spanCols, spanRows, excludeId = null) => {
+    // CONTAINERS: No collision check for standalone containers
     const isContainer = item.type === 'container' || item.type === 'grow_bag';
     if (isContainer) {
-      return false;
+      return false; // Containers allow any size plant
     }
     
     for (let r = row; r < row + spanRows; r++) {
       for (let c = col; c < col + spanCols; c++) {
-        if (c >= gridCols || r >= gridRows) return true;
+        if (c >= gridCols || r >= gridRows) return true; // Out of bounds
         
         const existing = plantings.find(p => 
           p.id !== excludeId &&
@@ -209,6 +254,7 @@ export default function PlantingModal({ open, onOpenChange, item, itemType, gard
   const handleSlotClick = async (slotIdx) => {
     if (!selectedPlant) return;
     
+    // Check if slot is occupied
     const existingPlanting = plantings.find(p => p.cell_col === slotIdx);
     if (existingPlanting) {
       toast.error('This slot is already occupied');
@@ -224,6 +270,7 @@ export default function PlantingModal({ open, onOpenChange, item, itemType, gard
       const icon = plantType?.icon || '🌱';
       const plantFamily = plantType?.plant_family_id || selectedPlant.plant_family;
 
+      console.log('[PlantingModal] Creating PlantInstance in slot', slotIdx, 'for bed', item.id);
       const planting = await base44.entities.PlantInstance.create({
         garden_id: garden.id,
         bed_id: item.id,
@@ -240,8 +287,11 @@ export default function PlantingModal({ open, onOpenChange, item, itemType, gard
         cell_span_rows: 1,
         season_year: activeSeason || `${new Date().getFullYear()}-Spring`,
         status: 'planned'
-      });
+        });
 
+      console.log('[PlantingModal] Created PlantInstance:', planting.id);
+      
+      // If from crop plan, update quantities - count actual plants, not grid slots
       if (selectedPlant.crop_plan_id) {
         try {
           const plantsAdded = selectedPlant.plantsPerSlot || 1;
@@ -249,6 +299,7 @@ export default function PlantingModal({ open, onOpenChange, item, itemType, gard
             crop_plan_id: selectedPlant.crop_plan_id,
             quantity_to_add: plantsAdded
           });
+          // Reload crop plans
           if (seasonId) {
             const updatedPlans = await base44.entities.CropPlan.filter({ garden_season_id: seasonId });
             setCropPlans(updatedPlans.filter(p => (p.quantity_planted || 0) < (p.quantity_planned || 0)));
@@ -260,7 +311,11 @@ export default function PlantingModal({ open, onOpenChange, item, itemType, gard
       
       const updatedPlantings = [...plantings, planting];
       setPlantings(updatedPlantings);
+      // DON'T clear selection - keep it for multiple plantings
+      // setSelectedPlant(null);
       toast.success('Plant added - click more cells to keep planting');
+      
+      // Re-run companion analysis with new plantings state
       analyzeCompanionsWithPlantings(updatedPlantings);
     } catch (error) {
       console.error('[PlantingModal] Error adding plant:', error);
@@ -270,6 +325,7 @@ export default function PlantingModal({ open, onOpenChange, item, itemType, gard
 
   const handleCellClick = async (col, row) => {
     if (isMoving && selectedPlanting) {
+      // Moving existing plant
       const hasCollision = checkCollision(
         col, 
         row, 
@@ -303,6 +359,8 @@ export default function PlantingModal({ open, onOpenChange, item, itemType, gard
         toast.error('Failed to move plant');
       }
     } else if (selectedPlant) {
+      // Placing new plant
+      // CONTAINERS: Allow any size plant (single occupancy only)
       const ITEM_TYPES = [
         { value: 'GROW_BAG', usesGallons: true },
         { value: 'CONTAINER', usesGallons: true }
@@ -312,12 +370,14 @@ export default function PlantingModal({ open, onOpenChange, item, itemType, gard
       
       let hasCollision = false;
       if (isContainer) {
+        // Containers: Only check if already occupied (ignore grid bounds)
         hasCollision = plantings.length > 0;
         if (hasCollision) {
           toast.error('Container already occupied');
           return;
         }
       } else {
+        // Regular beds: Check grid collision
         for (let r = row; r < row + selectedPlant.spacing_rows; r++) {
           for (let c = col; c < col + selectedPlant.spacing_cols; c++) {
             if (c >= gridCols || r >= gridRows) {
@@ -349,10 +409,12 @@ export default function PlantingModal({ open, onOpenChange, item, itemType, gard
           ? `${selectedPlant.plant_type_name} - ${selectedPlant.variety_name}`
           : selectedPlant.variety_name;
 
+        // Get icon from PlantType
         const plantType = plantTypes.find(t => t.id === selectedPlant.plant_type_id || t.common_name === selectedPlant.plant_type_name);
         const icon = plantType?.icon || '🌱';
         const plantFamily = plantType?.plant_family_id || selectedPlant.plant_family;
 
+        console.log('[PlantingModal] Creating PlantInstance at', col, row, 'for bed', item.id);
         const planting = await base44.entities.PlantInstance.create({
           garden_id: garden.id,
           bed_id: item.id,
@@ -373,6 +435,9 @@ export default function PlantingModal({ open, onOpenChange, item, itemType, gard
           status: 'planned'
         });
 
+        console.log('[PlantingModal] Created PlantInstance:', planting.id);
+
+        // If from crop plan, update quantities - count actual plants, not grid slots
         if (selectedPlant.crop_plan_id) {
           try {
             const plantsAdded = selectedPlant.plantsPerSlot || 1;
@@ -380,6 +445,7 @@ export default function PlantingModal({ open, onOpenChange, item, itemType, gard
               crop_plan_id: selectedPlant.crop_plan_id,
               quantity_to_add: plantsAdded
             });
+            // Reload crop plans to show updated counts
             if (seasonId) {
               const updatedPlans = await base44.entities.CropPlan.filter({ garden_season_id: seasonId });
               setCropPlans(updatedPlans.filter(p => (p.quantity_planted || 0) < (p.quantity_planned || 0)));
@@ -391,6 +457,8 @@ export default function PlantingModal({ open, onOpenChange, item, itemType, gard
 
         const updatedPlantings = [...plantings, planting];
         setPlantings(updatedPlantings);
+        // DON'T clear selection - keep it for multiple plantings
+        // setSelectedPlant(null);
         toast.success('Plant added - click more cells to keep planting');
         onPlantingUpdate?.();
       } catch (error) {
@@ -410,8 +478,10 @@ export default function PlantingModal({ open, onOpenChange, item, itemType, gard
       setSelectedPlanting(null);
       toast.success('Plant removed');
       
+      // Re-run companion analysis with updated plantings
       analyzeCompanionsWithPlantings(updatedPlantings);
       
+      // Update crop plan quantities
       if (selectedPlant?.crop_plan_id) {
         try {
           await base44.functions.invoke('updateCropPlantedQuantity', { 
@@ -433,20 +503,23 @@ export default function PlantingModal({ open, onOpenChange, item, itemType, gard
 
   const getDefaultSpacing = (plantTypeName) => {
     const name = plantTypeName?.toLowerCase() || '';
+    // Common spacing defaults in 12" cells
     if (name.includes('lettuce') || name.includes('radish') || name.includes('carrot')) return { cols: 1, rows: 1 };
     if (name.includes('tomato') || name.includes('pepper') || name.includes('cucumber')) return { cols: 2, rows: 2 };
     if (name.includes('squash') || name.includes('melon') || name.includes('pumpkin')) return { cols: 3, rows: 3 };
     if (name.includes('bean') || name.includes('pea')) return { cols: 1, rows: 1 };
-    return { cols: 2, rows: 2 };
+    return { cols: 2, rows: 2 }; // Default
   };
 
   const handleSelectStashPlant = (stashItem) => {
     const profile = profiles[stashItem.plant_profile_id];
+    
     if (!profile) {
       toast.error('This seed has no profile data');
       return;
     }
     
+    // Try to find variety from catalog for spacing info
     const variety = varieties.find(v => 
       v.variety_name === profile.variety_name && 
       v.plant_type_id === profile.plant_type_id
@@ -480,14 +553,17 @@ export default function PlantingModal({ open, onOpenChange, item, itemType, gard
     }
     
     try {
+      // Load companion rules for this plant type
       const companionRules = await base44.entities.CompanionRule.filter({
         plant_type_id: plantData.plant_type_id
       });
       
+      // Check companions - look for existing plantings in this bed
       const bedPlantings = plantings.filter(p => p.bed_id === item.id && p.id !== selectedPlanting?.id);
       
       let hasCompanionIssue = false;
       for (const existing of bedPlantings) {
+        // Check if there's a BAD companion rule
         const badRule = companionRules.find(r => 
           r.companion_type === 'BAD' && 
           r.companion_plant_type_id === existing.plant_type_id
@@ -504,6 +580,7 @@ export default function PlantingModal({ open, onOpenChange, item, itemType, gard
         setCompanionWarning(null);
       }
       
+      // Check rotation - look for same family in this bed from previous year
       const currentYear = new Date().getFullYear();
       const lastYearPlantings = plantings.filter(p => 
         p.bed_id === item.id && 
@@ -534,6 +611,7 @@ export default function PlantingModal({ open, onOpenChange, item, itemType, gard
       const companionRules = await base44.entities.CompanionRule.list();
       const results = [];
 
+      // Check ALL pairs of plantings for companion relationships
       for (let i = 0; i < currentPlantings.length; i++) {
         for (let j = i + 1; j < currentPlantings.length; j++) {
           const plantA = currentPlantings[i];
@@ -541,22 +619,28 @@ export default function PlantingModal({ open, onOpenChange, item, itemType, gard
 
           if (!plantA.plant_type_id || !plantB.plant_type_id) continue;
 
-          const aCols = Array.from({ length: plantA.cell_span_cols || 1 }, (_, idx) => plantA.cell_col + idx);
-          const aRows = Array.from({ length: plantA.cell_span_rows || 1 }, (_, idx) => (plantA.cell_row || 0) + idx);
-          const bCols = Array.from({ length: plantB.cell_span_cols || 1 }, (_, idx) => plantB.cell_col + idx);
-          const bRows = Array.from({ length: plantB.cell_span_rows || 1 }, (_, idx) => (plantB.cell_row || 0) + idx);
+          // FIXED: Check adjacency more reliably
+          // For multi-cell plants, check if ANY cells are adjacent
+          const aCols = Array.from({ length: plantA.cell_span_cols || 1 }, (_, i) => plantA.cell_col + i);
+          const aRows = Array.from({ length: plantA.cell_span_rows || 1 }, (_, i) => (plantA.cell_row || 0) + i);
+          const bCols = Array.from({ length: plantB.cell_span_cols || 1 }, (_, i) => plantB.cell_col + i);
+          const bRows = Array.from({ length: plantB.cell_span_rows || 1 }, (_, i) => (plantB.cell_row || 0) + i);
 
           let isAdjacent = false;
           
           if (isSlotBased) {
+            // For slots, always adjacent
             isAdjacent = true;
           } else {
+            // For grid: check if any cell of A is within 1 cell of any cell of B
             for (const aCol of aCols) {
               for (const aRow of aRows) {
                 for (const bCol of bCols) {
                   for (const bRow of bRows) {
                     const colDist = Math.abs(aCol - bCol);
                     const rowDist = Math.abs(aRow - bRow);
+                    
+                    // Adjacent if within 1 cell (including diagonals), but not same cell
                     if ((colDist <= 1 && rowDist <= 1) && !(colDist === 0 && rowDist === 0)) {
                       isAdjacent = true;
                       break;
@@ -570,6 +654,7 @@ export default function PlantingModal({ open, onOpenChange, item, itemType, gard
             }
           }
 
+          // Look for companion rule (bidirectional)
           const rule = companionRules.find(r =>
             (r.plant_type_id === plantA.plant_type_id && r.companion_plant_type_id === plantB.plant_type_id) ||
             (r.plant_type_id === plantB.plant_type_id && r.companion_plant_type_id === plantA.plant_type_id)
@@ -587,6 +672,8 @@ export default function PlantingModal({ open, onOpenChange, item, itemType, gard
           }
         }
       }
+
+      console.log('[PlantingModal] Companion analysis found', results.length, 'relationships from', currentPlantings.length, 'plants');
       setCompanionResults(results);
     } catch (error) {
       console.error('Error analyzing companions:', error);
@@ -597,8 +684,9 @@ export default function PlantingModal({ open, onOpenChange, item, itemType, gard
   
   const handleCreateNewPlant = async () => {
     if (!newPlant.variety_id) return;
-    if (creating) return;
+    if (creating) return; // Prevent double-submit
     
+    console.log('[PlantingModal] Creating new plant from variety:', newPlant.variety_id);
     setCreating(true);
     try {
       const variety = varieties.find(v => v.id === newPlant.variety_id);
@@ -609,9 +697,13 @@ export default function PlantingModal({ open, onOpenChange, item, itemType, gard
       }
       
       const spacing = getSpacingForPlant(variety.plant_type_id, variety.spacing_recommended);
+      console.log('[PlantingModal] Creating SeedLot with variety:', variety.id, variety.variety_name);
+      
+      // Find or create PlantProfile from Variety
       let profileId = variety.id;
       const plantType = plantTypes.find(t => t.id === variety.plant_type_id);
       
+      // Check if this is a Variety record (has plant_type_name field)
       if (variety.plant_type_name) {
         const existingProfiles = await base44.entities.PlantProfile.filter({
           variety_name: variety.variety_name,
@@ -640,6 +732,7 @@ export default function PlantingModal({ open, onOpenChange, item, itemType, gard
         }
       }
       
+      // Check if already in stash to prevent duplicates
       const currentUser = await base44.auth.me();
       const existingStash = await base44.entities.SeedLot.filter({
         plant_profile_id: profileId,
@@ -647,13 +740,19 @@ export default function PlantingModal({ open, onOpenChange, item, itemType, gard
         created_by: currentUser.email
       });
       
-      if (existingStash.length === 0) {
-        await base44.entities.SeedLot.create({
+      let newSeedLot;
+      if (existingStash.length > 0) {
+        newSeedLot = existingStash[0];
+        console.log('[PlantingModal] Using existing SeedLot:', newSeedLot.id);
+      } else {
+        newSeedLot = await base44.entities.SeedLot.create({
           plant_profile_id: profileId,
           is_wishlist: false
         });
+        console.log('[PlantingModal] Created new SeedLot:', newSeedLot.id);
       }
       
+      // Select for placing
       const selectedPlantData = {
         variety_id: variety.id,
         variety_name: variety.variety_name,
@@ -664,14 +763,17 @@ export default function PlantingModal({ open, onOpenChange, item, itemType, gard
         spacing_rows: spacing.rows,
         plantsPerSlot: spacing.plantsPerSlot
       };
+      console.log('[PlantingModal] Setting selected plant:', selectedPlantData);
       setSelectedPlant(selectedPlantData);
       checkCompanionAndRotation(selectedPlantData);
       
       setNewPlant({ variety_id: '', variety_name: '', plant_type_name: '', spacing_cols: 1, spacing_rows: 1 });
       toast.success('Added to stash - now click a cell to place');
       
+      // Reload stash
       const stashData = await base44.entities.SeedLot.filter({ is_wishlist: false, created_by: currentUser.email });
       setStashPlants(stashData);
+      console.log('[PlantingModal] Reloaded stash, count:', stashData.length);
     } catch (error) {
       console.error('[PlantingModal] Error creating plant:', error);
       toast.error('Failed to add plant: ' + (error.message || 'Unknown error'));
@@ -741,6 +843,7 @@ export default function PlantingModal({ open, onOpenChange, item, itemType, gard
         </DialogHeader>
 
         <div className="flex gap-6 p-6 overflow-hidden h-[calc(90vh-120px)]">
+          {/* Left Panel - Plant Picker */}
           <div className="w-80 flex-shrink-0 flex flex-col min-h-0 relative">
             {showCompanionSuggestions && selectedPlant?.plant_type_id && (
               <CompanionSuggestions 
@@ -871,9 +974,11 @@ export default function PlantingModal({ open, onOpenChange, item, itemType, gard
             )}
           </div>
 
+          {/* Right Panel - Grid or Slots */}
           <div 
            className="flex-1 overflow-auto"
            onClick={(e) => {
+             // Dismiss overlay when clicking grid background
              if (e.target === e.currentTarget || e.target.closest('.grid-container')) {
                setSelectedPlanting(null);
                setIsMoving(false);
@@ -881,6 +986,7 @@ export default function PlantingModal({ open, onOpenChange, item, itemType, gard
            }}
           >
            {isSlotBased ? (
+              // Slot-based layout for greenhouses/containers
               <div className="grid gap-2 p-4 bg-amber-50 border-2 border-amber-200 rounded-lg grid-container" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(48px, 1fr))', maxWidth: '600px' }}>
                 {Array.from({ length: totalSlots }).map((_, slotIdx) => {
                   const planting = plantings.find(p => p.cell_col === slotIdx);
@@ -930,6 +1036,7 @@ export default function PlantingModal({ open, onOpenChange, item, itemType, gard
                 })}
               </div>
             ) : (
+              // Grid-based layout for raised beds
               <div className="space-y-2">
               {plantingPattern === 'diagonal' ? (
                 <DiagonalPlantingPattern
@@ -969,6 +1076,7 @@ export default function PlantingModal({ open, onOpenChange, item, itemType, gard
                     if (cellContent?.isOrigin) {
                       const p = cellContent.planting;
 
+                      // Check if this plant has companion relationships
                       const companionBorders = companionResults
                         .filter(cr => 
                           (cr.cellA.col === p.cell_col && cr.cellA.row === p.cell_row) ||
@@ -994,6 +1102,7 @@ export default function PlantingModal({ open, onOpenChange, item, itemType, gard
                           }}
                           onClick={(e) => {
                             e.stopPropagation();
+                            // Toggle selection
                             if (selectedPlanting?.id === p.id) {
                               setSelectedPlanting(null);
                             } else {
@@ -1032,6 +1141,7 @@ export default function PlantingModal({ open, onOpenChange, item, itemType, gard
                         </div>
                       );
                     } else if (cellContent?.planting) {
+                      // Part of multi-cell plant, skip rendering
                       return null;
                     } else {
                       return (
@@ -1078,6 +1188,7 @@ export default function PlantingModal({ open, onOpenChange, item, itemType, gard
               </div>
             )}
 
+            {/* Companion Analysis - Below Grid */}
             {companionResults.length > 0 && (
               <div className="mt-4 p-4 bg-gray-50 rounded-lg border">
                 <h4 className="font-semibold text-sm mb-2">🌱 Companion Planting in This Bed</h4>

@@ -16,17 +16,19 @@ export function WeatherWidget() {
     try {
       const user = await base44.auth.me();
       
-      // Check user object first (onboarding data)
-      let zipCode = user?.zip_code;
+      // FIXED: Check multiple sources for zip code
+      let zipCode = user?.zip_code || user?.location_zip;
       
       // If not in user object, check UserSettings entity
       if (!zipCode) {
         const userSettings = await base44.entities.UserSettings.filter({
-          created_by: user.email
+          user_email: user.email
         }).then(results => results[0]);
         
-        zipCode = userSettings?.zip_code || userSettings?.location_zip;
+        zipCode = userSettings?.location_zip;
       }
+      
+      console.log('[WeatherWidget] Resolved ZIP:', zipCode, 'from user:', user);
       
       if (!zipCode) {
         setError('Set your ZIP code in Settings to see weather');

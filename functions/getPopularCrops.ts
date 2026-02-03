@@ -4,28 +4,14 @@ Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
     
-    // Get all grow list items and crop plans to determine popularity
-    const [growListItems, cropPlans] = await Promise.all([
-      base44.asServiceRole.entities.GrowList.list(),
-      base44.asServiceRole.entities.CropPlan.list()
+    // Get all crop plans and seed lots to determine popularity
+    const [cropPlans, seedLots] = await Promise.all([
+      base44.asServiceRole.entities.CropPlan.list(),
+      base44.asServiceRole.entities.SeedLot.filter({ is_wishlist: false })
     ]);
 
     // Track unique users per variety
     const varietyUsers = new Map(); // variety_id => Set of user emails
-
-    // Process grow list items
-    for (const list of growListItems) {
-      if (list.items && Array.isArray(list.items)) {
-        for (const item of list.items) {
-          if (item.variety_id && list.created_by) {
-            if (!varietyUsers.has(item.variety_id)) {
-              varietyUsers.set(item.variety_id, new Set());
-            }
-            varietyUsers.get(item.variety_id).add(list.created_by);
-          }
-        }
-      }
-    }
 
     // Process crop plans
     for (const plan of cropPlans) {
@@ -37,13 +23,27 @@ Deno.serve(async (req) => {
       }
     }
 
-    // Get all varieties with their plant profiles
+    // Process seed lots
+    for (const lot of seedLots) {
+      // Get variety from PlantProfile
+      if (lot.plant_profile_id && lot.created_by) {
+        const profile = await base44.asServiceRole.entities.PlantProfile.get(lot.plant_profile_id);
+        if (profile?.variety_id) {
+          if (!varietyUsers.has(profile.variety_id)) {
+            varietyUsers.set(profile.variety_id, new Set());
+          }
+          varietyUsers.get(profile.variety_id).add(lot.created_by);
+        }
+      }
+    }
+
+    console.log('[getPopularCrops] Tracking', varietyUsers.size, 'varieties');
+
+    // Get all varieties with their plant types
     const varieties = await base44.asServiceRole.entities.Variety.list();
-    const plantProfiles = await base44.asServiceRole.entities.PlantProfile.list();
     const plantTypes = await base44.asServiceRole.entities.PlantType.list();
 
-    // Build profile and type maps
-    const profileMap = new Map(plantProfiles.map(p => [p.id, p]));
+    // Build type map
     const typeMap = new Map(plantTypes.map(t => [t.id, t]));
 
     // Calculate popularity for each variety
@@ -51,21 +51,20 @@ Deno.serve(async (req) => {
     
     for (const variety of varieties) {
       const uniqueUserCount = varietyUsers.get(variety.id)?.size || 0;
-      if (uniqueUserCount === 0) continue;
+      if (uniqueUserCount < 2) continue; // Need at least 2 users
 
-      const profile = profileMap.get(variety.plant_profile_id);
-      const plantType = profile ? typeMap.get(profile.plant_type_id) : null;
+      const plantType = typeMap.get(variety.plant_type_id);
 
       varietyPopularity.push({
         variety_id: variety.id,
-        variety_name: variety.name,
-        plant_profile_id: variety.plant_profile_id,
+        variety_name: variety.variety_name,
         plant_type_id: plantType?.id,
         plant_type_name: plantType?.common_name,
-        unique_users: uniqueUserCount,
-        profile
+        unique_users: uniqueUserCount
       });
     }
+
+    console.log('[getPopularCrops] Found', varietyPopularity.length, 'popular varieties');
 
     // Sort by unique users (descending)
     varietyPopularity.sort((a, b) => b.unique_users - a.unique_users);
