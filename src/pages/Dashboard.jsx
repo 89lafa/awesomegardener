@@ -190,7 +190,6 @@ export default function Dashboard() {
           <div style={{ 
             padding: '12px', 
             borderRadius: '12px',
-            background: `${iconColor}20`,
             color: iconColor
           }}>
             <Icon className="w-6 h-6" />
@@ -226,20 +225,7 @@ export default function Dashboard() {
     }
 
     return (
-      <div
-        className="relative overflow-hidden cursor-pointer transition-all"
-        style={{
-          background: weather.frost_warning
-            ? 'linear-gradient(135deg, #3b82f6, #8b5cf6)'
-            : weather.heat_warning
-            ? 'linear-gradient(135deg, #f59e0b, #ef4444)'
-            : 'linear-gradient(135deg, #0ea5e9, #0284c7)',
-          borderRadius: '16px',
-          padding: '20px',
-          boxShadow: '0 4px 20px rgba(14, 165, 233, 0.3)',
-          minHeight: '140px'
-        }}
-      >
+      <div className="glass-card relative overflow-hidden cursor-pointer transition-all">
         {/* Decorative circle */}
         <div style={{
           position: 'absolute',
@@ -248,7 +234,7 @@ export default function Dashboard() {
           width: '100px',
           height: '100px',
           borderRadius: '50%',
-          background: 'rgba(255, 255, 255, 0.2)',
+          background: 'rgba(255, 255, 255, 0.1)',
         }} />
         
         <div style={{ position: 'relative', zIndex: 1, color: 'white' }}>
@@ -261,7 +247,7 @@ export default function Dashboard() {
           </div>
           {weather.frost_warning && (
             <div className="mt-2 flex items-center gap-1 text-xs rounded px-2 py-1" style={{
-              background: 'rgba(245, 158, 11, 0.3)',
+              backgroundColor: 'rgba(251, 191, 36, 0.2)',
               color: '#fbbf24'
             }}>
               <AlertTriangle className="w-3 h-3" />
@@ -342,8 +328,8 @@ export default function Dashboard() {
           color="bg-pink-500"
           page="SeedTrading"
         />
-        <div className="glass-card" style={{ textAlign: 'center' }}>
-          <TrendingUp className="w-12 h-12 mx-auto mb-3" style={{ color: '#10b981' }} />
+        <div className="glass-card flex flex-col items-center justify-center">
+          <TrendingUp className="w-12 h-12 mb-3" style={{ color: '#10b981' }} />
           <p className="text-sm font-medium mb-3" style={{ color: '#d1fae5' }}>Ready to plan?</p>
           <Button
             onClick={() => navigate(createPageUrl('Calendar'))}
@@ -420,7 +406,7 @@ export default function Dashboard() {
                 Browse Trades
               </Button>
             </div>
-            <div className="border-t pt-3" style={{ borderColor: 'var(--border-color)' }}>
+            <div className="border-t pt-3" style={{ borderColor: 'rgba(148, 163, 184, 0.2)' }}>
               <p className="font-medium" style={{ color: 'var(--text-primary)' }}>💰 Expense Tracking</p>
               <p className="text-xs mt-1" style={{ color: 'var(--text-secondary)' }}>Track garden spending by season</p>
               <Button
@@ -452,7 +438,7 @@ export default function Dashboard() {
                 <div className="space-y-2">
                   {popularCrops.tomatoes && popularCrops.tomatoes.length > 0 ? (
                     popularCrops.tomatoes.map((crop, idx) => (
-                      <div key={crop.variety_id} className="flex items-center justify-between text-sm p-2 rounded transition-colors" style={{ backgroundColor: 'var(--surface-hover)' }}>
+                      <div key={crop.variety_id} className="flex items-center justify-between text-sm p-2 rounded transition-colors" style={{ backgroundColor: 'rgba(51, 65, 85, 0.3)' }}>
                         <div className="flex items-center gap-2">
                           <span className="font-bold" style={{ color: 'var(--text-muted)' }}>#{idx + 1}</span>
                           <span className="truncate" style={{ color: 'var(--text-primary)' }}>{crop.variety_name}</span>
@@ -476,7 +462,7 @@ export default function Dashboard() {
                 <div className="space-y-2">
                   {popularCrops.peppers && popularCrops.peppers.length > 0 ? (
                     popularCrops.peppers.map((crop, idx) => (
-                      <div key={crop.variety_id} className="flex items-center justify-between text-sm p-2 rounded transition-colors" style={{ backgroundColor: 'var(--surface-hover)' }}>
+                      <div key={crop.variety_id} className="flex items-center justify-between text-sm p-2 rounded transition-colors" style={{ backgroundColor: 'rgba(51, 65, 85, 0.3)' }}>
                         <div className="flex items-center gap-2">
                           <span className="font-bold" style={{ color: 'var(--text-muted)' }}>#{idx + 1}</span>
                           <span className="truncate" style={{ color: 'var(--text-primary)' }}>{crop.variety_name}</span>
@@ -500,7 +486,7 @@ export default function Dashboard() {
                 <div className="space-y-2">
                   {popularCrops.other && popularCrops.other.length > 0 ? (
                     popularCrops.other.map((crop, idx) => (
-                      <div key={crop.variety_id} className="flex items-center justify-between text-sm p-2 rounded transition-colors" style={{ backgroundColor: 'var(--surface-hover)' }}>
+                      <div key={crop.variety_id} className="flex items-center justify-between text-sm p-2 rounded transition-colors" style={{ backgroundColor: 'rgba(51, 65, 85, 0.3)' }}>
                         <div className="flex items-center gap-2">
                           <span className="font-bold" style={{ color: 'var(--text-muted)' }}>#{idx + 1}</span>
                           <div className="flex-1 min-w-0">
@@ -523,7 +509,7 @@ export default function Dashboard() {
 
       {/* Getting Started */}
       {stats.gardens === 0 && (
-        <div className="glass-card border-2 border-emerald-500/30">
+        <div className="glass-card">
           <div className="flex items-center gap-2 mb-4">
             <AlertTriangle className="w-5 h-5" style={{ color: '#10b981' }} />
             <h3 className="text-lg font-semibold" style={{ color: '#f0fdf4' }}>Getting Started</h3>
