@@ -267,7 +267,7 @@ export default function MyPlants() {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <Sprout className="w-6 h-6 text-emerald-600" />
-          <h1 className="text-2xl font-bold text-gray-900">My Plants</h1>
+          <h1 className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>My Plants</h1>
         </div>
         <Button
           onClick={() => setShowAddPlant(true)}
@@ -413,8 +413,14 @@ export default function MyPlants() {
                   return (
                     <Card 
                       key={plant.id} 
-                      className="interactive-card"
+                      className="interactive-card hover:shadow-lg transition-all duration-300"
                       onClick={() => setSelectedPlantId(plant.id)}
+                      style={{ 
+                        background: 'var(--glass-bg)',
+                        backdropFilter: 'blur(12px)',
+                        WebkitBackdropFilter: 'blur(12px)',
+                        border: '1px solid var(--glass-border)'
+                      }}
                     >
                       {mainPhoto && (
                         <div className="h-48 overflow-hidden rounded-t-lg">
@@ -426,10 +432,10 @@ export default function MyPlants() {
                         </div>
                       )}
                       <CardHeader className="pb-3">
-                        <CardTitle className="text-base">
+                        <CardTitle className="text-base" style={{ color: 'var(--text-primary)' }}>
                           {plant.name || profile?.variety_name || 'Unnamed Plant'}
                         </CardTitle>
-                        <p className="text-sm text-gray-600">{profile?.common_name}</p>
+                        <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>{profile?.common_name}</p>
                       </CardHeader>
                       <CardContent>
                         <div className="space-y-2">
@@ -437,7 +443,7 @@ export default function MyPlants() {
                             {STATUS_OPTIONS.find(s => s.value === plant.status)?.label}
                           </Badge>
                           {plant.germination_date && (
-                            <p className="text-xs text-gray-500">
+                            <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
                               Germinated: {format(new Date(plant.germination_date), 'MMM d, yyyy')}
                             </p>
                           )}

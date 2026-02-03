@@ -722,8 +722,8 @@ export default function PlantCatalog() {
       
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl lg:text-3xl font-bold text-gray-900">Plant Catalog</h1>
-          <p className="text-gray-600 mt-1">Browse plants and varieties for your garden</p>
+          <h1 className="text-2xl lg:text-3xl font-bold" style={{ color: 'var(--text-primary)' }}>Plant Catalog</h1>
+          <p className="mt-1" style={{ color: 'var(--text-secondary)' }}>Browse plants and varieties for your garden</p>
         </div>
         <Button
           onClick={() => setShowAIRecommendations(true)}
@@ -800,22 +800,30 @@ export default function PlantCatalog() {
                   exit={{ opacity: 0 }}
                   transition={{ delay: index * 0.03 }}
                 >
-                  <Card className="cursor-pointer hover:shadow-lg transition-all duration-200 group">
+                  <Card 
+                    className="cursor-pointer hover:shadow-lg transition-all duration-300 group"
+                    style={{ 
+                      background: 'var(--glass-bg)',
+                      backdropFilter: 'blur(12px)',
+                      WebkitBackdropFilter: 'blur(12px)',
+                      border: '1px solid var(--glass-border)'
+                    }}
+                  >
                    <CardContent className="p-4 text-center">
                      <div className="w-16 h-16 rounded-2xl mx-auto mb-3 flex items-center justify-center text-3xl bg-white group-hover:scale-110 transition-transform">
                        {type.icon || '🌱'}
                      </div>
-                      <h3 className="font-semibold text-gray-900">{type.common_name || type.name}</h3>
+                      <h3 className="font-semibold" style={{ color: 'var(--text-primary)' }}>{type.common_name || type.name}</h3>
                       {type.scientific_name && (
-                        <p className="text-xs text-gray-500 italic truncate">{type.scientific_name}</p>
+                        <p className="text-xs italic truncate" style={{ color: 'var(--text-muted)' }}>{type.scientific_name}</p>
                       )}
                       <div className="flex items-center justify-center gap-1 flex-wrap mt-1">
-                        <p className="text-xs text-gray-400 capitalize">{type.category}</p>
+                        <p className="text-xs capitalize" style={{ color: 'var(--text-muted)' }}>{type.category}</p>
                         {type.is_perennial && (
                           <Badge variant="outline" className="text-[10px] px-1 py-0.5">Perennial</Badge>
                         )}
                       </div>
-                      <div className="flex items-center justify-center gap-1 mt-2 text-emerald-600 text-sm opacity-0 group-hover:opacity-100 transition-opacity">
+                      <div className="flex items-center justify-center gap-1 mt-2 text-sm opacity-0 group-hover:opacity-100 transition-opacity" style={{ color: 'var(--primary)' }}>
                         <span>Browse</span>
                         <ChevronRight className="w-4 h-4" />
                       </div>
@@ -837,7 +845,15 @@ export default function PlantCatalog() {
                   exit={{ opacity: 0 }}
                   transition={{ delay: index * 0.02 }}
                 >
-                  <Card className="cursor-pointer hover:shadow-md transition-all duration-200 group">
+                  <Card 
+                    className="cursor-pointer hover:shadow-lg transition-all duration-300 group"
+                    style={{ 
+                      background: 'var(--glass-bg)',
+                      backdropFilter: 'blur(12px)',
+                      WebkitBackdropFilter: 'blur(12px)',
+                      border: '1px solid var(--glass-border)'
+                    }}
+                  >
                   <CardContent className="p-4 flex items-center gap-4">
                     <div className="w-12 h-12 rounded-lg flex items-center justify-center text-2xl flex-shrink-0 bg-white group-hover:scale-110 transition-transform overflow-hidden">
                       <img 
@@ -850,9 +866,9 @@ export default function PlantCatalog() {
                       <span style={{ display: 'none' }}>{type.icon || '🌱'}</span>
                     </div>
                       <div className="flex-1 min-w-0">
-                        <h3 className="font-semibold text-gray-900">{type.common_name || type.name}</h3>
+                        <h3 className="font-semibold" style={{ color: 'var(--text-primary)' }}>{type.common_name || type.name}</h3>
                         {type.scientific_name && (
-                          <p className="text-sm text-gray-500 italic truncate">{type.scientific_name}</p>
+                          <p className="text-sm italic truncate" style={{ color: 'var(--text-muted)' }}>{type.scientific_name}</p>
                         )}
                       </div>
                       <div className="flex items-center gap-2">
@@ -860,7 +876,7 @@ export default function PlantCatalog() {
                         {type.is_perennial && (
                           <Badge variant="outline">Perennial</Badge>
                         )}
-                        <ChevronRight className="w-5 h-5 text-gray-400 group-hover:text-emerald-600 transition-colors" />
+                        <ChevronRight className="w-5 h-5 transition-colors" style={{ color: 'var(--text-muted)' }} />
                       </div>
                     </CardContent>
                   </Card>

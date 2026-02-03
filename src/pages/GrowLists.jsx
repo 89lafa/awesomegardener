@@ -445,10 +445,18 @@ export default function GrowLists() {
 
         {/* Items */}
         {!selectedList.items?.length ? (
-          <Card className="py-12">
+          <Card 
+            className="py-12"
+            style={{ 
+              background: 'var(--glass-bg)',
+              backdropFilter: 'blur(12px)',
+              WebkitBackdropFilter: 'blur(12px)',
+              border: '1px solid var(--glass-border)'
+            }}
+          >
             <CardContent className="text-center">
-              <ListChecks className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-              <p className="text-gray-600 mb-4">No items in this grow list yet</p>
+              <ListChecks className="w-12 h-12 mx-auto mb-3" style={{ color: 'var(--text-muted)' }} />
+              <p className="mb-4" style={{ color: 'var(--text-secondary)' }}>No items in this grow list yet</p>
               <Button 
                 onClick={() => setShowAddItemDialog(true)}
                 className="bg-emerald-600 hover:bg-emerald-700"
@@ -466,7 +474,14 @@ export default function GrowLists() {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: index * 0.05 }}
               >
-                <Card>
+                <Card
+                  style={{ 
+                    background: 'var(--glass-bg)',
+                    backdropFilter: 'blur(12px)',
+                    WebkitBackdropFilter: 'blur(12px)',
+                    border: '1px solid var(--glass-border)'
+                  }}
+                >
                   <CardContent className="p-4">
                     <div className="flex flex-col gap-3">
                       <div className="flex items-start justify-between">
@@ -475,11 +490,11 @@ export default function GrowLists() {
                             <Package className="w-5 h-5 text-emerald-600" />
                           </div>
                           <div className="min-w-0">
-                            <h3 className="font-semibold text-sm text-gray-900 truncate">
+                            <h3 className="font-semibold text-sm truncate" style={{ color: 'var(--text-primary)' }}>
                               {item.variety_name || item.plant_type_name}
                             </h3>
                             {item.variety_name && (
-                              <p className="text-xs text-gray-500 truncate">{item.plant_type_name}</p>
+                              <p className="text-xs truncate" style={{ color: 'var(--text-secondary)' }}>{item.plant_type_name}</p>
                             )}
                           </div>
                         </div>
@@ -498,7 +513,7 @@ export default function GrowLists() {
                         </Badge>
                       </div>
                       {item.notes && (
-                        <p className="text-xs text-gray-600">{item.notes}</p>
+                       <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>{item.notes}</p>
                       )}
                     </div>
                   </CardContent>
@@ -515,7 +530,14 @@ export default function GrowLists() {
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ delay: index * 0.03 }}
               >
-                <Card>
+                <Card
+                  style={{ 
+                    background: 'var(--glass-bg)',
+                    backdropFilter: 'blur(12px)',
+                    WebkitBackdropFilter: 'blur(12px)',
+                    border: '1px solid var(--glass-border)'
+                  }}
+                >
                   <CardContent className="p-3">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-3 flex-1 min-w-0">
@@ -523,19 +545,19 @@ export default function GrowLists() {
                           <Package className="w-5 h-5 text-emerald-600" />
                         </div>
                         <div className="min-w-0">
-                          <h3 className="font-semibold text-sm text-gray-900 truncate">
+                          <h3 className="font-semibold text-sm truncate" style={{ color: 'var(--text-primary)' }}>
                             {item.variety_name || item.plant_type_name}
                           </h3>
                           <div className="flex items-center gap-2 mt-0.5">
                             {item.variety_name && (
-                              <span className="text-xs text-gray-500">{item.plant_type_name}</span>
+                              <span className="text-xs" style={{ color: 'var(--text-secondary)' }}>{item.plant_type_name}</span>
                             )}
                             <Badge variant="outline" className="text-xs">
                               Qty: {item.quantity || item.target_count || 1}
                             </Badge>
                           </div>
                           {item.notes && (
-                            <p className="text-xs text-gray-600 mt-1">{item.notes}</p>
+                            <p className="text-xs mt-1" style={{ color: 'var(--text-secondary)' }}>{item.notes}</p>
                           )}
                         </div>
                       </div>
@@ -717,8 +739,8 @@ export default function GrowLists() {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
          <div>
-           <h1 className="text-2xl lg:text-3xl font-bold text-gray-900">Grow Lists</h1>
-           <p className="text-gray-600 mt-1">Plan what you want to grow each season</p>
+           <h1 className="text-2xl lg:text-3xl font-bold" style={{ color: 'var(--text-primary)' }}>Grow Lists</h1>
+           <p className="mt-1" style={{ color: 'var(--text-secondary)' }}>Plan what you want to grow each season</p>
          </div>
          <div className="flex gap-2 flex-wrap">
            <Link to={createPageUrl('NeedToBuy')}>
@@ -768,11 +790,19 @@ export default function GrowLists() {
       <AdBanner placement="top_banner" pageType="grow_list" />
 
       {growLists.length === 0 ? (
-        <Card className="py-16">
+        <Card 
+          className="py-16"
+          style={{ 
+            background: 'var(--glass-bg)',
+            backdropFilter: 'blur(12px)',
+            WebkitBackdropFilter: 'blur(12px)',
+            border: '1px solid var(--glass-border)'
+          }}
+        >
           <CardContent className="text-center">
-            <ListChecks className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">No grow lists yet</h3>
-            <p className="text-gray-600 mb-6">Create a grow list to plan your garden</p>
+            <ListChecks className="w-16 h-16 mx-auto mb-4" style={{ color: 'var(--text-muted)' }} />
+            <h3 className="text-lg font-semibold mb-2" style={{ color: 'var(--text-primary)' }}>No grow lists yet</h3>
+            <p className="mb-6" style={{ color: 'var(--text-secondary)' }}>Create a grow list to plan your garden</p>
             <Button 
               onClick={() => setShowNewDialog(true)}
               className="bg-emerald-600 hover:bg-emerald-700"
@@ -797,7 +827,7 @@ export default function GrowLists() {
                 <CardHeader className="pb-3">
                   <div className="flex items-start justify-between">
                     <div>
-                      <CardTitle className="text-lg">{list.name}</CardTitle>
+                      <CardTitle className="text-lg" style={{ color: 'var(--text-primary)' }}>{list.name}</CardTitle>
                       <div className="flex items-center gap-2 mt-2">
                         <Badge className={getStatusColor(list.status)}>
                           {list.status}
@@ -823,10 +853,10 @@ export default function GrowLists() {
                   </div>
                 </CardHeader>
                 <CardContent>
-                  <p className="text-sm text-gray-600">
+                  <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
                     {list.items?.length || 0} items
                   </p>
-                  <div className="flex items-center gap-1 mt-2 text-emerald-600 text-sm">
+                  <div className="flex items-center gap-1 mt-2 text-sm" style={{ color: 'var(--primary)' }}>
                     <span>View details</span>
                     <ChevronRight className="w-4 h-4" />
                   </div>
@@ -845,8 +875,14 @@ export default function GrowLists() {
               transition={{ delay: index * 0.03 }}
             >
               <Card 
-                className="cursor-pointer hover:shadow-md transition-shadow"
+                className="cursor-pointer hover:shadow-lg transition-all duration-300"
                 onClick={() => setSelectedList(list)}
+                style={{ 
+                  background: 'var(--glass-bg)',
+                  backdropFilter: 'blur(12px)',
+                  WebkitBackdropFilter: 'blur(12px)',
+                  border: '1px solid var(--glass-border)'
+                }}
               >
                 <CardContent className="p-4">
                   <div className="flex items-center justify-between">
@@ -856,7 +892,7 @@ export default function GrowLists() {
                           <ListChecks className="w-5 h-5 text-emerald-600" />
                         </div>
                         <div>
-                          <h3 className="font-semibold text-gray-900">{list.name}</h3>
+                          <h3 className="font-semibold" style={{ color: 'var(--text-primary)' }}>{list.name}</h3>
                           <div className="flex items-center gap-2 mt-1">
                             <Badge className={`${getStatusColor(list.status)} text-xs`}>
                               {list.status}
@@ -864,7 +900,7 @@ export default function GrowLists() {
                             {list.year && (
                               <Badge variant="outline" className="text-xs">{list.year}</Badge>
                             )}
-                            <span className="text-sm text-gray-500">• {list.items?.length || 0} items</span>
+                            <span className="text-sm" style={{ color: 'var(--text-secondary)' }}>• {list.items?.length || 0} items</span>
                           </div>
                         </div>
                       </div>

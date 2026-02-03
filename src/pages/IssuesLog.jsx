@@ -190,8 +190,8 @@ export default function IssuesLog() {
     <div className="space-y-6 max-w-5xl">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl lg:text-3xl font-bold text-gray-900">Issues Log</h1>
-          <p className="text-gray-600 mt-1">Track pests, diseases, and solutions</p>
+          <h1 className="text-2xl lg:text-3xl font-bold" style={{ color: 'var(--text-primary)' }}>Issues Log</h1>
+          <p className="mt-1" style={{ color: 'var(--text-secondary)' }}>Track pests, diseases, and solutions</p>
         </div>
         <Button 
           onClick={() => setShowDialog(true)}
@@ -245,11 +245,19 @@ export default function IssuesLog() {
 
       {/* Issues List */}
       {filteredIssues.length === 0 ? (
-        <Card className="py-16">
+        <Card 
+          className="py-16"
+          style={{ 
+            background: 'var(--glass-bg)',
+            backdropFilter: 'blur(12px)',
+            WebkitBackdropFilter: 'blur(12px)',
+            border: '1px solid var(--glass-border)'
+          }}
+        >
           <CardContent className="text-center">
-            <Bug className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">No Issues Logged</h3>
-            <p className="text-gray-600">Track pest problems and solutions here</p>
+            <Bug className="w-16 h-16 mx-auto mb-4" style={{ color: 'var(--text-muted)' }} />
+            <h3 className="text-lg font-semibold mb-2" style={{ color: 'var(--text-primary)' }}>No Issues Logged</h3>
+            <p style={{ color: 'var(--text-secondary)' }}>Track pest problems and solutions here</p>
           </CardContent>
         </Card>
       ) : (
@@ -258,7 +266,15 @@ export default function IssuesLog() {
             const garden = gardens.find(g => g.id === issue.garden_id);
             const Icon = typeIcons[issue.issue_type] || Bug;
             return (
-              <Card key={issue.id}>
+              <Card 
+                key={issue.id}
+                style={{ 
+                  background: 'var(--glass-bg)',
+                  backdropFilter: 'blur(12px)',
+                  WebkitBackdropFilter: 'blur(12px)',
+                  border: '1px solid var(--glass-border)'
+                }}
+              >
                 <CardContent className="p-6">
                   <div className="flex items-start justify-between mb-3">
                     <div className="flex items-center gap-3">
@@ -267,7 +283,7 @@ export default function IssuesLog() {
                       </div>
                       <div>
                         <div className="flex items-center gap-2">
-                          <span className="font-medium text-gray-900 capitalize">{issue.issue_type}</span>
+                          <span className="font-medium capitalize" style={{ color: 'var(--text-primary)' }}>{issue.issue_type}</span>
                           <Badge className={cn('text-xs', severityColors[issue.severity])}>
                             {issue.severity}
                           </Badge>
@@ -275,7 +291,7 @@ export default function IssuesLog() {
                             <Badge variant="outline" className="text-xs">{garden.name}</Badge>
                           )}
                         </div>
-                        <span className="text-sm text-gray-500">{format(new Date(issue.date), 'MMM d, yyyy')}</span>
+                        <span className="text-sm" style={{ color: 'var(--text-secondary)' }}>{format(new Date(issue.date), 'MMM d, yyyy')}</span>
                       </div>
                     </div>
                     <div className="flex gap-2">
@@ -290,19 +306,19 @@ export default function IssuesLog() {
                   </div>
                   <div className="space-y-2 text-sm">
                     <div>
-                      <span className="font-medium text-gray-700">Description:</span>
-                      <p className="text-gray-600 mt-1">{issue.description || issue.symptoms}</p>
+                      <span className="font-medium" style={{ color: 'var(--text-primary)' }}>Description:</span>
+                      <p className="mt-1" style={{ color: 'var(--text-secondary)' }}>{issue.description || issue.symptoms}</p>
                     </div>
                     {issue.actions_taken && (
                       <div>
-                        <span className="font-medium text-gray-700">Actions Taken:</span>
-                        <p className="text-gray-600 mt-1">{issue.actions_taken}</p>
+                        <span className="font-medium" style={{ color: 'var(--text-primary)' }}>Actions Taken:</span>
+                        <p className="mt-1" style={{ color: 'var(--text-secondary)' }}>{issue.actions_taken}</p>
                       </div>
                     )}
                     {issue.outcome && (
                       <div>
-                        <span className="font-medium text-gray-700">Outcome:</span>
-                        <p className="text-gray-600 mt-1">{issue.outcome}</p>
+                        <span className="font-medium" style={{ color: 'var(--text-primary)' }}>Outcome:</span>
+                        <p className="mt-1" style={{ color: 'var(--text-secondary)' }}>{issue.outcome}</p>
                       </div>
                     )}
                   </div>

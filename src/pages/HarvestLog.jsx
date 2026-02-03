@@ -173,8 +173,8 @@ export default function HarvestLog() {
     <div className="space-y-6 max-w-5xl">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl lg:text-3xl font-bold text-gray-900">Harvest Log</h1>
-          <p className="text-gray-600 mt-1">Record your harvests and yields</p>
+          <h1 className="text-2xl lg:text-3xl font-bold" style={{ color: 'var(--text-primary)' }}>Harvest Log</h1>
+          <p className="mt-1" style={{ color: 'var(--text-secondary)' }}>Record your harvests and yields</p>
         </div>
         <Button 
           onClick={() => setShowDialog(true)}
@@ -215,11 +215,19 @@ export default function HarvestLog() {
 
       {/* Harvests List */}
       {filteredHarvests.length === 0 ? (
-        <Card className="py-16">
+        <Card 
+          className="py-16"
+          style={{ 
+            background: 'var(--glass-bg)',
+            backdropFilter: 'blur(12px)',
+            WebkitBackdropFilter: 'blur(12px)',
+            border: '1px solid var(--glass-border)'
+          }}
+        >
           <CardContent className="text-center">
-            <Apple className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">No Harvests Logged</h3>
-            <p className="text-gray-600 mb-6">Start tracking your yields</p>
+            <Apple className="w-16 h-16 mx-auto mb-4" style={{ color: 'var(--text-muted)' }} />
+            <h3 className="text-lg font-semibold mb-2" style={{ color: 'var(--text-primary)' }}>No Harvests Logged</h3>
+            <p className="mb-6" style={{ color: 'var(--text-secondary)' }}>Start tracking your yields</p>
             <Button 
               onClick={() => setShowDialog(true)}
               className="bg-emerald-600 hover:bg-emerald-700"
@@ -234,7 +242,15 @@ export default function HarvestLog() {
           {filteredHarvests.map((harvest) => {
             const garden = gardens.find(g => g.id === harvest.garden_id);
             return (
-              <Card key={harvest.id}>
+              <Card 
+                key={harvest.id}
+                style={{ 
+                  background: 'var(--glass-bg)',
+                  backdropFilter: 'blur(12px)',
+                  WebkitBackdropFilter: 'blur(12px)',
+                  border: '1px solid var(--glass-border)'
+                }}
+              >
                 <CardContent className="p-6">
                   <div className="flex items-start justify-between mb-3">
                     <div className="flex items-center gap-3">
@@ -244,13 +260,13 @@ export default function HarvestLog() {
                       <div>
                         <div className="flex items-center gap-2">
                           {harvest.plant_instance_id && (
-                            <span className="font-medium text-gray-900">{getPlantingName(harvest.plant_instance_id)}</span>
+                            <span className="font-medium" style={{ color: 'var(--text-primary)' }}>{getPlantingName(harvest.plant_instance_id)}</span>
                           )}
                           {garden && (
                             <Badge variant="outline" className="text-xs">{garden.name}</Badge>
                           )}
                         </div>
-                        <span className="text-sm text-gray-500">{format(new Date(harvest.harvest_date), 'MMM d, yyyy')}</span>
+                        <span className="text-sm" style={{ color: 'var(--text-secondary)' }}>{format(new Date(harvest.harvest_date), 'MMM d, yyyy')}</span>
                       </div>
                     </div>
                     <Button variant="ghost" size="sm" onClick={() => {
@@ -291,7 +307,7 @@ export default function HarvestLog() {
                     )}
                   </div>
                   {harvest.notes && (
-                    <p className="text-gray-700 mt-3 text-sm">{harvest.notes}</p>
+                    <p className="mt-3 text-sm" style={{ color: 'var(--text-secondary)' }}>{harvest.notes}</p>
                   )}
                 </CardContent>
               </Card>
