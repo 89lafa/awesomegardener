@@ -768,15 +768,24 @@ export default function SeedStash() {
               >
                 <Link to={createPageUrl('SeedStashDetail') + `?id=${seed.id}`}>
                   <Card 
-                    className={cn(
-                      "group hover:shadow-md transition-shadow cursor-pointer",
-                      ageStatus.status === 'AGING' && "border-amber-300",
-                      ageStatus.status === 'OLD' && "border-red-300"
-                    )}
+                    className="group cursor-pointer transition-all duration-300"
                     style={{ 
-                      background: ageStatus.status === 'AGING' ? 'var(--badge-warning-bg)' : 
-                                  ageStatus.status === 'OLD' ? 'var(--badge-danger-bg)' : 
-                                  'var(--bg-card)' 
+                      background: ageStatus.status === 'AGING' ? 'rgba(245, 158, 11, 0.2)' : 
+                                  ageStatus.status === 'OLD' ? 'rgba(239, 68, 68, 0.2)' : 
+                                  'rgba(16, 50, 30, 0.6)',
+                      backdropFilter: 'blur(12px)',
+                      border: ageStatus.status === 'AGING' ? '1px solid rgba(245, 158, 11, 0.3)' :
+                              ageStatus.status === 'OLD' ? '1px solid rgba(239, 68, 68, 0.3)' :
+                              '1px solid rgba(16, 185, 129, 0.2)',
+                      boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)',
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.transform = 'translateY(-4px)';
+                      e.currentTarget.style.boxShadow = '0 8px 24px rgba(16, 185, 129, 0.3)';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.transform = 'translateY(0)';
+                      e.currentTarget.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.3)';
                     }}
                   >
                     <CardContent className="p-4">
@@ -1073,26 +1082,35 @@ export default function SeedStash() {
                 return (
                 <TableRow 
                   key={seed.id} 
-                  className={cn(
-                    "cursor-pointer hover:bg-gray-50",
-                    ageStatus.status === 'AGING' && "bg-amber-50/30",
-                    ageStatus.status === 'OLD' && "bg-red-50/30"
-                  )}
+                  className="cursor-pointer transition-colors"
+                  style={{
+                    backgroundColor: ageStatus.status === 'AGING' ? 'rgba(245, 158, 11, 0.15)' : 
+                                     ageStatus.status === 'OLD' ? 'rgba(239, 68, 68, 0.15)' : 
+                                     'transparent'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.backgroundColor = 'rgba(16, 185, 129, 0.1)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.backgroundColor = ageStatus.status === 'AGING' ? 'rgba(245, 158, 11, 0.15)' : 
+                                                            ageStatus.status === 'OLD' ? 'rgba(239, 68, 68, 0.15)' : 
+                                                            'transparent';
+                  }}
                   onClick={() => window.location.href = createPageUrl('SeedStashDetail') + `?id=${seed.id}`}
                 >
                   {visibleColumns.name && (
-                    <TableCell className="font-medium">
+                    <TableCell className="font-medium" style={{ color: '#f0fdf4' }}>
                       {profile?.variety_name || seed.custom_label || 'Unknown'}
                     </TableCell>
                   )}
                   {visibleColumns.type && (
-                    <TableCell>{profile?.common_name || '-'}</TableCell>
+                    <TableCell style={{ color: '#86efac' }}>{profile?.common_name || '-'}</TableCell>
                   )}
                   {visibleColumns.source && (
-                    <TableCell>{seed.source_vendor_name || '-'}</TableCell>
+                    <TableCell style={{ color: '#86efac' }}>{seed.source_vendor_name || '-'}</TableCell>
                   )}
                   {visibleColumns.year && (
-                    <TableCell>{seed.year_acquired || '-'}</TableCell>
+                    <TableCell style={{ color: '#86efac' }}>{seed.year_acquired || '-'}</TableCell>
                   )}
                   {visibleColumns.age && (
                     <TableCell>
@@ -1108,10 +1126,10 @@ export default function SeedStash() {
                     </TableCell>
                   )}
                   {visibleColumns.maturity && (
-                    <TableCell>{profile?.days_to_maturity_seed ? `${profile.days_to_maturity_seed}d` : '-'}</TableCell>
+                    <TableCell style={{ color: '#86efac' }}>{profile?.days_to_maturity_seed ? `${profile.days_to_maturity_seed}d` : '-'}</TableCell>
                   )}
                   {visibleColumns.spacing && (
-                    <TableCell>
+                    <TableCell style={{ color: '#86efac' }}>
                       {profile?.spacing_in_min && profile?.spacing_in_max
                         ? `${profile.spacing_in_min}-${profile.spacing_in_max}"`
                         : profile?.spacing_in_min || '-'
@@ -1119,7 +1137,7 @@ export default function SeedStash() {
                     </TableCell>
                   )}
                   {visibleColumns.quantity && (
-                    <TableCell>
+                    <TableCell style={{ color: '#86efac' }}>
                       {seed.quantity ? `${seed.quantity} ${seed.unit}` : '-'}
                     </TableCell>
                   )}

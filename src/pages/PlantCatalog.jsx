@@ -800,26 +800,42 @@ export default function PlantCatalog() {
                   exit={{ opacity: 0 }}
                   transition={{ delay: index * 0.03 }}
                 >
-                  <Card className="cursor-pointer hover:shadow-lg transition-all duration-200 group">
-                   <CardContent className="p-4 text-center">
-                     <div className="w-16 h-16 rounded-2xl mx-auto mb-3 flex items-center justify-center text-3xl bg-white group-hover:scale-110 transition-transform">
-                       {type.icon || '🌱'}
+                  <Card 
+                    className="cursor-pointer transition-all duration-300 group"
+                    style={{
+                      background: 'rgba(16, 50, 30, 0.6)',
+                      backdropFilter: 'blur(12px)',
+                      border: '1px solid rgba(16, 185, 129, 0.2)',
+                      boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)',
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.transform = 'translateY(-4px)';
+                      e.currentTarget.style.boxShadow = '0 8px 24px rgba(16, 185, 129, 0.3)';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.transform = 'translateY(0)';
+                      e.currentTarget.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.3)';
+                    }}
+                  >
+                  <CardContent className="p-4 text-center">
+                    <div className="w-16 h-16 rounded-2xl mx-auto mb-3 flex items-center justify-center text-3xl bg-white group-hover:scale-110 transition-transform">
+                      {type.icon || '🌱'}
+                    </div>
+                     <h3 className="font-semibold" style={{ color: '#f0fdf4' }}>{type.common_name || type.name}</h3>
+                     {type.scientific_name && (
+                       <p className="text-xs italic truncate" style={{ color: '#86efac' }}>{type.scientific_name}</p>
+                     )}
+                     <div className="flex items-center justify-center gap-1 flex-wrap mt-1">
+                       <p className="text-xs capitalize" style={{ color: '#4ade80' }}>{type.category}</p>
+                       {type.is_perennial && (
+                         <Badge variant="outline" className="text-[10px] px-1 py-0.5" style={{ borderColor: '#10b981', color: '#10b981' }}>Perennial</Badge>
+                       )}
                      </div>
-                      <h3 className="font-semibold text-gray-900">{type.common_name || type.name}</h3>
-                      {type.scientific_name && (
-                        <p className="text-xs text-gray-500 italic truncate">{type.scientific_name}</p>
-                      )}
-                      <div className="flex items-center justify-center gap-1 flex-wrap mt-1">
-                        <p className="text-xs text-gray-400 capitalize">{type.category}</p>
-                        {type.is_perennial && (
-                          <Badge variant="outline" className="text-[10px] px-1 py-0.5">Perennial</Badge>
-                        )}
-                      </div>
-                      <div className="flex items-center justify-center gap-1 mt-2 text-emerald-600 text-sm opacity-0 group-hover:opacity-100 transition-opacity">
-                        <span>Browse</span>
-                        <ChevronRight className="w-4 h-4" />
-                      </div>
-                    </CardContent>
+                     <div className="flex items-center justify-center gap-1 mt-2 text-sm opacity-0 group-hover:opacity-100 transition-opacity" style={{ color: '#10b981' }}>
+                       <span>Browse</span>
+                       <ChevronRight className="w-4 h-4" />
+                     </div>
+                   </CardContent>
                   </Card>
                 </motion.div>
               </Link>
@@ -837,32 +853,48 @@ export default function PlantCatalog() {
                   exit={{ opacity: 0 }}
                   transition={{ delay: index * 0.02 }}
                 >
-                  <Card className="cursor-pointer hover:shadow-md transition-all duration-200 group">
+                  <Card 
+                    className="cursor-pointer transition-all duration-300 group"
+                    style={{
+                      background: 'rgba(16, 50, 30, 0.6)',
+                      backdropFilter: 'blur(12px)',
+                      border: '1px solid rgba(16, 185, 129, 0.2)',
+                      boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)',
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.transform = 'translateY(-2px)';
+                      e.currentTarget.style.boxShadow = '0 8px 24px rgba(16, 185, 129, 0.3)';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.transform = 'translateY(0)';
+                      e.currentTarget.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.3)';
+                    }}
+                  >
                   <CardContent className="p-4 flex items-center gap-4">
-                    <div className="w-12 h-12 rounded-lg flex items-center justify-center text-2xl flex-shrink-0 bg-white group-hover:scale-110 transition-transform overflow-hidden">
-                      <img 
-                        src={type.image_url} 
-                        alt={type.common_name || type.name}
-                        loading="lazy"
-                        className="w-full h-full object-cover rounded-lg"
-                        onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'block'; }}
-                      />
-                      <span style={{ display: 'none' }}>{type.icon || '🌱'}</span>
-                    </div>
-                      <div className="flex-1 min-w-0">
-                        <h3 className="font-semibold text-gray-900">{type.common_name || type.name}</h3>
-                        {type.scientific_name && (
-                          <p className="text-sm text-gray-500 italic truncate">{type.scientific_name}</p>
-                        )}
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Badge variant="outline" className="capitalize">{type.category}</Badge>
-                        {type.is_perennial && (
-                          <Badge variant="outline">Perennial</Badge>
-                        )}
-                        <ChevronRight className="w-5 h-5 text-gray-400 group-hover:text-emerald-600 transition-colors" />
-                      </div>
-                    </CardContent>
+                   <div className="w-12 h-12 rounded-lg flex items-center justify-center text-2xl flex-shrink-0 bg-white group-hover:scale-110 transition-transform overflow-hidden">
+                     <img 
+                       src={type.image_url} 
+                       alt={type.common_name || type.name}
+                       loading="lazy"
+                       className="w-full h-full object-cover rounded-lg"
+                       onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'block'; }}
+                     />
+                     <span style={{ display: 'none' }}>{type.icon || '🌱'}</span>
+                   </div>
+                     <div className="flex-1 min-w-0">
+                       <h3 className="font-semibold" style={{ color: '#f0fdf4' }}>{type.common_name || type.name}</h3>
+                       {type.scientific_name && (
+                         <p className="text-sm italic truncate" style={{ color: '#86efac' }}>{type.scientific_name}</p>
+                       )}
+                     </div>
+                     <div className="flex items-center gap-2">
+                       <Badge variant="outline" className="capitalize" style={{ borderColor: '#10b981', color: '#4ade80' }}>{type.category}</Badge>
+                       {type.is_perennial && (
+                         <Badge variant="outline" style={{ borderColor: '#10b981', color: '#10b981' }}>Perennial</Badge>
+                       )}
+                       <ChevronRight className="w-5 h-5 transition-colors" style={{ color: '#4ade80' }} />
+                     </div>
+                   </CardContent>
                   </Card>
                 </motion.div>
               </Link>

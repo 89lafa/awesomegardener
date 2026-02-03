@@ -403,12 +403,19 @@ export default function SeedStashDetail() {
 
       <div className="grid lg:grid-cols-3 gap-6">
         {/* Catalog Data Section */}
-        <Card className="lg:col-span-2">
+        <Card 
+          className="lg:col-span-2"
+          style={{
+            background: 'rgba(16, 50, 30, 0.6)',
+            backdropFilter: 'blur(12px)',
+            border: '1px solid rgba(16, 185, 129, 0.2)',
+          }}
+        >
           <CardHeader className="flex flex-row items-center justify-between">
-            <CardTitle className="text-xl">
+            <CardTitle className="text-xl" style={{ color: '#f0fdf4' }}>
               📖 Variety Profile 
-              {variety && <span className="text-sm font-normal text-gray-500 ml-2">(Catalog)</span>}
-              {!variety && profile && <span className="text-sm font-normal text-gray-500 ml-2">(Custom)</span>}
+              {variety && <span className="text-sm font-normal ml-2" style={{ color: '#86efac' }}>(Catalog)</span>}
+              {!variety && profile && <span className="text-sm font-normal ml-2" style={{ color: '#86efac' }}>(Custom)</span>}
             </CardTitle>
             <Button variant="outline" size="sm" onClick={() => setShowEditProfile(true)}>
               <Edit className="w-4 h-4 mr-2" />
@@ -628,9 +635,15 @@ export default function SeedStashDetail() {
         </Card>
 
         {/* Lot Details Card */}
-        <Card className="bg-gradient-to-br from-white to-gray-50">
-          <CardHeader className="flex flex-row items-center justify-between border-b">
-            <CardTitle className="text-xl">🔒 My Stash Info <span className="text-sm font-normal text-gray-500">(Private to me)</span></CardTitle>
+        <Card 
+          style={{
+            background: 'rgba(16, 50, 30, 0.6)',
+            backdropFilter: 'blur(12px)',
+            border: '1px solid rgba(16, 185, 129, 0.2)',
+          }}
+        >
+          <CardHeader className="flex flex-row items-center justify-between" style={{ borderBottom: '1px solid rgba(16, 185, 129, 0.2)' }}>
+            <CardTitle className="text-xl" style={{ color: '#f0fdf4' }}>🔒 My Stash Info <span className="text-sm font-normal" style={{ color: '#86efac' }}>(Private to me)</span></CardTitle>
             <Button variant="outline" size="sm" onClick={() => setShowEditLot(true)}>
               <Edit className="w-4 h-4 mr-2" />
               Edit
@@ -638,9 +651,9 @@ export default function SeedStashDetail() {
           </CardHeader>
           <CardContent className="space-y-3 pt-6">
             {seed.quantity && (
-              <div className="flex items-center justify-between py-3 px-4 bg-white rounded-lg border">
-                <span className="text-gray-700 font-medium flex items-center gap-2">
-                  <Package className="w-4 h-4 text-emerald-600" />
+              <div className="flex items-center justify-between py-3 px-4 rounded-lg" style={{ background: 'rgba(16, 185, 129, 0.1)', border: '1px solid rgba(16, 185, 129, 0.2)' }}>
+                <span className="font-medium flex items-center gap-2" style={{ color: '#f0fdf4' }}>
+                  <Package className="w-4 h-4 text-emerald-400" />
                   Quantity
                 </span>
                 <Badge className="bg-emerald-600 text-white text-sm px-3 py-1">
@@ -649,31 +662,32 @@ export default function SeedStashDetail() {
               </div>
             )}
             {seed.year_acquired && (
-              <div className="flex items-center justify-between py-3 px-4 bg-white rounded-lg border">
-                <span className="text-gray-700 font-medium flex items-center gap-2">
-                  <Calendar className="w-4 h-4 text-blue-600" />
+              <div className="flex items-center justify-between py-3 px-4 rounded-lg" style={{ background: 'rgba(16, 185, 129, 0.1)', border: '1px solid rgba(16, 185, 129, 0.2)' }}>
+                <span className="font-medium flex items-center gap-2" style={{ color: '#f0fdf4' }}>
+                  <Calendar className="w-4 h-4 text-blue-400" />
                   Year Acquired
                 </span>
-                <span className="font-semibold text-gray-900">{seed.year_acquired}</span>
+                <span className="font-semibold" style={{ color: '#86efac' }}>{seed.year_acquired}</span>
               </div>
             )}
             {seed.packed_for_year && (
-              <div className="flex items-center justify-between py-3 px-4 bg-white rounded-lg border">
-                <span className="text-gray-700 font-medium">Packed For</span>
-                <span className="font-semibold text-gray-900">{seed.packed_for_year}</span>
+              <div className="flex items-center justify-between py-3 px-4 rounded-lg" style={{ background: 'rgba(16, 185, 129, 0.1)', border: '1px solid rgba(16, 185, 129, 0.2)' }}>
+                <span className="font-medium" style={{ color: '#f0fdf4' }}>Packed For</span>
+                <span className="font-semibold" style={{ color: '#86efac' }}>{seed.packed_for_year}</span>
               </div>
             )}
             {seed.source_vendor_name && (
-              <div className="flex flex-col gap-2 py-3 px-4 bg-white rounded-lg border">
-                <span className="text-gray-700 font-medium">Vendor</span>
+              <div className="flex flex-col gap-2 py-3 px-4 rounded-lg" style={{ background: 'rgba(16, 185, 129, 0.1)', border: '1px solid rgba(16, 185, 129, 0.2)' }}>
+                <span className="font-medium" style={{ color: '#f0fdf4' }}>Vendor</span>
                 <div>
-                  <p className="font-semibold text-gray-900">{seed.source_vendor_name}</p>
+                  <p className="font-semibold" style={{ color: '#86efac' }}>{seed.source_vendor_name}</p>
                   {seed.source_vendor_url && (
                     <a 
                       href={seed.source_vendor_url} 
                       target="_blank" 
                       rel="noopener noreferrer"
-                      className="text-sm text-blue-600 hover:underline inline-flex items-center gap-1 mt-1"
+                      className="text-sm hover:underline inline-flex items-center gap-1 mt-1"
+                      style={{ color: '#10b981' }}
                     >
                       Visit website <ExternalLink className="w-3 h-3" />
                     </a>
@@ -682,12 +696,12 @@ export default function SeedStashDetail() {
               </div>
             )}
             {seed.storage_location && (
-              <div className="flex items-center justify-between py-3 px-4 bg-white rounded-lg border">
-                <span className="text-gray-700 font-medium flex items-center gap-2">
-                  <MapPin className="w-4 h-4 text-red-600" />
+              <div className="flex items-center justify-between py-3 px-4 rounded-lg" style={{ background: 'rgba(16, 185, 129, 0.1)', border: '1px solid rgba(16, 185, 129, 0.2)' }}>
+                <span className="font-medium flex items-center gap-2" style={{ color: '#f0fdf4' }}>
+                  <MapPin className="w-4 h-4 text-red-400" />
                   Storage Location
                 </span>
-                <span className="font-semibold text-gray-900">{seed.storage_location}</span>
+                <span className="font-semibold" style={{ color: '#86efac' }}>{seed.storage_location}</span>
               </div>
             )}
             {age > 0 && (
