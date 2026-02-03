@@ -32,6 +32,7 @@ export default function Dashboard() {
     tradesPending: 0
   });
   const [weather, setWeather] = useState(null);
+  const [popularCrops, setPopularCrops] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -60,6 +61,14 @@ export default function Dashboard() {
         indoorSpaces: spaces.length,
         tradesPending: trades.length
       });
+
+      // Load popular crops
+      try {
+        const popularResponse = await base44.functions.invoke('getPopularCrops', {});
+        setPopularCrops(popularResponse.data);
+      } catch (error) {
+        console.error('Error loading popular crops:', error);
+      }
     } catch (error) {
       console.error('Error loading dashboard:', error);
       toast.error('Failed to load dashboard');
@@ -248,6 +257,96 @@ export default function Dashboard() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Popular Crops */}
+      {popularCrops && (
+        <div className="space-y-4">
+          <h2 className="text-xl font-bold text-gray-900">🔥 What Others Are Growing</h2>
+          
+          <div className="grid md:grid-cols-3 gap-6">
+            {/* Top Tomatoes */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg flex items-center gap-2">
+                  🍅 Top Tomatoes
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-2">
+                  {popularCrops.tomatoes && popularCrops.tomatoes.length > 0 ? (
+                    popularCrops.tomatoes.map((crop, idx) => (
+                      <div key={crop.variety_id} className="flex items-center justify-between text-sm p-2 hover:bg-gray-50 rounded">
+                        <div className="flex items-center gap-2">
+                          <span className="font-bold text-gray-400">#{idx + 1}</span>
+                          <span className="truncate">{crop.variety_name}</span>
+                        </div>
+                        <span className="text-xs text-gray-500">{crop.unique_users} growers</span>
+                      </div>
+                    ))
+                  ) : (
+                    <p className="text-sm text-gray-500">No data yet</p>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Top Peppers */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg flex items-center gap-2">
+                  🌶️ Top Peppers
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-2">
+                  {popularCrops.peppers && popularCrops.peppers.length > 0 ? (
+                    popularCrops.peppers.map((crop, idx) => (
+                      <div key={crop.variety_id} className="flex items-center justify-between text-sm p-2 hover:bg-gray-50 rounded">
+                        <div className="flex items-center gap-2">
+                          <span className="font-bold text-gray-400">#{idx + 1}</span>
+                          <span className="truncate">{crop.variety_name}</span>
+                        </div>
+                        <span className="text-xs text-gray-500">{crop.unique_users} growers</span>
+                      </div>
+                    ))
+                  ) : (
+                    <p className="text-sm text-gray-500">No data yet</p>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Top Other Crops */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg flex items-center gap-2">
+                  🥬 Top Other Crops
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-2">
+                  {popularCrops.other && popularCrops.other.length > 0 ? (
+                    popularCrops.other.map((crop, idx) => (
+                      <div key={crop.variety_id} className="flex items-center justify-between text-sm p-2 hover:bg-gray-50 rounded">
+                        <div className="flex items-center gap-2">
+                          <span className="font-bold text-gray-400">#{idx + 1}</span>
+                          <div className="flex-1 min-w-0">
+                            <p className="truncate font-medium">{crop.variety_name}</p>
+                            <p className="text-xs text-gray-500">{crop.plant_type_name}</p>
+                          </div>
+                        </div>
+                        <span className="text-xs text-gray-500 flex-shrink-0">{crop.unique_users}</span>
+                      </div>
+                    ))
+                  ) : (
+                    <p className="text-sm text-gray-500">No data yet</p>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+      )}
 
       {/* Getting Started */}
       {stats.gardens === 0 && (
