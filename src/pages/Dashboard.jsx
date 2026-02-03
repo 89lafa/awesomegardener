@@ -53,14 +53,15 @@ export default function Dashboard() {
   const loadWeather = async () => {
     try {
       const user = await base44.auth.me();
-      let zipCode = user?.zip_code || user?.location_zip;
       
-      if (!zipCode) {
-        const userSettings = await base44.entities.UserSettings.filter({
-          user_email: user.email
-        }).then(results => results[0]);
-        zipCode = userSettings?.location_zip;
-      }
+      // FIXED: User entity doesn't have location_zip - ONLY check UserSettings
+      const userSettings = await base44.entities.UserSettings.filter({
+        user_email: user.email
+      }).then(results => results[0]);
+      
+      const zipCode = userSettings?.location_zip;
+      
+      console.log('[Dashboard] Weather lookup - UserSettings:', userSettings, 'ZIP:', zipCode);
       
       if (!zipCode) {
         setWeatherLoading(false);
@@ -163,13 +164,14 @@ export default function Dashboard() {
     <Card 
       className="cursor-pointer hover:shadow-lg transition-all" 
       onClick={() => navigate(createPageUrl(page))}
+      style={{ background: 'var(--bg-card)' }}
     >
       <CardContent className="p-6 text-center">
         <div className={`w-12 h-12 rounded-lg ${color} flex items-center justify-center mx-auto mb-3`}>
           <Icon className="w-6 h-6 text-white" />
         </div>
-        <p className="text-2xl font-bold text-gray-900">{count}</p>
-        <p className="text-sm text-gray-600 mt-1">{title}</p>
+        <p className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>{count}</p>
+        <p className="text-sm mt-1" style={{ color: 'var(--text-secondary)' }}>{title}</p>
       </CardContent>
     </Card>
   );
@@ -177,11 +179,11 @@ export default function Dashboard() {
   const WeatherCard = () => {
     if (weatherLoading) {
       return (
-        <Card>
+        <Card style={{ background: 'var(--bg-card)' }}>
           <CardContent className="p-6">
             <div className="animate-pulse space-y-2">
-              <div className="h-4 bg-gray-200 rounded w-20"></div>
-              <div className="h-8 bg-gray-200 rounded w-16"></div>
+              <div className="h-4 rounded w-20" style={{ background: 'var(--bg-muted)' }}></div>
+              <div className="h-8 rounded w-16" style={{ background: 'var(--bg-muted)' }}></div>
             </div>
           </CardContent>
         </Card>
@@ -190,10 +192,10 @@ export default function Dashboard() {
 
     if (!weather) {
       return (
-        <Card className="bg-gray-50">
+        <Card style={{ background: 'var(--bg-muted)' }}>
           <CardContent className="p-6 text-center">
-            <Cloud className="w-8 h-8 text-gray-300 mx-auto mb-2" />
-            <p className="text-xs text-gray-500">Set ZIP in Settings</p>
+            <Cloud className="w-8 h-8 mx-auto mb-2" style={{ color: 'var(--text-muted)' }} />
+            <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Set ZIP in Settings</p>
           </CardContent>
         </Card>
       );
@@ -242,8 +244,8 @@ export default function Dashboard() {
       <div className="space-y-6 max-w-6xl">
         {/* Header */}
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Welcome back, {user?.full_name}!</h1>
-          <p className="text-gray-600 mt-1">Here's what's happening in your garden</p>
+          <h1 className="text-3xl font-bold" style={{ color: 'var(--text-primary)' }}>Welcome back, {user?.full_name}!</h1>
+          <p style={{ color: 'var(--text-secondary)' }} className="mt-1">Here's what's happening in your garden</p>
         </div>
 
       {/* Top Row - Quick Stats + Weather */}
@@ -313,9 +315,9 @@ export default function Dashboard() {
       {/* Quick Access Grid */}
       <div className="grid md:grid-cols-2 gap-6 mt-8">
         {/* Top Actions */}
-        <Card>
+        <Card style={{ background: 'var(--bg-card)' }}>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
+            <CardTitle className="flex items-center gap-2" style={{ color: 'var(--text-primary)' }}>
               <Sprout className="w-5 h-5" />
               Quick Actions
             </CardTitle>
@@ -357,16 +359,16 @@ export default function Dashboard() {
         </Card>
 
         {/* New Features */}
-        <Card className="border-blue-200 bg-blue-50">
+        <Card className="border-blue-200" style={{ background: 'var(--badge-info-bg)' }}>
           <CardHeader>
-            <CardTitle className="text-blue-900 flex items-center gap-2">
+            <CardTitle className="flex items-center gap-2" style={{ color: 'var(--info)' }}>
               ✨ New Features
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-3 text-sm">
             <div>
-              <p className="font-medium text-blue-900">🌾 Seed Trading</p>
-              <p className="text-blue-700 text-xs mt-1">Propose trades with other gardeners</p>
+              <p className="font-medium" style={{ color: 'var(--info)' }}>🌾 Seed Trading</p>
+              <p className="text-xs mt-1" style={{ color: 'var(--info)' }}>Propose trades with other gardeners</p>
               <Button
                 onClick={() => navigate(createPageUrl('SeedTrading'))}
                 size="sm"
@@ -376,9 +378,9 @@ export default function Dashboard() {
                 Browse Trades
               </Button>
             </div>
-            <div className="border-t border-blue-200 pt-3">
-              <p className="font-medium text-blue-900">💰 Expense Tracking</p>
-              <p className="text-blue-700 text-xs mt-1">Track garden spending by season</p>
+            <div className="border-t pt-3" style={{ borderColor: 'var(--border-default)' }}>
+              <p className="font-medium" style={{ color: 'var(--info)' }}>💰 Expense Tracking</p>
+              <p className="text-xs mt-1" style={{ color: 'var(--info)' }}>Track garden spending by season</p>
               <Button
                 onClick={() => navigate(createPageUrl('GardenExpenses'))}
                 size="sm"
@@ -395,13 +397,13 @@ export default function Dashboard() {
       {/* Popular Crops */}
       {popularCrops && (
         <div className="space-y-4">
-          <h2 className="text-xl font-bold text-gray-900">🔥 What Others Are Growing</h2>
+          <h2 className="text-xl font-bold" style={{ color: 'var(--text-primary)' }}>🔥 What Others Are Growing</h2>
           
           <div className="grid md:grid-cols-3 gap-6">
             {/* Top Tomatoes */}
-            <Card>
+            <Card style={{ background: 'var(--bg-card)' }}>
               <CardHeader>
-                <CardTitle className="text-lg flex items-center gap-2">
+                <CardTitle className="text-lg flex items-center gap-2" style={{ color: 'var(--text-primary)' }}>
                   🍅 Top Tomatoes
                 </CardTitle>
               </CardHeader>
@@ -409,25 +411,25 @@ export default function Dashboard() {
                 <div className="space-y-2">
                   {popularCrops.tomatoes && popularCrops.tomatoes.length > 0 ? (
                     popularCrops.tomatoes.map((crop, idx) => (
-                      <div key={crop.variety_id} className="flex items-center justify-between text-sm p-2 hover:bg-gray-50 rounded">
+                      <div key={crop.variety_id} className="flex items-center justify-between text-sm p-2 rounded transition-colors" style={{ backgroundColor: 'var(--surface-hover)' }}>
                         <div className="flex items-center gap-2">
-                          <span className="font-bold text-gray-400">#{idx + 1}</span>
-                          <span className="truncate">{crop.variety_name}</span>
+                          <span className="font-bold" style={{ color: 'var(--text-muted)' }}>#{idx + 1}</span>
+                          <span className="truncate" style={{ color: 'var(--text-primary)' }}>{crop.variety_name}</span>
                         </div>
-                        <span className="text-xs text-gray-500">{crop.unique_users} growers</span>
+                        <span className="text-xs" style={{ color: 'var(--text-muted)' }}>{crop.unique_users} growers</span>
                       </div>
                     ))
                   ) : (
-                    <p className="text-sm text-gray-500">Not enough data yet</p>
+                    <p className="text-sm" style={{ color: 'var(--text-muted)' }}>Not enough data yet</p>
                   )}
                 </div>
               </CardContent>
             </Card>
 
             {/* Top Peppers */}
-            <Card>
+            <Card style={{ background: 'var(--bg-card)' }}>
               <CardHeader>
-                <CardTitle className="text-lg flex items-center gap-2">
+                <CardTitle className="text-lg flex items-center gap-2" style={{ color: 'var(--text-primary)' }}>
                   🌶️ Top Peppers
                 </CardTitle>
               </CardHeader>
@@ -435,25 +437,25 @@ export default function Dashboard() {
                 <div className="space-y-2">
                   {popularCrops.peppers && popularCrops.peppers.length > 0 ? (
                     popularCrops.peppers.map((crop, idx) => (
-                      <div key={crop.variety_id} className="flex items-center justify-between text-sm p-2 hover:bg-gray-50 rounded">
+                      <div key={crop.variety_id} className="flex items-center justify-between text-sm p-2 rounded transition-colors" style={{ backgroundColor: 'var(--surface-hover)' }}>
                         <div className="flex items-center gap-2">
-                          <span className="font-bold text-gray-400">#{idx + 1}</span>
-                          <span className="truncate">{crop.variety_name}</span>
+                          <span className="font-bold" style={{ color: 'var(--text-muted)' }}>#{idx + 1}</span>
+                          <span className="truncate" style={{ color: 'var(--text-primary)' }}>{crop.variety_name}</span>
                         </div>
-                        <span className="text-xs text-gray-500">{crop.unique_users} growers</span>
+                        <span className="text-xs" style={{ color: 'var(--text-muted)' }}>{crop.unique_users} growers</span>
                       </div>
                     ))
                   ) : (
-                    <p className="text-sm text-gray-500">Not enough data yet</p>
+                    <p className="text-sm" style={{ color: 'var(--text-muted)' }}>Not enough data yet</p>
                   )}
                 </div>
               </CardContent>
             </Card>
 
             {/* Top Other Crops */}
-            <Card>
+            <Card style={{ background: 'var(--bg-card)' }}>
               <CardHeader>
-                <CardTitle className="text-lg flex items-center gap-2">
+                <CardTitle className="text-lg flex items-center gap-2" style={{ color: 'var(--text-primary)' }}>
                   🥬 Top Other Crops
                 </CardTitle>
               </CardHeader>
@@ -461,19 +463,19 @@ export default function Dashboard() {
                 <div className="space-y-2">
                   {popularCrops.other && popularCrops.other.length > 0 ? (
                     popularCrops.other.map((crop, idx) => (
-                      <div key={crop.variety_id} className="flex items-center justify-between text-sm p-2 hover:bg-gray-50 rounded">
+                      <div key={crop.variety_id} className="flex items-center justify-between text-sm p-2 rounded transition-colors" style={{ backgroundColor: 'var(--surface-hover)' }}>
                         <div className="flex items-center gap-2">
-                          <span className="font-bold text-gray-400">#{idx + 1}</span>
+                          <span className="font-bold" style={{ color: 'var(--text-muted)' }}>#{idx + 1}</span>
                           <div className="flex-1 min-w-0">
-                            <p className="truncate font-medium">{crop.variety_name}</p>
-                            <p className="text-xs text-gray-500">{crop.plant_type_name}</p>
+                            <p className="truncate font-medium" style={{ color: 'var(--text-primary)' }}>{crop.variety_name}</p>
+                            <p className="text-xs" style={{ color: 'var(--text-muted)' }}>{crop.plant_type_name}</p>
                           </div>
                         </div>
-                        <span className="text-xs text-gray-500 flex-shrink-0">{crop.unique_users}</span>
+                        <span className="text-xs flex-shrink-0" style={{ color: 'var(--text-muted)' }}>{crop.unique_users}</span>
                       </div>
                     ))
                   ) : (
-                    <p className="text-sm text-gray-500">Not enough data yet</p>
+                    <p className="text-sm" style={{ color: 'var(--text-muted)' }}>Not enough data yet</p>
                   )}
                 </div>
               </CardContent>
@@ -484,15 +486,15 @@ export default function Dashboard() {
 
       {/* Getting Started */}
       {stats.gardens === 0 && (
-        <Card className="border-amber-200 bg-amber-50">
+        <Card className="border-amber-200" style={{ background: 'var(--badge-warning-bg)' }}>
           <CardHeader>
-            <CardTitle className="text-amber-900 flex items-center gap-2">
+            <CardTitle className="flex items-center gap-2" style={{ color: 'var(--warning)' }}>
               <AlertTriangle className="w-5 h-5" />
               Getting Started
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-amber-700 text-sm mb-4">
+            <p className="text-sm mb-4" style={{ color: 'var(--warning)' }}>
               Create your first garden to start planning crops, tracking seeds, and managing your growing space.
             </p>
             <Button

@@ -29,6 +29,7 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { base44 } from '@/api/base44Client';
+import DarkModeToggle from '@/components/common/DarkModeToggle';
 export default function TopBar({ user, onMobileMenuToggle, onSidebarToggle, sidebarCollapsed }) {
   const navigate = useNavigate();
   const location = useLocation();
@@ -109,7 +110,7 @@ export default function TopBar({ user, onMobileMenuToggle, onSidebarToggle, side
   };
 
   return (
-    <header className="h-16 bg-white border-b border-gray-200 flex items-center justify-between px-4 lg:px-6">
+    <header className="h-16 border-b flex items-center justify-between px-4 lg:px-6" style={{ background: 'var(--bg-header)', borderColor: 'var(--border-default)' }}>
       {/* Sidebar Toggle OR Back Button */}
       <div className="flex items-center gap-2">
         {isChildPage ? (
@@ -172,6 +173,9 @@ export default function TopBar({ user, onMobileMenuToggle, onSidebarToggle, side
       </div>
 
       <div className="flex items-center gap-2">
+        {/* Dark Mode Toggle */}
+        <DarkModeToggle />
+        
         {/* Quick Add */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>

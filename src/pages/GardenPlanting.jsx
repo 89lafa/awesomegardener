@@ -712,7 +712,7 @@ export default function GardenPlanting() {
         <div className="flex flex-col gap-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <Sprout className="w-6 h-6 text-emerald-600" />
+              <Sprout className="w-6 h-6" style={{ color: 'var(--primary)' }} />
               {gardens.length > 1 ? (
                 <Select 
                   value={activeGarden?.id} 
@@ -733,7 +733,7 @@ export default function GardenPlanting() {
                   </SelectContent>
                 </Select>
               ) : (
-                <h1 className="text-2xl lg:text-3xl font-bold text-gray-900">{activeGarden?.name}</h1>
+                <h1 className="text-2xl lg:text-3xl font-bold" style={{ color: 'var(--text-primary)' }}>{activeGarden?.name}</h1>
               )}
             </div>
             <div className="flex gap-2">

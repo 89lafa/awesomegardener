@@ -575,8 +575,8 @@ export default function SeedStash() {
         
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
-            <h1 className="text-2xl lg:text-3xl font-bold text-gray-900">Seed Stash</h1>
-            <p className="text-gray-600 mt-1">Track your seeds and wishlist</p>
+            <h1 className="text-2xl lg:text-3xl font-bold" style={{ color: 'var(--text-primary)' }}>Seed Stash</h1>
+            <p className="mt-1" style={{ color: 'var(--text-secondary)' }}>Track your seeds and wishlist</p>
           </div>
         <div className="flex gap-2 flex-wrap">
            <Button 
@@ -722,13 +722,13 @@ export default function SeedStash() {
 
       {/* Seeds Display */}
       {filteredSeeds.length === 0 ? (
-        <Card className="py-16">
+        <Card className="py-16" style={{ background: 'var(--bg-card)' }}>
           <CardContent className="text-center">
-            <Package className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">
+            <Package className="w-16 h-16 mx-auto mb-4" style={{ color: 'var(--text-muted)' }} />
+            <h3 className="text-lg font-semibold mb-2" style={{ color: 'var(--text-primary)' }}>
               {filterTab === 'wishlist' ? 'No wishlist items' : 'No seeds yet'}
             </h3>
-            <p className="text-gray-600 mb-6">
+            <p className="mb-6" style={{ color: 'var(--text-secondary)' }}>
               {filterTab === 'wishlist' 
                 ? 'Add seeds you want to buy' 
                 : 'Add your first seeds to track your collection'}
@@ -767,11 +767,18 @@ export default function SeedStash() {
                 transition={{ delay: index * 0.03 }}
               >
                 <Link to={createPageUrl('SeedStashDetail') + `?id=${seed.id}`}>
-                  <Card className={cn(
-                    "group hover:shadow-md transition-shadow cursor-pointer",
-                    ageStatus.status === 'AGING' && "border-amber-300 bg-amber-50/30",
-                    ageStatus.status === 'OLD' && "border-red-300 bg-red-50/30"
-                  )}>
+                  <Card 
+                    className={cn(
+                      "group hover:shadow-md transition-shadow cursor-pointer",
+                      ageStatus.status === 'AGING' && "border-amber-300",
+                      ageStatus.status === 'OLD' && "border-red-300"
+                    )}
+                    style={{ 
+                      background: ageStatus.status === 'AGING' ? 'var(--badge-warning-bg)' : 
+                                  ageStatus.status === 'OLD' ? 'var(--badge-danger-bg)' : 
+                                  'var(--bg-card)' 
+                    }}
+                  >
                     <CardContent className="p-4">
                       <div className="flex items-start justify-between mb-3">
                        <div className="flex-1 min-w-0">
@@ -780,7 +787,7 @@ export default function SeedStash() {
                            return (
                              <>
                                <div className="flex items-center gap-2">
-                                 <h3 className="font-semibold text-gray-900 truncate">
+                                 <h3 className="font-semibold truncate" style={{ color: 'var(--text-primary)' }}>
                                    {profile?.variety_name || seed.custom_label || 'Unknown'}
                                  </h3>
                                  {ageStatus.status !== 'OK' && (
@@ -795,7 +802,7 @@ export default function SeedStash() {
                                  )}
                                </div>
                                {profile?.common_name && (
-                                 <p className="text-sm text-gray-500">{profile.common_name}</p>
+                                 <p className="text-sm" style={{ color: 'var(--text-muted)' }}>{profile.common_name}</p>
                                )}
                              </>
                            );
@@ -835,9 +842,9 @@ export default function SeedStash() {
 
                     <div className="space-y-2 text-sm">
                       {seed.source_vendor_name && (
-                        <p className="text-gray-600">{seed.source_vendor_name}</p>
+                        <p style={{ color: 'var(--text-secondary)' }}>{seed.source_vendor_name}</p>
                       )}
-                      <div className="flex items-center gap-2 text-gray-500">
+                      <div className="flex items-center gap-2" style={{ color: 'var(--text-muted)' }}>
                         {seed.year_acquired && (
                           <Badge variant="outline">{seed.year_acquired}</Badge>
                         )}

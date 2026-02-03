@@ -15,15 +15,16 @@ export default function BottomNav() {
   ];
   
   return (
-    <nav className="fixed bottom-0 left-0 right-0 bg-white border-t lg:hidden z-50">
+    <nav className="fixed bottom-0 left-0 right-0 border-t lg:hidden z-50" style={{ background: 'var(--bg-elevated)', borderColor: 'var(--border-default)' }}>
       <div className="flex justify-around h-16">
         {items.map(item => (
           <button
             key={item.path}
             onClick={() => navigate(item.path)}
-            className={`flex flex-col items-center justify-center min-w-[64px] ${
-              location.pathname === item.path ? 'text-emerald-600' : 'text-gray-500'
-            }`}
+            className="flex flex-col items-center justify-center min-w-[64px]"
+            style={{ 
+              color: location.pathname === item.path ? 'var(--primary)' : 'var(--text-muted)' 
+            }}
           >
             <item.icon className="w-6 h-6" />
             <span className="text-xs">{item.label}</span>
@@ -31,7 +32,8 @@ export default function BottomNav() {
         ))}
         <button
           onClick={() => setShowMore(!showMore)}
-          className="flex flex-col items-center justify-center min-w-[64px] text-gray-500"
+          className="flex flex-col items-center justify-center min-w-[64px]"
+          style={{ color: 'var(--text-muted)' }}
         >
           <MoreHorizontal className="w-6 h-6" />
           <span className="text-xs">More</span>
