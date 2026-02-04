@@ -12,9 +12,9 @@ const inflightRequests = new Map();
 const isDev = import.meta.env.DEV;
 
 // Dynamic TTL based on entity type (reference data cached longer)
-const REFERENCE_ENTITIES = ['PlantType', 'PlantFamily', 'PlantGroup', 'BrowseCategory', 'PlantSubCategory', 'Facet', 'FacetGroup'];
-const REFERENCE_TTL_MS = 5 * 60 * 1000; // 5 minutes for reference data
-const DEFAULT_TTL_MS = 30000; // 30 seconds for user data
+const REFERENCE_ENTITIES = ['PlantType', 'PlantFamily', 'PlantGroup', 'BrowseCategory', 'PlantSubCategory', 'Facet', 'FacetGroup', 'Variety'];
+const REFERENCE_TTL_MS = 10 * 60 * 1000; // 10 minutes for reference data
+const DEFAULT_TTL_MS = 60000; // 60 seconds for user data
 
 function getTTL(entityName) {
   return REFERENCE_ENTITIES.includes(entityName) ? REFERENCE_TTL_MS : DEFAULT_TTL_MS;
