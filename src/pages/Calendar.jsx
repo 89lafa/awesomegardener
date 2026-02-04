@@ -51,6 +51,7 @@ import { createPageUrl } from '@/utils';
 
 export default function Calendar() {
   const [searchParams] = useSearchParams();
+  const syncProcessedRef = React.useRef(false);
   const [user, setUser] = useState(null);
   const [gardens, setGardens] = useState([]);
   const [activeGarden, setActiveGarden] = useState(null);
@@ -91,23 +92,26 @@ export default function Calendar() {
     const syncGrowListId = searchParams.get('syncGrowList');
     const seasonParam = searchParams.get('season');
     
-    if (syncGrowListId && seasonParam && !syncing && !loading && seasons.length > 0) {
-      console.log('[Calendar] Sync params detected:', { syncGrowListId, seasonParam });
+    if (syncGrowListId && seasonParam && !syncing && !loading && seasons.length > 0 && !syncProcessedRef.current) {
+      console.log('[Calendar] Sync params detected:', { syncGrowListId, seasonParam, activeSeasonId });
+      syncProcessedRef.current = true;
       
       // Set the season from URL first
       if (seasonParam !== activeSeasonId) {
+        console.log('[Calendar] Setting season to:', seasonParam);
         setActiveSeasonId(seasonParam);
         localStorage.setItem('calendar_active_season', seasonParam);
       }
       
       // Execute sync immediately
       (async () => {
+        console.log('[Calendar] Executing sync...');
         await handleSyncGrowList(syncGrowListId, seasonParam);
         // Clear URL params after sync completes
         window.history.replaceState({}, '', window.location.pathname);
       })();
     }
-  }, [searchParams]);
+  }, [searchParams, loading, seasons, syncing, activeSeasonId]);
   
   useEffect(() => {
     if (activeSeasonId && !loading) {
