@@ -68,7 +68,7 @@ export default function TrayGrid({
                   : 'bg-gray-200 border-gray-400 opacity-50 cursor-not-allowed',
                 isSelected && 'ring-2 ring-blue-500 scale-105'
               )}
-              title={cell ? `#${cellNumber} - ${cell.variety_name || 'Unnamed'} - ${cell.status}` : `Cell ${cellNumber} - Missing`}
+              title={cell ? `#${cellNumber} - ${cell.variety_name && cell.plant_type_name ? `${cell.variety_name} - ${cell.plant_type_name}` : cell.variety_name || 'Empty'} - ${cell.status}` : `Cell ${cellNumber} - Missing`}
               disabled={!cell}
             >
               <span className="text-[8px] text-gray-500 absolute top-0.5 left-1">{cellNumber}</span>

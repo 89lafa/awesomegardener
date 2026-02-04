@@ -71,15 +71,18 @@ const SelectContent = React.forwardRef(({ className, children, position = "poppe
         <SelectPrimitive.Content
           ref={ref}
           className={cn(
-            "fixed inset-x-4 bottom-4 z-[100] flex flex-col rounded-xl border-2 border-emerald-500 bg-background shadow-2xl max-h-[70vh]",
+            "fixed left-0 right-0 bottom-0 z-[200] flex flex-col rounded-t-2xl border-t-4 border-emerald-500 bg-white shadow-2xl max-h-[80vh] w-full",
             className
           )}
           position="popper"
           sideOffset={0}
           {...props}
         >
-          <div className="mx-auto mt-3 h-1.5 w-16 rounded-full bg-gray-300" />
-          <SelectPrimitive.Viewport className="p-3 overflow-y-auto flex-1">
+          <div className="mx-auto mt-3 mb-2 h-1.5 w-20 rounded-full bg-gray-300" />
+          <div className="px-4 pb-2 border-b">
+            <p className="text-sm font-semibold text-gray-700">Select an option</p>
+          </div>
+          <SelectPrimitive.Viewport className="p-2 overflow-y-auto flex-1 w-full">
             {children}
           </SelectPrimitive.Viewport>
         </SelectPrimitive.Content>
@@ -127,17 +130,22 @@ const SelectItem = React.forwardRef(({ className, children, ...props }, ref) => 
     <SelectPrimitive.Item
       ref={ref}
       className={cn(
-        "relative flex w-full cursor-default select-none items-center rounded-lg py-3 pl-3 pr-10 text-base outline-none focus:bg-emerald-100 focus:text-emerald-900 data-[disabled]:pointer-events-none data-[disabled]:opacity-50 transition-colors",
-        isMobile && "min-h-[48px] text-base font-medium border-b border-gray-100 last:border-0 active:bg-emerald-100",
+        "relative flex w-full cursor-pointer select-none items-center rounded-lg py-3.5 pl-4 pr-12 text-base outline-none data-[disabled]:pointer-events-none data-[disabled]:opacity-50 transition-all active:scale-[0.98]",
+        isMobile 
+          ? "min-h-[52px] text-base font-medium bg-white hover:bg-emerald-50 active:bg-emerald-100 border-b border-gray-200 last:border-0 rounded-none first:rounded-t-lg last:rounded-b-lg" 
+          : "focus:bg-accent focus:text-accent-foreground py-1.5 pl-2 pr-8 text-sm rounded-sm",
         className
       )}
       {...props}>
-      <span className="absolute right-3 flex h-4 w-4 items-center justify-center">
+      <span className={cn(
+        "absolute flex items-center justify-center",
+        isMobile ? "right-4 h-5 w-5" : "right-2 h-3.5 w-3.5"
+      )}>
         <SelectPrimitive.ItemIndicator>
-          <Check className="h-5 w-5 text-emerald-600 font-bold" />
+          <Check className={cn(isMobile ? "h-6 w-6 text-emerald-600 stroke-[3]" : "h-4 w-4")} />
         </SelectPrimitive.ItemIndicator>
       </span>
-      <SelectPrimitive.ItemText className="flex-1">{children}</SelectPrimitive.ItemText>
+      <SelectPrimitive.ItemText className="flex-1 text-left break-words">{children}</SelectPrimitive.ItemText>
     </SelectPrimitive.Item>
   );
 })
