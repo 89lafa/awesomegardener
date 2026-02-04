@@ -521,11 +521,8 @@ export default function GrowLists() {
                           </div>
                           <div className="min-w-0 flex-1">
                             <h3 className="font-semibold text-xs truncate" style={{ color: 'var(--text-primary)' }}>
-                              {item.variety_name || item.plant_type_name}
+                              {item.variety_name && item.plant_type_name ? `${item.variety_name} - ${item.plant_type_name}` : (item.variety_name || item.plant_type_name)}
                             </h3>
-                            {item.variety_name && (
-                              <p className="text-xs truncate" style={{ color: 'var(--text-secondary)' }}>{item.plant_type_name}</p>
-                            )}
                           </div>
                         </div>
                         <div className="flex gap-1 flex-shrink-0">
@@ -592,20 +589,17 @@ export default function GrowLists() {
                           <Package className="w-5 h-5 text-emerald-600" />
                         </div>
                         <div className="min-w-0">
-                          <h3 className="font-semibold text-sm truncate" style={{ color: 'var(--text-primary)' }}>
-                            {item.variety_name || item.plant_type_name}
-                          </h3>
-                          <div className="flex items-center gap-2 mt-0.5">
-                            {item.variety_name && (
-                              <span className="text-xs" style={{ color: 'var(--text-secondary)' }}>{item.plant_type_name}</span>
-                            )}
-                            <Badge variant="outline" className="text-xs">
-                              Qty: {item.quantity || item.target_count || 1}
-                            </Badge>
-                          </div>
-                          {item.notes && (
-                            <p className="text-xs mt-1" style={{ color: 'var(--text-secondary)' }}>{item.notes}</p>
-                          )}
+                         <h3 className="font-semibold text-sm truncate" style={{ color: 'var(--text-primary)' }}>
+                           {item.variety_name && item.plant_type_name ? `${item.variety_name} - ${item.plant_type_name}` : (item.variety_name || item.plant_type_name)}
+                         </h3>
+                         <div className="flex items-center gap-2 mt-0.5">
+                           <Badge variant="outline" className="text-xs">
+                             Qty: {item.quantity || item.target_count || 1}
+                           </Badge>
+                         </div>
+                         {item.notes && (
+                           <p className="text-xs mt-1" style={{ color: 'var(--text-secondary)' }}>{item.notes}</p>
+                         )}
                         </div>
                       </div>
                       <Button 
