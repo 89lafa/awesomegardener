@@ -32,7 +32,7 @@ Deno.serve(async (req) => {
     const existingPlans = await base44.entities.CropPlan.filter({ 
       garden_season_id,
       grow_list_id,
-      created_by: user.email
+      user_owner_email: user.email
     });
 
     console.log('[SyncGrowList] Found', existingPlans.length, 'existing plans from this grow list');
@@ -141,7 +141,8 @@ Deno.serve(async (req) => {
         transplant_offset_days: transplantOffsetDays,
         dtm_days: daysToMaturity,
         harvest_window_days: 14,
-        created_by: user.email
+        created_by: user.email,
+        user_owner_email: user.email
       };
 
       if (existing) {
