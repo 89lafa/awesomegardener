@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useSearchParams, Link } from 'react-router-dom';
+import { useSearchParams, Link, useNavigate } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
 import { base44 } from '@/api/base44Client';
 import { 
@@ -54,6 +54,7 @@ import { getPlantTypesCached } from '@/components/utils/dataCache';
 
 export default function GrowLists() {
   const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
   const [growLists, setGrowLists] = useState([]);
   const [gardens, setGardens] = useState([]);
   const [seeds, setSeeds] = useState([]);
@@ -399,17 +400,12 @@ export default function GrowLists() {
             {selectedList.garden_season_id && (
               <Button 
                 className="gap-2 bg-emerald-600 hover:bg-emerald-700"
-                onClick={async () => {
-                  const season = seasons.find(s => s.id === selectedList.garden_season_id);
-                  if (season) {
-                    // Save selected season to localStorage so Calendar loads it
-                    localStorage.setItem('calendar_active_garden', selectedList.garden_id);
-                    localStorage.setItem('calendar_active_season', selectedList.garden_season_id);
-                    // Navigate with sync params
-                    window.location.href = createPageUrl('Calendar') + `?syncGrowList=${selectedList.id}&season=${selectedList.garden_season_id}`;
-                  } else {
-                    toast.error('Season not found');
-                  }
+                onClick={() => {
+                  // Save selected season to localStorage so Calendar loads it
+                  localStorage.setItem('calendar_active_garden', selectedList.garden_id);
+                  localStorage.setItem('calendar_active_season', selectedList.garden_season_id);
+                  // Navigate with sync params
+                  navigate(`/Calendar?syncGrowList=${selectedList.id}&season=${selectedList.garden_season_id}`);
                 }}
               >
                 <Calendar className="w-4 h-4" />
