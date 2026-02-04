@@ -130,6 +130,8 @@ import ZoneMap from './pages/ZoneMap';
 import Achievements from './pages/Achievements';
 import Leaderboard from './pages/Leaderboard';
 import Challenges from './pages/Challenges';
+import Recipes from './pages/Recipes';
+import RecipeDetail from './pages/RecipeDetail';
 import __Layout from './Layout.jsx';
 
 
@@ -217,6 +219,8 @@ export const PAGES = {
     "Achievements": Achievements,
     "Leaderboard": Leaderboard,
     "Challenges": Challenges,
+    "Recipes": Recipes,
+    "RecipeDetail": RecipeDetail,
 }
 
 export const pagesConfig = {
