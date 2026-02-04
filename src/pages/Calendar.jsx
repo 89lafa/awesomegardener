@@ -43,7 +43,7 @@ import CropEditModal from '@/components/calendar/CropEditModal';
 import DayTasksPanel from '@/components/calendar/DayTasksPanel';
 import CalendarGuide from '@/components/help/CalendarGuide';
 import { cn } from '@/lib/utils';
-import { smartQuery } from '@/components/utils/smartQuery';
+import { smartQuery, clearCache } from '@/components/utils/smartQuery';
 import RateLimitBanner from '@/components/common/RateLimitBanner';
 import BuildCalendarWizard from '@/components/ai/BuildCalendarWizard';
 import { getPlantTypesCached } from '@/components/utils/dataCache';
@@ -282,8 +282,10 @@ export default function Calendar() {
       });
 
       if (response.data.success) {
+        // Clear cache to force fresh data load
+        clearCache();
         // Force immediate reload with loading state
-        await new Promise(resolve => setTimeout(resolve, 300));
+        await new Promise(resolve => setTimeout(resolve, 500));
         await loadPlansAndTasks();
         toast.success(`Synced: ${response.data.created} new, ${response.data.updated} updated crops with tasks`);
         // Clear URL params
