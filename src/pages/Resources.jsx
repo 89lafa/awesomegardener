@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
-import { Plus, Loader2, Edit, Trash2, ExternalLink, BookOpen } from 'lucide-react';
+import { Plus, Loader2, Edit, Trash2, ExternalLink, BookOpen, ArrowRight } from 'lucide-react';
+import { createPageUrl } from '@/utils';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -438,7 +439,6 @@ function ResourceArticles() {
   const [articles, setArticles] = useState([]);
   const [pests, setPests] = useState([]);
   const [loading, setLoading] = useState(true);
-  const { createPageUrl } = window;
 
   useEffect(() => {
     loadArticles();
@@ -475,25 +475,35 @@ function ResourceArticles() {
       {/* Learning Guides */}
       <div>
         <h3 className="text-xl font-bold text-gray-900 mb-4">📚 Learning Guides</h3>
-        <div className="grid md:grid-cols-2 gap-4">
-          {learningGuides.map((article) => (
-            <Card key={article.id} className="hover:shadow-lg transition cursor-pointer">
-              {article.hero_image_url && (
-                <div className="h-32 overflow-hidden">
-                  <img
-                    src={article.hero_image_url}
-                    alt={article.title}
-                    className="w-full h-full object-cover"
-                  />
-                </div>
-              )}
-              <CardContent className="pt-4">
-                <h4 className="font-semibold text-gray-900 mb-2">{article.title}</h4>
-                <p className="text-sm text-gray-600 line-clamp-2">{article.excerpt}</p>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
+        {learningGuides.length > 0 ? (
+          <div className="grid md:grid-cols-2 gap-4">
+            {learningGuides.map((article) => (
+              <Card
+                key={article.id}
+                className="hover:shadow-lg transition cursor-pointer"
+                onClick={() => window.location.href = createPageUrl('ResourceArticle') + '?id=' + article.id}
+              >
+                {article.hero_image_url && (
+                  <div className="h-32 overflow-hidden">
+                    <img
+                      src={article.hero_image_url}
+                      alt={article.title}
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+                )}
+                <CardContent className="pt-4">
+                  <h4 className="font-semibold text-gray-900 mb-2">{article.title}</h4>
+                  <p className="text-sm text-gray-600 line-clamp-2">{article.excerpt}</p>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        ) : (
+          <p className="text-sm text-gray-500 text-center py-8">
+            No guides yet. Admins can add guides in Admin Hub.
+          </p>
+        )}
       </div>
 
       {/* Pest & Disease */}
@@ -504,8 +514,9 @@ function ResourceArticles() {
             onClick={() => window.location.href = createPageUrl('PestLibrary')}
             variant="outline"
             size="sm"
+            className="gap-2"
           >
-            View All →
+            View All <ArrowRight className="w-3 h-3" />
           </Button>
         </div>
         <div className="grid md:grid-cols-3 gap-4">

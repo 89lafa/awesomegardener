@@ -26,6 +26,8 @@ import { format } from 'date-fns';
 import PlantDetailModal from '@/components/myplants/PlantDetailModal';
 import { usePullToRefresh } from '@/components/utils/usePullToRefresh';
 import PullToRefreshIndicator from '@/components/common/PullToRefreshIndicator';
+import QuickCheckInModal from '@/components/ai/QuickCheckInModal';
+import DiagnosisModal from '@/components/ai/DiagnosisModal';
 
 const STATUS_OPTIONS = [
   { value: 'seed', label: '🌰 Seed', color: 'bg-gray-100 text-gray-800' },
@@ -60,6 +62,9 @@ export default function MyPlants() {
   const [cropPlans, setCropPlans] = useState([]);
   const [issuesCounts, setIssuesCounts] = useState({});
   const [harvestsCounts, setHarvestsCounts] = useState({});
+  const [checkInOpen, setCheckInOpen] = useState(false);
+  const [diagnosisOpen, setDiagnosisOpen] = useState(false);
+  const [selectedPlantForAction, setSelectedPlantForAction] = useState(null);
   
   const [newPlant, setNewPlant] = useState({
     plant_profile_id: '',
@@ -284,6 +289,14 @@ export default function MyPlants() {
         </div>
         <div className="flex gap-2">
           <Button
+            onClick={() => setCheckInOpen(true)}
+            variant="outline"
+            className="interactive-button"
+            size="sm"
+          >
+            ✓ Check In
+          </Button>
+          <Button
             onClick={() => setShowAddPlant(true)}
             className="bg-emerald-600 hover:bg-emerald-700 interactive-button"
             size="sm"
@@ -430,7 +443,6 @@ export default function MyPlants() {
                     <Card 
                       key={plant.id} 
                       className="interactive-card hover:shadow-lg transition-all duration-300"
-                      onClick={() => setSelectedPlantId(plant.id)}
                       style={{ 
                         background: 'var(--glass-bg)',
                         backdropFilter: 'blur(12px)',
@@ -438,33 +450,62 @@ export default function MyPlants() {
                         border: '1px solid var(--glass-border)'
                       }}
                     >
-                      {mainPhoto && (
-                        <div className="h-48 overflow-hidden rounded-t-lg">
-                          <img
-                            src={mainPhoto.url}
-                            alt={plant.name || profile?.variety_name}
-                            className="w-full h-full object-cover"
-                          />
-                        </div>
-                      )}
-                      <CardHeader className="pb-3">
-                        <CardTitle className="text-base" style={{ color: 'var(--text-primary)' }}>
-                          {plant.name || profile?.variety_name || 'Unnamed Plant'}
-                        </CardTitle>
-                        <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>{profile?.common_name}</p>
-                      </CardHeader>
-                      <CardContent>
-                        <div className="space-y-2">
-                          <Badge className={STATUS_OPTIONS.find(s => s.value === plant.status)?.color}>
-                            {STATUS_OPTIONS.find(s => s.value === plant.status)?.label}
-                          </Badge>
-                          {plant.germination_date && (
-                            <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
-                              Germinated: {format(new Date(plant.germination_date), 'MMM d, yyyy')}
-                            </p>
-                          )}
-                        </div>
-                      </CardContent>
+                      <div onClick={() => setSelectedPlantId(plant.id)}>
+                        {mainPhoto && (
+                          <div className="h-48 overflow-hidden rounded-t-lg">
+                            <img
+                              src={mainPhoto.url}
+                              alt={plant.name || profile?.variety_name}
+                              className="w-full h-full object-cover"
+                            />
+                          </div>
+                        )}
+                        <CardHeader className="pb-3">
+                          <CardTitle className="text-base" style={{ color: 'var(--text-primary)' }}>
+                            {plant.name || profile?.variety_name || 'Unnamed Plant'}
+                          </CardTitle>
+                          <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>{profile?.common_name}</p>
+                        </CardHeader>
+                        <CardContent>
+                          <div className="space-y-2">
+                            <Badge className={STATUS_OPTIONS.find(s => s.value === plant.status)?.color}>
+                              {STATUS_OPTIONS.find(s => s.value === plant.status)?.label}
+                            </Badge>
+                            {plant.germination_date && (
+                              <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
+                                Germinated: {format(new Date(plant.germination_date), 'MMM d, yyyy')}
+                              </p>
+                            )}
+                          </div>
+                        </CardContent>
+                      </div>
+                      
+                      {/* Quick Actions */}
+                      <div className="px-4 pb-4 flex gap-2">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setSelectedPlantForAction(plant.crop_plan_id);
+                            setCheckInOpen(true);
+                          }}
+                          className="flex-1 text-xs"
+                        >
+                          ✓ Log
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setDiagnosisOpen(true);
+                          }}
+                          className="flex-1 text-xs"
+                        >
+                          🔍 Diagnose
+                        </Button>
+                      </div>
                     </Card>
                   );
                 })}
@@ -576,6 +617,19 @@ export default function MyPlants() {
         open={!!selectedPlantId}
         onOpenChange={(open) => !open && setSelectedPlantId(null)}
         onUpdate={loadMyPlants}
+      />
+
+      {/* Quick Check-In Modal */}
+      <QuickCheckInModal
+        open={checkInOpen}
+        onOpenChange={setCheckInOpen}
+        preselectedCropPlanIds={selectedPlantForAction ? [selectedPlantForAction] : undefined}
+      />
+
+      {/* Diagnosis Modal */}
+      <DiagnosisModal
+        open={diagnosisOpen}
+        onOpenChange={setDiagnosisOpen}
       />
     </div>
     </>
