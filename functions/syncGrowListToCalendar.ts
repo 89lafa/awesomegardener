@@ -31,7 +31,8 @@ Deno.serve(async (req) => {
     // Load existing CropPlans for this season to avoid duplicates
     const existingPlans = await base44.entities.CropPlan.filter({ 
       garden_season_id,
-      grow_list_id 
+      grow_list_id,
+      created_by: user.email
     });
 
     console.log('[SyncGrowList] Found', existingPlans.length, 'existing plans from this grow list');
@@ -45,7 +46,7 @@ Deno.serve(async (req) => {
     const seasonData = season[0];
     const lastFrostDate = seasonData.last_frost_date ? new Date(seasonData.last_frost_date) : null;
 
-    // ✅ FIXED: Load data with proper array extraction
+    // Load data with proper array extraction
     const plantTypesResult = await base44.asServiceRole.entities.PlantType.list('-created_date', 10000);
     const varietiesResult = await base44.asServiceRole.entities.Variety.list('-created_date', 10000);
     
@@ -139,13 +140,14 @@ Deno.serve(async (req) => {
         seed_offset_days: seedOffsetDays,
         transplant_offset_days: transplantOffsetDays,
         dtm_days: daysToMaturity,
-        harvest_window_days: 14
+        harvest_window_days: 14,
+        created_by: user.email
       };
 
       if (existing) {
         // Update quantity if changed
         if (existing.quantity_planned !== cropData.quantity_planned) {
-          await base44.asServiceRole.entities.CropPlan.update(existing.id, { 
+          await base44.entities.CropPlan.update(existing.id, { 
             quantity_planned: cropData.quantity_planned 
           });
           updated++;
@@ -153,13 +155,13 @@ Deno.serve(async (req) => {
           skipped++;
         }
       } else {
-        const newPlan = await base44.asServiceRole.entities.CropPlan.create(cropData);
+        const newPlan = await base44.entities.CropPlan.create(cropData);
         created++;
         
         // ALWAYS auto-generate tasks if frost date exists
         if (lastFrostDate) {
           try {
-            await base44.asServiceRole.functions.invoke('generateTasksForCrop', { 
+            await base44.functions.invoke('generateTasksForCrop', { 
               crop_plan_id: newPlan.id 
             });
           } catch (error) {

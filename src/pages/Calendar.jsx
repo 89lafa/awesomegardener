@@ -178,13 +178,13 @@ export default function Calendar() {
   };
   
   const loadPlansAndTasks = async () => {
-    if (!activeSeasonId) return;
+    if (!activeSeasonId || !user) return;
     
     try {
-      // V1B-2: Batch query - load both plans and tasks together
+      // Batch query - load both plans and tasks together, filtered by current user
       const [plansData, tasksData] = await Promise.all([
-        smartQuery(base44, 'CropPlan', { garden_season_id: activeSeasonId }),
-        smartQuery(base44, 'CropTask', { garden_season_id: activeSeasonId }, 'start_date')
+        smartQuery(base44, 'CropPlan', { garden_season_id: activeSeasonId, created_by: user.email }),
+        smartQuery(base44, 'CropTask', { garden_season_id: activeSeasonId, created_by: user.email }, 'start_date')
       ]);
       console.log('[Calendar] Loaded', plansData.length, 'plans and', tasksData.length, 'tasks for season', activeSeasonId);
       console.log('[Calendar] Tasks breakdown:', {
@@ -383,11 +383,10 @@ export default function Calendar() {
                 return;
               }
               
-              if (syncing) return; // Prevent double-click
+              if (syncing) return;
               
               try {
                 console.log('[Calendar] Import button clicked, loading grow lists...');
-                // Load all user's grow lists
                 const userLists = await base44.entities.GrowList.filter({ 
                   created_by: user.email
                 }, '-updated_date');
@@ -399,7 +398,6 @@ export default function Calendar() {
                   return;
                 }
 
-                // Filter to those matching current season OR unlinked
                 const matchingLists = userLists.filter(l => 
                   l.garden_season_id === activeSeasonId || !l.garden_season_id
                 );
@@ -581,7 +579,7 @@ export default function Calendar() {
                           const response = await base44.functions.invoke('generateTasksForCrop', { crop_plan_id: crop.id });
                           console.log('[Calendar] Task generation response:', response.data);
                           
-                          await new Promise(r => setTimeout(r, 500)); // Wait for DB
+                          await new Promise(r => setTimeout(r, 500));
                           await loadPlansAndTasks();
                           
                           toast.success(`Created ${response.data.tasks_created || 0} tasks for ${crop.label}`, { id: 'gen-tasks' });
@@ -615,7 +613,6 @@ export default function Calendar() {
             const garden = gardens.find(g => g.id === id);
             setActiveGarden(garden);
             localStorage.setItem('calendar_active_garden', id);
-            // Load seasons for new garden
             const currentUser = await base44.auth.me();
             const seasonsData = await base44.entities.GardenSeason.filter({ 
               garden_id: id,
@@ -849,7 +846,6 @@ function CalendarGridView({ tasks, crops, season, onTaskClick, onDayClick }) {
                         key={day}
                         className="h-16 border-r border-b relative group cursor-pointer hover:bg-emerald-50/50 transition-colors"
                         onClick={(e) => {
-                          // Clicking anywhere on the cell opens the day panel
                           e.preventDefault();
                           e.stopPropagation();
                           onDayClick?.(currentDate);
@@ -867,7 +863,6 @@ function CalendarGridView({ tasks, crops, season, onTaskClick, onDayClick }) {
                               const progress = task.quantity_target > 0 ? (task.quantity_completed || 0) / task.quantity_target : 1;
                               const isComplete = task.is_completed || progress >= 1;
 
-                              // AI Harvest Prediction: Show predicted harvest window
                               const showPrediction = task.task_type === 'harvest' && !task.is_completed && crop?.dtm_days;
 
                               return (
@@ -1030,7 +1025,6 @@ function TimelineView({ tasks, crops, season, onTaskClick }) {
                 
                 const taskColor = task.color_hex || crop.color_hex || '#10b981';
                 
-                // Stack tasks vertically within the row
                 const verticalOffset = (idx % 2) * 18;
                 
                 return (

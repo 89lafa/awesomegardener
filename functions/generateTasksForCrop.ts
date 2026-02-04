@@ -17,7 +17,7 @@ Deno.serve(async (req) => {
 
     console.log('[GenerateTasks] Loading crop plan:', crop_plan_id);
 
-    const cropPlan = await base44.asServiceRole.entities.CropPlan.filter({ id: crop_plan_id });
+    const cropPlan = await base44.entities.CropPlan.filter({ id: crop_plan_id, created_by: user.email });
     if (cropPlan.length === 0) {
       return Response.json({ error: 'Crop plan not found' }, { status: 404 });
     }
@@ -53,9 +53,9 @@ Deno.serve(async (req) => {
     }
 
     // Delete existing tasks for this crop
-    const existingTasks = await base44.asServiceRole.entities.CropTask.filter({ crop_plan_id });
+    const existingTasks = await base44.entities.CropTask.filter({ crop_plan_id, created_by: user.email });
     for (const task of existingTasks) {
-      await base44.asServiceRole.entities.CropTask.delete(task.id);
+      await base44.entities.CropTask.delete(task.id);
     }
 
     console.log('[GenerateTasks] Deleted', existingTasks.length, 'existing tasks');
@@ -103,7 +103,8 @@ Deno.serve(async (req) => {
         end_date: seedDate.toISOString().split('T')[0],
         color_hex: crop.color_hex,
         quantity_target: crop.quantity_planned,
-        quantity_completed: 0
+        quantity_completed: 0,
+        created_by: user.email
       });
 
       // Transplant - AFTER frost
@@ -124,7 +125,8 @@ Deno.serve(async (req) => {
         end_date: transplantDate.toISOString().split('T')[0],
         color_hex: crop.color_hex,
         quantity_target: crop.quantity_planned,
-        quantity_completed: 0
+        quantity_completed: 0,
+        created_by: user.email
       });
     }
 
@@ -146,7 +148,8 @@ Deno.serve(async (req) => {
         end_date: sowDate.toISOString().split('T')[0],
         color_hex: crop.color_hex,
         quantity_target: crop.quantity_planned,
-        quantity_completed: 0
+        quantity_completed: 0,
+        created_by: user.email
       });
     }
 
@@ -175,7 +178,8 @@ Deno.serve(async (req) => {
       end_date: harvestEndDate.toISOString().split('T')[0],
       color_hex: crop.color_hex,
       quantity_target: crop.quantity_planned,
-      quantity_completed: 0
+      quantity_completed: 0,
+      created_by: user.email
     });
     
     // MAINTENANCE TASKS
@@ -194,7 +198,8 @@ Deno.serve(async (req) => {
         end_date: hardenDate.toISOString().split('T')[0],
         color_hex: crop.color_hex,
         quantity_target: crop.quantity_planned,
-        quantity_completed: 0
+        quantity_completed: 0,
+        created_by: user.email
       });
     }
     
@@ -211,7 +216,8 @@ Deno.serve(async (req) => {
         end_date: potUpDate.toISOString().split('T')[0],
         color_hex: crop.color_hex,
         quantity_target: crop.quantity_planned,
-        quantity_completed: 0
+        quantity_completed: 0,
+        created_by: user.email
       });
     }
     
@@ -226,7 +232,8 @@ Deno.serve(async (req) => {
         end_date: plantingDate.toISOString().split('T')[0],
         color_hex: crop.color_hex,
         quantity_target: 1,
-        quantity_completed: 0
+        quantity_completed: 0,
+        created_by: user.email
       });
     }
     
@@ -242,7 +249,8 @@ Deno.serve(async (req) => {
       end_date: mulchDate.toISOString().split('T')[0],
       color_hex: crop.color_hex,
       quantity_target: 1,
-      quantity_completed: 0
+      quantity_completed: 0,
+      created_by: user.email
     });
     
     // Fertilization (first at 14 days, then every 21 days until harvest)
@@ -261,7 +269,8 @@ Deno.serve(async (req) => {
         end_date: fertDate.toISOString().split('T')[0],
         color_hex: crop.color_hex,
         quantity_target: 1,
-        quantity_completed: 0
+        quantity_completed: 0,
+        created_by: user.email
       });
       fertDate.setDate(fertDate.getDate() + 21);
       fertCount++;
@@ -281,7 +290,8 @@ Deno.serve(async (req) => {
         end_date: waterDate.toISOString().split('T')[0],
         color_hex: crop.color_hex,
         quantity_target: 1,
-        quantity_completed: 0
+        quantity_completed: 0,
+        created_by: user.email
       });
       waterDate.setDate(waterDate.getDate() + 7);
       waterCount++;
@@ -301,7 +311,8 @@ Deno.serve(async (req) => {
         end_date: weedDate.toISOString().split('T')[0],
         color_hex: crop.color_hex,
         quantity_target: 1,
-        quantity_completed: 0
+        quantity_completed: 0,
+        created_by: user.email
       });
       weedDate.setDate(weedDate.getDate() + 7);
       weedCount++;
@@ -321,7 +332,8 @@ Deno.serve(async (req) => {
         end_date: scoutDate.toISOString().split('T')[0],
         color_hex: crop.color_hex,
         quantity_target: 1,
-        quantity_completed: 0
+        quantity_completed: 0,
+        created_by: user.email
       });
       scoutDate.setDate(scoutDate.getDate() + 7);
       scoutCount++;
@@ -329,13 +341,13 @@ Deno.serve(async (req) => {
 
     // Create all tasks in bulk
     for (const taskData of tasksToCreate) {
-      await base44.asServiceRole.entities.CropTask.create(taskData);
+      await base44.entities.CropTask.create(taskData);
     }
 
     console.log('[GenerateTasks] Created', tasksToCreate.length, 'tasks for', crop.label);
 
     // Update crop status
-    await base44.asServiceRole.entities.CropPlan.update(crop.id, { 
+    await base44.entities.CropPlan.update(crop.id, { 
       status: 'scheduled',
       quantity_scheduled: crop.quantity_planned
     });
