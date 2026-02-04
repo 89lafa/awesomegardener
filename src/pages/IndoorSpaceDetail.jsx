@@ -303,7 +303,29 @@ export default function IndoorSpaceDetail() {
 
         <TabsContent value="log">
           <Card className="p-6">
-            <GrowLogComponent targetId={spaceId} targetType="indoor_space_id" />
+            <div className="space-y-6">
+              <div>
+                <h3 className="font-semibold text-lg mb-3">Space Activity</h3>
+                <GrowLogComponent targetId={spaceId} targetType="indoor_space_id" />
+              </div>
+              
+              <div className="border-t pt-6">
+                <h3 className="font-semibold text-lg mb-3">Tray Activity</h3>
+                <div className="space-y-4">
+                  {trays.map(tray => (
+                    <div key={tray.id}>
+                      <p className="text-sm font-medium text-emerald-700 mb-2">📋 {tray.name}</p>
+                      <div className="ml-4 border-l-2 border-emerald-200 pl-4">
+                        <GrowLogComponent targetId={tray.id} targetType="tray_id" compact />
+                      </div>
+                    </div>
+                  ))}
+                  {trays.length === 0 && (
+                    <p className="text-sm text-gray-500 text-center py-4">No trays in this space yet</p>
+                  )}
+                </div>
+              </div>
+            </div>
           </Card>
         </TabsContent>
       </Tabs>
