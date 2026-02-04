@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import {
@@ -840,7 +839,7 @@ export default function PlantingModal({
                             )}
                           >
                             <p className="font-medium text-sm">{plan.label}</p>
-                            <p className="text-xs text-gray-600 mt-1">
+                            <p className="text-xs text-gray-500 mt-0.5">
                               {remaining} of {plan.quantity_planned} remaining
                             </p>
                           </button>

@@ -49,7 +49,7 @@ export default function Resources() {
   const loadResources = async () => {
     try {
       const user = await base44.auth.me();
-      const data = await base44.entities.Resource.filter({
+      const data = await base44.entities.VendorResource.filter({
         created_by: user.email,
         is_active: true
       }, 'name');
@@ -76,11 +76,11 @@ export default function Resources() {
       };
 
       if (editingResource) {
-        await base44.entities.Resource.update(editingResource.id, payload);
-        toast.success('Resource updated!');
+        await base44.entities.VendorResource.update(editingResource.id, payload);
+        toast.success('Vendor updated!');
       } else {
-        await base44.entities.Resource.create(payload);
-        toast.success('Resource added!');
+        await base44.entities.VendorResource.create(payload);
+        toast.success('Vendor added!');
       }
 
       await loadResources();
@@ -114,9 +114,9 @@ export default function Resources() {
     if (!confirm(`Delete ${resource.name}?`)) return;
     
     try {
-      await base44.entities.Resource.update(resource.id, { is_active: false });
+      await base44.entities.VendorResource.update(resource.id, { is_active: false });
       await loadResources();
-      toast.success('Resource deleted');
+      toast.success('Vendor deleted');
     } catch (error) {
       console.error('Error deleting:', error);
       toast.error('Failed to delete');

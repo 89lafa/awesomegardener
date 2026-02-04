@@ -49,8 +49,10 @@
  */
 import AIAssistants from './pages/AIAssistants';
 import Achievements from './pages/Achievements';
+import AdminAchievements from './pages/AdminAchievements';
 import AdminAuditLog from './pages/AdminAuditLog';
 import AdminBulkEdit from './pages/AdminBulkEdit';
+import AdminChallenges from './pages/AdminChallenges';
 import AdminDataCleanup from './pages/AdminDataCleanup';
 import AdminDataImport from './pages/AdminDataImport';
 import AdminDataMaintenance from './pages/AdminDataMaintenance';
@@ -58,6 +60,7 @@ import AdminDeduplicateVarieties from './pages/AdminDeduplicateVarieties';
 import AdminHub from './pages/AdminHub';
 import AdminLog from './pages/AdminLog';
 import AdminPestLibrary from './pages/AdminPestLibrary';
+import AdminRecipes from './pages/AdminRecipes';
 import AdminResources from './pages/AdminResources';
 import BrowseCategoryConfig from './pages/BrowseCategoryConfig';
 import BrowseGardens from './pages/BrowseGardens';
@@ -132,17 +135,16 @@ import Users from './pages/Users';
 import VarietyReviewQueue from './pages/VarietyReviewQueue';
 import ViewVariety from './pages/ViewVariety';
 import ZoneMap from './pages/ZoneMap';
-import AdminChallenges from './pages/AdminChallenges';
-import AdminAchievements from './pages/AdminAchievements';
-import AdminRecipes from './pages/AdminRecipes';
 import __Layout from './Layout.jsx';
 
 
 export const PAGES = {
     "AIAssistants": AIAssistants,
     "Achievements": Achievements,
+    "AdminAchievements": AdminAchievements,
     "AdminAuditLog": AdminAuditLog,
     "AdminBulkEdit": AdminBulkEdit,
+    "AdminChallenges": AdminChallenges,
     "AdminDataCleanup": AdminDataCleanup,
     "AdminDataImport": AdminDataImport,
     "AdminDataMaintenance": AdminDataMaintenance,
@@ -150,6 +152,7 @@ export const PAGES = {
     "AdminHub": AdminHub,
     "AdminLog": AdminLog,
     "AdminPestLibrary": AdminPestLibrary,
+    "AdminRecipes": AdminRecipes,
     "AdminResources": AdminResources,
     "BrowseCategoryConfig": BrowseCategoryConfig,
     "BrowseGardens": BrowseGardens,
@@ -224,9 +227,6 @@ export const PAGES = {
     "VarietyReviewQueue": VarietyReviewQueue,
     "ViewVariety": ViewVariety,
     "ZoneMap": ZoneMap,
-    "AdminChallenges": AdminChallenges,
-    "AdminAchievements": AdminAchievements,
-    "AdminRecipes": AdminRecipes,
 }
 
 export const pagesConfig = {

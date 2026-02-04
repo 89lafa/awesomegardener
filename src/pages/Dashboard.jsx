@@ -268,7 +268,7 @@ export default function Dashboard() {
         {/* Header */}
         <div>
           <h1 className="text-3xl font-bold" style={{ color: 'var(--text-primary)' }}>
-            {greeting}, {user?.full_name?.split(' ')[0] || 'Gardener'}! 🌅
+            {greeting}, {user?.nickname || user?.full_name?.split(' ')[0] || 'Gardener'}! 🌅
           </h1>
           <p style={{ color: 'var(--text-muted)' }} className="mt-1">
             {format(new Date(), 'MMMM d, yyyy')}
@@ -498,7 +498,12 @@ export default function Dashboard() {
                 <div className="space-y-2">
                   {popularCrops.other && popularCrops.other.length > 0 ? (
                     popularCrops.other.map((crop, idx) => (
-                      <div key={crop.variety_id} className="flex items-center justify-between text-sm p-2 rounded transition-colors" style={{ backgroundColor: 'rgba(51, 65, 85, 0.3)' }}>
+                      <a 
+                        href={`/ViewVariety?id=${crop.variety_id}`}
+                        key={crop.variety_id} 
+                        className="flex items-center justify-between text-sm p-2 rounded transition-colors hover:bg-emerald-600/20 cursor-pointer" 
+                        style={{ backgroundColor: 'rgba(51, 65, 85, 0.3)' }}
+                      >
                         <div className="flex items-center gap-2">
                           <span className="font-bold" style={{ color: 'var(--text-muted)' }}>#{idx + 1}</span>
                           <div className="flex-1 min-w-0">
@@ -507,7 +512,7 @@ export default function Dashboard() {
                           </div>
                         </div>
                         <span className="text-xs flex-shrink-0" style={{ color: 'var(--text-muted)' }}>{crop.unique_users}</span>
-                      </div>
+                      </a>
                     ))
                   ) : (
                     <p className="text-sm" style={{ color: 'var(--text-muted)' }}>Not enough data yet</p>

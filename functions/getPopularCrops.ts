@@ -4,44 +4,27 @@ Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
     
-    // Get all crop plans and seed lots to determine popularity
-    const [cropPlans, seedLots] = await Promise.all([
-      base44.asServiceRole.entities.CropPlan.list(),
-      base44.asServiceRole.entities.SeedLot.filter({ is_wishlist: false })
+    // Get all plantings (actual planted items) to determine what's being grown
+    const [plantings, varieties, plantTypes] = await Promise.all([
+      base44.asServiceRole.entities.PlantInstance.list(),
+      base44.asServiceRole.entities.Variety.list(),
+      base44.asServiceRole.entities.PlantType.list()
     ]);
 
-    // Track unique users per variety
+    // Track unique users per variety (based on ACTUAL PLANTINGS)
     const varietyUsers = new Map(); // variety_id => Set of user emails
 
-    // Process crop plans
-    for (const plan of cropPlans) {
-      if (plan.variety_id && plan.created_by) {
-        if (!varietyUsers.has(plan.variety_id)) {
-          varietyUsers.set(plan.variety_id, new Set());
+    // Process plantings - these are actual plants in gardens/plots
+    for (const planting of plantings) {
+      if (planting.variety_id && planting.created_by) {
+        if (!varietyUsers.has(planting.variety_id)) {
+          varietyUsers.set(planting.variety_id, new Set());
         }
-        varietyUsers.get(plan.variety_id).add(plan.created_by);
+        varietyUsers.get(planting.variety_id).add(planting.created_by);
       }
     }
 
-    // Process seed lots
-    for (const lot of seedLots) {
-      // Get variety from PlantProfile
-      if (lot.plant_profile_id && lot.created_by) {
-        const profile = await base44.asServiceRole.entities.PlantProfile.get(lot.plant_profile_id);
-        if (profile?.variety_id) {
-          if (!varietyUsers.has(profile.variety_id)) {
-            varietyUsers.set(profile.variety_id, new Set());
-          }
-          varietyUsers.get(profile.variety_id).add(lot.created_by);
-        }
-      }
-    }
-
-    console.log('[getPopularCrops] Tracking', varietyUsers.size, 'varieties');
-
-    // Get all varieties with their plant types
-    const varieties = await base44.asServiceRole.entities.Variety.list();
-    const plantTypes = await base44.asServiceRole.entities.PlantType.list();
+    console.log('[getPopularCrops] Tracking', varietyUsers.size, 'varieties from', plantings.length, 'plantings');
 
     // Build type map
     const typeMap = new Map(plantTypes.map(t => [t.id, t]));
@@ -51,7 +34,7 @@ Deno.serve(async (req) => {
     
     for (const variety of varieties) {
       const uniqueUserCount = varietyUsers.get(variety.id)?.size || 0;
-      if (uniqueUserCount < 2) continue; // Need at least 2 users
+      if (uniqueUserCount < 1) continue; // Need at least 1 user
 
       const plantType = typeMap.get(variety.plant_type_id);
 

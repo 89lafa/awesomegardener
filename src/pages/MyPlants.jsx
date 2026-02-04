@@ -308,12 +308,13 @@ export default function MyPlants() {
       </div>
 
       {/* Filters */}
-      <div className="flex flex-wrap gap-3">
+      <div className="flex flex-wrap gap-2">
         <div className="relative flex-1 min-w-[200px]">
           <Input
             placeholder="Search plants..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
+            className="h-9 text-sm"
           />
         </div>
         {gardens.length > 1 && (
@@ -321,7 +322,7 @@ export default function MyPlants() {
             const garden = gardens.find(g => g.id === id);
             setActiveGarden(garden);
           }}>
-            <SelectTrigger className="w-48">
+            <SelectTrigger className="w-32 h-9 text-xs">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -332,7 +333,7 @@ export default function MyPlants() {
           </Select>
         )}
         <Select value={activeSeason?.id} onValueChange={(id) => setActiveSeason(seasons.find(s => s.id === id))}>
-          <SelectTrigger className="w-36">
+          <SelectTrigger className="w-28 h-9 text-xs">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -341,23 +342,27 @@ export default function MyPlants() {
             ))}
           </SelectContent>
         </Select>
+      </div>
+      
+      {/* Row 2 - Status and Stage */}
+      <div className="flex flex-wrap gap-2">
         <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger className="w-40">
+          <SelectTrigger className="w-32 h-9 text-xs">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">All Observed</SelectItem>
+            <SelectItem value="all">All Status</SelectItem>
             {STATUS_OPTIONS.map(opt => (
               <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
             ))}
           </SelectContent>
         </Select>
         <Select value={plannerStageFilter} onValueChange={setPlannerStageFilter}>
-          <SelectTrigger className="w-40">
+          <SelectTrigger className="w-32 h-9 text-xs">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">All Planner</SelectItem>
+            <SelectItem value="all">All Stage</SelectItem>
             <SelectItem value="planned">Planned</SelectItem>
             <SelectItem value="scheduled">Scheduled</SelectItem>
             <SelectItem value="planted">Planted</SelectItem>
@@ -366,11 +371,11 @@ export default function MyPlants() {
         </Select>
         {uniqueLocations.length > 0 && (
           <Select value={locationFilter} onValueChange={setLocationFilter}>
-            <SelectTrigger className="w-40">
+            <SelectTrigger className="w-32 h-9 text-xs">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All Locations</SelectItem>
+              <SelectItem value="all">All Loc.</SelectItem>
               {uniqueLocations.map(loc => (
                 <SelectItem key={loc} value={loc}>{loc}</SelectItem>
               ))}
@@ -378,46 +383,46 @@ export default function MyPlants() {
           </Select>
         )}
         <Select value={sortBy} onValueChange={setSortBy}>
-          <SelectTrigger className="w-40">
+          <SelectTrigger className="w-28 h-9 text-xs">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="updated">Recent</SelectItem>
             <SelectItem value="name">Name</SelectItem>
-            <SelectItem value="stage">Planner Stage</SelectItem>
-            <SelectItem value="photos">Most Photos</SelectItem>
-            <SelectItem value="issues">Most Issues</SelectItem>
-            <SelectItem value="harvests">Most Harvests</SelectItem>
+            <SelectItem value="stage">Stage</SelectItem>
+            <SelectItem value="photos">Photos</SelectItem>
+            <SelectItem value="issues">Issues</SelectItem>
+            <SelectItem value="harvests">Harvest</SelectItem>
           </SelectContent>
         </Select>
       </div>
       
-      {/* Advanced Filters */}
+      {/* Row 3 - Quick Filters */}
       <div className="flex gap-2">
         <Button
           variant={hasPhotosFilter ? "default" : "outline"}
           size="sm"
           onClick={() => setHasPhotosFilter(!hasPhotosFilter)}
-          className="interactive-button"
+          className="h-8 text-xs px-3"
         >
-          📷 Has Photos
+          📷
         </Button>
         <Button
           variant={hasIssuesFilter ? "default" : "outline"}
           size="sm"
           onClick={() => setHasIssuesFilter(!hasIssuesFilter)}
-          className="interactive-button"
+          className="h-8 text-xs px-3"
         >
-          ⚠️ Has Issues
+          ⚠️
         </Button>
         <Select value={hasHarvestFilter} onValueChange={setHasHarvestFilter}>
-          <SelectTrigger className="w-40">
+          <SelectTrigger className="w-28 h-8 text-xs">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">All Harvest</SelectItem>
-            <SelectItem value="harvested">Harvested</SelectItem>
-            <SelectItem value="not_harvested">Not Harvested</SelectItem>
+            <SelectItem value="all">Harvest</SelectItem>
+            <SelectItem value="harvested">Yes</SelectItem>
+            <SelectItem value="not_harvested">No</SelectItem>
           </SelectContent>
         </Select>
       </div>
