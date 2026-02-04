@@ -758,7 +758,7 @@ export default function PlantingModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-6xl max-h-[90vh] p-0">
+      <DialogContent className="max-w-6xl max-h-[90vh] lg:max-h-[90vh] max-h-screen p-0 overflow-hidden">
         <DialogHeader className="p-6 pb-4 border-b flex flex-row items-center justify-between">
           <div className="flex-1">
             <DialogTitle>Plant in {item.label}</DialogTitle>
@@ -775,9 +775,9 @@ export default function PlantingModal({
           </Button>
         </DialogHeader>
 
-        <div className="flex gap-6 p-6 overflow-hidden h-[calc(90vh-120px)]">
+        <div className="flex flex-col lg:flex-row gap-4 lg:gap-6 p-4 lg:p-6 overflow-hidden h-[calc(100vh-120px)] lg:h-[calc(90vh-120px)]">
           {/* Left Panel - Plant Picker */}
-          <div className="w-80 flex-shrink-0 flex flex-col min-h-0 relative">
+          <div className="w-full lg:w-80 flex-shrink-0 flex flex-col min-h-0 relative max-h-[40vh] lg:max-h-none">
             {showCompanionSuggestions && selectedPlant?.plant_type_id && (
               <CompanionSuggestions 
                 plantTypeId={selectedPlant.plant_type_id}
@@ -813,17 +813,27 @@ export default function PlantingModal({
                     <div className="space-y-2">
                       {cropPlans.map(plan => {
                         const remaining = (plan.quantity_planned || 0) - (plan.quantity_planted || 0);
+
+                        // Get variety details for proper display
+                        const variety = varieties.find(v => v.id === plan.variety_id);
+                        const plantType = plantTypes.find(pt => pt.id === plan.plant_type_id);
+
+                        // Format: "Variety - PlantType" or just label if no variety
+                        const displayName = variety && plantType 
+                          ? `${variety.variety_name} - ${plantType.common_name}`
+                          : plan.label;
+
                         return (
                           <button
                             key={plan.id}
                             onClick={() => {
-                              const spacing = getDefaultSpacing(plan.label);
+                              const spacing = getDefaultSpacing(plantType?.common_name || plan.label);
                               const plantData = {
                                 crop_plan_id: plan.id,
                                 variety_id: plan.variety_id,
-                                variety_name: plan.label,
+                                variety_name: variety?.variety_name || plan.label,
                                 plant_type_id: plan.plant_type_id,
-                                plant_type_name: plan.label,
+                                plant_type_name: plantType?.common_name || plan.label,
                                 spacing_cols: spacing.cols,
                                 spacing_rows: spacing.rows
                               };
@@ -838,7 +848,7 @@ export default function PlantingModal({
                                 : "bg-white border-gray-200 hover:border-emerald-300"
                             )}
                           >
-                            <p className="font-medium text-sm">{plan.label}</p>
+                            <p className="font-medium text-sm">{displayName}</p>
                             <p className="text-xs text-gray-500 mt-0.5">
                               {remaining} of {plan.quantity_planned} remaining
                             </p>
