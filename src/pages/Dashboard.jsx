@@ -324,7 +324,7 @@ export default function Dashboard() {
         />
         <div className="glass-card flex flex-col items-center justify-center">
           <TrendingUp className="w-12 h-12 mb-3" style={{ color: '#10b981' }} />
-          <p className="text-sm font-medium mb-3" style={{ color: '#d1fae5' }}>Ready to plan?</p>
+          <p className="text-sm font-medium mb-3" style={{ color: 'var(--text-primary)' }}>Ready to plan?</p>
           <Button
             onClick={() => navigate(createPageUrl('Calendar'))}
             className="w-full bg-emerald-600 hover:bg-emerald-700"
@@ -340,7 +340,7 @@ export default function Dashboard() {
         {/* Top Actions */}
         <div className="glass-card-no-padding">
           <div className="p-6">
-            <h3 className="flex items-center gap-2 text-lg font-semibold mb-4" style={{ color: '#f0fdf4' }}>
+            <h3 className="flex items-center gap-2 text-lg font-semibold mb-4" style={{ color: 'var(--text-primary)' }}>
               <Sprout className="w-5 h-5" />
               Quick Actions
             </h3>
@@ -384,7 +384,7 @@ export default function Dashboard() {
         {/* New Features */}
         <div className="glass-card-no-padding">
           <div className="p-6">
-            <h3 className="flex items-center gap-2 text-lg font-semibold mb-4" style={{ color: '#f0fdf4' }}>
+            <h3 className="flex items-center gap-2 text-lg font-semibold mb-4" style={{ color: 'var(--text-primary)' }}>
               ✨ New Features
             </h3>
             <div className="space-y-3 text-sm">
@@ -426,7 +426,7 @@ export default function Dashboard() {
             {/* Top Tomatoes */}
             <div className="glass-card-no-padding">
               <div className="p-6">
-                <h3 className="text-lg flex items-center gap-2 mb-4 font-semibold" style={{ color: '#f0fdf4' }}>
+                <h3 className="text-lg flex items-center gap-2 mb-4 font-semibold" style={{ color: 'var(--text-primary)' }}>
                   🍅 Top Tomatoes
                 </h3>
                 <div className="space-y-2">
@@ -450,7 +450,7 @@ export default function Dashboard() {
             {/* Top Peppers */}
             <div className="glass-card-no-padding">
               <div className="p-6">
-                <h3 className="text-lg flex items-center gap-2 mb-4 font-semibold" style={{ color: '#f0fdf4' }}>
+                <h3 className="text-lg flex items-center gap-2 mb-4 font-semibold" style={{ color: 'var(--text-primary)' }}>
                   🌶️ Top Peppers
                 </h3>
                 <div className="space-y-2">
@@ -474,7 +474,7 @@ export default function Dashboard() {
             {/* Top Other Crops */}
             <div className="glass-card-no-padding">
               <div className="p-6">
-                <h3 className="text-lg flex items-center gap-2 mb-4 font-semibold" style={{ color: '#f0fdf4' }}>
+                <h3 className="text-lg flex items-center gap-2 mb-4 font-semibold" style={{ color: 'var(--text-primary)' }}>
                   🥬 Top Other Crops
                 </h3>
                 <div className="space-y-2">
