@@ -1,13 +1,16 @@
 import React, { useState } from 'react';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Sparkles, Camera, Bug, MessageCircle, Lightbulb, ArrowRight } from 'lucide-react';
+import { Sparkles, Camera, Bug, MessageCircle, Lightbulb, ArrowRight, Leaf, MapPin } from 'lucide-react';
 import { createPageUrl } from '@/utils';
 import DiagnosisModal from '@/components/ai/DiagnosisModal';
 import SmartSuggestionsWidget from '@/components/ai/SmartSuggestionsWidget';
+import PlantIDModal from '@/components/ai/PlantIDModal';
+import ZoneFrostDetector from '@/components/ai/ZoneFrostDetector';
 
 export default function AIAssistants() {
   const [diagnosisOpen, setDiagnosisOpen] = useState(false);
+  const [plantIdOpen, setPlantIdOpen] = useState(false);
 
   const features = [
     {
@@ -19,20 +22,20 @@ export default function AIAssistants() {
       color: 'emerald'
     },
     {
+      icon: Leaf,
+      title: 'Plant Identification',
+      description: 'Upload a photo of any plant to identify the type and possible varieties',
+      action: () => setPlantIdOpen(true),
+      buttonText: 'Identify Plant',
+      color: 'green'
+    },
+    {
       icon: Bug,
       title: 'Pest & Disease Library',
-      description: 'Browse 50+ common garden problems with photos, symptoms, and treatments',
+      description: 'Browse common garden problems with photos, symptoms, and treatments',
       action: () => window.location.href = createPageUrl('PestLibrary'),
       buttonText: 'Browse Library',
       color: 'blue'
-    },
-    {
-      icon: MessageCircle,
-      title: 'AI Chat Assistant',
-      description: 'Ask any gardening question and get personalized advice',
-      action: () => window.location.href = createPageUrl('AIChat'),
-      buttonText: 'Start Chat',
-      color: 'purple'
     },
     {
       icon: Lightbulb,
@@ -88,6 +91,9 @@ export default function AIAssistants() {
         })}
       </div>
 
+      {/* Zone & Frost Detection */}
+      <ZoneFrostDetector />
+
       {/* Smart Suggestions Widget */}
       <SmartSuggestionsWidget />
 
@@ -107,6 +113,11 @@ export default function AIAssistants() {
       <DiagnosisModal
         open={diagnosisOpen}
         onOpenChange={setDiagnosisOpen}
+      />
+
+      <PlantIDModal
+        open={plantIdOpen}
+        onOpenChange={setPlantIdOpen}
       />
     </div>
   );

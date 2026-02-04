@@ -124,6 +124,8 @@ import ViewVariety from './pages/ViewVariety';
 import ZoneMap from './pages/ZoneMap';
 import PestLibrary from './pages/PestLibrary';
 import PestDetail from './pages/PestDetail';
+import AdminResources from './pages/AdminResources';
+import AdminPestLibrary from './pages/AdminPestLibrary';
 import __Layout from './Layout.jsx';
 
 
@@ -205,6 +207,8 @@ export const PAGES = {
     "ZoneMap": ZoneMap,
     "PestLibrary": PestLibrary,
     "PestDetail": PestDetail,
+    "AdminResources": AdminResources,
+    "AdminPestLibrary": AdminPestLibrary,
 }
 
 export const pagesConfig = {
