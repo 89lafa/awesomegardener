@@ -47,9 +47,15 @@ Deno.serve(async (req) => {
         console.log('[GenerateTasks] Using user frost date:', userData.last_frost_date, '→', lastFrostDate.toISOString().split('T')[0], 'for season year', seasonYear);
       } else {
         return Response.json({ 
-          error: 'Frost dates not set. Please set them in Settings → Location or in Garden Season settings.' 
+          error: `Frost dates not set for season "${seasonData.name}" or user profile. Please set them in Settings → Location or in Garden Season settings.` 
         }, { status: 400 });
       }
+    }
+
+    if (!lastFrostDate || isNaN(lastFrostDate.getTime())) {
+      return Response.json({ 
+        error: `Invalid frost date calculated for season "${seasonData.name}". Please ensure frost dates are correctly configured.` 
+      }, { status: 400 });
     }
 
     // Delete existing tasks for this crop
@@ -340,8 +346,8 @@ Deno.serve(async (req) => {
     }
 
     // Create all tasks in bulk
-    for (const taskData of tasksToCreate) {
-      await base44.entities.CropTask.create(taskData);
+    if (tasksToCreate.length > 0) {
+      await base44.entities.CropTask.bulkCreate(tasksToCreate);
     }
 
     console.log('[GenerateTasks] Created', tasksToCreate.length, 'tasks for', crop.label);
