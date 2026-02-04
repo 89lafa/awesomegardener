@@ -72,9 +72,13 @@ Deno.serve(async (req) => {
 
     // Load variety/profile for proper timing data
     let timingData = {};
+    let varietyData = null;
+    let plantTypeData = null;
+    
     if (crop.variety_id) {
       const varieties = await base44.asServiceRole.entities.Variety.filter({ id: crop.variety_id });
       if (varieties.length > 0) {
+        varietyData = varieties[0];
         timingData = varieties[0];
       }
     }
@@ -83,6 +87,20 @@ Deno.serve(async (req) => {
       if (profiles.length > 0) {
         timingData = { ...timingData, ...profiles[0] };
       }
+    }
+    
+    // Load plant type once for all task titles
+    if (crop.plant_type_id) {
+      const plantTypes = await base44.asServiceRole.entities.PlantType.filter({ id: crop.plant_type_id });
+      if (plantTypes.length > 0) {
+        plantTypeData = plantTypes[0];
+      }
+    }
+    
+    // Build variety name for all tasks
+    let varietyName = crop.label;
+    if (varietyData && plantTypeData) {
+      varietyName = `${varietyData.variety_name} - ${plantTypeData.common_name}`;
     }
     
     let seedDate = null;
@@ -99,15 +117,6 @@ Deno.serve(async (req) => {
         seedOffsetDays = -(weeksBeforeFrost * 7);
       }
       seedDate.setDate(seedDate.getDate() + seedOffsetDays);
-
-      // Get variety name for better task titles
-      let varietyName = crop.label;
-      if (crop.variety_id && timingData.variety_name && crop.plant_type_id) {
-        const plantTypes = await base44.asServiceRole.entities.PlantType.filter({ id: crop.plant_type_id });
-        if (plantTypes.length > 0) {
-          varietyName = `${timingData.variety_name} - ${plantTypes[0].common_name}`;
-        }
-      }
       
       tasksToCreate.push({
         garden_season_id: crop.garden_season_id,
@@ -154,15 +163,6 @@ Deno.serve(async (req) => {
       }
       sowDate.setDate(sowDate.getDate() + sowOffsetDays);
 
-      // Get variety name for better task titles
-      let varietyName = crop.label;
-      if (crop.variety_id && timingData.variety_name && crop.plant_type_id) {
-        const plantTypes = await base44.asServiceRole.entities.PlantType.filter({ id: crop.plant_type_id });
-        if (plantTypes.length > 0) {
-          varietyName = `${timingData.variety_name} - ${plantTypes[0].common_name}`;
-        }
-      }
-
       tasksToCreate.push({
         garden_season_id: crop.garden_season_id,
         crop_plan_id: crop.id,
@@ -192,15 +192,6 @@ Deno.serve(async (req) => {
     harvestDate.setDate(harvestDate.getDate() + dtmDays);
     const harvestEndDate = new Date(harvestDate);
     harvestEndDate.setDate(harvestEndDate.getDate() + (crop.harvest_window_days || 14));
-
-    // Get variety name for better task titles
-    let varietyName = crop.label;
-    if (crop.variety_id && timingData.variety_name && crop.plant_type_id) {
-      const plantTypes = await base44.asServiceRole.entities.PlantType.filter({ id: crop.plant_type_id });
-      if (plantTypes.length > 0) {
-        varietyName = `${timingData.variety_name} - ${plantTypes[0].common_name}`;
-      }
-    }
 
     tasksToCreate.push({
       garden_season_id: crop.garden_season_id,
