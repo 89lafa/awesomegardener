@@ -38,12 +38,12 @@ const COLUMN_MAPPINGS = [
   { key: 'lot_notes', label: 'Notes', required: false, category: 'inventory', target: 'seed' },
   { key: 'tags', label: 'Tags (comma separated)', required: false, category: 'inventory', target: 'seed' },
   
-  // Variety Growing Info
-  { key: 'days_to_maturity_seed', label: 'Days to Maturity', required: false, category: 'growing', target: 'profile' },
-  { key: 'start_indoors_weeks_before_last_frost_min', label: 'Start Indoors (weeks)', required: false, category: 'growing', target: 'profile' },
+  // Variety Growing Info - REQUIRED FOR CALENDAR
+  { key: 'days_to_maturity_seed', label: 'Days to Maturity', required: true, category: 'growing', target: 'profile', calendarRequired: true },
+  { key: 'start_indoors_weeks_before_last_frost_min', label: 'Start Indoors (weeks)', required: true, category: 'growing', target: 'profile', calendarRequired: true },
   { key: 'transplant_weeks_after_last_frost_min', label: 'Transplant Week Min', required: false, category: 'growing', target: 'profile' },
   { key: 'transplant_weeks_after_last_frost_max', label: 'Transplant Week Max', required: false, category: 'growing', target: 'profile' },
-  { key: 'direct_sow_weeks_relative_to_last_frost_min', label: 'Direct Sow Week Min', required: false, category: 'growing', target: 'profile' },
+  { key: 'direct_sow_weeks_relative_to_last_frost_min', label: 'Direct Sow Week Min', required: true, category: 'growing', target: 'profile', calendarRequired: true },
   { key: 'direct_sow_weeks_relative_to_last_frost_max', label: 'Direct Sow Week Max', required: false, category: 'growing', target: 'profile' },
   { key: 'spacing_in_min', label: 'Spacing Min (inches)', required: false, category: 'growing', target: 'profile' },
   { key: 'spacing_in_max', label: 'Spacing Max (inches)', required: false, category: 'growing', target: 'profile' },
@@ -351,7 +351,8 @@ export default function ImportSpreadsheetDialog({ open, onOpenChange, onSuccess 
               </p>
               <ul className="text-sm text-blue-800 space-y-1">
                 <li>• Download template to see all available fields</li>
-                <li>• Only "Variety Name" is required, all other fields optional</li>
+                <li>• <strong>Variety Name</strong> is required</li>
+                <li>• <strong className="text-red-700">For Calendar Integration:</strong> Must include <strong>Days to Maturity</strong>, <strong>Start Indoors (weeks)</strong>, and <strong>Direct Sow Week Min</strong></li>
                 <li>• Existing seeds will be updated with new data (no duplicates created)</li>
                 <li>• Leave fields blank to keep existing values</li>
                 <li>• For tags, use comma-separated values (e.g., "antho,favorite")</li>
@@ -445,11 +446,15 @@ export default function ImportSpreadsheetDialog({ open, onOpenChange, onSuccess 
               
               {/* Growing Info */}
               <div className="space-y-2">
-                <h4 className="font-semibold text-gray-900 text-sm">Growing Info</h4>
+                <h4 className="font-semibold text-gray-900 text-sm">
+                  Growing Info <span className="text-red-600 text-xs">(Required for Calendar)</span>
+                </h4>
                 {COLUMN_MAPPINGS.filter(c => c.category === 'growing').map(col => (
                   <div key={col.key} className="flex items-center gap-4">
                     <div className="w-48">
-                      <Label className="text-sm">{col.label}</Label>
+                      <Label className="text-sm">
+                        {col.label} {col.calendarRequired && <span className="text-red-600">*</span>}
+                      </Label>
                     </div>
                     <Select
                       value={mappings[col.key] || ''}
