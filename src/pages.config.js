@@ -56,6 +56,8 @@ import AdminDataMaintenance from './pages/AdminDataMaintenance';
 import AdminDeduplicateVarieties from './pages/AdminDeduplicateVarieties';
 import AdminHub from './pages/AdminHub';
 import AdminLog from './pages/AdminLog';
+import AdminPestLibrary from './pages/AdminPestLibrary';
+import AdminResources from './pages/AdminResources';
 import BrowseCategoryConfig from './pages/BrowseCategoryConfig';
 import BrowseGardens from './pages/BrowseGardens';
 import Calendar from './pages/Calendar';
@@ -100,6 +102,8 @@ import MyPlants from './pages/MyPlants';
 import NeedToBuy from './pages/NeedToBuy';
 import Notifications from './pages/Notifications';
 import Onboarding from './pages/Onboarding';
+import PestDetail from './pages/PestDetail';
+import PestLibrary from './pages/PestLibrary';
 import PlantCatalog from './pages/PlantCatalog';
 import PlantCatalogBrowse from './pages/PlantCatalogBrowse';
 import PlantCatalogDetail from './pages/PlantCatalogDetail';
@@ -108,6 +112,7 @@ import PlotBuilder from './pages/PlotBuilder';
 import PublicGarden from './pages/PublicGarden';
 import PublicPlant from './pages/PublicPlant';
 import PublicSeed from './pages/PublicSeed';
+import ResourceArticle from './pages/ResourceArticle';
 import Resources from './pages/Resources';
 import SeedInventory from './pages/SeedInventory';
 import SeedStash from './pages/SeedStash';
@@ -122,11 +127,9 @@ import Users from './pages/Users';
 import VarietyReviewQueue from './pages/VarietyReviewQueue';
 import ViewVariety from './pages/ViewVariety';
 import ZoneMap from './pages/ZoneMap';
-import PestLibrary from './pages/PestLibrary';
-import PestDetail from './pages/PestDetail';
-import AdminResources from './pages/AdminResources';
-import AdminPestLibrary from './pages/AdminPestLibrary';
-import ResourceArticle from './pages/ResourceArticle';
+import Achievements from './pages/Achievements';
+import Leaderboard from './pages/Leaderboard';
+import Challenges from './pages/Challenges';
 import __Layout from './Layout.jsx';
 
 
@@ -140,6 +143,8 @@ export const PAGES = {
     "AdminDeduplicateVarieties": AdminDeduplicateVarieties,
     "AdminHub": AdminHub,
     "AdminLog": AdminLog,
+    "AdminPestLibrary": AdminPestLibrary,
+    "AdminResources": AdminResources,
     "BrowseCategoryConfig": BrowseCategoryConfig,
     "BrowseGardens": BrowseGardens,
     "Calendar": Calendar,
@@ -184,6 +189,8 @@ export const PAGES = {
     "NeedToBuy": NeedToBuy,
     "Notifications": Notifications,
     "Onboarding": Onboarding,
+    "PestDetail": PestDetail,
+    "PestLibrary": PestLibrary,
     "PlantCatalog": PlantCatalog,
     "PlantCatalogBrowse": PlantCatalogBrowse,
     "PlantCatalogDetail": PlantCatalogDetail,
@@ -192,6 +199,7 @@ export const PAGES = {
     "PublicGarden": PublicGarden,
     "PublicPlant": PublicPlant,
     "PublicSeed": PublicSeed,
+    "ResourceArticle": ResourceArticle,
     "Resources": Resources,
     "SeedInventory": SeedInventory,
     "SeedStash": SeedStash,
@@ -206,11 +214,9 @@ export const PAGES = {
     "VarietyReviewQueue": VarietyReviewQueue,
     "ViewVariety": ViewVariety,
     "ZoneMap": ZoneMap,
-    "PestLibrary": PestLibrary,
-    "PestDetail": PestDetail,
-    "AdminResources": AdminResources,
-    "AdminPestLibrary": AdminPestLibrary,
-    "ResourceArticle": ResourceArticle,
+    "Achievements": Achievements,
+    "Leaderboard": Leaderboard,
+    "Challenges": Challenges,
 }
 
 export const pagesConfig = {
