@@ -596,6 +596,24 @@ export default function SeedStash() {
         {/* Compact Mobile Action Row */}
         <div className="flex gap-1.5 lg:gap-2 flex-wrap">
            <Button 
+             onClick={() => toast.info('Hold your phone camera over a barcode or QR code to scan it. Coming soon!')}
+             size="sm"
+             variant="outline"
+             className="gap-1 lg:gap-2 text-xs lg:text-sm h-8 lg:h-9"
+           >
+             <span className="hidden sm:inline">📷 Barcode Scanner</span>
+             <span className="sm:hidden">📷</span>
+           </Button>
+           <Button 
+             onClick={() => toast.info('Take a photo of your seed packet to extract data. Coming soon!')}
+             size="sm"
+             variant="outline"
+             className="gap-1 lg:gap-2 text-xs lg:text-sm h-8 lg:h-9"
+           >
+             <span className="hidden sm:inline">📸 Packet Scanner</span>
+             <span className="sm:hidden">📸</span>
+           </Button>
+           <Button 
              onClick={() => setShowAIAssistant(true)}
              size="sm"
              className="bg-purple-600 hover:bg-purple-700 gap-1 lg:gap-2 text-xs lg:text-sm h-8 lg:h-9"

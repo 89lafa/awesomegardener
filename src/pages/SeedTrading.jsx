@@ -6,15 +6,18 @@ import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { SeedTradeCard } from '@/components/trading/SeedTradeCard';
+import ProposeTradeDialog from '@/components/trading/ProposeTradeDialog';
 import { Plus, Search, MessageSquare } from 'lucide-react';
 import { Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
+import { createPageUrl } from '@/utils';
 
 export default function SeedTrading() {
   const [user, setUser] = useState(null);
   const [trades, setTrades] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
+  const [showProposeDialog, setShowProposeDialog] = useState(false);
 
   useEffect(() => {
     loadData();
@@ -66,7 +69,7 @@ export default function SeedTrading() {
 
   const handleMessage = (trade) => {
     const otherUserId = trade.initiator_id === user.id ? trade.recipient_id : trade.initiator_id;
-    window.location.href = `/Messages?user=${otherUserId}`;
+    window.location.href = createPageUrl('Messages') + `?user=${otherUserId}&trade_id=${trade.id}`;
   };
 
   if (loading) {
@@ -89,7 +92,7 @@ export default function SeedTrading() {
           <p className="text-gray-600">Browse and exchange seeds with other gardeners</p>
         </div>
         <Button 
-          onClick={() => toast.info('Trade proposals coming soon! For now, connect with other gardeners via Messages.')}
+          onClick={() => setShowProposeDialog(true)}
           className="bg-emerald-600 hover:bg-emerald-700 gap-2"
         >
           <Plus className="w-4 h-4" />
@@ -179,6 +182,13 @@ export default function SeedTrading() {
           )}
         </TabsContent>
       </Tabs>
+
+      {/* Propose Trade Dialog */}
+      <ProposeTradeDialog
+        open={showProposeDialog}
+        onOpenChange={setShowProposeDialog}
+        onSuccess={loadData}
+      />
     </div>
   );
 }
