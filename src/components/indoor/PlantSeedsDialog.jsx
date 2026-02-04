@@ -131,7 +131,38 @@ export function PlantSeedsDialog({ isOpen, onClose, trayId, trayName, onSeedPlan
       // Get all cells first to avoid multiple queries
       const allCells = await base44.entities.TrayCell.filter({ tray_id: trayId });
       
-      // Update selected cells
+      // Load variety/plant type names for caching
+      let varietyName = null;
+      let plantTypeName = null;
+      let plantTypeId = null;
+      
+      if (selectedLot.variety_id) {
+        const varieties = await base44.entities.Variety.filter({ id: selectedLot.variety_id });
+        if (varieties.length > 0) {
+          varietyName = varieties[0].variety_name;
+          plantTypeId = varieties[0].plant_type_id;
+          if (plantTypeId) {
+            const plantTypes = await base44.entities.PlantType.filter({ id: plantTypeId });
+            if (plantTypes.length > 0) {
+              plantTypeName = plantTypes[0].common_name;
+            }
+          }
+        }
+      } else if (selectedLot.plant_profile_id) {
+        const profiles = await base44.entities.PlantProfile.filter({ id: selectedLot.plant_profile_id });
+        if (profiles.length > 0) {
+          varietyName = profiles[0].custom_label;
+          plantTypeId = profiles[0].plant_type_id;
+          if (plantTypeId) {
+            const plantTypes = await base44.entities.PlantType.filter({ id: plantTypeId });
+            if (plantTypes.length > 0) {
+              plantTypeName = plantTypes[0].common_name;
+            }
+          }
+        }
+      }
+      
+      // Update selected cells with cached names
       for (const cellNum of selectedCells) {
         const cell = allCells.find(c => c.cell_number === cellNum);
         if (cell) {
@@ -139,6 +170,9 @@ export function PlantSeedsDialog({ isOpen, onClose, trayId, trayName, onSeedPlan
             user_seed_id: selectedLot.id,
             variety_id: selectedLot.variety_id,
             plant_profile_id: selectedLot.plant_profile_id,
+            plant_type_id: plantTypeId,
+            variety_name: varietyName,
+            plant_type_name: plantTypeName,
             status: 'seeded',
             seeded_date: new Date().toISOString().split('T')[0]
           });

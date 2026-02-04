@@ -281,16 +281,22 @@ export default function IndoorSpaceDetail() {
             </Card>
           ) : (
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              {containers.map(container => (
-                <Card key={container.id} className="p-4 text-center cursor-pointer hover:shadow-md transition">
-                  <p className="text-3xl mb-2">🪴</p>
-                  <p className="font-semibold text-sm text-gray-900">{container.name}</p>
-                  <p className="text-xs text-gray-600">{container.volume_gallons}gal</p>
-                  <p className="text-[10px] text-emerald-600 mt-2 font-medium">
-                    {container.status === 'planted' ? '🌱 Planted' : '📋 Empty'}
-                  </p>
-                </Card>
-              ))}
+              {containers.map(container => {
+                const displayName = container.variety_name && container.plant_type_name 
+                  ? `${container.variety_name} - ${container.plant_type_name}`
+                  : container.variety_name || container.name;
+                  
+                return (
+                  <Card key={container.id} className="p-4 text-center cursor-pointer hover:shadow-md transition">
+                    <p className="text-3xl mb-2">🪴</p>
+                    <p className="font-semibold text-sm text-gray-900">{displayName}</p>
+                    <p className="text-xs text-gray-600">{container.container_type?.replace(/_/g, ' ')}</p>
+                    <p className="text-[10px] text-emerald-600 mt-2 font-medium">
+                      {container.status === 'planted' ? '🌱 Planted' : '📋 Empty'}
+                    </p>
+                  </Card>
+                );
+              })}
             </div>
           )}
         </TabsContent>

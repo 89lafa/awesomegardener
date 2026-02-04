@@ -91,11 +91,19 @@ export default function TransplantDialog({
 
         // Create destination record
         if (destination === 'indoor_container') {
+          const displayName = cell.variety_name && cell.plant_type_name 
+            ? `${cell.variety_name} - ${cell.plant_type_name}`
+            : cell.variety_name || 'Plant';
+            
           await base44.entities.IndoorContainer.create({
             indoor_space_id: selectedSpace,
-            name: `${cell.variety_name || 'Plant'} Cup ${++containerCount}`,
+            name: `${displayName} Cup ${++containerCount}`,
             container_type: containerType,
             variety_id: cell.variety_id,
+            variety_name: cell.variety_name,
+            plant_type_name: cell.plant_type_name,
+            plant_type_id: cell.plant_type_id,
+            plant_profile_id: cell.plant_profile_id,
             user_seed_id: cell.user_seed_id,
             crop_plan_id: cell.crop_plan_id,
             source_tray_cell_id: cell.id,
@@ -120,7 +128,11 @@ export default function TransplantDialog({
         }
       }
 
-      // Create log entry
+      // Get tray info for global logging
+      const trays = await base44.entities.SeedTray.filter({ id: trayId });
+      const trayName = trays[0]?.name || 'Tray';
+      
+      // Create tray-level log entry
       await base44.entities.GrowLog.create({
         tray_id: trayId,
         log_type: 'action',
@@ -128,6 +140,22 @@ export default function TransplantDialog({
         content: notes || `Moved to ${destination === 'indoor_container' ? 'containers' : destination === 'outdoor_garden' ? 'garden' : 'discarded'}`,
         logged_at: new Date().toISOString()
       });
+      
+      // Create space-level global log entry showing what/where
+      if (destination === 'indoor_container' && selectedCells.length > 0) {
+        const firstCell = selectedCells[0];
+        const varietyInfo = firstCell.variety_name && firstCell.plant_type_name 
+          ? `${firstCell.variety_name} - ${firstCell.plant_type_name}`
+          : firstCell.variety_name || 'Unknown variety';
+          
+        await base44.entities.GrowLog.create({
+          indoor_space_id: selectedSpace,
+          log_type: 'action',
+          title: `Transplanted from ${trayName}`,
+          content: `${selectedCells.length}x ${varietyInfo} moved to ${containerType.replace(/_/g, ' ')} containers`,
+          logged_at: new Date().toISOString()
+        });
+      }
 
       toast.success(`Successfully transplanted ${selectedCells.length} seedlings!`);
       onTransplanted?.();

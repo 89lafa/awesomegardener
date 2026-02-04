@@ -71,15 +71,15 @@ const SelectContent = React.forwardRef(({ className, children, position = "poppe
         <SelectPrimitive.Content
           ref={ref}
           className={cn(
-            "fixed inset-x-0 bottom-0 z-[100] mt-24 flex flex-col rounded-t-[10px] border bg-background shadow-2xl",
+            "fixed inset-x-4 bottom-4 z-[100] flex flex-col rounded-xl border-2 border-emerald-500 bg-background shadow-2xl max-h-[70vh]",
             className
           )}
           position="popper"
           sideOffset={0}
           {...props}
         >
-          <div className="mx-auto mt-4 h-2 w-[100px] rounded-full bg-muted" />
-          <SelectPrimitive.Viewport className="p-4 max-h-[60vh] overflow-y-auto">
+          <div className="mx-auto mt-3 h-1.5 w-16 rounded-full bg-gray-300" />
+          <SelectPrimitive.Viewport className="p-3 overflow-y-auto flex-1">
             {children}
           </SelectPrimitive.Viewport>
         </SelectPrimitive.Content>
@@ -120,22 +120,27 @@ const SelectLabel = React.forwardRef(({ className, ...props }, ref) => (
 ))
 SelectLabel.displayName = SelectPrimitive.Label.displayName
 
-const SelectItem = React.forwardRef(({ className, children, ...props }, ref) => (
-  <SelectPrimitive.Item
-    ref={ref}
-    className={cn(
-      "relative flex w-full cursor-default select-none items-center rounded-sm py-1.5 pl-2 pr-8 text-sm outline-none focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
-      className
-    )}
-    {...props}>
-    <span className="absolute right-2 flex h-3.5 w-3.5 items-center justify-center">
-      <SelectPrimitive.ItemIndicator>
-        <Check className="h-4 w-4" />
-      </SelectPrimitive.ItemIndicator>
-    </span>
-    <SelectPrimitive.ItemText>{children}</SelectPrimitive.ItemText>
-  </SelectPrimitive.Item>
-))
+const SelectItem = React.forwardRef(({ className, children, ...props }, ref) => {
+  const isMobile = useMobile();
+  
+  return (
+    <SelectPrimitive.Item
+      ref={ref}
+      className={cn(
+        "relative flex w-full cursor-default select-none items-center rounded-lg py-3 pl-3 pr-10 text-base outline-none focus:bg-emerald-100 focus:text-emerald-900 data-[disabled]:pointer-events-none data-[disabled]:opacity-50 transition-colors",
+        isMobile && "min-h-[48px] text-base font-medium border-b border-gray-100 last:border-0 active:bg-emerald-100",
+        className
+      )}
+      {...props}>
+      <span className="absolute right-3 flex h-4 w-4 items-center justify-center">
+        <SelectPrimitive.ItemIndicator>
+          <Check className="h-5 w-5 text-emerald-600 font-bold" />
+        </SelectPrimitive.ItemIndicator>
+      </span>
+      <SelectPrimitive.ItemText className="flex-1">{children}</SelectPrimitive.ItemText>
+    </SelectPrimitive.Item>
+  );
+})
 SelectItem.displayName = SelectPrimitive.Item.displayName
 
 const SelectSeparator = React.forwardRef(({ className, ...props }, ref) => (

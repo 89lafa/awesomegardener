@@ -896,9 +896,9 @@ function CalendarGridView({ tasks, crops, season, onTaskClick, onDayClick }) {
                                     />
                                   )}
                                   <span className="text-[9px] text-white font-semibold truncate leading-none relative z-10">
-                                    {crop?.label} - {taskTypeShort}
-                                    {showPrediction && ' 🔮'}
-                                    {isComplete && ' ✓'}
+                                   {task.title || `${crop?.label} - ${taskTypeShort}`}
+                                   {showPrediction && ' 🔮'}
+                                   {isComplete && ' ✓'}
                                   </span>
                                 </div>
                               );
@@ -1058,12 +1058,13 @@ function TimelineView({ tasks, crops, season, onTaskClick }) {
                       left: `${Math.max(0, leftPercent)}%`,
                       width: `${Math.min(100 - Math.max(0, leftPercent), widthPercent)}%`,
                       backgroundColor: taskColor,
-                      minWidth: '60px',
+                      minWidth: '80px',
                       height: '16px'
                     }}
                     onClick={() => onTaskClick(task)}
+                    title={task.title || 'Task'}
                   >
-                    <div className="truncate font-medium leading-none">{task.title}</div>
+                    <div className="truncate font-medium leading-none">{task.title || 'Task'}</div>
                   </div>
                 );
               })}
