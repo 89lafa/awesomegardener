@@ -90,10 +90,19 @@ export default function Calendar() {
   useEffect(() => {
     const syncGrowListId = searchParams.get('syncGrowList');
     const seasonParam = searchParams.get('season');
-    if (syncGrowListId && seasonParam && !syncing && !loading) {
+    
+    if (syncGrowListId && seasonParam && !syncing && !loading && seasons.length > 0) {
+      // Set the season from URL first
+      if (seasonParam !== activeSeasonId) {
+        setActiveSeasonId(seasonParam);
+        localStorage.setItem('calendar_active_season', seasonParam);
+      }
+      // Then sync
       handleSyncGrowList(syncGrowListId, seasonParam);
+      // Clear URL params after sync
+      window.history.replaceState({}, '', window.location.pathname);
     }
-  }, [searchParams, loading]);
+  }, [searchParams, loading, seasons]);
   
   useEffect(() => {
     if (activeSeasonId && !loading) {
