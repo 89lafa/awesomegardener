@@ -36,6 +36,10 @@ const ADMIN_TOOLS = {
     { name: 'Browse Categories', route: 'BrowseCategoryConfig', icon: Database, description: 'Configure browse category groupings' },
     { name: 'Data Cleanup', route: 'AdminDataCleanup', icon: Trash2, description: 'Remove invalid records and orphaned data' },
   ],
+  'Content Management': [
+    { name: 'Manage Resources', route: 'AdminResources', icon: FileText, description: 'Add and edit learning guides and articles' },
+    { name: 'Manage Pest Library', route: 'AdminPestLibrary', icon: Bug, description: 'Add and edit pest/disease entries' },
+  ],
   'Community Moderation': [
     { name: 'User Reports', route: 'UserReports', icon: Shield, description: 'Review user-reported content' },
     { name: 'Variety Reviews', route: 'VarietyReviewQueue', icon: Shield, description: 'Review user-submitted variety reviews' },

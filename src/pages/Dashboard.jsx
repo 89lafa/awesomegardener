@@ -21,6 +21,8 @@ import {
 import { createPageUrl } from '@/utils';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
+import QuickCheckInWidget from '@/components/dashboard/QuickCheckInWidget';
+import ActivityFeed from '@/components/dashboard/ActivityFeed';
 
 const QuickAccessCard = ({ icon: Icon, title, count, color, page }) => {
   const navigate = useNavigate();
@@ -338,7 +340,7 @@ export default function Dashboard() {
 
 
       {/* Quick Access Grid */}
-      <div className="grid md:grid-cols-2 gap-4 md:gap-6 mt-6 md:mt-8">
+      <div className="grid md:grid-cols-3 gap-4 md:gap-6 mt-6 md:mt-8">
         {/* Top Actions */}
         <div className="glass-card-no-padding">
           <div className="p-6">
@@ -383,16 +385,31 @@ export default function Dashboard() {
           </div>
         </div>
 
+        {/* Quick Check-In */}
+        <QuickCheckInWidget />
+
         {/* New Features */}
         <div className="glass-card-no-padding">
           <div className="p-6">
             <h3 className="flex items-center gap-2 text-lg font-semibold mb-4" style={{ color: 'var(--text-primary)' }}>
-              ✨ New Features
+              ✨ AI Tools
             </h3>
             <div className="space-y-3 text-sm">
             <div>
+              <p className="font-medium" style={{ color: 'var(--text-primary)' }}>🤖 AI Assistants</p>
+              <p className="text-xs mt-1" style={{ color: 'var(--text-secondary)' }}>Photo diagnosis, plant ID, smart suggestions</p>
+              <Button
+                onClick={() => navigate(createPageUrl('AIAssistants'))}
+                size="sm"
+                variant="outline"
+                className="mt-2 w-full"
+              >
+                Explore AI Tools
+              </Button>
+            </div>
+            <div className="border-t pt-3" style={{ borderColor: 'rgba(148, 163, 184, 0.2)' }}>
               <p className="font-medium" style={{ color: 'var(--text-primary)' }}>🌾 Seed Trading</p>
-              <p className="text-xs mt-1" style={{ color: 'var(--text-secondary)' }}>Propose trades with other gardeners</p>
+              <p className="text-xs mt-1" style={{ color: 'var(--text-secondary)' }}>Trade with other gardeners</p>
               <Button
                 onClick={() => navigate(createPageUrl('SeedTrading'))}
                 size="sm"
@@ -402,22 +419,13 @@ export default function Dashboard() {
                 Browse Trades
               </Button>
             </div>
-            <div className="border-t pt-3" style={{ borderColor: 'rgba(148, 163, 184, 0.2)' }}>
-              <p className="font-medium" style={{ color: 'var(--text-primary)' }}>💰 Expense Tracking</p>
-              <p className="text-xs mt-1" style={{ color: 'var(--text-secondary)' }}>Track garden spending by season</p>
-              <Button
-                onClick={() => navigate(createPageUrl('GardenExpenses'))}
-                size="sm"
-                variant="outline"
-                className="mt-2 w-full"
-              >
-                View Expenses
-              </Button>
-            </div>
           </div>
         </div>
       </div>
       </div>
+
+      {/* Activity Feed */}
+      <ActivityFeed limit={5} />
 
       {/* Popular Crops */}
       {popularCrops && (

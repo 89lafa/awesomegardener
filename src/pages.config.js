@@ -126,6 +126,7 @@ import PestLibrary from './pages/PestLibrary';
 import PestDetail from './pages/PestDetail';
 import AdminResources from './pages/AdminResources';
 import AdminPestLibrary from './pages/AdminPestLibrary';
+import ResourceArticle from './pages/ResourceArticle';
 import __Layout from './Layout.jsx';
 
 
@@ -209,6 +210,7 @@ export const PAGES = {
     "PestDetail": PestDetail,
     "AdminResources": AdminResources,
     "AdminPestLibrary": AdminPestLibrary,
+    "ResourceArticle": ResourceArticle,
 }
 
 export const pagesConfig = {
