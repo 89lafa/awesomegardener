@@ -62,7 +62,15 @@ export default function QuickHelpWidget() {
         prompt: `Answer this gardening question briefly (under 150 words): ${question}`
       });
 
-      setAnswer({ question, response: response.data });
+      // InvokeLLM returns a string directly when no response_json_schema is provided
+      const answerText = typeof response === 'string' ? response : response.data;
+      
+      if (!answerText || answerText.trim() === '') {
+        toast.error('Received empty response from AI');
+        return;
+      }
+
+      setAnswer({ question, response: answerText });
     } catch (error) {
       console.error('Quick help error:', error);
       toast.error('Failed to get answer');
