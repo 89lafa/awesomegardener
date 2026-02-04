@@ -63,6 +63,7 @@ const getNavItems = (userRole, isEditor, user) => {
     // AI Tools
     { category: true, label: 'AI TOOLS' },
     { name: 'AI Assistants', icon: Lightbulb, page: 'AIAssistants' },
+    { name: 'Pest Library', icon: Bug, page: 'PestLibrary' },
     
     // Resources
     { category: true, label: 'LEARN & EXPLORE' },
