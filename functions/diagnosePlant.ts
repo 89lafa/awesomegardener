@@ -96,6 +96,36 @@ Analyze the photo and identify any disease, pest, deficiency, or environmental p
 
     console.log('[DiagnosePlant] Diagnosis complete:', diagnosis.id);
 
+    // Auto-add to pest library if not exists (admin service role)
+    try {
+      const existingPests = await base44.asServiceRole.entities.PestLibrary.filter({
+        common_name: response.issue_name
+      });
+
+      if (existingPests.length === 0 && response.issue_name && response.issue_name !== 'Unknown Issue') {
+        await base44.asServiceRole.entities.PestLibrary.create({
+          common_name: response.issue_name,
+          scientific_name: response.scientific_name || '',
+          category: response.issue_type === 'pest' ? 'insect' : response.issue_type,
+          appearance: response.diagnosis_description || '',
+          symptoms: response.symptoms_observed || [],
+          affects_plant_types: ['all'],
+          seasonal_occurrence: 'year-round',
+          severity_potential: response.severity || 'medium',
+          spread_rate: 'moderate',
+          organic_treatments: response.organic_treatments || [],
+          chemical_treatments: response.chemical_treatments || [],
+          prevention_tips: response.prevention_tips || [],
+          photos: [photo_url],
+          primary_photo_url: photo_url,
+          is_active: true
+        });
+        console.log('[DiagnosePlant] Auto-added to pest library:', response.issue_name);
+      }
+    } catch (error) {
+      console.error('[DiagnosePlant] Failed to auto-add to pest library:', error);
+    }
+
     return Response.json({
       success: true,
       diagnosis_id: diagnosis.id,

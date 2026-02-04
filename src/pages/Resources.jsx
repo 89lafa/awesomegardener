@@ -269,58 +269,7 @@ export default function Resources() {
 
         {/* Guides Tab */}
         <TabsContent value="guides" className="space-y-6">
-          <div className="grid md:grid-cols-2 gap-6">
-            <GuideSection
-              title="Getting Started"
-              icon="🌱"
-              guides={[
-                { title: 'Square Foot Gardening Basics', type: 'Guide' },
-                { title: 'Seed Starting 101', type: 'Guide' },
-                { title: 'Understanding Soil Types', type: 'Guide' }
-              ]}
-            />
-            <GuideSection
-              title="Pest & Disease"
-              icon="🐛"
-              guides={[
-                { title: 'Common Garden Pests', type: 'Guide' },
-                { title: 'Organic Pest Control Methods', type: 'Guide' },
-                { title: 'Identifying Plant Diseases', type: 'Guide' }
-              ]}
-            />
-            <GuideSection
-              title="Watering & Irrigation"
-              icon="💧"
-              guides={[
-                { title: 'Drip Irrigation Setup', type: 'Guide' },
-                { title: 'When and How Much to Water', type: 'Guide' },
-                { title: 'Rain Barrel Collection', type: 'Guide' }
-              ]}
-            />
-            <GuideSection
-              title="Season Extension"
-              icon="❄️"
-              guides={[
-                { title: 'Cold Frame Basics', type: 'Guide' },
-                { title: 'Row Cover Guide', type: 'Guide' },
-                { title: 'Winter Gardening Tips', type: 'Guide' }
-              ]}
-            />
-          </div>
-
-          <div className="bg-gray-50 rounded-lg p-6 border border-gray-200 mt-8">
-            <h3 className="text-lg font-semibold mb-4">Helpful Resources</h3>
-            <div className="grid md:grid-cols-2 gap-4">
-              <a href="#" className="p-4 border border-gray-200 rounded-lg hover:border-emerald-400 hover:bg-emerald-50 transition">
-                <p className="font-medium text-gray-900">USDA Zone Map</p>
-                <p className="text-xs text-gray-600 mt-1">Find your hardiness zone</p>
-              </a>
-              <a href="#" className="p-4 border border-gray-200 rounded-lg hover:border-emerald-400 hover:bg-emerald-50 transition">
-                <p className="font-medium text-gray-900">Extension Services</p>
-                <p className="text-xs text-gray-600 mt-1">Local gardening resources</p>
-              </a>
-            </div>
-          </div>
+          <ResourceArticles />
         </TabsContent>
       </Tabs>
 
@@ -480,6 +429,106 @@ function GuideSection({ title, icon, guides }) {
             </div>
           </a>
         ))}
+      </div>
+    </div>
+  );
+}
+
+function ResourceArticles() {
+  const [articles, setArticles] = useState([]);
+  const [pests, setPests] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const { createPageUrl } = window;
+
+  useEffect(() => {
+    loadArticles();
+  }, []);
+
+  const loadArticles = async () => {
+    try {
+      const [resourcesData, pestsData] = await Promise.all([
+        base44.entities.Resource.filter({ is_published: true }),
+        base44.entities.PestLibrary.filter({ is_active: true })
+      ]);
+      setArticles(resourcesData);
+      setPests(pestsData);
+    } catch (error) {
+      console.error('Error loading articles:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <Loader2 className="w-8 h-8 animate-spin text-emerald-600" />
+      </div>
+    );
+  }
+
+  const learningGuides = articles.filter(a => a.category === 'learning_guide');
+  const pestArticles = articles.filter(a => a.category === 'pest_disease');
+
+  return (
+    <div className="space-y-8">
+      {/* Learning Guides */}
+      <div>
+        <h3 className="text-xl font-bold text-gray-900 mb-4">📚 Learning Guides</h3>
+        <div className="grid md:grid-cols-2 gap-4">
+          {learningGuides.map((article) => (
+            <Card key={article.id} className="hover:shadow-lg transition cursor-pointer">
+              {article.hero_image_url && (
+                <div className="h-32 overflow-hidden">
+                  <img
+                    src={article.hero_image_url}
+                    alt={article.title}
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+              )}
+              <CardContent className="pt-4">
+                <h4 className="font-semibold text-gray-900 mb-2">{article.title}</h4>
+                <p className="text-sm text-gray-600 line-clamp-2">{article.excerpt}</p>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      </div>
+
+      {/* Pest & Disease */}
+      <div>
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-xl font-bold text-gray-900">🐛 Pest & Disease Library</h3>
+          <Button
+            onClick={() => window.location.href = createPageUrl('PestLibrary')}
+            variant="outline"
+            size="sm"
+          >
+            View All →
+          </Button>
+        </div>
+        <div className="grid md:grid-cols-3 gap-4">
+          {pests.slice(0, 6).map((pest) => (
+            <Card key={pest.id} className="hover:shadow-lg transition cursor-pointer"
+              onClick={() => window.location.href = createPageUrl('PestDetail') + '?id=' + pest.id}
+            >
+              {pest.primary_photo_url && (
+                <div className="h-24 overflow-hidden">
+                  <img
+                    src={pest.primary_photo_url}
+                    alt={pest.common_name}
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+              )}
+              <CardContent className="pt-3">
+                <h4 className="font-semibold text-sm text-gray-900">{pest.common_name}</h4>
+                <p className="text-xs text-gray-600 mt-1 line-clamp-2">{pest.appearance}</p>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
       </div>
     </div>
   );
