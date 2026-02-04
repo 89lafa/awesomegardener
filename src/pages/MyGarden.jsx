@@ -562,8 +562,8 @@ export default function MyGarden() {
                 <CardContent className="p-6">
                   <div className="flex items-start justify-between mb-4">
                     <div>
-                      <h3 className="text-xl font-bold text-gray-900">{selectedItem.label}</h3>
-                      <p className="text-sm text-gray-600 capitalize mt-1">
+                      <h3 className="text-xl font-bold" style={{ color: 'var(--text-primary)' }}>{selectedItem.label}</h3>
+                      <p className="text-sm capitalize mt-1" style={{ color: 'var(--text-secondary)' }}>
                         {selectedItem.item_type.replace(/_/g, ' ')}
                       </p>
                     </div>
@@ -577,7 +577,7 @@ export default function MyGarden() {
 
                   {selectedItemPlantings.length > 0 ? (
                     <div className="space-y-2">
-                      <h4 className="font-semibold text-sm text-gray-700">Currently Growing:</h4>
+                      <h4 className="font-semibold text-sm" style={{ color: 'var(--text-secondary)' }}>Currently Growing:</h4>
                       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
                         {selectedItemPlantings.map((planting) => (
                           <div 
@@ -585,7 +585,7 @@ export default function MyGarden() {
                             className="flex items-center gap-2 p-2 bg-emerald-50 rounded-lg border border-emerald-200"
                           >
                             <span className="text-xl">{planting.plant_type_icon || '🌱'}</span>
-                            <span className="text-sm font-medium text-gray-900 truncate">
+                            <span className="text-sm font-medium truncate" style={{ color: 'var(--text-primary)' }}>
                               {planting.display_name}
                             </span>
                           </div>

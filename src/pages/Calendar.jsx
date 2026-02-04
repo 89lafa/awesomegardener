@@ -988,12 +988,12 @@ function TimelineView({ tasks, crops, season, onTaskClick }) {
         return (
           <div key={crop.id} className="flex border-b hover:bg-gray-50">
             <div className="w-32 md:w-40 flex-shrink-0 border-r p-2 flex items-center gap-2 bg-white sticky left-0 z-10">
-              <div 
-                className="w-2 md:w-3 h-2 md:h-3 rounded-full flex-shrink-0"
-                style={{ backgroundColor: crop.color_hex || '#10b981' }}
-              />
-              <span className="text-xs md:text-sm truncate">{crop.label}</span>
-            </div>
+                    <div 
+                      className="w-2 md:w-3 h-2 md:h-3 rounded-full flex-shrink-0"
+                      style={{ backgroundColor: crop.color_hex || '#10b981' }}
+                    />
+                    <span className="text-xs md:text-sm truncate" style={{ color: 'var(--text-primary)' }}>{crop.label}</span>
+                  </div>
             
             <div 
               className="flex-1 relative" 

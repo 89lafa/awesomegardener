@@ -42,7 +42,7 @@ const QuickAccessCard = ({ icon: Icon, title, count, color, page }) => {
     >
       <div className="flex items-center justify-between">
         <div className="flex-1">
-          <p className="text-sm mb-1 text-gray-700 font-medium">{title}</p>
+          <p className="text-sm mb-1 font-medium" style={{ color: 'var(--text-secondary)' }}>{title}</p>
           <p className="text-2xl md:text-3xl font-bold" style={{ color: iconColor }}>{count}</p>
         </div>
         <div style={{ 
@@ -92,10 +92,10 @@ const WeatherCard = ({ weather, weatherLoading }) => {
       }} />
       
       <div style={{ position: 'relative', zIndex: 1 }}>
-        <p className="text-xs mb-1 text-gray-700 font-medium">Today</p>
-        <p className="text-2xl md:text-3xl font-bold mb-1 text-gray-900">{weather.current_temp}°</p>
-        <p className="text-xs text-gray-700">{weather.conditions}</p>
-        <div className="flex gap-3 mt-3 text-xs text-gray-700">
+        <p className="text-xs mb-1 font-medium" style={{ color: 'var(--text-secondary)' }}>Today</p>
+        <p className="text-2xl md:text-3xl font-bold mb-1" style={{ color: 'var(--text-primary)' }}>{weather.current_temp}°</p>
+        <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>{weather.conditions}</p>
+        <div className="flex gap-3 mt-3 text-xs" style={{ color: 'var(--text-secondary)' }}>
           <span>H: {weather.high_temp}°</span>
           <span>L: {weather.low_temp}°</span>
         </div>

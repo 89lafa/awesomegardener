@@ -176,8 +176,8 @@ export default function IndoorGrowSpaces() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">🏠 Indoor Grow Spaces</h1>
-          <p className="text-gray-600 mt-1">Start seeds indoors before transplanting</p>
+          <h1 className="text-3xl font-bold" style={{ color: 'var(--text-primary)' }}>🏠 Indoor Grow Spaces</h1>
+          <p className="mt-1" style={{ color: 'var(--text-secondary)' }}>Start seeds indoors before transplanting</p>
         </div>
         <Button 
           onClick={() => setShowNewDialog(true)}
@@ -214,8 +214,8 @@ export default function IndoorGrowSpaces() {
               <div className="p-6">
                 <div className="flex items-start justify-between mb-4">
                   <div>
-                    <h3 className="text-lg font-semibold text-gray-900">{space.name}</h3>
-                    <p className="text-sm text-gray-600 mt-1">
+                    <h3 className="text-lg font-semibold" style={{ color: 'var(--text-primary)' }}>{space.name}</h3>
+                    <p className="text-sm mt-1" style={{ color: 'var(--text-secondary)' }}>
                       {space.width_ft}ft × {space.length_ft}ft • {space.space_type === 'room' ? '🏠 Room' : '⛺ Tent'}
                     </p>
                   </div>
