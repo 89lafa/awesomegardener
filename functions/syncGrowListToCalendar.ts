@@ -46,9 +46,9 @@ Deno.serve(async (req) => {
     const seasonData = season[0];
     const lastFrostDate = seasonData.last_frost_date ? new Date(seasonData.last_frost_date) : null;
 
-    // Load data with proper array extraction
-    const plantTypesResult = await base44.asServiceRole.entities.PlantType.list('-created_date', 10000);
-    const varietiesResult = await base44.asServiceRole.entities.Variety.list('-created_date', 10000);
+    // Load data with proper array extraction - limit to 1000 to prevent rate limits
+    const plantTypesResult = await base44.asServiceRole.entities.PlantType.list('-created_date', 1000);
+    const varietiesResult = await base44.asServiceRole.entities.Variety.list('-created_date', 1000);
     
     console.log('[SyncGrowList] Raw results:', {
       plantTypesType: typeof plantTypesResult,

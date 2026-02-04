@@ -99,7 +99,7 @@ export default function Calendar() {
   }, [searchParams, activeSeasonId]);
   
   useEffect(() => {
-    if (activeSeasonId) {
+    if (activeSeasonId && !loading) {
       loadPlansAndTasks();
       generateMaintenanceTasksIfNeeded();
     }
@@ -181,9 +181,9 @@ export default function Calendar() {
     if (!activeSeasonId || !user) return;
     
     try {
-      // Batch query - load both plans and tasks together, filtered by current user
+      // Batch query - load both plans and tasks together, using user_owner_email for CropPlan
       const [plansData, tasksData] = await Promise.all([
-        smartQuery(base44, 'CropPlan', { garden_season_id: activeSeasonId, created_by: user.email }),
+        smartQuery(base44, 'CropPlan', { garden_season_id: activeSeasonId, user_owner_email: user.email }),
         smartQuery(base44, 'CropTask', { garden_season_id: activeSeasonId, created_by: user.email }, 'start_date')
       ]);
       console.log('[Calendar] Loaded', plansData.length, 'plans and', tasksData.length, 'tasks for season', activeSeasonId);
