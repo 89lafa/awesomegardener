@@ -4,6 +4,7 @@ import { createPageUrl } from '@/utils';
 import Sidebar from '@/components/layout/Sidebar';
 import TopBar from '@/components/layout/TopBar';
 import BottomNav from '@/components/layout/BottomNav';
+import QuickHelpWidget from '@/components/ai/QuickHelpWidget';
 import { cn } from '@/lib/utils';
 import { Loader2 } from 'lucide-react';
 import ErrorBoundary from '@/components/common/ErrorBoundary';
@@ -81,7 +82,7 @@ export default function Layout({ children, currentPageName }) {
     }
   }, []);
 
-  // Inject glassmorphic card styles + mobile-specific CSS
+  // Inject glassmorphic card styles
   useEffect(() => {
     const styleId = 'glassmorphic-styles';
     if (!document.getElementById(styleId)) {
@@ -244,6 +245,7 @@ export default function Layout({ children, currentPageName }) {
         </main>
       </div>
       {user && <BottomNav />}
+      {user && <QuickHelpWidget />}
     </div>
     </ErrorBoundary>
   );
