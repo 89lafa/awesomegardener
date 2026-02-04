@@ -51,7 +51,6 @@ import AdBanner from '@/components/monetization/AdBanner';
 import PlantRecommendations from '@/components/ai/PlantRecommendations';
 import { Sparkles } from 'lucide-react';
 import { getPlantTypesCached } from '@/components/utils/dataCache';
-import EditItemDialog from '@/components/growlist/EditItemDialog';
 
 export default function GrowLists() {
   const [searchParams] = useSearchParams();
@@ -68,8 +67,6 @@ export default function GrowLists() {
   const [showAIRecommendations, setShowAIRecommendations] = useState(false);
   const [viewMode, setViewMode] = useState('cards'); // 'cards' or 'list'
   const [itemViewMode, setItemViewMode] = useState('card'); // 'card' or 'list' for detail view items
-  const [editingItem, setEditingItem] = useState(null);
-  const [showEditItemDialog, setShowEditItemDialog] = useState(false);
 
   const [seasons, setSeasons] = useState([]);
   const [newList, setNewList] = useState({
@@ -286,29 +283,22 @@ export default function GrowLists() {
     }
   };
 
-  const handleEditItem = (item) => {
-    setEditingItem(item);
-    setShowEditItemDialog(true);
-  };
-
-  const handleSaveEditItem = async (updates) => {
-    if (!selectedList || !editingItem) return;
+  const handleEditItemQuantity = async (itemId, newQty) => {
+    if (!selectedList || !newQty || newQty < 1) return;
 
     try {
       const updatedItems = selectedList.items.map(i => 
-        i.id === editingItem.id ? { ...i, ...updates } : i
+        i.id === itemId ? { ...i, quantity: newQty } : i
       );
       await base44.entities.GrowList.update(selectedList.id, { items: updatedItems });
       setSelectedList({ ...selectedList, items: updatedItems });
       setGrowLists(growLists.map(l => 
         l.id === selectedList.id ? { ...l, items: updatedItems } : l
       ));
-      setShowEditItemDialog(false);
-      setEditingItem(null);
-      toast.success('Item updated!');
+      toast.success('Quantity updated');
     } catch (error) {
-      console.error('Error updating item:', error);
-      toast.error('Failed to update item');
+      console.error('Error updating quantity:', error);
+      toast.error('Failed to update');
     }
   };
 
@@ -425,10 +415,10 @@ export default function GrowLists() {
               )}
             </div>
           </div>
-          <div className="flex gap-2">
+          <div className="flex gap-2 flex-wrap">
             {selectedList.garden_season_id && (
               <Button 
-                className="gap-2 bg-emerald-600 hover:bg-emerald-700"
+                className="gap-2 bg-emerald-600 hover:bg-emerald-700 text-xs sm:text-sm h-9"
                 onClick={() => {
                   // Save selected season to localStorage so Calendar loads it
                   localStorage.setItem('calendar_active_garden', selectedList.garden_id);
@@ -444,15 +434,17 @@ export default function GrowLists() {
             <Button 
               variant="outline"
               onClick={() => handleUpdateStatus(selectedList, selectedList.status === 'active' ? 'archived' : 'active')}
+              className="text-xs sm:text-sm h-9"
             >
               {selectedList.status === 'active' ? 'Archive' : 'Activate'}
             </Button>
             <Button 
               onClick={() => setShowAddItemDialog(true)}
-              className="bg-emerald-600 hover:bg-emerald-700 gap-2"
+              className="bg-emerald-600 hover:bg-emerald-700 gap-2 text-xs sm:text-sm h-9"
             >
-              <Plus className="w-4 h-4" />
-              Add Item
+              <Plus className="w-3 h-3 sm:w-4 sm:h-4" />
+              <span className="hidden sm:inline">Add Item</span>
+              <span className="sm:hidden">Add</span>
             </Button>
           </div>
         </div>
@@ -520,15 +512,15 @@ export default function GrowLists() {
                     border: '1px solid var(--glass-border)'
                   }}
                 >
-                  <CardContent className="p-3 md:p-4">
+                  <CardContent className="p-3">
                     <div className="flex flex-col gap-2">
-                      <div className="flex items-start justify-between">
+                      <div className="flex items-start justify-between gap-2">
                         <div className="flex items-center gap-2 flex-1 min-w-0">
-                          <div className="w-8 h-8 md:w-10 md:h-10 rounded-lg bg-emerald-100 flex items-center justify-center flex-shrink-0">
-                            <Package className="w-4 h-4 md:w-5 md:h-5 text-emerald-600" />
+                          <div className="w-8 h-8 rounded-lg bg-emerald-100 flex items-center justify-center flex-shrink-0">
+                            <Package className="w-4 h-4 text-emerald-600" />
                           </div>
                           <div className="min-w-0 flex-1">
-                            <h3 className="font-semibold text-xs md:text-sm truncate" style={{ color: 'var(--text-primary)' }}>
+                            <h3 className="font-semibold text-xs truncate" style={{ color: 'var(--text-primary)' }}>
                               {item.variety_name || item.plant_type_name}
                             </h3>
                             {item.variety_name && (
@@ -543,10 +535,13 @@ export default function GrowLists() {
                             className="h-7 w-7"
                             onClick={(e) => {
                               e.stopPropagation();
-                              handleEditItem(item);
+                              const newQty = prompt('Enter new quantity:', item.quantity || 1);
+                              if (newQty) {
+                                handleEditItemQuantity(item.id, parseInt(newQty));
+                              }
                             }}
                           >
-                            <Edit className="w-3 h-3 md:w-4 md:h-4 text-gray-600" />
+                            <Edit className="w-3 h-3 text-gray-400" />
                           </Button>
                           <Button 
                             variant="ghost" 
@@ -557,15 +552,13 @@ export default function GrowLists() {
                               handleRemoveItem(item.id);
                             }}
                           >
-                            <Trash2 className="w-3 h-3 md:w-4 md:h-4 text-gray-400" />
+                            <Trash2 className="w-3 h-3 text-gray-400" />
                           </Button>
                         </div>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <Badge variant="outline" className="text-xs">
-                          Qty: {item.quantity || item.target_count || 1}
-                        </Badge>
-                      </div>
+                      <Badge variant="outline" className="text-xs w-fit">
+                        Qty: {item.quantity || item.target_count || 1}
+                      </Badge>
                       {item.notes && (
                        <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>{item.notes}</p>
                       )}
@@ -593,53 +586,37 @@ export default function GrowLists() {
                   }}
                 >
                   <CardContent className="p-3">
-                   <div className="flex items-center justify-between">
-                     <div className="flex items-center gap-3 flex-1 min-w-0">
-                       <div className="w-10 h-10 rounded-lg bg-emerald-100 flex items-center justify-center flex-shrink-0">
-                         <Package className="w-5 h-5 text-emerald-600" />
-                       </div>
-                       <div className="min-w-0">
-                         <h3 className="font-semibold text-sm truncate" style={{ color: 'var(--text-primary)' }}>
-                           {item.variety_name || item.plant_type_name}
-                         </h3>
-                         <div className="flex items-center gap-2 mt-0.5">
-                           {item.variety_name && (
-                             <span className="text-xs" style={{ color: 'var(--text-secondary)' }}>{item.plant_type_name}</span>
-                           )}
-                           <Badge variant="outline" className="text-xs">
-                             Qty: {item.quantity || item.target_count || 1}
-                           </Badge>
-                         </div>
-                         {item.notes && (
-                           <p className="text-xs mt-1" style={{ color: 'var(--text-secondary)' }}>{item.notes}</p>
-                         )}
-                       </div>
-                     </div>
-                     <div className="flex gap-1 flex-shrink-0">
-                       <Button 
-                         variant="ghost" 
-                         size="icon"
-                         className="h-8 w-8"
-                         onClick={(e) => {
-                           e.stopPropagation();
-                           handleEditItem(item);
-                         }}
-                       >
-                         <Edit className="w-4 h-4 text-gray-600" />
-                       </Button>
-                       <Button 
-                         variant="ghost" 
-                         size="icon"
-                         className="h-8 w-8"
-                         onClick={(e) => {
-                           e.stopPropagation();
-                           handleRemoveItem(item.id);
-                         }}
-                       >
-                         <Trash2 className="w-4 h-4 text-gray-400" />
-                       </Button>
-                     </div>
-                   </div>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3 flex-1 min-w-0">
+                        <div className="w-10 h-10 rounded-lg bg-emerald-100 flex items-center justify-center flex-shrink-0">
+                          <Package className="w-5 h-5 text-emerald-600" />
+                        </div>
+                        <div className="min-w-0">
+                          <h3 className="font-semibold text-sm truncate" style={{ color: 'var(--text-primary)' }}>
+                            {item.variety_name || item.plant_type_name}
+                          </h3>
+                          <div className="flex items-center gap-2 mt-0.5">
+                            {item.variety_name && (
+                              <span className="text-xs" style={{ color: 'var(--text-secondary)' }}>{item.plant_type_name}</span>
+                            )}
+                            <Badge variant="outline" className="text-xs">
+                              Qty: {item.quantity || item.target_count || 1}
+                            </Badge>
+                          </div>
+                          {item.notes && (
+                            <p className="text-xs mt-1" style={{ color: 'var(--text-secondary)' }}>{item.notes}</p>
+                          )}
+                        </div>
+                      </div>
+                      <Button 
+                        variant="ghost" 
+                        size="icon"
+                        className="flex-shrink-0"
+                        onClick={() => handleRemoveItem(item.id)}
+                      >
+                        <Trash2 className="w-4 h-4 text-gray-400" />
+                      </Button>
+                    </div>
                   </CardContent>
                 </Card>
               </motion.div>
@@ -1155,13 +1132,6 @@ export default function GrowLists() {
         </DialogContent>
       </Dialog>
       
-      <EditItemDialog
-        open={showEditItemDialog}
-        onOpenChange={setShowEditItemDialog}
-        item={editingItem}
-        onSave={handleSaveEditItem}
-      />
-
       <PlantRecommendations
         open={showAIRecommendations}
         onOpenChange={setShowAIRecommendations}

@@ -239,21 +239,13 @@ export default function TrayDetail() {
         </Button>
         <Button
           onClick={() => {
-            // Select ALL cells, not just those with data
-            const allCellsInGrid = [];
-            for (let row = 0; row < tray.cells_rows; row++) {
-              for (let col = 0; col < tray.cells_cols; col++) {
-                const existingCell = cells.find(c => c.row === row && c.col === col);
-                if (existingCell) {
-                  allCellsInGrid.push(existingCell);
-                }
-              }
-            }
-            setSelectedCells(allCellsInGrid);
+            // Select ALL cells, including those without cell numbers
+            const allCells = cells.filter(c => c);
+            setSelectedCells(allCells);
           }}
           variant="outline"
         >
-          Select All
+          Select All ({cells.length})
         </Button>
         <Button
           onClick={() => setSelectedCells([])}

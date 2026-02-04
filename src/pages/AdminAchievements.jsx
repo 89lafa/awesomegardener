@@ -10,13 +10,6 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Loader2, Plus, Edit, Trash2, Award } from 'lucide-react';
 import { toast } from 'sonner';
 
-const TIER_COLORS = {
-  bronze: 'bg-amber-600 text-white',
-  silver: 'bg-gray-400 text-white',
-  gold: 'bg-yellow-500 text-white',
-  platinum: 'bg-purple-600 text-white'
-};
-
 export default function AdminAchievements() {
   const [achievements, setAchievements] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -29,8 +22,8 @@ export default function AdminAchievements() {
 
   const loadAchievements = async () => {
     try {
-      const allAchievements = await base44.asServiceRole.entities.Achievement.list('-sort_order');
-      setAchievements(allAchievements);
+      const all = await base44.asServiceRole.entities.Achievement.list('-sort_order');
+      setAchievements(all);
     } catch (error) {
       console.error('Error loading achievements:', error);
       toast.error('Failed to load achievements');
@@ -39,13 +32,13 @@ export default function AdminAchievements() {
     }
   };
 
-  const handleSave = async (achievementData) => {
+  const handleSave = async (data) => {
     try {
       if (editingAchievement?.id) {
-        await base44.asServiceRole.entities.Achievement.update(editingAchievement.id, achievementData);
+        await base44.asServiceRole.entities.Achievement.update(editingAchievement.id, data);
         toast.success('Achievement updated!');
       } else {
-        await base44.asServiceRole.entities.Achievement.create(achievementData);
+        await base44.asServiceRole.entities.Achievement.create(data);
         toast.success('Achievement created!');
       }
       setShowDialog(false);
@@ -53,7 +46,7 @@ export default function AdminAchievements() {
       await loadAchievements();
     } catch (error) {
       console.error('Save error:', error);
-      toast.error('Failed to save achievement');
+      toast.error('Failed to save');
     }
   };
 
@@ -61,7 +54,7 @@ export default function AdminAchievements() {
     if (!confirm('Delete this achievement?')) return;
     try {
       await base44.asServiceRole.entities.Achievement.delete(id);
-      toast.success('Achievement deleted');
+      toast.success('Deleted');
       await loadAchievements();
     } catch (error) {
       console.error('Delete error:', error);
@@ -87,7 +80,7 @@ export default function AdminAchievements() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold text-gray-900">Manage Achievements</h1>
-          <p className="text-gray-600 mt-1">Create and edit achievement badges</p>
+          <p className="text-gray-600 mt-1">Create and edit badges/achievements</p>
         </div>
         <Button onClick={() => openEditDialog()} className="bg-emerald-600 hover:bg-emerald-700 gap-2">
           <Plus className="w-4 h-4" />
@@ -102,18 +95,13 @@ export default function AdminAchievements() {
               <div className="flex items-start justify-between">
                 <div className="flex-1">
                   <div className="flex items-center gap-3 mb-2">
-                    <span className="text-3xl">{achievement.icon || '🏆'}</span>
-                    <div>
-                      <h3 className="font-semibold text-lg text-gray-900">{achievement.title}</h3>
-                      <p className="text-sm text-gray-600">{achievement.code}</p>
-                    </div>
+                    <span className="text-2xl">{achievement.icon}</span>
+                    <h3 className="font-semibold text-lg text-gray-900">{achievement.title}</h3>
                   </div>
                   <p className="text-sm text-gray-600 mb-2">{achievement.description}</p>
-                  <div className="flex gap-2 mt-2">
-                    <span className={`text-xs px-2 py-1 rounded ${TIER_COLORS[achievement.tier]}`}>
-                      {achievement.tier}
-                    </span>
+                  <div className="flex gap-2 flex-wrap">
                     <span className="text-xs px-2 py-1 bg-gray-100 rounded capitalize">{achievement.category}</span>
+                    <span className="text-xs px-2 py-1 bg-purple-100 text-purple-800 rounded capitalize">{achievement.tier}</span>
                     <span className="text-xs px-2 py-1 bg-yellow-100 text-yellow-800 rounded">{achievement.points} pts</span>
                     {!achievement.is_active && (
                       <span className="text-xs px-2 py-1 bg-red-100 text-red-800 rounded">Inactive</span>
@@ -159,7 +147,7 @@ function AchievementEditDialog({ open, onOpenChange, achievement, onSave }) {
     title: '',
     description: '',
     icon: '🏆',
-    category: 'planting',
+    category: 'milestone',
     tier: 'bronze',
     points: 10,
     requirement: { type: 'plant_count', value: 1 },
@@ -176,7 +164,7 @@ function AchievementEditDialog({ open, onOpenChange, achievement, onSave }) {
         title: '',
         description: '',
         icon: '🏆',
-        category: 'planting',
+        category: 'milestone',
         tier: 'bronze',
         points: 10,
         requirement: { type: 'plant_count', value: 1 },
@@ -195,11 +183,11 @@ function AchievementEditDialog({ open, onOpenChange, achievement, onSave }) {
 
         <div className="space-y-4">
           <div>
-            <Label>Code (unique identifier)</Label>
+            <Label>Code (Unique ID)</Label>
             <Input
               value={formData.code}
               onChange={(e) => setFormData({ ...formData, code: e.target.value.toUpperCase().replace(/[^A-Z0-9_]/g, '_') })}
-              placeholder="FIRST_PLANT"
+              placeholder="FIRST_HARVEST"
             />
           </div>
 
@@ -208,7 +196,7 @@ function AchievementEditDialog({ open, onOpenChange, achievement, onSave }) {
             <Input
               value={formData.title}
               onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-              placeholder="First Plant"
+              placeholder="First Harvest"
             />
           </div>
 
@@ -217,20 +205,11 @@ function AchievementEditDialog({ open, onOpenChange, achievement, onSave }) {
             <Textarea
               value={formData.description}
               onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-              placeholder="Plant your first crop"
               rows={2}
             />
           </div>
 
-          <div className="grid grid-cols-3 gap-4">
-            <div>
-              <Label>Icon (emoji)</Label>
-              <Input
-                value={formData.icon}
-                onChange={(e) => setFormData({ ...formData, icon: e.target.value })}
-                placeholder="🏆"
-              />
-            </div>
+          <div className="grid grid-cols-2 gap-4">
             <div>
               <Label>Category</Label>
               <Select
@@ -260,33 +239,24 @@ function AchievementEditDialog({ open, onOpenChange, achievement, onSave }) {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="bronze">🥉 Bronze</SelectItem>
-                  <SelectItem value="silver">🥈 Silver</SelectItem>
-                  <SelectItem value="gold">🥇 Gold</SelectItem>
-                  <SelectItem value="platinum">💎 Platinum</SelectItem>
+                  <SelectItem value="bronze">Bronze</SelectItem>
+                  <SelectItem value="silver">Silver</SelectItem>
+                  <SelectItem value="gold">Gold</SelectItem>
+                  <SelectItem value="platinum">Platinum</SelectItem>
                 </SelectContent>
               </Select>
             </div>
           </div>
 
-          <div>
-            <Label>Requirement (JSON)</Label>
-            <Textarea
-              value={JSON.stringify(formData.requirement, null, 2)}
-              onChange={(e) => {
-                try {
-                  const parsed = JSON.parse(e.target.value);
-                  setFormData({ ...formData, requirement: parsed });
-                } catch (err) {}
-              }}
-              placeholder='{"type": "plant_count", "value": 10}'
-              rows={3}
-              className="font-mono text-sm"
-            />
-            <p className="text-xs text-gray-500 mt-1">Example: {"{"}"type": "plant_count", "value": 10{"}"}</p>
-          </div>
-
           <div className="grid grid-cols-2 gap-4">
+            <div>
+              <Label>Icon (Emoji)</Label>
+              <Input
+                value={formData.icon}
+                onChange={(e) => setFormData({ ...formData, icon: e.target.value })}
+                placeholder="🏆"
+              />
+            </div>
             <div>
               <Label>Points</Label>
               <Input
@@ -295,25 +265,6 @@ function AchievementEditDialog({ open, onOpenChange, achievement, onSave }) {
                 onChange={(e) => setFormData({ ...formData, points: parseInt(e.target.value) || 0 })}
               />
             </div>
-            <div>
-              <Label>Sort Order</Label>
-              <Input
-                type="number"
-                value={formData.sort_order}
-                onChange={(e) => setFormData({ ...formData, sort_order: parseInt(e.target.value) || 0 })}
-              />
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <input
-              type="checkbox"
-              id="is_active"
-              checked={formData.is_active}
-              onChange={(e) => setFormData({ ...formData, is_active: e.target.checked })}
-              className="rounded"
-            />
-            <Label htmlFor="is_active">Active</Label>
           </div>
 
           <div className="flex gap-4">

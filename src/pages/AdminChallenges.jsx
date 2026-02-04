@@ -22,8 +22,8 @@ export default function AdminChallenges() {
 
   const loadChallenges = async () => {
     try {
-      const allChallenges = await base44.asServiceRole.entities.Challenge.list('-created_date');
-      setChallenges(allChallenges);
+      const all = await base44.asServiceRole.entities.Challenge.list('-created_date');
+      setChallenges(all);
     } catch (error) {
       console.error('Error loading challenges:', error);
       toast.error('Failed to load challenges');
@@ -32,16 +32,13 @@ export default function AdminChallenges() {
     }
   };
 
-  const handleSave = async (challengeData) => {
+  const handleSave = async (data) => {
     try {
       if (editingChallenge?.id) {
-        await base44.asServiceRole.entities.Challenge.update(editingChallenge.id, challengeData);
+        await base44.asServiceRole.entities.Challenge.update(editingChallenge.id, data);
         toast.success('Challenge updated!');
       } else {
-        await base44.asServiceRole.entities.Challenge.create({
-          ...challengeData,
-          participant_count: 0
-        });
+        await base44.asServiceRole.entities.Challenge.create(data);
         toast.success('Challenge created!');
       }
       setShowDialog(false);
@@ -49,7 +46,7 @@ export default function AdminChallenges() {
       await loadChallenges();
     } catch (error) {
       console.error('Save error:', error);
-      toast.error('Failed to save challenge');
+      toast.error('Failed to save');
     }
   };
 
@@ -57,7 +54,7 @@ export default function AdminChallenges() {
     if (!confirm('Delete this challenge?')) return;
     try {
       await base44.asServiceRole.entities.Challenge.delete(id);
-      toast.success('Challenge deleted');
+      toast.success('Deleted');
       await loadChallenges();
     } catch (error) {
       console.error('Delete error:', error);
@@ -83,7 +80,7 @@ export default function AdminChallenges() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold text-gray-900">Manage Challenges</h1>
-          <p className="text-gray-600 mt-1">Create and edit gamification challenges</p>
+          <p className="text-gray-600 mt-1">Create and edit challenges for users</p>
         </div>
         <Button onClick={() => openEditDialog()} className="bg-emerald-600 hover:bg-emerald-700 gap-2">
           <Plus className="w-4 h-4" />
@@ -97,18 +94,18 @@ export default function AdminChallenges() {
             <CardContent className="pt-6">
               <div className="flex items-start justify-between">
                 <div className="flex-1">
-                  <div className="flex items-center gap-2 mb-2">
+                  <div className="flex items-center gap-3 mb-2">
+                    <Target className="w-5 h-5 text-emerald-600" />
                     <h3 className="font-semibold text-lg text-gray-900">{challenge.title}</h3>
-                    <span className="text-xl">{challenge.icon || '🎯'}</span>
                   </div>
                   <p className="text-sm text-gray-600 mb-2">{challenge.description}</p>
-                  <div className="flex gap-2 mt-2">
-                    <span className="text-xs px-2 py-1 bg-gray-100 rounded capitalize">{challenge.challenge_type}</span>
+                  <div className="flex gap-2 flex-wrap">
+                    <span className="text-xs px-2 py-1 bg-gray-100 rounded">{challenge.challenge_type}</span>
                     <span className="text-xs px-2 py-1 bg-yellow-100 text-yellow-800 rounded">{challenge.reward_points} pts</span>
+                    <span className="text-xs px-2 py-1 bg-blue-100 text-blue-800 rounded">{challenge.participant_count || 0} participants</span>
                     {!challenge.is_active && (
                       <span className="text-xs px-2 py-1 bg-red-100 text-red-800 rounded">Inactive</span>
                     )}
-                    <span className="text-xs px-2 py-1 bg-blue-100 text-blue-800 rounded">{challenge.participant_count || 0} joined</span>
                   </div>
                 </div>
                 <div className="flex gap-2">
@@ -153,7 +150,7 @@ function ChallengeEditDialog({ open, onOpenChange, challenge, onSave }) {
     requirement: { action: 'harvest', count: 5 },
     reward_points: 50,
     start_date: new Date().toISOString(),
-    end_date: '',
+    end_date: null,
     is_active: true
   });
 
@@ -169,7 +166,7 @@ function ChallengeEditDialog({ open, onOpenChange, challenge, onSave }) {
         requirement: { action: 'harvest', count: 5 },
         reward_points: 50,
         start_date: new Date().toISOString(),
-        end_date: '',
+        end_date: null,
         is_active: true
       });
     }
@@ -188,7 +185,7 @@ function ChallengeEditDialog({ open, onOpenChange, challenge, onSave }) {
             <Input
               value={formData.title}
               onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-              placeholder="Challenge title"
+              placeholder="Harvest 10 Tomatoes"
             />
           </div>
 
@@ -197,22 +194,13 @@ function ChallengeEditDialog({ open, onOpenChange, challenge, onSave }) {
             <Textarea
               value={formData.description}
               onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-              placeholder="What users need to do"
               rows={3}
             />
           </div>
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <Label>Icon (emoji)</Label>
-              <Input
-                value={formData.icon}
-                onChange={(e) => setFormData({ ...formData, icon: e.target.value })}
-                placeholder="🎯"
-              />
-            </div>
-            <div>
-              <Label>Challenge Type</Label>
+              <Label>Type</Label>
               <Select
                 value={formData.challenge_type}
                 onValueChange={(v) => setFormData({ ...formData, challenge_type: v })}
@@ -229,31 +217,22 @@ function ChallengeEditDialog({ open, onOpenChange, challenge, onSave }) {
                 </SelectContent>
               </Select>
             </div>
+            <div>
+              <Label>Reward Points</Label>
+              <Input
+                type="number"
+                value={formData.reward_points}
+                onChange={(e) => setFormData({ ...formData, reward_points: parseInt(e.target.value) || 0 })}
+              />
+            </div>
           </div>
 
           <div>
-            <Label>Requirement (JSON)</Label>
-            <Textarea
-              value={JSON.stringify(formData.requirement, null, 2)}
-              onChange={(e) => {
-                try {
-                  const parsed = JSON.parse(e.target.value);
-                  setFormData({ ...formData, requirement: parsed });
-                } catch (err) {}
-              }}
-              placeholder='{"action": "harvest", "count": 5}'
-              rows={3}
-              className="font-mono text-sm"
-            />
-            <p className="text-xs text-gray-500 mt-1">Example: {"{"}"action": "harvest", "count": 5{"}"}</p>
-          </div>
-
-          <div>
-            <Label>Reward Points</Label>
+            <Label>Icon (Emoji)</Label>
             <Input
-              type="number"
-              value={formData.reward_points}
-              onChange={(e) => setFormData({ ...formData, reward_points: parseInt(e.target.value) || 0 })}
+              value={formData.icon}
+              onChange={(e) => setFormData({ ...formData, icon: e.target.value })}
+              placeholder="🎯"
             />
           </div>
 
@@ -262,29 +241,18 @@ function ChallengeEditDialog({ open, onOpenChange, challenge, onSave }) {
               <Label>Start Date</Label>
               <Input
                 type="datetime-local"
-                value={formData.start_date?.substring(0, 16)}
-                onChange={(e) => setFormData({ ...formData, start_date: e.target.value ? new Date(e.target.value).toISOString() : '' })}
+                value={formData.start_date ? new Date(formData.start_date).toISOString().slice(0, 16) : ''}
+                onChange={(e) => setFormData({ ...formData, start_date: e.target.value ? new Date(e.target.value).toISOString() : null })}
               />
             </div>
             <div>
               <Label>End Date (optional)</Label>
               <Input
                 type="datetime-local"
-                value={formData.end_date?.substring(0, 16) || ''}
-                onChange={(e) => setFormData({ ...formData, end_date: e.target.value ? new Date(e.target.value).toISOString() : '' })}
+                value={formData.end_date ? new Date(formData.end_date).toISOString().slice(0, 16) : ''}
+                onChange={(e) => setFormData({ ...formData, end_date: e.target.value ? new Date(e.target.value).toISOString() : null })}
               />
             </div>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <input
-              type="checkbox"
-              id="is_active"
-              checked={formData.is_active}
-              onChange={(e) => setFormData({ ...formData, is_active: e.target.checked })}
-              className="rounded"
-            />
-            <Label htmlFor="is_active">Active</Label>
           </div>
 
           <div className="flex gap-4">

@@ -48,7 +48,7 @@ const getMoreMenuItems = (user) => {
     
     { category: 'COMMUNITY' },
     { name: 'Seed Trading', icon: Apple, page: 'SeedTrading' },
-    { name: 'Companion Planting', icon: Sprout, page: 'CompanionPlanter' },
+    { name: 'Companion Planting', icon: Sprout, page: 'CompanionPlanner' },
     { name: 'Browse Gardens', icon: Globe, page: 'BrowseGardens' },
     { name: 'Leaderboard', icon: Trophy, page: 'Leaderboard' },
     
@@ -71,7 +71,10 @@ const getMoreMenuItems = (user) => {
     ...(isEditor || isAdmin || isMod 
       ? [
           { category: 'ADMIN' },
-          { name: 'Admin Hub', icon: Shield, page: 'AdminHub' }
+          { name: 'Admin Hub', icon: Shield, page: 'AdminHub' },
+          { name: 'Manage Achievements', icon: Award, page: 'AdminAchievements' },
+          { name: 'Manage Challenges', icon: Target, page: 'AdminChallenges' },
+          { name: 'Manage Recipes', icon: ChefHat, page: 'AdminRecipes' },
         ]
       : []
     ),
