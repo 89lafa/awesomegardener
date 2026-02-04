@@ -28,7 +28,6 @@ export default function Resources() {
   const [editingResource, setEditingResource] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [typeFilter, setTypeFilter] = useState('all');
-  const [user, setUser] = useState(null);
   
   const [formData, setFormData] = useState({
     name: '',
@@ -44,26 +43,17 @@ export default function Resources() {
   });
 
   useEffect(() => {
-    loadUser();
     loadResources();
   }, []);
-
-  const loadUser = async () => {
-    try {
-      const userData = await base44.auth.me();
-      setUser(userData);
-    } catch (error) {
-      console.error('Error loading user:', error);
-    }
-  };
 
   const loadResources = async () => {
     try {
       const user = await base44.auth.me();
       const data = await base44.entities.VendorResource.filter({
-        created_by: user.email
+        created_by: user.email,
+        is_active: true
       }, 'name');
-      setResources(data.filter(r => r.is_active !== false));
+      setResources(data);
     } catch (error) {
       console.error('Error loading resources:', error);
     } finally {
@@ -280,7 +270,7 @@ export default function Resources() {
 
         {/* Guides Tab */}
         <TabsContent value="guides" className="space-y-6">
-          <ResourceArticles user={user} />
+          <ResourceArticles />
         </TabsContent>
       </Tabs>
 
@@ -445,7 +435,7 @@ function GuideSection({ title, icon, guides }) {
   );
 }
 
-function ResourceArticles({ user }) {
+function ResourceArticles() {
   const [articles, setArticles] = useState([]);
   const [pests, setPests] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -484,19 +474,7 @@ function ResourceArticles({ user }) {
     <div className="space-y-8">
       {/* Learning Guides */}
       <div>
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="text-xl font-bold text-gray-900">📚 Learning Guides</h3>
-          {user?.role === 'admin' && (
-            <Button
-              onClick={() => window.location.href = createPageUrl('AdminResources')}
-              size="sm"
-              className="bg-emerald-600 hover:bg-emerald-700 gap-2"
-            >
-              <Plus className="w-3 h-3" />
-              Add Guide
-            </Button>
-          )}
-        </div>
+        <h3 className="text-xl font-bold text-gray-900 mb-4">📚 Learning Guides</h3>
         {learningGuides.length > 0 ? (
           <div className="grid md:grid-cols-2 gap-4">
             {learningGuides.map((article) => (
@@ -535,14 +513,6 @@ function ResourceArticles({ user }) {
           <div className="flex gap-2">
             <Button
               onClick={() => window.location.href = createPageUrl('AdminPestLibrary')}
-              variant="outline"
-              size="sm"
-              className="gap-2"
-            >
-              Manage Library <Edit className="w-3 h-3" />
-            </Button>
-            <Button
-              onClick={() => window.location.href = createPageUrl('PestLibrary')}
               variant="outline"
               size="sm"
               className="gap-2"
