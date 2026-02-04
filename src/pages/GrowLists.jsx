@@ -676,10 +676,11 @@ export default function GrowLists() {
                           if (!profile) return null;
                           return (
                             <SelectItem key={seed.id} value={seed.id}>
-                              {profile.variety_name} ({profile.common_name}) - {seed.quantity || 0} {seed.unit || 'seeds'}
+                              {profile.variety_name || 'Unknown'} ({profile.common_name || 'Unknown'}) - {seed.quantity || 0} {seed.unit || 'seeds'}
                             </SelectItem>
                           );
                         })
+                        .filter(Boolean)
                     )}
                   </SelectContent>
                 </Select>

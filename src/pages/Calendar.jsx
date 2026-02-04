@@ -92,17 +92,22 @@ export default function Calendar() {
     const seasonParam = searchParams.get('season');
     
     if (syncGrowListId && seasonParam && !syncing && !loading && seasons.length > 0) {
+      console.log('[Calendar] Sync params detected:', { syncGrowListId, seasonParam });
+      
       // Set the season from URL first
       if (seasonParam !== activeSeasonId) {
         setActiveSeasonId(seasonParam);
         localStorage.setItem('calendar_active_season', seasonParam);
       }
-      // Then sync
-      handleSyncGrowList(syncGrowListId, seasonParam);
-      // Clear URL params after sync
-      window.history.replaceState({}, '', window.location.pathname);
+      
+      // Execute sync immediately
+      (async () => {
+        await handleSyncGrowList(syncGrowListId, seasonParam);
+        // Clear URL params after sync completes
+        window.history.replaceState({}, '', window.location.pathname);
+      })();
     }
-  }, [searchParams, loading, seasons]);
+  }, [searchParams]);
   
   useEffect(() => {
     if (activeSeasonId && !loading) {
