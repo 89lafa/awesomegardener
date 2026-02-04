@@ -277,18 +277,21 @@ export default function MyPlants() {
       />
       <div className="max-w-7xl mx-auto space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div className="flex items-center gap-3">
           <Sprout className="w-6 h-6 text-emerald-600" />
           <h1 className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>My Plants</h1>
         </div>
-        <Button
-          onClick={() => setShowAddPlant(true)}
-          className="bg-emerald-600 hover:bg-emerald-700 interactive-button"
-        >
-          <Plus className="w-4 h-4 mr-2" />
-          Add Plant
-        </Button>
+        <div className="flex gap-2">
+          <Button
+            onClick={() => setShowAddPlant(true)}
+            className="bg-emerald-600 hover:bg-emerald-700 interactive-button"
+            size="sm"
+          >
+            <Plus className="w-4 h-4 mr-2" />
+            Add Plant
+          </Button>
+        </div>
       </div>
 
       {/* Filters */}
