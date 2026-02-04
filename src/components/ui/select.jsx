@@ -71,14 +71,15 @@ const SelectContent = React.forwardRef(({ className, children, position = "poppe
         <SelectPrimitive.Content
           ref={ref}
           className={cn(
-            "fixed inset-x-0 bottom-0 z-50 mt-24 flex flex-col rounded-t-[10px] border bg-background",
+            "fixed inset-x-0 bottom-0 z-[100] mt-24 flex flex-col rounded-t-[10px] border bg-background shadow-2xl",
             className
           )}
           position="popper"
+          sideOffset={0}
           {...props}
         >
           <div className="mx-auto mt-4 h-2 w-[100px] rounded-full bg-muted" />
-          <SelectPrimitive.Viewport className="p-4 max-h-[50vh] overflow-y-auto">
+          <SelectPrimitive.Viewport className="p-4 max-h-[60vh] overflow-y-auto">
             {children}
           </SelectPrimitive.Viewport>
         </SelectPrimitive.Content>
