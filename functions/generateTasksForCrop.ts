@@ -70,20 +70,40 @@ Deno.serve(async (req) => {
     
     console.log('[GenerateTasks] Using last frost date:', lastFrostDate.toISOString().split('T')[0]);
 
-    // Load variety/profile for proper timing data
+    // Load variety/profile AND plant type for proper naming and timing data
     let timingData = {};
+    let varietyName = crop.label;
+    let plantTypeName = crop.label;
+    
     if (crop.variety_id) {
       const varieties = await base44.asServiceRole.entities.Variety.filter({ id: crop.variety_id });
       if (varieties.length > 0) {
         timingData = varieties[0];
+        varietyName = varieties[0].variety_name;
       }
     }
+    
+    if (crop.plant_type_id) {
+      const plantTypes = await base44.asServiceRole.entities.PlantType.filter({ id: crop.plant_type_id });
+      if (plantTypes.length > 0) {
+        plantTypeName = plantTypes[0].common_name;
+        if (!timingData.days_to_maturity) {
+          timingData.days_to_maturity = plantTypes[0].default_days_to_maturity;
+        }
+      }
+    }
+    
     if (crop.plant_profile_id) {
       const profiles = await base44.asServiceRole.entities.PlantProfile.filter({ id: crop.plant_profile_id });
       if (profiles.length > 0) {
         timingData = { ...timingData, ...profiles[0] };
       }
     }
+    
+    // Build proper display name: "Variety - PlantType"
+    const displayLabel = varietyName && plantTypeName && varietyName !== plantTypeName
+      ? `${varietyName} - ${plantTypeName}`
+      : crop.label;
     
     let seedDate = null;
     let transplantDate = null;
@@ -104,7 +124,7 @@ Deno.serve(async (req) => {
         garden_season_id: crop.garden_season_id,
         crop_plan_id: crop.id,
         task_type: 'seed',
-        title: `Start ${crop.label} Seeds`,
+        title: `Start ${displayLabel} Seeds`,
         start_date: seedDate.toISOString().split('T')[0],
         end_date: seedDate.toISOString().split('T')[0],
         color_hex: crop.color_hex,
@@ -126,7 +146,7 @@ Deno.serve(async (req) => {
         garden_season_id: crop.garden_season_id,
         crop_plan_id: crop.id,
         task_type: 'transplant',
-        title: `Transplant ${crop.label}`,
+        title: `Transplant ${displayLabel}`,
         start_date: transplantDate.toISOString().split('T')[0],
         end_date: transplantDate.toISOString().split('T')[0],
         color_hex: crop.color_hex,
@@ -149,7 +169,7 @@ Deno.serve(async (req) => {
         garden_season_id: crop.garden_season_id,
         crop_plan_id: crop.id,
         task_type: 'direct_seed',
-        title: `Direct Sow ${crop.label}`,
+        title: `Direct Sow ${displayLabel}`,
         start_date: sowDate.toISOString().split('T')[0],
         end_date: sowDate.toISOString().split('T')[0],
         color_hex: crop.color_hex,
@@ -179,7 +199,7 @@ Deno.serve(async (req) => {
       garden_season_id: crop.garden_season_id,
       crop_plan_id: crop.id,
       task_type: 'harvest',
-      title: `Harvest ${crop.label}`,
+      title: `Harvest ${displayLabel}`,
       start_date: harvestDate.toISOString().split('T')[0],
       end_date: harvestEndDate.toISOString().split('T')[0],
       color_hex: crop.color_hex,
@@ -199,7 +219,7 @@ Deno.serve(async (req) => {
         garden_season_id: crop.garden_season_id,
         crop_plan_id: crop.id,
         task_type: 'cultivate',
-        title: `Harden Off ${crop.label}`,
+        title: `Harden Off ${displayLabel}`,
         start_date: hardenDate.toISOString().split('T')[0],
         end_date: hardenDate.toISOString().split('T')[0],
         color_hex: crop.color_hex,
@@ -217,7 +237,7 @@ Deno.serve(async (req) => {
         garden_season_id: crop.garden_season_id,
         crop_plan_id: crop.id,
         task_type: 'cultivate',
-        title: `Pot Up ${crop.label}`,
+        title: `Pot Up ${displayLabel}`,
         start_date: potUpDate.toISOString().split('T')[0],
         end_date: potUpDate.toISOString().split('T')[0],
         color_hex: crop.color_hex,
@@ -233,7 +253,7 @@ Deno.serve(async (req) => {
         garden_season_id: crop.garden_season_id,
         crop_plan_id: crop.id,
         task_type: 'cultivate',
-        title: `Install Support for ${crop.label}`,
+        title: `Install Support for ${displayLabel}`,
         start_date: plantingDate.toISOString().split('T')[0],
         end_date: plantingDate.toISOString().split('T')[0],
         color_hex: crop.color_hex,
@@ -250,7 +270,7 @@ Deno.serve(async (req) => {
       garden_season_id: crop.garden_season_id,
       crop_plan_id: crop.id,
       task_type: 'cultivate',
-      title: `Mulch ${crop.label}`,
+      title: `Mulch ${displayLabel}`,
       start_date: mulchDate.toISOString().split('T')[0],
       end_date: mulchDate.toISOString().split('T')[0],
       color_hex: crop.color_hex,
@@ -270,7 +290,7 @@ Deno.serve(async (req) => {
         garden_season_id: crop.garden_season_id,
         crop_plan_id: crop.id,
         task_type: 'cultivate',
-        title: `Fertilize ${crop.label}`,
+        title: `Fertilize ${displayLabel}`,
         start_date: fertDate.toISOString().split('T')[0],
         end_date: fertDate.toISOString().split('T')[0],
         color_hex: crop.color_hex,
@@ -291,7 +311,7 @@ Deno.serve(async (req) => {
         garden_season_id: crop.garden_season_id,
         crop_plan_id: crop.id,
         task_type: 'cultivate',
-        title: `Water ${crop.label}`,
+        title: `Water ${displayLabel}`,
         start_date: waterDate.toISOString().split('T')[0],
         end_date: waterDate.toISOString().split('T')[0],
         color_hex: crop.color_hex,
@@ -312,7 +332,7 @@ Deno.serve(async (req) => {
         garden_season_id: crop.garden_season_id,
         crop_plan_id: crop.id,
         task_type: 'cultivate',
-        title: `Weed/Cultivate ${crop.label}`,
+        title: `Weed/Cultivate ${displayLabel}`,
         start_date: weedDate.toISOString().split('T')[0],
         end_date: weedDate.toISOString().split('T')[0],
         color_hex: crop.color_hex,
@@ -333,7 +353,7 @@ Deno.serve(async (req) => {
         garden_season_id: crop.garden_season_id,
         crop_plan_id: crop.id,
         task_type: 'cultivate',
-        title: `Pest/Disease Check ${crop.label}`,
+        title: `Pest/Disease Check ${displayLabel}`,
         start_date: scoutDate.toISOString().split('T')[0],
         end_date: scoutDate.toISOString().split('T')[0],
         color_hex: crop.color_hex,
