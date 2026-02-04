@@ -64,52 +64,38 @@ const QuickAccessCard = ({ icon: Icon, title, count, color, page }) => {
 const WeatherCard = ({ weather, weatherLoading }) => {
   if (weatherLoading) {
     return (
-      <div className="glass-card p-6">
-        <div className="animate-pulse space-y-2">
-          <div className="h-4 rounded w-20 bg-gray-700"></div>
-          <div className="h-8 rounded w-16 bg-gray-600"></div>
-        </div>
+      <div className="glass-card flex items-center justify-center min-h-[120px]">
+        <Loader2 className="w-6 h-6 animate-spin text-emerald-600" />
       </div>
     );
   }
 
   if (!weather) {
     return (
-      <div className="glass-card p-6 text-center">
-        <Cloud className="w-8 h-8 mx-auto mb-2 text-gray-400" />
+      <div className="glass-card flex flex-col items-center justify-center min-h-[120px] text-center">
+        <Cloud className="w-8 h-8 mb-2 text-gray-400" />
         <p className="text-xs text-gray-400">Set ZIP in Settings</p>
       </div>
     );
   }
 
   return (
-    <div className="glass-card relative overflow-hidden cursor-pointer">
-      {/* Decorative circle */}
-      <div style={{
-        position: 'absolute',
-        right: '-20px',
-        top: '-20px',
-        width: '100px',
-        height: '100px',
-        borderRadius: '50%',
-        background: 'rgba(255, 255, 255, 0.1)',
-      }} />
-      
-      <div style={{ position: 'relative', zIndex: 1 }}>
-        <p className="text-xs mb-1 font-medium" style={{ color: 'var(--text-secondary)' }}>Today</p>
-        <p className="text-2xl md:text-3xl font-bold mb-1" style={{ color: 'var(--text-primary)' }}>{weather.current_temp}°</p>
-        <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>{weather.conditions}</p>
-        <div className="flex gap-3 mt-3 text-xs" style={{ color: 'var(--text-secondary)' }}>
-          <span>H: {weather.high_temp}°</span>
-          <span>L: {weather.low_temp}°</span>
-        </div>
-        {weather.frost_warning && (
-          <div className="mt-2 flex items-center gap-1 text-xs rounded px-2 py-1 bg-yellow-400/20 text-yellow-400">
-            <AlertTriangle className="w-3 h-3" />
-            <span>Frost risk!</span>
-          </div>
-        )}
+    <div className="glass-card min-h-[120px] flex flex-col justify-between">
+      <p className="text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>Today</p>
+      <div>
+        <p className="text-3xl font-bold" style={{ color: 'var(--text-primary)' }}>{weather.current_temp}°</p>
+        <p className="text-xs mt-1" style={{ color: 'var(--text-secondary)' }}>{weather.conditions}</p>
       </div>
+      <div className="flex gap-3 text-xs" style={{ color: 'var(--text-secondary)' }}>
+        <span>H: {weather.high_temp}°</span>
+        <span>L: {weather.low_temp}°</span>
+      </div>
+      {weather.frost_warning && (
+        <div className="flex items-center gap-1 text-xs rounded px-2 py-1 bg-yellow-400/20 text-yellow-400">
+          <AlertTriangle className="w-3 h-3" />
+          <span>Frost risk!</span>
+        </div>
+      )}
     </div>
   );
 };
@@ -277,7 +263,7 @@ export default function Dashboard() {
           </p>
         </div>
 
-      {/* Top Row - Quick Stats + Weather */}
+      {/* Top Row - Quick Stats + Weather - Equal height cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
         <QuickAccessCard
           icon={Sprout}

@@ -134,6 +134,7 @@ import ViewVariety from './pages/ViewVariety';
 import ZoneMap from './pages/ZoneMap';
 import AdminChallenges from './pages/AdminChallenges';
 import AdminAchievements from './pages/AdminAchievements';
+import AdminRecipes from './pages/AdminRecipes';
 import __Layout from './Layout.jsx';
 
 
@@ -225,6 +226,7 @@ export const PAGES = {
     "ZoneMap": ZoneMap,
     "AdminChallenges": AdminChallenges,
     "AdminAchievements": AdminAchievements,
+    "AdminRecipes": AdminRecipes,
 }
 
 export const pagesConfig = {
