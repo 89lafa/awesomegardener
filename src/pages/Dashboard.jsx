@@ -23,6 +23,8 @@ import { toast } from 'sonner';
 import { format } from 'date-fns';
 import QuickCheckInWidget from '@/components/dashboard/QuickCheckInWidget';
 import ActivityFeed from '@/components/dashboard/ActivityFeed';
+import RecipeSuggestionsWidget from '@/components/dashboard/RecipeSuggestionsWidget';
+import TipOfDayWidget from '@/components/dashboard/TipOfDayWidget';
 
 const QuickAccessCard = ({ icon: Icon, title, count, color, page }) => {
   const navigate = useNavigate();
@@ -424,8 +426,14 @@ export default function Dashboard() {
       </div>
       </div>
 
-      {/* Activity Feed */}
-      <ActivityFeed limit={5} />
+      {/* Activity Feed and Widgets */}
+      <div className="grid md:grid-cols-2 gap-6">
+        <ActivityFeed limit={5} />
+        <div className="space-y-6">
+          <TipOfDayWidget />
+          <RecipeSuggestionsWidget />
+        </div>
+      </div>
 
       {/* Popular Crops */}
       {popularCrops && (

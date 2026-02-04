@@ -23,7 +23,11 @@ import {
   MapPin,
   BookMarked,
   Link2,
-  Mail
+  Mail,
+  ChefHat,
+  Award,
+  Target,
+  Trophy
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -58,10 +62,17 @@ const getNavItems = (userRole, isEditor, user) => {
     { name: 'Seed Trading', icon: Apple, page: 'SeedTrading' },
     { name: 'Companion Planting', icon: Sprout, page: 'CompanionPlanner' },
     { name: 'Browse Gardens', icon: Globe, page: 'BrowseGardens' },
+    { name: 'Leaderboard', icon: Trophy, page: 'Leaderboard' },
+    
+    // Gamification
+    { category: true, label: 'GAMIFICATION' },
+    { name: 'Achievements', icon: Award, page: 'Achievements' },
+    { name: 'Challenges', icon: Target, page: 'Challenges' },
     
     // AI Tools
     { category: true, label: 'AI TOOLS' },
     { name: 'AI Assistants', icon: Lightbulb, page: 'AIAssistants' },
+    { name: 'Recipes', icon: ChefHat, page: 'Recipes' },
     
     // Resources
     { category: true, label: 'LEARN & EXPLORE' },
