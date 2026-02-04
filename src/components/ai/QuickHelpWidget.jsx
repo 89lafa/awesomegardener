@@ -56,12 +56,13 @@ export default function QuickHelpWidget() {
 
   const handleSuggestionClick = async (question) => {
     setIsLoading(true);
+    setAnswer(null);
     try {
-      const { data } = await base44.integrations.Core.InvokeLLM({
+      const response = await base44.integrations.Core.InvokeLLM({
         prompt: `Answer this gardening question briefly (under 150 words): ${question}`
       });
 
-      setAnswer({ question, response: data });
+      setAnswer({ question, response: response.data });
     } catch (error) {
       console.error('Quick help error:', error);
       toast.error('Failed to get answer');
