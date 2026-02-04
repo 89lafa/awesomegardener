@@ -122,6 +122,8 @@ import Users from './pages/Users';
 import VarietyReviewQueue from './pages/VarietyReviewQueue';
 import ViewVariety from './pages/ViewVariety';
 import ZoneMap from './pages/ZoneMap';
+import PestLibrary from './pages/PestLibrary';
+import PestDetail from './pages/PestDetail';
 import __Layout from './Layout.jsx';
 
 
@@ -201,6 +203,8 @@ export const PAGES = {
     "VarietyReviewQueue": VarietyReviewQueue,
     "ViewVariety": ViewVariety,
     "ZoneMap": ZoneMap,
+    "PestLibrary": PestLibrary,
+    "PestDetail": PestDetail,
 }
 
 export const pagesConfig = {
