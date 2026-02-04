@@ -31,16 +31,13 @@ import {
 } from '@/components/ui/select';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from '@/components/ui/alert-dialog';
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { toast } from 'sonner';
 import FrostDateLookup from '@/components/ai/FrostDateLookup';
 
@@ -90,6 +87,9 @@ export default function Settings() {
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   const [nicknameAvailable, setNicknameAvailable] = useState(true);
   const [checkingNickname, setCheckingNickname] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [deleteConfirmText, setDeleteConfirmText] = useState('');
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     loadUser();
@@ -188,6 +188,27 @@ export default function Settings() {
     }
   };
 
+  const handleDeleteAccount = async () => {
+    if (deleteConfirmText !== 'DELETE') {
+      toast.error('Please type DELETE to confirm');
+      return;
+    }
+    
+    setDeleting(true);
+    try {
+      // Call the delete account function
+      await base44.auth.deleteMe();
+      toast.success('Account deleted. Goodbye.');
+      setTimeout(() => {
+        window.location.href = createPageUrl('Landing');
+      }, 1000);
+    } catch (error) {
+      console.error('Error deleting account:', error);
+      toast.error('Failed to delete account: ' + error.message);
+      setDeleting(false);
+    }
+  };
+
   const handleExportSeeds = async () => {
     try {
       const seeds = await base44.entities.SeedLot.list();
@@ -236,7 +257,7 @@ export default function Settings() {
       </div>
 
       <Tabs defaultValue="profile">
-        <TabsList>
+        <TabsList className="flex-wrap h-auto">
           <TabsTrigger value="profile" className="gap-2">
             <User className="w-4 h-4" />
             Profile
@@ -791,39 +812,14 @@ export default function Settings() {
                   This will permanently delete your account, all your gardens, seeds, plans, and data. 
                   This action cannot be undone.
                 </p>
-                <AlertDialog>
-                  <AlertDialogTrigger asChild>
-                    <Button variant="destructive" className="gap-2">
-                      <Trash2 className="w-4 h-4" />
-                      Delete My Account
-                    </Button>
-                  </AlertDialogTrigger>
-                  <AlertDialogContent>
-                    <AlertDialogHeader>
-                      <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-                      <AlertDialogDescription>
-                        This action cannot be undone. This will permanently delete your account
-                        and all your data (gardens, seeds, plans, etc.) from our servers.
-                      </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                      <AlertDialogCancel>Cancel</AlertDialogCancel>
-                      <AlertDialogAction 
-                        className="bg-red-600 hover:bg-red-700"
-                        onClick={async () => {
-                          try {
-                            await base44.auth.deleteMe();
-                            toast.success('Account deleted. Goodbye.');
-                            window.location.href = createPageUrl('Landing');
-                          } catch (error) {
-                            console.error('Error deleting account:', error);
-                            toast.error('Failed to delete account: ' + error.message);
-                          }
-                        }}
-                      >Continue</AlertDialogAction>
-                    </AlertDialogFooter>
-                  </AlertDialogContent>
-                </AlertDialog>
+                <Button 
+                  variant="destructive" 
+                  className="gap-2"
+                  onClick={() => setDeleteDialogOpen(true)}
+                >
+                  <Trash2 className="w-4 h-4" />
+                  Delete My Account
+                </Button>
               </div>
             </CardContent>
           </Card>
@@ -845,6 +841,63 @@ export default function Settings() {
           Save Changes
         </Button>
       </div>
+
+      {/* Delete Account Confirmation Dialog */}
+      <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="text-red-900">Delete Account Confirmation</DialogTitle>
+            <DialogDescription>
+              This action cannot be undone. This will permanently delete your account
+              and remove all your data including:
+              <ul className="list-disc list-inside mt-2 space-y-1 text-red-700">
+                <li>All gardens and planting plans</li>
+                <li>Entire seed stash collection</li>
+                <li>Calendar and tasks</li>
+                <li>Forum posts and messages</li>
+                <li>All other personal data</li>
+              </ul>
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div>
+              <Label htmlFor="delete-confirm" className="text-sm font-semibold">
+                Type <span className="text-red-600 font-mono">DELETE</span> to confirm:
+              </Label>
+              <Input
+                id="delete-confirm"
+                value={deleteConfirmText}
+                onChange={(e) => setDeleteConfirmText(e.target.value)}
+                placeholder="Type DELETE"
+                className="mt-2 font-mono"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button 
+              variant="outline" 
+              onClick={() => {
+                setDeleteDialogOpen(false);
+                setDeleteConfirmText('');
+              }}
+              disabled={deleting}
+            >
+              Cancel
+            </Button>
+            <Button 
+              variant="destructive"
+              onClick={handleDeleteAccount}
+              disabled={deleteConfirmText !== 'DELETE' || deleting}
+            >
+              {deleting ? (
+                <><Loader2 className="w-4 h-4 animate-spin mr-2" />Deleting...</>
+              ) : (
+                <><Trash2 className="w-4 h-4 mr-2" />Delete Account</>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

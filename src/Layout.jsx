@@ -56,7 +56,32 @@ export default function Layout({ children, currentPageName }) {
     };
   }, [mobileMenuOpen]);
 
-  // Inject glassmorphic card styles
+  // Auto dark mode - listen to system preference changes
+  useEffect(() => {
+    const savedTheme = localStorage.getItem('theme');
+    
+    // Only auto-apply if user hasn't explicitly set a preference
+    if (!savedTheme) {
+      const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+      const applyTheme = (e) => {
+        if (e.matches) {
+          document.documentElement.classList.add('dark');
+        } else {
+          document.documentElement.classList.remove('dark');
+        }
+      };
+      
+      // Apply initial theme
+      applyTheme(mediaQuery);
+      
+      // Listen for changes
+      mediaQuery.addEventListener('change', applyTheme);
+      
+      return () => mediaQuery.removeEventListener('change', applyTheme);
+    }
+  }, []);
+
+  // Inject glassmorphic card styles + mobile-specific CSS
   useEffect(() => {
     const styleId = 'glassmorphic-styles';
     if (!document.getElementById(styleId)) {

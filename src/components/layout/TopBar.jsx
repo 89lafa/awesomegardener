@@ -108,7 +108,15 @@ export default function TopBar({ user, onMobileMenuToggle, onSidebarToggle, side
   };
 
   return (
-    <header className="h-16 border-b flex items-center justify-between px-4 lg:px-6" style={{ background: 'var(--bg-header)', borderColor: 'var(--border-default)' }}>
+    <header 
+      className="h-16 border-b flex items-center justify-between px-4 lg:px-6" 
+      style={{ 
+        background: 'var(--bg-header)', 
+        borderColor: 'var(--border-default)',
+        paddingTop: 'max(1rem, env(safe-area-inset-top))',
+        paddingBottom: '1rem'
+      }}
+    >
       {/* Sidebar Toggle OR Back Button */}
       <div className="flex items-center gap-2">
         {isChildPage ? (
