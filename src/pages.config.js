@@ -136,6 +136,8 @@ import VarietyReviewQueue from './pages/VarietyReviewQueue';
 import ViewVariety from './pages/ViewVariety';
 import ZoneMap from './pages/ZoneMap';
 import StreakCalendar from './pages/StreakCalendar';
+import LeaderboardV2 from './pages/LeaderboardV2';
+import Profile from './pages/Profile';
 import __Layout from './Layout.jsx';
 
 
@@ -229,6 +231,8 @@ export const PAGES = {
     "ViewVariety": ViewVariety,
     "ZoneMap": ZoneMap,
     "StreakCalendar": StreakCalendar,
+    "LeaderboardV2": LeaderboardV2,
+    "Profile": Profile,
 }
 
 export const pagesConfig = {
