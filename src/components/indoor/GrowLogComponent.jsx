@@ -37,9 +37,53 @@ export default function GrowLogComponent({ targetId, targetType }) {
   const loadLogs = async () => {
     try {
       setLoading(true);
-      const query = { [targetType]: targetId };
-      const logsData = await base44.entities.GrowLog.filter(query, '-created_date');
-      setLogs(logsData);
+      
+      // For space-level view, aggregate logs from ALL child elements
+      if (targetType === 'indoor_space_id') {
+        const [spaceLogs, rackLogs, shelfLogs, trayLogs, cellLogs, containerLogs] = await Promise.all([
+          base44.entities.GrowLog.filter({ indoor_space_id: targetId }, '-created_date'),
+          base44.entities.GrowLog.filter({ indoor_space_id: targetId }, '-created_date'),
+          base44.entities.GrowRack.filter({ indoor_space_id: targetId }).then(async racks => {
+            if (racks.length === 0) return [];
+            const rackIds = racks.map(r => r.id);
+            const allLogs = await Promise.all(rackIds.map(rid => 
+              base44.entities.GrowLog.filter({ rack_id: rid }, '-created_date')
+            ));
+            return allLogs.flat();
+          }),
+          base44.entities.SeedTray.filter({}).then(async trays => {
+            const traysBySpace = [];
+            for (const tray of trays) {
+              if (tray.shelf_id) {
+                const shelves = await base44.entities.GrowShelf.filter({ id: tray.shelf_id });
+                if (shelves[0]?.rack_id) {
+                  const racks = await base44.entities.GrowRack.filter({ id: shelves[0].rack_id });
+                  if (racks[0]?.indoor_space_id === targetId) {
+                    traysBySpace.push(tray);
+                  }
+                }
+              }
+            }
+            if (traysBySpace.length === 0) return [];
+            const allLogs = await Promise.all(traysBySpace.map(t => 
+              base44.entities.GrowLog.filter({ tray_id: t.id }, '-created_date')
+            ));
+            return allLogs.flat();
+          }),
+          base44.entities.GrowLog.filter({ tray_cell_id: targetId }, '-created_date'),
+          base44.entities.GrowLog.filter({ container_id: targetId }, '-created_date')
+        ]);
+        
+        // Merge all logs and deduplicate by id
+        const allLogs = [...spaceLogs, ...rackLogs, ...shelfLogs, ...trayLogs, ...cellLogs, ...containerLogs];
+        const uniqueLogs = Array.from(new Map(allLogs.map(log => [log.id, log])).values());
+        setLogs(uniqueLogs.sort((a, b) => new Date(b.created_date) - new Date(a.created_date)));
+      } else {
+        // For specific entity logs (tray, container, etc.)
+        const query = { [targetType]: targetId };
+        const logsData = await base44.entities.GrowLog.filter(query, '-created_date');
+        setLogs(logsData);
+      }
     } catch (error) {
       console.error('Error loading logs:', error);
       toast.error('Failed to load logs');
