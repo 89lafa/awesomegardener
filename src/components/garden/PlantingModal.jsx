@@ -758,40 +758,42 @@ export default function PlantingModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-6xl max-h-[90vh] lg:max-h-[90vh] max-h-screen p-0 overflow-hidden">
-        <DialogHeader className="p-6 pb-4 border-b flex flex-row items-center justify-between">
+      <DialogContent className="max-w-6xl max-h-[90vh] lg:max-h-[90vh] max-h-screen p-0 overflow-hidden flex flex-col">
+        <DialogHeader className="p-4 lg:p-6 pb-3 lg:pb-4 border-b flex flex-row items-center justify-between flex-shrink-0">
           <div className="flex-1">
-            <DialogTitle>Plant in {item.label}</DialogTitle>
-            <p className="text-sm text-gray-600 mt-1">
-              {gridCols} × {gridRows} grid • {garden.planting_method === 'SQUARE_FOOT' ? 'Square Foot Method' : 'Standard Spacing'}
-              {plantingPattern === 'diagonal' && ' • Diagonal Pattern'}
+            <DialogTitle className="text-base lg:text-lg">Plant in {item.label}</DialogTitle>
+            <p className="text-xs lg:text-sm text-gray-600 mt-1">
+              {gridCols} × {gridRows} grid • {garden.planting_method === 'SQUARE_FOOT' ? 'Square Foot' : 'Standard'}
+              {plantingPattern === 'diagonal' && ' • Diagonal'}
             </p>
           </div>
           <Button 
             onClick={handleDone}
-            className="bg-emerald-600 hover:bg-emerald-700 text-white h-11 px-8 text-base font-semibold ml-4"
+            className="bg-emerald-600 hover:bg-emerald-700 text-white h-9 lg:h-11 px-4 lg:px-8 text-sm lg:text-base font-semibold ml-2 lg:ml-4 flex-shrink-0"
           >
-            ✓ Done Planting
+            ✓ Done
           </Button>
         </DialogHeader>
 
-        <div className="flex flex-col lg:flex-row gap-4 lg:gap-6 p-4 lg:p-6 overflow-hidden h-[calc(100vh-120px)] lg:h-[calc(90vh-120px)]">
-          {/* Left Panel - Plant Picker */}
-          <div className="w-full lg:w-80 flex-shrink-0 flex flex-col min-h-0 relative max-h-[40vh] lg:max-h-none">
+        <div className="flex flex-col lg:flex-row gap-3 lg:gap-6 p-3 lg:p-6 overflow-hidden flex-1 min-h-0">
+          {/* Left Panel - Plant Picker - Compact on mobile */}
+          <div className="w-full lg:w-80 flex-shrink-0 flex flex-col min-h-0 relative max-h-[30vh] lg:max-h-none"
+            style={{ zIndex: 60 }}
+          >
             {showCompanionSuggestions && selectedPlant?.plant_type_id && (
               <CompanionSuggestions 
                 plantTypeId={selectedPlant.plant_type_id}
                 onClose={() => setShowCompanionSuggestions(false)}
               />
             )}
-            <Tabs defaultValue="stash" className="flex-1 flex flex-col min-h-0">
-              <TabsList className="w-full flex-shrink-0">
-                <TabsTrigger value="stash" className="flex-1">From Stash</TabsTrigger>
-                <TabsTrigger value="plan" className="flex-1">From Plan</TabsTrigger>
-                <TabsTrigger value="new" className="flex-1">Add New</TabsTrigger>
+            <Tabs defaultValue="stash" className="flex-1 flex flex-col min-h-0 bg-white rounded-lg shadow-md border-2 border-gray-200 lg:shadow-none lg:border-0">
+              <TabsList className="w-full flex-shrink-0 grid grid-cols-3 h-10 lg:h-auto">
+                <TabsTrigger value="stash" className="text-xs lg:text-sm py-1.5 lg:py-2">From Stash</TabsTrigger>
+                <TabsTrigger value="plan" className="text-xs lg:text-sm py-1.5 lg:py-2">From Plan</TabsTrigger>
+                <TabsTrigger value="new" className="text-xs lg:text-sm py-1.5 lg:py-2">Add New</TabsTrigger>
               </TabsList>
               
-              <TabsContent value="stash" className="mt-4 flex-1 min-h-0">
+              <TabsContent value="stash" className="mt-2 lg:mt-4 flex-1 min-h-0 overflow-auto p-2 lg:p-0">
                 <StashTypeSelector
                   onSelect={(plantData) => {
                     setSelectedPlant(plantData);
@@ -807,10 +809,9 @@ export default function PlantingModal({
                 />
               </TabsContent>
               
-              <TabsContent value="plan" className="mt-4 flex-1 min-h-0">
+              <TabsContent value="plan" className="mt-2 lg:mt-4 flex-1 min-h-0 overflow-auto p-2 lg:p-0">
                 {seasonId && cropPlans.length > 0 ? (
-                  <ScrollArea className="h-full">
-                    <div className="space-y-2">
+                  <div className="space-y-2 h-full overflow-auto">
                       {cropPlans.map(plan => {
                         const remaining = (plan.quantity_planned || 0) - (plan.quantity_planted || 0);
 
@@ -856,7 +857,6 @@ export default function PlantingModal({
                         );
                       })}
                     </div>
-                  </ScrollArea>
                 ) : (
                   <div className="text-center py-8 text-gray-500 text-sm">
                     No calendar crops available to plant
@@ -864,7 +864,7 @@ export default function PlantingModal({
                 )}
               </TabsContent>
               
-              <TabsContent value="new" className="mt-4 flex-1">
+              <TabsContent value="new" className="mt-2 lg:mt-4 flex-1 overflow-auto p-2 lg:p-0">
                 <CatalogTypeSelector
                   onSelect={(plantData) => {
                     setSelectedPlant(plantData);
@@ -880,10 +880,10 @@ export default function PlantingModal({
             </Tabs>
             
             {selectedPlant && (
-              <div className="mt-4 space-y-2 flex-shrink-0">
-                <div className="p-3 bg-emerald-50 rounded-lg border border-emerald-200">
-                  <p className="text-sm font-medium text-emerald-900">Selected:</p>
-                  <p className="text-sm text-emerald-700 truncate">{selectedPlant.variety_name}</p>
+              <div className="mt-2 lg:mt-4 space-y-2 flex-shrink-0">
+                <div className="p-2 lg:p-3 bg-emerald-50 rounded-lg border border-emerald-200">
+                  <p className="text-xs lg:text-sm font-medium text-emerald-900">Selected:</p>
+                  <p className="text-xs lg:text-sm text-emerald-700 truncate">{selectedPlant.variety_name}</p>
                   <p className="text-xs text-emerald-600 mt-1">
                     Takes {selectedPlant.spacing_cols}×{selectedPlant.spacing_rows} cells
                     {selectedPlant.plantsPerSlot > 1 && ` (${selectedPlant.plantsPerSlot} plants)`}
@@ -896,20 +896,20 @@ export default function PlantingModal({
                       setCompanionWarning(null);
                       setRotationWarning(null);
                     }}
-                    className="w-full mt-2"
+                    className="w-full mt-2 text-xs lg:text-sm"
                   >
                     Cancel
                   </Button>
                 </div>
 
                 {companionWarning && (
-                  <div className="p-3 bg-amber-50 rounded-lg border border-amber-300">
+                  <div className="p-2 lg:p-3 bg-amber-50 rounded-lg border border-amber-300">
                     <p className="text-xs text-amber-800">{companionWarning}</p>
                   </div>
                 )}
 
                 {rotationWarning && (
-                  <div className="p-3 bg-orange-50 rounded-lg border border-orange-300">
+                  <div className="p-2 lg:p-3 bg-orange-50 rounded-lg border border-orange-300">
                     <p className="text-xs text-orange-800">{rotationWarning}</p>
                   </div>
                 )}
