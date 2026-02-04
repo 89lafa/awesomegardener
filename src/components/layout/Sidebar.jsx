@@ -89,7 +89,10 @@ const getNavItems = (userRole, isEditor, user) => {
     ...(isEditor || userRole === 'admin' || user?.is_moderator 
       ? [
           { category: true, label: 'ADMIN' },
-          { name: 'Admin Hub', icon: Shield, page: 'AdminHub' }
+          { name: 'Admin Hub', icon: Shield, page: 'AdminHub' },
+          { name: 'Manage Achievements', icon: Award, page: 'AdminAchievements' },
+          { name: 'Manage Challenges', icon: Target, page: 'AdminChallenges' },
+          { name: 'Manage Recipes', icon: ChefHat, page: 'AdminRecipes' },
         ]
       : []
     ),
