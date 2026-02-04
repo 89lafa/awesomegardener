@@ -7,6 +7,7 @@ import {
   MessageSquare
 } from 'lucide-react';
 import { createPageUrl } from '@/utils';
+import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
 import { 
   Drawer, 
