@@ -48,6 +48,7 @@
  * The mainPage value must match a key in the PAGES object exactly.
  */
 import AIAssistants from './pages/AIAssistants';
+import Achievements from './pages/Achievements';
 import AdminAuditLog from './pages/AdminAuditLog';
 import AdminBulkEdit from './pages/AdminBulkEdit';
 import AdminDataCleanup from './pages/AdminDataCleanup';
@@ -64,6 +65,7 @@ import Calendar from './pages/Calendar';
 import CalendarPlanner from './pages/CalendarPlanner';
 import CalendarTasks from './pages/CalendarTasks';
 import CalendarTasksKanban from './pages/CalendarTasksKanban';
+import Challenges from './pages/Challenges';
 import ChangeRequests from './pages/ChangeRequests';
 import Community from './pages/Community';
 import CommunityBoard from './pages/CommunityBoard';
@@ -95,6 +97,7 @@ import IndoorGrowSpaces from './pages/IndoorGrowSpaces';
 import IndoorSpaceDetail from './pages/IndoorSpaceDetail';
 import IssuesLog from './pages/IssuesLog';
 import Landing from './pages/Landing';
+import Leaderboard from './pages/Leaderboard';
 import ManageForumCategories from './pages/ManageForumCategories';
 import Messages from './pages/Messages';
 import MyGarden from './pages/MyGarden';
@@ -112,6 +115,8 @@ import PlotBuilder from './pages/PlotBuilder';
 import PublicGarden from './pages/PublicGarden';
 import PublicPlant from './pages/PublicPlant';
 import PublicSeed from './pages/PublicSeed';
+import RecipeDetail from './pages/RecipeDetail';
+import Recipes from './pages/Recipes';
 import ResourceArticle from './pages/ResourceArticle';
 import Resources from './pages/Resources';
 import SeedInventory from './pages/SeedInventory';
@@ -127,16 +132,14 @@ import Users from './pages/Users';
 import VarietyReviewQueue from './pages/VarietyReviewQueue';
 import ViewVariety from './pages/ViewVariety';
 import ZoneMap from './pages/ZoneMap';
-import Achievements from './pages/Achievements';
-import Leaderboard from './pages/Leaderboard';
-import Challenges from './pages/Challenges';
-import Recipes from './pages/Recipes';
-import RecipeDetail from './pages/RecipeDetail';
+import AdminChallenges from './pages/AdminChallenges';
+import AdminAchievements from './pages/AdminAchievements';
 import __Layout from './Layout.jsx';
 
 
 export const PAGES = {
     "AIAssistants": AIAssistants,
+    "Achievements": Achievements,
     "AdminAuditLog": AdminAuditLog,
     "AdminBulkEdit": AdminBulkEdit,
     "AdminDataCleanup": AdminDataCleanup,
@@ -153,6 +156,7 @@ export const PAGES = {
     "CalendarPlanner": CalendarPlanner,
     "CalendarTasks": CalendarTasks,
     "CalendarTasksKanban": CalendarTasksKanban,
+    "Challenges": Challenges,
     "ChangeRequests": ChangeRequests,
     "Community": Community,
     "CommunityBoard": CommunityBoard,
@@ -184,6 +188,7 @@ export const PAGES = {
     "IndoorSpaceDetail": IndoorSpaceDetail,
     "IssuesLog": IssuesLog,
     "Landing": Landing,
+    "Leaderboard": Leaderboard,
     "ManageForumCategories": ManageForumCategories,
     "Messages": Messages,
     "MyGarden": MyGarden,
@@ -201,6 +206,8 @@ export const PAGES = {
     "PublicGarden": PublicGarden,
     "PublicPlant": PublicPlant,
     "PublicSeed": PublicSeed,
+    "RecipeDetail": RecipeDetail,
+    "Recipes": Recipes,
     "ResourceArticle": ResourceArticle,
     "Resources": Resources,
     "SeedInventory": SeedInventory,
@@ -216,11 +223,8 @@ export const PAGES = {
     "VarietyReviewQueue": VarietyReviewQueue,
     "ViewVariety": ViewVariety,
     "ZoneMap": ZoneMap,
-    "Achievements": Achievements,
-    "Leaderboard": Leaderboard,
-    "Challenges": Challenges,
-    "Recipes": Recipes,
-    "RecipeDetail": RecipeDetail,
+    "AdminChallenges": AdminChallenges,
+    "AdminAchievements": AdminAchievements,
 }
 
 export const pagesConfig = {
