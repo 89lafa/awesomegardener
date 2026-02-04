@@ -89,39 +89,51 @@ export default function AdminPestLibrary() {
       </div>
 
       <div className="grid gap-4">
-        {pests.map((pest) => (
-          <Card key={pest.id}>
-            <CardContent className="pt-6">
-              <div className="flex items-start justify-between">
-                <div className="flex-1">
-                  <h3 className="font-semibold text-lg text-gray-900">{pest.common_name}</h3>
-                  <p className="text-sm italic text-gray-600">{pest.scientific_name}</p>
-                  <div className="flex gap-2 mt-2">
-                    <span className="text-xs px-2 py-1 bg-gray-100 rounded capitalize">{pest.category}</span>
-                    <span className="text-xs px-2 py-1 bg-gray-100 rounded capitalize">{pest.severity_potential}</span>
-                  </div>
-                </div>
-                <div className="flex gap-2">
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => openEditDialog(pest)}
-                  >
-                    <Edit className="w-4 h-4" />
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => handleDelete(pest.id)}
-                    className="text-red-600 hover:text-red-700"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </Button>
-                </div>
-              </div>
+        {pests.length === 0 ? (
+          <Card>
+            <CardContent className="pt-6 text-center py-12">
+              <p className="text-gray-600 mb-4">No pest/disease entries yet. Create your first entry!</p>
+              <Button onClick={() => openEditDialog()} className="bg-emerald-600 hover:bg-emerald-700">
+                <Plus className="w-4 h-4 mr-2" />
+                Create First Entry
+              </Button>
             </CardContent>
           </Card>
-        ))}
+        ) : (
+          pests.map((pest) => (
+            <Card key={pest.id}>
+              <CardContent className="pt-6">
+                <div className="flex items-start justify-between">
+                  <div className="flex-1">
+                    <h3 className="font-semibold text-lg text-gray-900">{pest.common_name}</h3>
+                    <p className="text-sm italic text-gray-600">{pest.scientific_name}</p>
+                    <div className="flex gap-2 mt-2">
+                      <span className="text-xs px-2 py-1 bg-gray-100 rounded capitalize">{pest.category}</span>
+                      <span className="text-xs px-2 py-1 bg-gray-100 rounded capitalize">{pest.severity_potential}</span>
+                    </div>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => openEditDialog(pest)}
+                    >
+                      <Edit className="w-4 h-4" />
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => handleDelete(pest.id)}
+                      className="text-red-600 hover:text-red-700"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          ))
+        )}
       </div>
 
       <PestEditDialog
@@ -326,6 +338,12 @@ function PestEditDialog({ open, onOpenChange, pest, onSave }) {
               className="flex-1 bg-emerald-600 hover:bg-emerald-700"
             >
               {pest ? 'Update' : 'Create'} Entry
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() => onOpenChange(false)}
+            >
+              Cancel
             </Button>
           </div>
         </div>

@@ -92,41 +92,53 @@ export default function AdminResources() {
       </div>
 
       <div className="grid gap-4">
-        {resources.map((resource) => (
-          <Card key={resource.id}>
-            <CardContent className="pt-6">
-              <div className="flex items-start justify-between">
-                <div className="flex-1">
-                  <h3 className="font-semibold text-lg text-gray-900">{resource.title}</h3>
-                  <p className="text-sm text-gray-600 mt-1">{resource.excerpt}</p>
-                  <div className="flex gap-2 mt-2">
-                    <span className="text-xs px-2 py-1 bg-gray-100 rounded">{resource.category}</span>
-                    {!resource.is_published && (
-                      <span className="text-xs px-2 py-1 bg-yellow-100 text-yellow-800 rounded">Draft</span>
-                    )}
-                  </div>
-                </div>
-                <div className="flex gap-2">
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => openEditDialog(resource)}
-                  >
-                    <Edit className="w-4 h-4" />
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => handleDelete(resource.id)}
-                    className="text-red-600 hover:text-red-700"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </Button>
-                </div>
-              </div>
+        {resources.length === 0 ? (
+          <Card>
+            <CardContent className="pt-6 text-center py-12">
+              <p className="text-gray-600 mb-4">No resources yet. Create your first article!</p>
+              <Button onClick={() => openEditDialog()} className="bg-emerald-600 hover:bg-emerald-700">
+                <Plus className="w-4 h-4 mr-2" />
+                Create First Resource
+              </Button>
             </CardContent>
           </Card>
-        ))}
+        ) : (
+          resources.map((resource) => (
+            <Card key={resource.id}>
+              <CardContent className="pt-6">
+                <div className="flex items-start justify-between">
+                  <div className="flex-1">
+                    <h3 className="font-semibold text-lg text-gray-900">{resource.title}</h3>
+                    <p className="text-sm text-gray-600 mt-1">{resource.excerpt}</p>
+                    <div className="flex gap-2 mt-2">
+                      <span className="text-xs px-2 py-1 bg-gray-100 rounded">{resource.category}</span>
+                      {!resource.is_published && (
+                        <span className="text-xs px-2 py-1 bg-yellow-100 text-yellow-800 rounded">Draft</span>
+                      )}
+                    </div>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => openEditDialog(resource)}
+                    >
+                      <Edit className="w-4 h-4" />
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => handleDelete(resource.id)}
+                      className="text-red-600 hover:text-red-700"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          ))
+        )}
       </div>
 
       <ResourceEditDialog
