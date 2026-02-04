@@ -497,13 +497,21 @@ export default function Calendar() {
                 let totalCreated = 0;
                 let failedCount = 0;
 
-                for (const crop of filteredCrops) {
+                // Process crops with delays to avoid rate limits
+                for (let i = 0; i < filteredCrops.length; i++) {
+                  const crop = filteredCrops[i];
                   try {
                     const response = await base44.functions.invoke('generateTasksForCrop', { crop_plan_id: crop.id });
                     totalCreated += response.data.tasks_created || 0;
+                    
+                    // Add 800ms delay between crops to avoid rate limits
+                    if (i < filteredCrops.length - 1) {
+                      await new Promise(r => setTimeout(r, 800));
+                    }
                   } catch (error) {
                     console.error(`Failed to generate tasks for ${crop.label}:`, error);
                     failedCount++;
+                    // Continue with next crop even if one fails
                   }
                 }
 
@@ -512,7 +520,7 @@ export default function Calendar() {
                 setSyncing(false);
                 
                 if (failedCount > 0) {
-                  toast.warning(`Created ${totalCreated} tasks. ${failedCount} crops failed - check frost dates in Settings`, { id: 'regen-all', duration: 6000 });
+                  toast.warning(`Created ${totalCreated} tasks. ${failedCount} crops failed (rate limit or missing data)`, { id: 'regen-all', duration: 6000 });
                 } else {
                   toast.success(`Created ${totalCreated} tasks across ${filteredCrops.length} crops`, { id: 'regen-all' });
                 }
