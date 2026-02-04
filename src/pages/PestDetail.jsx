@@ -4,7 +4,14 @@ import { useLocation } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
-import { Bug, Loader2, AlertTriangle, Shield, Eye } from 'lucide-react';
+import { Bug, Loader2, AlertTriangle, Shield, Eye, Edit, Plus, Upload } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { toast } from 'sonner';
 
 export default function PestDetail() {
   const location = useLocation();
@@ -13,12 +20,26 @@ export default function PestDetail() {
 
   const [pest, setPest] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [user, setUser] = useState(null);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editData, setEditData] = useState(null);
+  const [uploading, setUploading] = useState(false);
 
   useEffect(() => {
+    loadUser();
     if (pestId) {
       loadPest();
     }
   }, [pestId]);
+
+  const loadUser = async () => {
+    try {
+      const userData = await base44.auth.me();
+      setUser(userData);
+    } catch (error) {
+      console.error('Error loading user:', error);
+    }
+  };
 
   const loadPest = async () => {
     try {
@@ -45,6 +66,68 @@ export default function PestDetail() {
       high: 'bg-red-100 text-red-800'
     };
     return colors[severity] || colors.medium;
+  };
+
+  const handleEdit = () => {
+    setEditData({
+      common_name: pest.common_name || '',
+      scientific_name: pest.scientific_name || '',
+      category: pest.category || 'insect',
+      appearance: pest.appearance || '',
+      symptoms: pest.symptoms?.join('\n') || '',
+      lifecycle: pest.lifecycle || '',
+      severity_potential: pest.severity_potential || 'medium',
+      spread_rate: pest.spread_rate || 'moderate',
+      organic_treatments: pest.organic_treatments?.join('\n') || '',
+      chemical_treatments: pest.chemical_treatments?.join('\n') || '',
+      prevention_tips: pest.prevention_tips?.join('\n') || '',
+      primary_photo_url: pest.primary_photo_url || ''
+    });
+    setIsEditing(true);
+  };
+
+  const handleSave = async () => {
+    try {
+      const updateData = {
+        common_name: editData.common_name,
+        scientific_name: editData.scientific_name,
+        category: editData.category,
+        appearance: editData.appearance,
+        symptoms: editData.symptoms.split('\n').filter(s => s.trim()),
+        lifecycle: editData.lifecycle,
+        severity_potential: editData.severity_potential,
+        spread_rate: editData.spread_rate,
+        organic_treatments: editData.organic_treatments.split('\n').filter(t => t.trim()),
+        chemical_treatments: editData.chemical_treatments.split('\n').filter(t => t.trim()),
+        prevention_tips: editData.prevention_tips.split('\n').filter(t => t.trim()),
+        primary_photo_url: editData.primary_photo_url
+      };
+
+      await base44.entities.PestLibrary.update(pestId, updateData);
+      setPest({ ...pest, ...updateData });
+      setIsEditing(false);
+      toast.success('Pest info updated!');
+    } catch (error) {
+      console.error('Error updating pest:', error);
+      toast.error('Failed to update');
+    }
+  };
+
+  const handleImageUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setUploading(true);
+    try {
+      const { file_url } = await base44.integrations.Core.UploadFile({ file });
+      setEditData({ ...editData, primary_photo_url: file_url });
+      toast.success('Image uploaded!');
+    } catch (error) {
+      console.error('Error uploading image:', error);
+      toast.error('Failed to upload image');
+    } finally {
+      setUploading(false);
+    }
   };
 
   if (loading) {
@@ -91,6 +174,16 @@ export default function PestDetail() {
             <Badge className={getSeverityColor(pest.severity_potential)}>
               {pest.severity_potential} severity
             </Badge>
+            {user?.role === 'admin' && (
+              <Button
+                onClick={handleEdit}
+                className="bg-emerald-600 hover:bg-emerald-700 gap-2"
+                size="sm"
+              >
+                <Edit className="w-3 h-3" />
+                Edit
+              </Button>
+            )}
           </div>
         </div>
       </div>
@@ -208,6 +301,183 @@ export default function PestDetail() {
             </div>
           </CardContent>
         </Card>
+      )}
+
+      {/* Edit Dialog */}
+      {user?.role === 'admin' && (
+        <Dialog open={isEditing} onOpenChange={setIsEditing}>
+          <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Edit Pest/Disease Entry</DialogTitle>
+            </DialogHeader>
+            {editData && (
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label>Common Name *</Label>
+                    <Input
+                      value={editData.common_name}
+                      onChange={(e) => setEditData({ ...editData, common_name: e.target.value })}
+                      className="mt-2"
+                    />
+                  </div>
+                  <div>
+                    <Label>Scientific Name</Label>
+                    <Input
+                      value={editData.scientific_name}
+                      onChange={(e) => setEditData({ ...editData, scientific_name: e.target.value })}
+                      className="mt-2"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-3 gap-4">
+                  <div>
+                    <Label>Category</Label>
+                    <Select value={editData.category} onValueChange={(v) => setEditData({ ...editData, category: v })}>
+                      <SelectTrigger className="mt-2">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="insect">Insect</SelectItem>
+                        <SelectItem value="disease">Disease</SelectItem>
+                        <SelectItem value="fungus">Fungus</SelectItem>
+                        <SelectItem value="bacteria">Bacteria</SelectItem>
+                        <SelectItem value="virus">Virus</SelectItem>
+                        <SelectItem value="deficiency">Deficiency</SelectItem>
+                        <SelectItem value="environmental">Environmental</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label>Severity</Label>
+                    <Select value={editData.severity_potential} onValueChange={(v) => setEditData({ ...editData, severity_potential: v })}>
+                      <SelectTrigger className="mt-2">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="low">Low</SelectItem>
+                        <SelectItem value="medium">Medium</SelectItem>
+                        <SelectItem value="high">High</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label>Spread Rate</Label>
+                    <Select value={editData.spread_rate} onValueChange={(v) => setEditData({ ...editData, spread_rate: v })}>
+                      <SelectTrigger className="mt-2">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="slow">Slow</SelectItem>
+                        <SelectItem value="moderate">Moderate</SelectItem>
+                        <SelectItem value="fast">Fast</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                <div>
+                  <Label>Hero Image</Label>
+                  <div className="flex gap-2 mt-2">
+                    <Input
+                      value={editData.primary_photo_url}
+                      onChange={(e) => setEditData({ ...editData, primary_photo_url: e.target.value })}
+                      placeholder="https://..."
+                      className="flex-1"
+                    />
+                    <Button
+                      variant="outline"
+                      onClick={() => document.getElementById('pest-image-upload').click()}
+                      disabled={uploading}
+                    >
+                      {uploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
+                    </Button>
+                    <input
+                      id="pest-image-upload"
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={handleImageUpload}
+                    />
+                  </div>
+                  {editData.primary_photo_url && (
+                    <img src={editData.primary_photo_url} alt="Preview" className="mt-2 h-32 rounded-lg object-cover" />
+                  )}
+                </div>
+
+                <div>
+                  <Label>Appearance Description</Label>
+                  <Textarea
+                    value={editData.appearance}
+                    onChange={(e) => setEditData({ ...editData, appearance: e.target.value })}
+                    className="mt-2"
+                    rows={3}
+                  />
+                </div>
+
+                <div>
+                  <Label>Lifecycle</Label>
+                  <Textarea
+                    value={editData.lifecycle}
+                    onChange={(e) => setEditData({ ...editData, lifecycle: e.target.value })}
+                    className="mt-2"
+                    rows={2}
+                  />
+                </div>
+
+                <div>
+                  <Label>Symptoms (one per line)</Label>
+                  <Textarea
+                    value={editData.symptoms}
+                    onChange={(e) => setEditData({ ...editData, symptoms: e.target.value })}
+                    className="mt-2"
+                    rows={4}
+                    placeholder="Yellowing leaves&#10;Wilting&#10;Spots on fruit"
+                  />
+                </div>
+
+                <div>
+                  <Label>Organic Treatments (one per line)</Label>
+                  <Textarea
+                    value={editData.organic_treatments}
+                    onChange={(e) => setEditData({ ...editData, organic_treatments: e.target.value })}
+                    className="mt-2"
+                    rows={4}
+                    placeholder="Neem oil spray&#10;Companion planting&#10;Hand picking"
+                  />
+                </div>
+
+                <div>
+                  <Label>Chemical Treatments (one per line)</Label>
+                  <Textarea
+                    value={editData.chemical_treatments}
+                    onChange={(e) => setEditData({ ...editData, chemical_treatments: e.target.value })}
+                    className="mt-2"
+                    rows={4}
+                  />
+                </div>
+
+                <div>
+                  <Label>Prevention Tips (one per line)</Label>
+                  <Textarea
+                    value={editData.prevention_tips}
+                    onChange={(e) => setEditData({ ...editData, prevention_tips: e.target.value })}
+                    className="mt-2"
+                    rows={4}
+                    placeholder="Crop rotation&#10;Remove infected plants&#10;Maintain good airflow"
+                  />
+                </div>
+              </div>
+            )}
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setIsEditing(false)}>Cancel</Button>
+              <Button onClick={handleSave} className="bg-emerald-600 hover:bg-emerald-700">
+                Save Changes
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       )}
     </div>
   );
