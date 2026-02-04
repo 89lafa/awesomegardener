@@ -495,9 +495,21 @@ export default function SeedStash() {
         return false;
       }
 
-      // Search filter
-      const name = (profile?.variety_name || profile?.common_name || seed.custom_label || '').toLowerCase();
-      if (debouncedSearchQuery && !name.includes(debouncedSearchQuery.toLowerCase())) return false;
+      // Search filter - search across multiple fields
+      const searchLower = debouncedSearchQuery.toLowerCase();
+      if (debouncedSearchQuery) {
+        const varietyName = (profile?.variety_name || '').toLowerCase();
+        const commonName = (profile?.common_name || '').toLowerCase();
+        const customLabel = (seed.custom_label || '').toLowerCase();
+        const plantTypeName = (seed.plant_type_name || '').toLowerCase();
+        
+        const matchesSearch = varietyName.includes(searchLower) || 
+                             commonName.includes(searchLower) || 
+                             customLabel.includes(searchLower) ||
+                             plantTypeName.includes(searchLower);
+        
+        if (!matchesSearch) return false;
+      }
 
       // Type filter
       if (filterType !== 'all' && profile?.common_name !== filterType) return false;

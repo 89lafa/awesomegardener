@@ -4,7 +4,7 @@ import {
   Home, Leaf, Archive, Calendar, MoreHorizontal, Mail,
   LayoutDashboard, TreeDeciduous, Hammer, BookOpen, ListChecks, Globe, 
   Lightbulb, Settings, Sprout, Shield, BookText, Bug, Apple, MapPin, Link2,
-  MessageSquare
+  MessageSquare, ChefHat, Award, Target, Trophy
 } from 'lucide-react';
 import { createPageUrl } from '@/utils';
 import { base44 } from '@/api/base44Client';
@@ -48,12 +48,17 @@ const getMoreMenuItems = (user) => {
     
     { category: 'COMMUNITY' },
     { name: 'Seed Trading', icon: Apple, page: 'SeedTrading' },
-    { name: 'Companion Planting', icon: Sprout, page: 'CompanionPlanner' },
+    { name: 'Companion Planting', icon: Sprout, page: 'CompanionPlanter' },
     { name: 'Browse Gardens', icon: Globe, page: 'BrowseGardens' },
-    { name: 'Zone Map', icon: MapPin, page: 'ZoneMap' },
+    { name: 'Leaderboard', icon: Trophy, page: 'Leaderboard' },
+    
+    { category: 'GAMIFICATION' },
+    { name: 'Achievements', icon: Award, page: 'Achievements' },
+    { name: 'Challenges', icon: Target, page: 'Challenges' },
     
     { category: 'AI TOOLS' },
     { name: 'AI Assistants', icon: Lightbulb, page: 'AIAssistants' },
+    { name: 'Recipes', icon: ChefHat, page: 'Recipes' },
     
     { category: 'LEARN & EXPLORE' },
     { name: 'Resources', icon: Link2, page: 'Resources' },

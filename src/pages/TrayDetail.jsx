@@ -238,7 +238,19 @@ export default function TrayDetail() {
           Plant Seeds
         </Button>
         <Button
-          onClick={() => setSelectedCells([...cells])}
+          onClick={() => {
+            // Select ALL cells, not just those with data
+            const allCellsInGrid = [];
+            for (let row = 0; row < tray.cells_rows; row++) {
+              for (let col = 0; col < tray.cells_cols; col++) {
+                const existingCell = cells.find(c => c.row === row && c.col === col);
+                if (existingCell) {
+                  allCellsInGrid.push(existingCell);
+                }
+              }
+            }
+            setSelectedCells(allCellsInGrid);
+          }}
           variant="outline"
         >
           Select All

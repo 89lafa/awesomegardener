@@ -53,23 +53,25 @@ export default function TrayGrid({
           const col = (idx % tray.cells_cols);
           const key = `${row}-${col}`;
           const cell = cellsByPosition[key];
-          const isSelected = selectedCells.some(c => c.id === cell?.id);
+          const isSelected = cell && selectedCells.some(c => c.id === cell.id);
+          const cellNumber = (row * tray.cells_cols) + col + 1;
 
           return (
             <button
               key={key}
               onClick={() => cell && onCellClick(cell)}
               className={cn(
-                'w-10 h-10 rounded border-2 flex items-center justify-center text-xs font-bold cursor-pointer',
+                'w-10 h-10 rounded border-2 flex flex-col items-center justify-center text-xs font-bold cursor-pointer',
                 'transition-all duration-200',
                 cell 
                   ? getStatusColor(cell.status)
                   : 'bg-gray-50 border-gray-300 hover:bg-emerald-50',
                 isSelected && 'ring-2 ring-blue-500 scale-105'
               )}
-              title={cell ? `${cell.variety_name || 'Unnamed'} - ${cell.status}` : 'Empty'}
+              title={cell ? `Cell ${cellNumber}: ${cell.variety_name || 'Unnamed'} - ${cell.status}` : `Cell ${cellNumber}: Empty`}
             >
-              {cell && getStatusIcon(cell.status)}
+              <span className="text-[8px] text-gray-500">{cellNumber}</span>
+              {cell && <span className="text-xs">{getStatusIcon(cell.status)}</span>}
             </button>
           );
         })}

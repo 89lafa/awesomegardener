@@ -77,7 +77,7 @@ export default function QuickHelpWidget() {
 
   if (!isExpanded) {
     return (
-      <div className="fixed bottom-6 left-6 z-30 hidden lg:block">
+      <div className="fixed bottom-6 right-6 z-30 hidden lg:block">
         <Button
           onClick={() => setIsExpanded(true)}
           className="bg-white shadow-lg rounded-full px-4 py-3 flex items-center gap-2 hover:shadow-xl transition border border-emerald-200"
@@ -91,7 +91,7 @@ export default function QuickHelpWidget() {
   }
 
   return (
-    <div className="fixed bottom-6 left-6 z-30 w-96 hidden lg:block">
+    <div className="fixed bottom-6 right-6 z-30 w-96 hidden lg:block">
       <div className="bg-white shadow-2xl rounded-lg overflow-hidden border border-gray-200">
         {/* Header */}
         <div className="bg-emerald-600 text-white p-4 flex justify-between items-center">
