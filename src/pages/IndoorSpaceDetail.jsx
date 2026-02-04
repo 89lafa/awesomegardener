@@ -114,8 +114,8 @@ export default function IndoorSpaceDetail() {
             <ArrowLeft className="w-5 h-5" />
           </Button>
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">{space.name}</h1>
-            <p className="text-gray-600 mt-1">
+            <h1 className="text-3xl font-bold" style={{ color: 'var(--text-primary)' }}>{space.name}</h1>
+            <p className="mt-1" style={{ color: 'var(--text-secondary)' }}>
               {space.width_ft}ft × {space.length_ft}ft • {space.space_type === 'room' ? '🏠 Room' : '⛺ Tent'}
             </p>
           </div>
@@ -132,19 +132,19 @@ export default function IndoorSpaceDetail() {
       {/* Stats */}
       <div className="grid grid-cols-4 gap-4">
         <Card className="p-4">
-          <p className="text-sm text-gray-600">Racks</p>
+          <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>Racks</p>
           <p className="text-2xl font-bold text-emerald-600">{racks.length}</p>
         </Card>
         <Card className="p-4">
-          <p className="text-sm text-gray-600">Containers</p>
+          <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>Containers</p>
           <p className="text-2xl font-bold text-blue-600">🪴 {containers.length}</p>
         </Card>
         <Card className="p-4">
-          <p className="text-sm text-gray-600">Active Seedlings</p>
+          <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>Active Seedlings</p>
           <p className="text-2xl font-bold text-green-600">🌱 0</p>
         </Card>
         <Card className="p-4">
-          <p className="text-sm text-gray-600">Ready to Transplant</p>
+          <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>Ready to Transplant</p>
           <p className="text-2xl font-bold text-orange-600">0</p>
         </Card>
       </div>
@@ -178,8 +178,8 @@ export default function IndoorSpaceDetail() {
                   <Card key={rack.id} className="p-6">
                     <div className="flex items-start justify-between mb-4">
                       <div>
-                        <h3 className="font-semibold text-gray-900">{rack.name}</h3>
-                        <p className="text-sm text-gray-600">
+                        <h3 className="font-semibold" style={{ color: 'var(--text-primary)' }}>{rack.name}</h3>
+                        <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
                           {rack.width_ft}ft × {rack.depth_ft}ft • {rack.num_shelves} shelves
                         </p>
                         {rack.notes && (
@@ -199,8 +199,8 @@ export default function IndoorSpaceDetail() {
                           <div key={shelf.id} className="bg-gray-50 rounded-lg p-4 border border-gray-200">
                             <div className="flex items-start justify-between mb-2">
                               <div>
-                                <h4 className="font-medium text-gray-900">{shelf.name}</h4>
-                                <p className="text-xs text-gray-600">
+                                <h4 className="font-medium" style={{ color: 'var(--text-primary)' }}>{shelf.name}</h4>
+                                <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>
                                   {shelf.width_ft}ft wide • {shelf.max_trays} max trays
                                 </p>
                               </div>
