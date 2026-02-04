@@ -140,7 +140,21 @@ export default function Dashboard() {
   useEffect(() => {
     loadDashboard();
     loadWeather();
+    checkAchievements();
   }, []);
+
+  const checkAchievements = async () => {
+    try {
+      const response = await base44.functions.invoke('checkAchievements', {});
+      if (response.data.newlyUnlocked?.length > 0) {
+        response.data.newlyUnlocked.forEach(ach => {
+          toast.success(`🏆 Achievement Unlocked: ${ach.title} (+${ach.points} pts)`);
+        });
+      }
+    } catch (error) {
+      console.error('Error checking achievements:', error);
+    }
+  };
 
   const loadWeather = async () => {
     try {
