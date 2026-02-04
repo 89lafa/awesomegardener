@@ -101,7 +101,7 @@ export default function DayTasksPanel({ date, tasks, open, onOpenChange, onToggl
                           />
                           <div className="flex-1 min-w-0">
                             <p className="font-medium text-sm text-gray-900">
-                              {task.title}
+                              {task.title || 'Untitled Task'}
                             </p>
                             {task.quantity_target > 1 && (
                               <p className="text-xs text-gray-500 mt-1">
@@ -142,7 +142,7 @@ export default function DayTasksPanel({ date, tasks, open, onOpenChange, onToggl
                       />
                       <div className="flex-1 min-w-0">
                         <p className="text-sm text-gray-600 line-through">
-                          {task.title}
+                          {task.title || 'Untitled Task'}
                         </p>
                         {task.completed_at && (
                           <p className="text-xs text-gray-500 mt-1">
