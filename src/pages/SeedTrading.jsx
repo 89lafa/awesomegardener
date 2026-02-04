@@ -88,7 +88,10 @@ export default function SeedTrading() {
           <h1 className="text-2xl font-bold text-gray-900">Seed Trading</h1>
           <p className="text-gray-600">Browse and exchange seeds with other gardeners</p>
         </div>
-        <Button className="bg-emerald-600 hover:bg-emerald-700 gap-2">
+        <Button 
+          onClick={() => toast.info('Trade proposals coming soon! For now, connect with other gardeners via Messages.')}
+          className="bg-emerald-600 hover:bg-emerald-700 gap-2"
+        >
           <Plus className="w-4 h-4" />
           Propose Trade
         </Button>
