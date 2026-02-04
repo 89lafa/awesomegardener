@@ -84,6 +84,8 @@ export default function GrowLists() {
     seed_lot_id: '',
     notes: ''
   });
+  
+  const [seedSearch, setSeedSearch] = useState('');
 
   useEffect(() => {
     loadData();
@@ -238,6 +240,7 @@ export default function GrowLists() {
         seed_lot_id: '',
         notes: ''
       });
+      setSeedSearch('');
       toast.success('Item added!');
     } catch (error) {
       console.error('Error adding item:', error);
@@ -394,14 +397,24 @@ export default function GrowLists() {
           </div>
           <div className="flex gap-2">
             {selectedList.garden_season_id && (
-              <Link to={createPageUrl('Calendar') + `?syncGrowList=${selectedList.id}&season=${selectedList.garden_season_id}`}>
-                <Button 
-                  className="gap-2 bg-emerald-600 hover:bg-emerald-700"
-                >
-                  <Calendar className="w-4 h-4" />
-                  Sync to Calendar
-                </Button>
-              </Link>
+              <Button 
+                className="gap-2 bg-emerald-600 hover:bg-emerald-700"
+                onClick={async () => {
+                  const season = seasons.find(s => s.id === selectedList.garden_season_id);
+                  if (season) {
+                    // Save selected season to localStorage so Calendar loads it
+                    localStorage.setItem('calendar_active_garden', selectedList.garden_id);
+                    localStorage.setItem('calendar_active_season', selectedList.garden_season_id);
+                    // Navigate with sync params
+                    window.location.href = createPageUrl('Calendar') + `?syncGrowList=${selectedList.id}&season=${selectedList.garden_season_id}`;
+                  } else {
+                    toast.error('Season not found');
+                  }
+                }}
+              >
+                <Calendar className="w-4 h-4" />
+                Sync to Calendar
+              </Button>
             )}
             <Button 
               variant="outline"
@@ -586,17 +599,56 @@ export default function GrowLists() {
             <div className="space-y-4">
               <div>
                 <Label>From Seed Stash (optional)</Label>
+                <Input 
+                  placeholder="Search seeds..."
+                  value={seedSearch}
+                  onChange={(e) => setSeedSearch(e.target.value)}
+                  className="mt-2"
+                />
                 <Select 
                   value={newItem.seed_lot_id} 
-                  onValueChange={(v) => {
+                  onValueChange={async (v) => {
                     const seed = seeds.find(s => s.id === v);
                     if (seed) {
                       const profile = profilesMap[seed.plant_profile_id];
+                      
+                      // Auto-detect plant type if missing
+                      let plantTypeId = profile?.plant_type_id || '';
+                      let plantTypeName = profile?.common_name || '';
+                      
+                      if (!plantTypeId && profile?.variety_name) {
+                        // Try to match variety name to plant type
+                        const varietyName = profile.variety_name.toLowerCase();
+                        const matchedType = plantTypes.find(pt => 
+                          varietyName.includes(pt.common_name.toLowerCase()) ||
+                          pt.common_name.toLowerCase().includes(varietyName)
+                        );
+                        
+                        if (matchedType) {
+                          plantTypeId = matchedType.id;
+                          plantTypeName = matchedType.common_name;
+                        } else {
+                          // Try to fetch the variety and get plant_type_id
+                          if (profile.variety_id) {
+                            try {
+                              const varieties = await base44.entities.Variety.filter({ id: profile.variety_id });
+                              if (varieties.length > 0 && varieties[0].plant_type_id) {
+                                plantTypeId = varieties[0].plant_type_id;
+                                const typeMatch = plantTypes.find(t => t.id === plantTypeId);
+                                plantTypeName = typeMatch?.common_name || '';
+                              }
+                            } catch (error) {
+                              console.error('Error fetching variety:', error);
+                            }
+                          }
+                        }
+                      }
+                      
                       setNewItem({
                         ...newItem,
                         seed_lot_id: v,
-                        plant_type_id: profile?.plant_type_id || '',
-                        plant_type_name: profile?.common_name || '',
+                        plant_type_id: plantTypeId,
+                        plant_type_name: plantTypeName,
                         variety_id: profile?.variety_id || '',
                         variety_name: profile?.variety_name || '',
                         available_quantity: seed.quantity || 0
@@ -611,15 +663,27 @@ export default function GrowLists() {
                     {seeds.length === 0 ? (
                       <div className="p-2 text-sm text-gray-500">No seeds in your stash</div>
                     ) : (
-                      seeds.map((seed) => {
-                        const profile = profilesMap[seed.plant_profile_id];
-                        if (!profile) return null;
-                        return (
-                          <SelectItem key={seed.id} value={seed.id}>
-                            {profile.variety_name} ({profile.common_name}) - {seed.quantity || 0} {seed.unit || 'seeds'}
-                          </SelectItem>
-                        );
-                      })
+                      seeds
+                        .filter(seed => {
+                          if (!seedSearch) return true;
+                          const profile = profilesMap[seed.plant_profile_id];
+                          if (!profile) return false;
+                          const searchLower = seedSearch.toLowerCase();
+                          return (
+                            profile.variety_name?.toLowerCase().includes(searchLower) ||
+                            profile.common_name?.toLowerCase().includes(searchLower)
+                          );
+                        })
+                        .slice(0, 100)
+                        .map((seed) => {
+                          const profile = profilesMap[seed.plant_profile_id];
+                          if (!profile) return null;
+                          return (
+                            <SelectItem key={seed.id} value={seed.id}>
+                              {profile.variety_name} ({profile.common_name}) - {seed.quantity || 0} {seed.unit || 'seeds'}
+                            </SelectItem>
+                          );
+                        })
                     )}
                   </SelectContent>
                 </Select>
