@@ -58,12 +58,10 @@ const getNavItems = (userRole, isEditor, user) => {
     { name: 'Seed Trading', icon: Apple, page: 'SeedTrading' },
     { name: 'Companion Planting', icon: Sprout, page: 'CompanionPlanner' },
     { name: 'Browse Gardens', icon: Globe, page: 'BrowseGardens' },
-    { name: 'Zone Map', icon: MapPin, page: 'ZoneMap' },
     
     // AI Tools
     { category: true, label: 'AI TOOLS' },
     { name: 'AI Assistants', icon: Lightbulb, page: 'AIAssistants' },
-    { name: 'Pest Library', icon: Bug, page: 'PestLibrary' },
     
     // Resources
     { category: true, label: 'LEARN & EXPLORE' },
@@ -74,6 +72,7 @@ const getNavItems = (userRole, isEditor, user) => {
     // Settings
     { category: true, label: 'SETTINGS' },
     { name: 'Settings', icon: Settings, page: 'Settings' },
+    { name: 'Zone Map', icon: MapPin, page: 'ZoneMap' },
     
     // Admin (conditional)
     ...(isEditor || userRole === 'admin' || user?.is_moderator 

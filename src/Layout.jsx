@@ -90,26 +90,60 @@ export default function Layout({ children, currentPageName }) {
       style.id = styleId;
       style.textContent = `
         .glass-card {
-          background: rgba(16, 185, 129, 0.15) !important;
-          backdrop-filter: blur(12px) !important;
-          -webkit-backdrop-filter: blur(12px) !important;
-          border: 1px solid rgba(16, 185, 129, 0.25) !important;
+          background: rgba(16, 185, 129, 0.12) !important;
+          backdrop-filter: blur(20px) saturate(180%) !important;
+          -webkit-backdrop-filter: blur(20px) saturate(180%) !important;
+          border: 1px solid rgba(16, 185, 129, 0.2) !important;
           border-radius: 16px !important;
           padding: 20px !important;
-          box-shadow: 0 4px 12px 0 rgba(0, 0, 0, 0.15) !important;
-          transform: translateZ(0) !important;
-          isolation: isolate !important;
+          box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.1) !important;
+          position: relative !important;
+          overflow: hidden !important;
+        }
+        
+        .glass-card::before {
+          content: '' !important;
+          position: absolute !important;
+          top: 0 !important;
+          left: 0 !important;
+          right: 0 !important;
+          bottom: 0 !important;
+          background: linear-gradient(135deg, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0.05) 100%) !important;
+          pointer-events: none !important;
+          z-index: 0 !important;
+        }
+        
+        .glass-card > * {
+          position: relative !important;
+          z-index: 1 !important;
         }
         
         .glass-card-no-padding {
-          background: rgba(16, 185, 129, 0.15) !important;
-          backdrop-filter: blur(12px) !important;
-          -webkit-backdrop-filter: blur(12px) !important;
-          border: 1px solid rgba(16, 185, 129, 0.25) !important;
+          background: rgba(16, 185, 129, 0.12) !important;
+          backdrop-filter: blur(20px) saturate(180%) !important;
+          -webkit-backdrop-filter: blur(20px) saturate(180%) !important;
+          border: 1px solid rgba(16, 185, 129, 0.2) !important;
           border-radius: 16px !important;
-          box-shadow: 0 4px 12px 0 rgba(0, 0, 0, 0.15) !important;
-          transform: translateZ(0) !important;
-          isolation: isolate !important;
+          box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.1) !important;
+          position: relative !important;
+          overflow: hidden !important;
+        }
+        
+        .glass-card-no-padding::before {
+          content: '' !important;
+          position: absolute !important;
+          top: 0 !important;
+          left: 0 !important;
+          right: 0 !important;
+          bottom: 0 !important;
+          background: linear-gradient(135deg, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0.05) 100%) !important;
+          pointer-events: none !important;
+          z-index: 0 !important;
+        }
+        
+        .glass-card-no-padding > * {
+          position: relative !important;
+          z-index: 1 !important;
         }
       `;
       document.head.appendChild(style);

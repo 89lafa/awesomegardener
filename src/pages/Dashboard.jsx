@@ -21,7 +21,6 @@ import {
 import { createPageUrl } from '@/utils';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
-import SmartSuggestionsWidget from '@/components/ai/SmartSuggestionsWidget';
 
 const QuickAccessCard = ({ icon: Icon, title, count, color, page }) => {
   const navigate = useNavigate();
@@ -336,8 +335,7 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* Smart Suggestions */}
-      <SmartSuggestionsWidget />
+
 
       {/* Quick Access Grid */}
       <div className="grid md:grid-cols-2 gap-4 md:gap-6 mt-6 md:mt-8">
