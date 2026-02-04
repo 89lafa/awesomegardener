@@ -51,17 +51,49 @@ const PAGE_DATA_CACHE = {
   lastFetch: 0
 };
 
-function SpaceCard({ space, garden, activeSeason, seasonId, sharedData, allPlantings = [] }) {
+function SpaceCard({ space, garden, activeSeason, seasonId, sharedData }) {
+  const [plantings, setPlantings] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [showPlantingModal, setShowPlantingModal] = useState(false);
 
-  // Filter plantings for this specific space from parent's pre-loaded data
-  const plantings = allPlantings.filter(p => p.bed_id === space.plot_item_id);
+  useEffect(() => {
+    loadPlantings();
+  }, [space.id, activeSeason]);
+
+  const loadPlantings = async () => {
+    if (!activeSeason || !space.plot_item_id) return;
+
+    try {
+      // CRITICAL FIX: Use smartQuery to prevent rate limits
+      const allPlants = await smartQuery(base44, 'PlantInstance', { 
+        bed_id: space.plot_item_id,
+        garden_id: space.garden_id
+      });
+
+      // Filter by season - show plantings for selected season OR old plantings without season_year (show in current year only)
+      const currentYear = new Date().getFullYear();
+      const isCurrentYearSeason = activeSeason && activeSeason.startsWith(currentYear.toString());
+
+      const plants = allPlants.filter(p => {
+        // If planting has no season_year (old data), only show in current year's season
+        if (!p.season_year) {
+          return isCurrentYearSeason;
+        }
+        // Otherwise, match the selected season exactly
+        return p.season_year === activeSeason;
+      });
+
+      console.log('[GardenPlanting] Loaded plantings for plot_item_id:', space.plot_item_id, 'season:', activeSeason, 'count:', plants.length);
+      setPlantings(plants);
+    } catch (error) {
+      console.error('Error loading plantings:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handlePlantingUpdate = () => {
-    // Notify parent to reload all plantings
-    if (sharedData?.onPlantingsChanged) {
-      sharedData.onPlantingsChanged();
-    }
+    loadPlantings();
   };
 
   const isGridSpace = space.layout_schema?.type === 'grid';
@@ -80,8 +112,6 @@ function SpaceCard({ space, garden, activeSeason, seasonId, sharedData, allPlant
       }, 0);
   
   const capacity = space.capacity;
-  
-  const loading = false; // No longer loading individually
   
   // Calculate responsive cell size for grid spaces
   const getCellSize = () => {
@@ -268,11 +298,8 @@ export default function GardenPlanting() {
     plantingRules: [],
     cropPlans: [],
     stashPlants: [],
-    profiles: {},
-    onPlantingsChanged: null
+    profiles: {}
   });
-  
-  const [allPlantings, setAllPlantings] = useState([]);
 
   useEffect(() => {
     loadData();
@@ -295,35 +322,12 @@ export default function GardenPlanting() {
     }
   }, [activeSeason]);
 
-  // Load shared data ONCE for the entire page + ALL plantings
+  // Load shared data ONCE for the entire page
   const loadSharedData = async () => {
     try {
       const user = await base44.auth.me();
       
       console.log('[GardenPlanting] Loading shared data for all modals...');
-      
-      // CRITICAL: Load ALL plantings for the garden at once
-      let allPlantingsData = [];
-      if (activeGarden) {
-        allPlantingsData = await base44.entities.PlantInstance.filter({ 
-          garden_id: activeGarden.id 
-        });
-        
-        // Filter by season
-        const currentYear = new Date().getFullYear();
-        const isCurrentYearSeason = activeSeason && activeSeason.startsWith(currentYear.toString());
-        
-        allPlantingsData = allPlantingsData.filter(p => {
-          if (!p.season_year) {
-            return isCurrentYearSeason;
-          }
-          return p.season_year === activeSeason;
-        });
-        
-        console.log('[GardenPlanting] Loaded ALL plantings for garden:', allPlantingsData.length);
-        setAllPlantings(allPlantingsData);
-      }
-      
       const [varietiesData, typesData, rulesData, stashData] = await Promise.all([
         smartQuery(base44, 'Variety', {}, 'variety_name', 500),
         smartQuery(base44, 'PlantType', {}, 'common_name', 100),
@@ -333,7 +337,10 @@ export default function GardenPlanting() {
       
       let cropPlansData = [];
       if (seasonId) {
-        cropPlansData = await base44.entities.CropPlan.filter({ garden_season_id: seasonId });
+        cropPlansData = await smartQuery(base44, 'CropPlan', { 
+          garden_season_id: seasonId,
+          user_owner_email: user.email
+        });
       }
       
       // Load profiles for stash
@@ -353,8 +360,7 @@ export default function GardenPlanting() {
         plantingRules: rulesData,
         cropPlans: cropPlansData.filter(p => (p.quantity_planted || 0) < (p.quantity_planned || 0)),
         stashPlants: stashData,
-        profiles: profilesMap,
-        onPlantingsChanged: loadSharedData
+        profiles: profilesMap
       });
       
       console.log('[GardenPlanting] Shared data loaded:', {
@@ -362,8 +368,7 @@ export default function GardenPlanting() {
         types: typesData.length,
         rules: rulesData.length,
         stash: stashData.length,
-        profiles: Object.keys(profilesMap).length,
-        cropPlans: cropPlansData.length
+        profiles: Object.keys(profilesMap).length
       });
     } catch (error) {
       console.error('Error loading shared data:', error);
@@ -845,7 +850,6 @@ export default function GardenPlanting() {
                   activeSeason={activeSeason}
                   seasonId={seasonId}
                   sharedData={sharedData}
-                  allPlantings={allPlantings}
                 />
               ))}
           </div>
