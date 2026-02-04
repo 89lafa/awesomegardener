@@ -90,13 +90,10 @@ export default function Calendar() {
   useEffect(() => {
     const syncGrowListId = searchParams.get('syncGrowList');
     const seasonParam = searchParams.get('season');
-    if (syncGrowListId && (activeSeasonId || seasonParam)) {
-      const targetSeasonId = seasonParam || activeSeasonId;
-      if (targetSeasonId && !syncing) {
-        handleSyncGrowList(syncGrowListId, targetSeasonId);
-      }
+    if (syncGrowListId && seasonParam && !syncing && !loading) {
+      handleSyncGrowList(syncGrowListId, seasonParam);
     }
-  }, [searchParams, activeSeasonId]);
+  }, [searchParams, loading]);
   
   useEffect(() => {
     if (activeSeasonId && !loading) {
