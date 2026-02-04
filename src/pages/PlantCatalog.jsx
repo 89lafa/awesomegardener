@@ -855,15 +855,8 @@ export default function PlantCatalog() {
                     }}
                   >
                   <CardContent className="p-4 flex items-center gap-4">
-                    <div className="w-12 h-12 rounded-lg flex items-center justify-center text-2xl flex-shrink-0 bg-white group-hover:scale-110 transition-transform overflow-hidden">
-                      <img 
-                        src={type.image_url} 
-                        alt={type.common_name || type.name}
-                        loading="lazy"
-                        className="w-full h-full object-cover rounded-lg"
-                        onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'block'; }}
-                      />
-                      <span style={{ display: 'none' }}>{type.icon || '🌱'}</span>
+                    <div className="w-12 h-12 rounded-lg flex items-center justify-center text-2xl flex-shrink-0 bg-white group-hover:scale-110 transition-transform">
+                      {type.icon || '🌱'}
                     </div>
                       <div className="flex-1 min-w-0">
                         <h3 className="font-semibold" style={{ color: 'var(--text-primary)' }}>{type.common_name || type.name}</h3>

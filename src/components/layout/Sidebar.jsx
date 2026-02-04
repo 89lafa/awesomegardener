@@ -51,18 +51,16 @@ const getNavItems = (userRole, isEditor, user) => {
     { name: 'Plot Layout', icon: Hammer, page: 'MyGarden' },
     { name: 'Garden Planting', icon: TreeDeciduous, page: 'GardenPlanting' },
     
-    // Tracking
+    // Tracking - Single Section with Tabs
     { category: true, label: 'TRACKING' },
-    { name: 'Diary', icon: BookText, page: 'GardenDiary' },
-    { name: 'Harvest Log', icon: Apple, page: 'HarvestLog' },
-    { name: 'Issues Log', icon: Bug, page: 'IssuesLog' },
+    { name: 'Tracking', icon: BookText, page: 'Tracking' },
     
     // Trading & community
     { category: true, label: 'COMMUNITY' },
     { name: 'Seed Trading', icon: Apple, page: 'SeedTrading' },
     { name: 'Companion Planting', icon: Sprout, page: 'CompanionPlanner' },
     { name: 'Browse Gardens', icon: Globe, page: 'BrowseGardens' },
-    { name: 'Leaderboard', icon: Trophy, page: 'Leaderboard' },
+    { name: 'Leaderboard', icon: Trophy, page: 'LeaderboardV2' },
     
     // Gamification
     { category: true, label: 'GAMIFICATION' },
@@ -90,9 +88,6 @@ const getNavItems = (userRole, isEditor, user) => {
       ? [
           { category: true, label: 'ADMIN' },
           { name: 'Admin Hub', icon: Shield, page: 'AdminHub' },
-          { name: 'Manage Achievements', icon: Award, page: 'AdminAchievements' },
-          { name: 'Manage Challenges', icon: Target, page: 'AdminChallenges' },
-          { name: 'Manage Recipes', icon: ChefHat, page: 'AdminRecipes' },
         ]
       : []
     ),

@@ -556,9 +556,9 @@ export default function MyGarden() {
               onItemSelect={setSelectedItem}
             />
 
-            {/* Selected Item Detail View */}
+            {/* Selected Item Detail View - HIDDEN ON MOBILE */}
             {selectedItem && (
-              <Card className="mt-6 lg:mb-0 mb-32 relative z-0">
+              <Card className="mt-6 lg:mb-0 mb-32 relative z-0 hidden lg:block">
                 <CardContent className="p-6">
                   <div className="flex items-start justify-between mb-4">
                     <div>

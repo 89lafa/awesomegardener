@@ -324,12 +324,42 @@ function PestEditDialog({ open, onOpenChange, pest, onSave }) {
           </div>
 
           <div>
-            <Label>Primary Photo URL</Label>
-            <Input
-              value={formData.primary_photo_url}
-              onChange={(e) => setFormData({ ...formData, primary_photo_url: e.target.value })}
-              placeholder="https://..."
-            />
+            <Label>Primary Photo</Label>
+            <div className="space-y-2">
+              {formData.primary_photo_url && (
+                <div className="relative w-40 h-40">
+                  <img 
+                    src={formData.primary_photo_url} 
+                    alt="Preview" 
+                    className="w-full h-full object-cover rounded-lg border"
+                  />
+                  <Button
+                    size="sm"
+                    variant="destructive"
+                    className="absolute top-1 right-1"
+                    onClick={() => setFormData({ ...formData, primary_photo_url: '' })}
+                  >
+                    <Trash2 className="w-3 h-3" />
+                  </Button>
+                </div>
+              )}
+              <Input
+                type="file"
+                accept="image/*"
+                onChange={async (e) => {
+                  const file = e.target.files?.[0];
+                  if (!file) return;
+                  try {
+                    const { data } = await base44.integrations.Core.UploadFile({ file });
+                    setFormData({ ...formData, primary_photo_url: data.file_url });
+                    toast.success('Image uploaded');
+                  } catch (error) {
+                    console.error('Upload error:', error);
+                    toast.error('Failed to upload image');
+                  }
+                }}
+              />
+            </div>
           </div>
 
           <div className="flex gap-4">

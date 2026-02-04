@@ -101,6 +101,7 @@ import IndoorSpaceDetail from './pages/IndoorSpaceDetail';
 import IssuesLog from './pages/IssuesLog';
 import Landing from './pages/Landing';
 import Leaderboard from './pages/Leaderboard';
+import LeaderboardV2 from './pages/LeaderboardV2';
 import ManageForumCategories from './pages/ManageForumCategories';
 import Messages from './pages/Messages';
 import MyGarden from './pages/MyGarden';
@@ -115,6 +116,7 @@ import PlantCatalogBrowse from './pages/PlantCatalogBrowse';
 import PlantCatalogDetail from './pages/PlantCatalogDetail';
 import PlantCatalogV2 from './pages/PlantCatalogV2';
 import PlotBuilder from './pages/PlotBuilder';
+import Profile from './pages/Profile';
 import PublicGarden from './pages/PublicGarden';
 import PublicPlant from './pages/PublicPlant';
 import PublicSeed from './pages/PublicSeed';
@@ -128,6 +130,7 @@ import SeedStashDetail from './pages/SeedStashDetail';
 import SeedTrading from './pages/SeedTrading';
 import Settings from './pages/Settings';
 import ShipAudit from './pages/ShipAudit';
+import StreakCalendar from './pages/StreakCalendar';
 import SubcategoryMapping from './pages/SubcategoryMapping';
 import TrayDetail from './pages/TrayDetail';
 import UserReports from './pages/UserReports';
@@ -135,9 +138,7 @@ import Users from './pages/Users';
 import VarietyReviewQueue from './pages/VarietyReviewQueue';
 import ViewVariety from './pages/ViewVariety';
 import ZoneMap from './pages/ZoneMap';
-import StreakCalendar from './pages/StreakCalendar';
-import LeaderboardV2 from './pages/LeaderboardV2';
-import Profile from './pages/Profile';
+import Tracking from './pages/Tracking';
 import __Layout from './Layout.jsx';
 
 
@@ -196,6 +197,7 @@ export const PAGES = {
     "IssuesLog": IssuesLog,
     "Landing": Landing,
     "Leaderboard": Leaderboard,
+    "LeaderboardV2": LeaderboardV2,
     "ManageForumCategories": ManageForumCategories,
     "Messages": Messages,
     "MyGarden": MyGarden,
@@ -210,6 +212,7 @@ export const PAGES = {
     "PlantCatalogDetail": PlantCatalogDetail,
     "PlantCatalogV2": PlantCatalogV2,
     "PlotBuilder": PlotBuilder,
+    "Profile": Profile,
     "PublicGarden": PublicGarden,
     "PublicPlant": PublicPlant,
     "PublicSeed": PublicSeed,
@@ -223,6 +226,7 @@ export const PAGES = {
     "SeedTrading": SeedTrading,
     "Settings": Settings,
     "ShipAudit": ShipAudit,
+    "StreakCalendar": StreakCalendar,
     "SubcategoryMapping": SubcategoryMapping,
     "TrayDetail": TrayDetail,
     "UserReports": UserReports,
@@ -230,9 +234,7 @@ export const PAGES = {
     "VarietyReviewQueue": VarietyReviewQueue,
     "ViewVariety": ViewVariety,
     "ZoneMap": ZoneMap,
-    "StreakCalendar": StreakCalendar,
-    "LeaderboardV2": LeaderboardV2,
-    "Profile": Profile,
+    "Tracking": Tracking,
 }
 
 export const pagesConfig = {
