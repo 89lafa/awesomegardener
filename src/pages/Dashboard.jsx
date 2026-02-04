@@ -25,6 +25,11 @@ import QuickCheckInWidget from '@/components/dashboard/QuickCheckInWidget';
 import ActivityFeed from '@/components/dashboard/ActivityFeed';
 import RecipeSuggestionsWidget from '@/components/dashboard/RecipeSuggestionsWidget';
 import TipOfDayWidget from '@/components/dashboard/TipOfDayWidget';
+import StreakWidget from '@/components/gamification/StreakWidget';
+import LatestBadgeWidget from '@/components/gamification/LatestBadgeWidget';
+import LevelProgressWidget from '@/components/gamification/LevelProgressWidget';
+import LeaderboardRankWidget from '@/components/gamification/LeaderboardRankWidget';
+import ChallengeProgressWidget from '@/components/gamification/ChallengeProgressWidget';
 
 const QuickAccessCard = ({ icon: Icon, title, count, color, page }) => {
   const navigate = useNavigate();
@@ -277,7 +282,14 @@ export default function Dashboard() {
           </p>
         </div>
 
-      {/* Top Row - Quick Stats + Weather - Equal height cards */}
+      {/* Gamification Widgets Row */}
+      <div className="grid md:grid-cols-3 gap-4">
+        <LevelProgressWidget />
+        <StreakWidget />
+        <LatestBadgeWidget />
+      </div>
+
+      {/* Top Row - Quick Stats + Weather */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
         <QuickAccessCard
           icon={Sprout}
@@ -339,11 +351,12 @@ export default function Dashboard() {
         </div>
       </div>
 
-
-
-      {/* Quick Access Grid */}
-      <div className="grid md:grid-cols-3 gap-4 md:gap-6 mt-6 md:mt-8">
-        {/* Top Actions */}
+      {/* Gamification & Quick Actions */}
+      <div className="grid md:grid-cols-3 gap-4">
+        <LeaderboardRankWidget />
+        <ChallengeProgressWidget />
+        
+        {/* Quick Actions */}
         <div className="glass-card-no-padding">
           <div className="p-6">
             <h3 className="flex items-center gap-2 text-lg font-semibold mb-4" style={{ color: 'var(--text-primary)' }}>
@@ -386,11 +399,13 @@ export default function Dashboard() {
             </div>
           </div>
         </div>
+      </div>
 
-        {/* Quick Check-In */}
+      {/* Quick Check-In + AI Tools */}
+      <div className="grid md:grid-cols-2 gap-4">
         <QuickCheckInWidget />
-
-        {/* New Features */}
+        
+        {/* AI Tools */}
         <div className="glass-card-no-padding">
           <div className="p-6">
             <h3 className="flex items-center gap-2 text-lg font-semibold mb-4" style={{ color: 'var(--text-primary)' }}>
