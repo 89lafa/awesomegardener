@@ -13,8 +13,9 @@ import {
 import { Plus, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { formatDistanceToNow } from 'date-fns';
+import { cn } from '@/lib/utils';
 
-export default function GrowLogComponent({ targetId, targetType }) {
+export default function GrowLogComponent({ targetId, targetType, compact = false }) {
   const [logs, setLogs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
@@ -37,53 +38,9 @@ export default function GrowLogComponent({ targetId, targetType }) {
   const loadLogs = async () => {
     try {
       setLoading(true);
-      
-      // For space-level view, aggregate logs from ALL child elements
-      if (targetType === 'indoor_space_id') {
-        const [spaceLogs, rackLogs, shelfLogs, trayLogs, cellLogs, containerLogs] = await Promise.all([
-          base44.entities.GrowLog.filter({ indoor_space_id: targetId }, '-created_date'),
-          base44.entities.GrowLog.filter({ indoor_space_id: targetId }, '-created_date'),
-          base44.entities.GrowRack.filter({ indoor_space_id: targetId }).then(async racks => {
-            if (racks.length === 0) return [];
-            const rackIds = racks.map(r => r.id);
-            const allLogs = await Promise.all(rackIds.map(rid => 
-              base44.entities.GrowLog.filter({ rack_id: rid }, '-created_date')
-            ));
-            return allLogs.flat();
-          }),
-          base44.entities.SeedTray.filter({}).then(async trays => {
-            const traysBySpace = [];
-            for (const tray of trays) {
-              if (tray.shelf_id) {
-                const shelves = await base44.entities.GrowShelf.filter({ id: tray.shelf_id });
-                if (shelves[0]?.rack_id) {
-                  const racks = await base44.entities.GrowRack.filter({ id: shelves[0].rack_id });
-                  if (racks[0]?.indoor_space_id === targetId) {
-                    traysBySpace.push(tray);
-                  }
-                }
-              }
-            }
-            if (traysBySpace.length === 0) return [];
-            const allLogs = await Promise.all(traysBySpace.map(t => 
-              base44.entities.GrowLog.filter({ tray_id: t.id }, '-created_date')
-            ));
-            return allLogs.flat();
-          }),
-          base44.entities.GrowLog.filter({ tray_cell_id: targetId }, '-created_date'),
-          base44.entities.GrowLog.filter({ container_id: targetId }, '-created_date')
-        ]);
-        
-        // Merge all logs and deduplicate by id
-        const allLogs = [...spaceLogs, ...rackLogs, ...shelfLogs, ...trayLogs, ...cellLogs, ...containerLogs];
-        const uniqueLogs = Array.from(new Map(allLogs.map(log => [log.id, log])).values());
-        setLogs(uniqueLogs.sort((a, b) => new Date(b.created_date) - new Date(a.created_date)));
-      } else {
-        // For specific entity logs (tray, container, etc.)
-        const query = { [targetType]: targetId };
-        const logsData = await base44.entities.GrowLog.filter(query, '-created_date');
-        setLogs(logsData);
-      }
+      const query = { [targetType]: targetId };
+      const logsData = await base44.entities.GrowLog.filter(query, '-created_date');
+      setLogs(logsData);
     } catch (error) {
       console.error('Error loading logs:', error);
       toast.error('Failed to load logs');
@@ -148,20 +105,22 @@ export default function GrowLogComponent({ targetId, targetType }) {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h3 className="font-semibold text-gray-900">📖 Growth Log</h3>
-        <Button 
-          onClick={() => setShowForm(!showForm)}
-          variant="outline"
-          size="sm"
-          className="gap-2"
-        >
-          <Plus className="w-4 h-4" />
-          Add Note
-        </Button>
-      </div>
+      {!compact && (
+        <div className="flex items-center justify-between">
+          <h3 className="font-semibold text-gray-900">📖 Growth Log</h3>
+          <Button 
+            onClick={() => setShowForm(!showForm)}
+            variant="outline"
+            size="sm"
+            className="gap-2"
+          >
+            <Plus className="w-4 h-4" />
+            Add Note
+          </Button>
+        </div>
+      )}
 
-      {showForm && (
+      {!compact && showForm && (
         <div className="bg-white rounded-lg border p-4 space-y-3">
           <Select 
             value={formData.log_type}
@@ -240,22 +199,27 @@ export default function GrowLogComponent({ targetId, targetType }) {
       )}
 
       {/* Timeline */}
-      <div className="space-y-3">
+      <div className={cn("space-y-3", compact && "space-y-2")}>
         {logs.length === 0 ? (
-          <p className="text-sm text-gray-500 text-center py-6">No log entries yet</p>
+          <p className={cn("text-sm text-gray-500 text-center", compact ? "py-2" : "py-6")}>
+            {compact ? 'No activity' : 'No log entries yet'}
+          </p>
         ) : (
           logs.map(log => (
-            <div key={log.id} className="bg-white rounded-lg border p-4">
+            <div key={log.id} className={cn(
+              "bg-white rounded-lg border",
+              compact ? "p-3" : "p-4"
+            )}>
               <div className="flex items-start gap-3">
-                <span className="text-2xl">{getLogIcon(log.log_type)}</span>
+                <span className={compact ? "text-lg" : "text-2xl"}>{getLogIcon(log.log_type)}</span>
                 <div className="flex-1 min-w-0">
                   {log.title && (
-                    <p className="font-semibold text-gray-900">{log.title}</p>
+                    <p className={cn("font-semibold text-gray-900", compact && "text-sm")}>{log.title}</p>
                   )}
-                  <p className="text-sm text-gray-700 mt-1">{log.content}</p>
+                  <p className={cn("text-gray-700 mt-1", compact ? "text-xs" : "text-sm")}>{log.content}</p>
                   
                   {/* Measurements */}
-                  {(log.temperature_f || log.humidity || log.height_inches || log.leaf_count) && (
+                  {!compact && (log.temperature_f || log.humidity || log.height_inches || log.leaf_count) && (
                     <div className="flex flex-wrap gap-3 mt-2 text-xs text-gray-600">
                       {log.temperature_f && <span>🌡️ {log.temperature_f}°F</span>}
                       {log.humidity && <span>💧 {log.humidity}%</span>}
