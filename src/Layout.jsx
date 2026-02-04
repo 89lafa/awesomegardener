@@ -99,8 +99,9 @@ export default function Layout({ children, currentPageName }) {
           box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.1) !important;
           position: relative !important;
           overflow: hidden !important;
+          isolation: isolate !important;
         }
-        
+
         .glass-card::before {
           content: '' !important;
           position: absolute !important;
@@ -110,12 +111,11 @@ export default function Layout({ children, currentPageName }) {
           bottom: 0 !important;
           background: linear-gradient(135deg, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0.05) 100%) !important;
           pointer-events: none !important;
-          z-index: 0 !important;
+          z-index: -1 !important;
         }
-        
+
         .glass-card > * {
           position: relative !important;
-          z-index: 1 !important;
         }
         
         .glass-card-no-padding {
@@ -127,8 +127,9 @@ export default function Layout({ children, currentPageName }) {
           box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.1) !important;
           position: relative !important;
           overflow: hidden !important;
+          isolation: isolate !important;
         }
-        
+
         .glass-card-no-padding::before {
           content: '' !important;
           position: absolute !important;
@@ -138,12 +139,11 @@ export default function Layout({ children, currentPageName }) {
           bottom: 0 !important;
           background: linear-gradient(135deg, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0.05) 100%) !important;
           pointer-events: none !important;
-          z-index: 0 !important;
+          z-index: -1 !important;
         }
-        
+
         .glass-card-no-padding > * {
           position: relative !important;
-          z-index: 1 !important;
         }
       `;
       document.head.appendChild(style);
