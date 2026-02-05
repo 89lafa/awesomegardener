@@ -270,7 +270,6 @@ function SpaceCard({ space, garden, activeSeason, seasonId, sharedData }) {
          seasonId={seasonId}
          onPlantingUpdate={handlePlantingUpdate}
          sharedData={sharedData}
-         autoOpenSeedling={autoOpenSeedling}
        />
     </Card>
   );
