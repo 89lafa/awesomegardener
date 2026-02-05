@@ -96,12 +96,11 @@ import GrowLists from './pages/GrowLists';
 import GrowingProfile from './pages/GrowingProfile';
 import HarvestLog from './pages/HarvestLog';
 import ImageSubmissions from './pages/ImageSubmissions';
-import IndoorGrowSpaces from './pages/IndoorGrowSpaces';
-import IndoorSpaceDetail from './pages/IndoorSpaceDetail';
 import IssuesLog from './pages/IssuesLog';
 import Landing from './pages/Landing';
 import Leaderboard from './pages/Leaderboard';
 import LeaderboardV2 from './pages/LeaderboardV2';
+import ManageFeatureRequests from './pages/ManageFeatureRequests';
 import ManageForumCategories from './pages/ManageForumCategories';
 import Messages from './pages/Messages';
 import MyGarden from './pages/MyGarden';
@@ -133,13 +132,14 @@ import ShipAudit from './pages/ShipAudit';
 import StreakCalendar from './pages/StreakCalendar';
 import SubcategoryMapping from './pages/SubcategoryMapping';
 import Tracking from './pages/Tracking';
-import TrayDetail from './pages/TrayDetail';
 import UserReports from './pages/UserReports';
 import Users from './pages/Users';
 import VarietyReviewQueue from './pages/VarietyReviewQueue';
 import ViewVariety from './pages/ViewVariety';
 import ZoneMap from './pages/ZoneMap';
-import ManageFeatureRequests from './pages/ManageFeatureRequests';
+import TrayDetail from './pages/TrayDetail';
+import IndoorGrowSpaces from './pages/IndoorGrowSpaces';
+import IndoorSpaceDetail from './pages/IndoorSpaceDetail';
 import __Layout from './Layout.jsx';
 
 
@@ -193,12 +193,11 @@ export const PAGES = {
     "GrowingProfile": GrowingProfile,
     "HarvestLog": HarvestLog,
     "ImageSubmissions": ImageSubmissions,
-    "IndoorGrowSpaces": IndoorGrowSpaces,
-    "IndoorSpaceDetail": IndoorSpaceDetail,
     "IssuesLog": IssuesLog,
     "Landing": Landing,
     "Leaderboard": Leaderboard,
     "LeaderboardV2": LeaderboardV2,
+    "ManageFeatureRequests": ManageFeatureRequests,
     "ManageForumCategories": ManageForumCategories,
     "Messages": Messages,
     "MyGarden": MyGarden,
@@ -230,13 +229,14 @@ export const PAGES = {
     "StreakCalendar": StreakCalendar,
     "SubcategoryMapping": SubcategoryMapping,
     "Tracking": Tracking,
-    "TrayDetail": TrayDetail,
     "UserReports": UserReports,
     "Users": Users,
     "VarietyReviewQueue": VarietyReviewQueue,
     "ViewVariety": ViewVariety,
     "ZoneMap": ZoneMap,
-    "ManageFeatureRequests": ManageFeatureRequests,
+    "TrayDetail": TrayDetail,
+    "IndoorGrowSpaces": IndoorGrowSpaces,
+    "IndoorSpaceDetail": IndoorSpaceDetail,
 }
 
 export const pagesConfig = {
