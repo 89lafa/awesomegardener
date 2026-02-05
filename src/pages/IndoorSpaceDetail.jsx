@@ -55,7 +55,13 @@ export default function IndoorSpaceDetail() {
     try {
       setLoading(true);
       
-      const spaceData = await base44.entities.IndoorGrowSpace.filter({ id: spaceId });
+      // Load space and its racks + containers in parallel
+      const [spaceData, racksData, containersData] = await Promise.all([
+        base44.entities.IndoorGrowSpace.filter({ id: spaceId }),
+        base44.entities.GrowRack.filter({ indoor_space_id: spaceId }, 'name'),
+        base44.entities.IndoorContainer.filter({ indoor_space_id: spaceId }, 'name')
+      ]);
+      
       if (spaceData.length === 0) {
         toast.error('Space not found');
         navigate('/IndoorGrowSpaces');
@@ -64,19 +70,35 @@ export default function IndoorSpaceDetail() {
       
       const space = spaceData[0];
       setSpace(space);
-
-      // Load racks, shelves, trays and containers
-      const [racksData, shelvesData, traysData, containersData] = await Promise.all([
-        base44.entities.GrowRack.filter({ indoor_space_id: spaceId }, 'name'),
-        base44.entities.GrowShelf.filter({}, 'shelf_number'),
-        base44.entities.SeedTray.filter({}, 'name'),
-        base44.entities.IndoorContainer.filter({ indoor_space_id: spaceId }, 'name')
-      ]);
-
       setRacks(racksData);
-      setShelves(shelvesData);
-      setTrays(traysData);
       setContainers(containersData);
+
+      // Only load shelves and trays if we have racks
+      if (racksData.length > 0) {
+        const rackIds = racksData.map(r => r.id);
+        
+        // Load shelves for these racks
+        const shelvesData = await base44.entities.GrowShelf.filter(
+          { rack_id: { $in: rackIds } }, 
+          'shelf_number'
+        );
+        setShelves(shelvesData);
+        
+        // Only load trays if we have shelves
+        if (shelvesData.length > 0) {
+          const shelfIds = shelvesData.map(s => s.id);
+          const traysData = await base44.entities.SeedTray.filter(
+            { shelf_id: { $in: shelfIds } },
+            'name'
+          );
+          setTrays(traysData);
+        } else {
+          setTrays([]);
+        }
+      } else {
+        setShelves([]);
+        setTrays([]);
+      }
     } catch (error) {
       console.error('Error loading space:', error);
       toast.error('Failed to load space');
