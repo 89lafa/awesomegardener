@@ -92,8 +92,12 @@ function SpaceCard({ space, garden, activeSeason, seasonId, sharedData }) {
     }
   };
 
-  const handlePlantingUpdate = () => {
-    loadPlantings();
+  const handlePlantingUpdate = (updatedPlantings) => {
+    if (updatedPlantings) {
+      setPlantings(updatedPlantings);
+    } else {
+      loadPlantings();
+    }
   };
 
   const isGridSpace = space.layout_schema?.type === 'grid';

@@ -267,7 +267,7 @@ export default function FeatureRequests() {
                               <Badge variant="outline">{category.label}</Badge>
                             )}
                           </div>
-                          <p className="text-gray-600 text-sm line-clamp-2">{request.description}</p>
+                          <p className="text-gray-600 text-sm whitespace-pre-wrap">{request.description}</p>
                           <p className="text-xs text-gray-400 mt-2">
                             Submitted {format(new Date(request.created_date), 'MMM d, yyyy')}
                           </p>

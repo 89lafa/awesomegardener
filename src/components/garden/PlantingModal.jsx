@@ -5,7 +5,9 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogFooter,
 } from '@/components/ui/dialog';
+import { useMobile } from "@/components/ui/use-mobile";
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -37,6 +39,7 @@ export default function PlantingModal({
   seasonId,
   sharedData // CRITICAL: Pre-loaded data from parent page to prevent rate limits
 }) {
+  const { isMobile } = useMobile();
   const [plantings, setPlantings] = useState([]);
   const [stashPlants, setStashPlants] = useState([]);
   const [profiles, setProfiles] = useState({});
@@ -329,6 +332,7 @@ export default function PlantingModal({
       // DON'T clear selection - keep it for multiple plantings
       // setSelectedPlant(null);
       toast.success('Plant added - click more cells to keep planting');
+      onPlantingUpdate?.(updatedPlantings);
       
       // Re-run companion analysis with new plantings state
       analyzeCompanionsWithPlantings(updatedPlantings);
@@ -477,7 +481,7 @@ export default function PlantingModal({
         // DON'T clear selection - keep it for multiple plantings
         // setSelectedPlant(null);
         toast.success('Plant added - click more cells to keep planting');
-        onPlantingUpdate?.();
+        onPlantingUpdate?.(updatedPlantings);
       } catch (error) {
         console.error('[PlantingModal] Error adding plant:', error);
         toast.error('Failed to add plant: ' + (error.message || 'Unknown error'));
@@ -494,6 +498,7 @@ export default function PlantingModal({
       setPlantings(updatedPlantings);
       setSelectedPlanting(null);
       toast.success('Plant removed');
+      onPlantingUpdate?.(updatedPlantings);
       
       // Re-run companion analysis with updated plantings
       analyzeCompanionsWithPlantings(updatedPlantings);
@@ -767,17 +772,22 @@ export default function PlantingModal({
               {plantingPattern === 'diagonal' && ' • Diagonal'}
             </p>
           </div>
-          <Button 
-            onClick={handleDone}
-            className="bg-emerald-600 hover:bg-emerald-700 text-white h-9 lg:h-11 px-4 lg:px-8 text-sm lg:text-base font-semibold ml-2 lg:ml-4 flex-shrink-0"
-          >
-            ✓ Done
-          </Button>
+          {!isMobile && (
+            <Button 
+              onClick={handleDone}
+              className="bg-emerald-600 hover:bg-emerald-700 text-white h-9 lg:h-11 px-4 lg:px-8 text-sm lg:text-base font-semibold ml-2 lg:ml-4 flex-shrink-0"
+            >
+              ✓ Done
+            </Button>
+          )}
         </DialogHeader>
 
-        <div className="flex flex-col lg:flex-row gap-3 lg:gap-6 p-3 lg:p-6 overflow-hidden flex-1 min-h-0">
+        <div className={cn(
+          "flex flex-col lg:flex-row gap-3 lg:gap-6 p-3 lg:p-6 overflow-hidden flex-1 min-h-0",
+          isMobile && "pb-20"
+        )}>
           {/* Left Panel - Plant Picker - Compact on mobile */}
-          <div className="w-full lg:w-80 flex-shrink-0 flex flex-col min-h-0 relative max-h-[30vh] lg:max-h-none"
+          <div className={cn("w-full lg:w-80 flex-shrink-0 flex flex-col min-h-0 relative", isMobile ? "max-h-[30vh]" : "max-h-none")}
             style={{ zIndex: 60 }}
           >
             {showCompanionSuggestions && selectedPlant?.plant_type_id && (
@@ -879,7 +889,8 @@ export default function PlantingModal({
               </TabsContent>
             </Tabs>
             
-            {selectedPlant && (
+            {/* Desktop: Selected plant card in left panel */}
+            {!isMobile && selectedPlant && (
               <div className="mt-2 lg:mt-4 space-y-2 flex-shrink-0">
                 <div className="p-2 lg:p-3 bg-emerald-50 rounded-lg border border-emerald-200">
                   <p className="text-xs lg:text-sm font-medium text-emerald-900">Selected:</p>
@@ -1166,6 +1177,42 @@ export default function PlantingModal({
             )}
           </div>
         </div>
+
+        {/* Mobile: Selected plant card - compact, fixed bottom right */}
+        {isMobile && selectedPlant && (
+          <div className="fixed bottom-20 right-4 z-[70] max-w-[200px] p-2 bg-emerald-50 rounded-lg border-2 border-emerald-300 shadow-xl">
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex-1 min-w-0">
+                <p className="text-xs font-medium text-emerald-900 truncate">{selectedPlant.variety_name}</p>
+                <p className="text-[10px] text-emerald-600">{selectedPlant.spacing_cols}×{selectedPlant.spacing_rows}</p>
+              </div>
+              <Button
+                size="icon"
+                variant="ghost"
+                onClick={() => {
+                  setSelectedPlant(null);
+                  setCompanionWarning(null);
+                  setRotationWarning(null);
+                }}
+                className="h-6 w-6 text-emerald-700 hover:bg-emerald-100 flex-shrink-0"
+              >
+                <X className="w-3 h-3" />
+              </Button>
+            </div>
+          </div>
+        )}
+
+        {/* Mobile: Done button - fixed bottom bar */}
+        {isMobile && (
+          <DialogFooter className="fixed bottom-0 left-0 right-0 p-3 bg-white border-t z-[65] shadow-[0_-4px_6px_-1px_rgb(0_0_0_/_0.1)]">
+            <Button 
+              onClick={handleDone}
+              className="w-full bg-emerald-600 hover:bg-emerald-700 text-white h-11 text-base font-semibold"
+            >
+              ✓ Done
+            </Button>
+          </DialogFooter>
+        )}
       </DialogContent>
     </Dialog>
   );

@@ -132,13 +132,14 @@ import Settings from './pages/Settings';
 import ShipAudit from './pages/ShipAudit';
 import StreakCalendar from './pages/StreakCalendar';
 import SubcategoryMapping from './pages/SubcategoryMapping';
+import Tracking from './pages/Tracking';
 import TrayDetail from './pages/TrayDetail';
 import UserReports from './pages/UserReports';
 import Users from './pages/Users';
 import VarietyReviewQueue from './pages/VarietyReviewQueue';
 import ViewVariety from './pages/ViewVariety';
 import ZoneMap from './pages/ZoneMap';
-import Tracking from './pages/Tracking';
+import AdminFeatureRequests from './pages/AdminFeatureRequests';
 import __Layout from './Layout.jsx';
 
 
@@ -228,13 +229,14 @@ export const PAGES = {
     "ShipAudit": ShipAudit,
     "StreakCalendar": StreakCalendar,
     "SubcategoryMapping": SubcategoryMapping,
+    "Tracking": Tracking,
     "TrayDetail": TrayDetail,
     "UserReports": UserReports,
     "Users": Users,
     "VarietyReviewQueue": VarietyReviewQueue,
     "ViewVariety": ViewVariety,
     "ZoneMap": ZoneMap,
-    "Tracking": Tracking,
+    "AdminFeatureRequests": AdminFeatureRequests,
 }
 
 export const pagesConfig = {
