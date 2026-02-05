@@ -96,7 +96,7 @@ import GrowLists from './pages/GrowLists';
 import GrowingProfile from './pages/GrowingProfile';
 import HarvestLog from './pages/HarvestLog';
 import ImageSubmissions from './pages/ImageSubmissions';
-import TrayDetail from './pages/TrayDetail';
+import IndoorGrowSpaces from './pages/IndoorGrowSpaces';
 import IssuesLog from './pages/IssuesLog';
 import Landing from './pages/Landing';
 import Leaderboard from './pages/Leaderboard';
@@ -138,8 +138,8 @@ import Users from './pages/Users';
 import VarietyReviewQueue from './pages/VarietyReviewQueue';
 import ViewVariety from './pages/ViewVariety';
 import ZoneMap from './pages/ZoneMap';
-import IndoorGrowSpaces from './pages/IndoorGrowSpaces';
 import IndoorSpaceDetail from './pages/IndoorSpaceDetail';
+import TrayDetail from './pages/TrayDetail';
 import __Layout from './Layout.jsx';
 
 
@@ -193,7 +193,7 @@ export const PAGES = {
     "GrowingProfile": GrowingProfile,
     "HarvestLog": HarvestLog,
     "ImageSubmissions": ImageSubmissions,
-    "TrayDetail": TrayDetail,
+    "IndoorGrowSpaces": IndoorGrowSpaces,
     "IssuesLog": IssuesLog,
     "Landing": Landing,
     "Leaderboard": Leaderboard,
@@ -235,8 +235,8 @@ export const PAGES = {
     "VarietyReviewQueue": VarietyReviewQueue,
     "ViewVariety": ViewVariety,
     "ZoneMap": ZoneMap,
-    "IndoorGrowSpaces": IndoorGrowSpaces,
     "IndoorSpaceDetail": IndoorSpaceDetail,
+    "TrayDetail": TrayDetail,
 }
 
 export const pagesConfig = {

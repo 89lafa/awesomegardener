@@ -57,30 +57,52 @@ export default function IndoorGrowSpaces() {
       setLoading(true);
       const user = await base44.auth.me();
       
-      // Fetch all data in bulk (single query per entity type)
-      const [spacesData, allTrays, allContainers, allRacks, allCells] = await Promise.all([
+      // Fetch all data in bulk (single query per entity type) - INCLUDES SHELVES
+      const [spacesData, allTrays, allContainers, allRacks, allShelves, allCells] = await Promise.all([
         base44.entities.IndoorGrowSpace.filter({ created_by: user.email }, '-created_date'),
         base44.entities.SeedTray.filter({ created_by: user.email }),
         base44.entities.IndoorContainer.filter({ created_by: user.email }),
         base44.entities.GrowRack.filter({ created_by: user.email }),
+        base44.entities.GrowShelf.filter({ created_by: user.email }),
         base44.entities.TrayCell.filter({ created_by: user.email })
       ]);
+
+      // Build lookup maps for O(1) access
+      const shelfsByRackId = {};
+      allShelves.forEach(shelf => {
+        if (!shelfsByRackId[shelf.rack_id]) shelfsByRackId[shelf.rack_id] = [];
+        shelfsByRackId[shelf.rack_id].push(shelf.id);
+      });
+
+      const racksBySpaceId = {};
+      allRacks.forEach(rack => {
+        if (!racksBySpaceId[rack.indoor_space_id]) racksBySpaceId[rack.indoor_space_id] = [];
+        racksBySpaceId[rack.indoor_space_id].push(rack);
+      });
       
       // Calculate stats in memory (no additional API calls)
       const spacesWithStats = spacesData.map(space => {
-        const spaceRacks = allRacks.filter(r => r.indoor_space_id === space.id);
-        const spaceTrays = allTrays.filter(t => t.indoor_space_id === space.id || spaceRacks.some(r => {
-          return allTrays.filter(tr => tr.shelf_id).some(tr => {
-            // Check if tray is on a shelf in this rack (we need GrowShelf data for this, but simplified for now)
-            return tr.indoor_space_id === space.id;
-          });
-        }));
+        const spaceRacks = racksBySpaceId[space.id] || [];
+        
+        // Get all shelf IDs belonging to racks in this space
+        const shelfIdsInSpace = new Set();
+        spaceRacks.forEach(rack => {
+          const shelves = shelfsByRackId[rack.id] || [];
+          shelves.forEach(shelfId => shelfIdsInSpace.add(shelfId));
+        });
+
+        // Trays: directly in space OR on shelves in this space
+        const spaceTrays = allTrays.filter(t => 
+          t.indoor_space_id === space.id || 
+          (t.shelf_id && shelfIdsInSpace.has(t.shelf_id))
+        );
+
         const spaceContainers = allContainers.filter(c => c.indoor_space_id === space.id);
         
         // Count active seedlings from tray cells
-        const trayIds = spaceTrays.map(t => t.id);
+        const trayIds = new Set(spaceTrays.map(t => t.id));
         const activeSeedlings = allCells.filter(cell => 
-          trayIds.includes(cell.tray_id) && 
+          trayIds.has(cell.tray_id) && 
           ['seeded', 'germinated', 'growing'].includes(cell.status)
         ).length;
         
