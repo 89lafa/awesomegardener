@@ -847,22 +847,23 @@ export default function GardenPlanting() {
         )}
 
         {/* Planting Spaces List */}
-        {plantingSpaces.length > 0 && (
-          <div className="grid gap-6" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))' }}>
-            {plantingSpaces
-              .filter(space => spaceTypeFilter === 'all' || space.space_type === spaceTypeFilter)
-              .map((space) => (
-                <SpaceCard 
-                  key={space.id} 
-                  space={space} 
-                  garden={activeGarden} 
-                  activeSeason={activeSeason}
-                  seasonId={seasonId}
-                  sharedData={sharedData}
-                />
-              ))}
-          </div>
-        )}
+         {plantingSpaces.length > 0 && (
+           <div className="grid gap-6" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))' }}>
+             {plantingSpaces
+               .filter(space => spaceTypeFilter === 'all' || space.space_type === spaceTypeFilter)
+               .map((space, idx) => (
+                 <SpaceCard 
+                   key={space.id} 
+                   space={space} 
+                   garden={activeGarden} 
+                   activeSeason={activeSeason}
+                   seasonId={seasonId}
+                   sharedData={sharedData}
+                   autoOpenSeedling={idx === 0 ? autoOpenSeedling : null}
+                 />
+               ))}
+           </div>
+         )}
 
         {/* Add Season Dialog */}
         <Dialog open={showAddSeason} onOpenChange={setShowAddSeason}>
