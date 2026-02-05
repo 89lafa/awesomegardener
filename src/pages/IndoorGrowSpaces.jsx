@@ -140,7 +140,18 @@ export default function IndoorGrowSpaces() {
     setCreating(true);
     try {
       const space = await base44.entities.IndoorGrowSpace.create(newSpace);
-      setSpaces([space, ...spaces]);
+      // Add empty stats to new space
+      const spaceWithStats = {
+        ...space,
+        stats: {
+          racks: 0,
+          trays: 0,
+          containers: 0,
+          activeSeedlings: 0,
+          activePlants: 0
+        }
+      };
+      setSpaces([spaceWithStats, ...spaces]);
       setNewSpace({
         name: '',
         space_type: 'room',
