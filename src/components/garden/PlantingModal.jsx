@@ -30,16 +30,17 @@ import DiagonalPlantingPattern from './DiagonalPlantingPattern';
 import SeedlingSelector from './SeedlingSelector';
 
 export default function PlantingModal({ 
-  open, 
-  onOpenChange, 
-  item, 
-  itemType, 
-  garden, 
-  onPlantingUpdate, 
-  activeSeason, 
-  seasonId,
-  sharedData // CRITICAL: Pre-loaded data from parent page to prevent rate limits
-}) {
+   open, 
+   onOpenChange, 
+   item, 
+   itemType, 
+   garden, 
+   onPlantingUpdate, 
+   activeSeason, 
+   seasonId,
+   sharedData, // CRITICAL: Pre-loaded data from parent page to prevent rate limits
+   autoOpenSeedling // Auto-select seedling from URL params
+ }) {
   const isMobile = useIsMobile();
   const [plantings, setPlantings] = useState([]);
   const [stashPlants, setStashPlants] = useState([]);
