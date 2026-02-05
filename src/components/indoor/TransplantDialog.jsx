@@ -123,10 +123,10 @@ export default function TransplantDialog({
           });
         } else if (destination === 'outdoor_garden') {
           // Create MyPlant record for outdoor garden
-          const structure = plotStructures.find(s => s.id === selectedStructure);
           const garden = gardens.find(g => g.id === selectedGarden);
+          const structure = plotStructures.find(s => s.id === selectedStructure);
           
-          if (structure && garden) {
+          if (garden) {
             // Get or create garden season - ALWAYS use current year Spring if not set
             const currentYear = new Date().getFullYear();
             const seasonKey = `${currentYear}-Spring`;
@@ -149,16 +149,16 @@ export default function TransplantDialog({
               });
             }
             
-            // Create MyPlant with proper garden_season_id
+            // Create MyPlant - structure is optional (garden might not have beds yet)
             const myPlant = await base44.entities.MyPlant.create({
               garden_season_id: gardenSeason.id,
               plant_profile_id: cell.plant_profile_id,
               name: cell.variety_name || cell.plant_type_name,
               status: 'transplanted',
               transplant_date: transplantDate,
-              notes: `Transplanted from tray to ${structure.name}`,
-              location_name: structure.name,
-              garden_item_id: selectedStructure
+              notes: `Transplanted from tray${structure ? ' to ' + structure.name : ' to garden'}`,
+              location_name: structure?.name || `${garden.name} (unassigned)`,
+              garden_item_id: selectedStructure || null
             });
           }
         }
