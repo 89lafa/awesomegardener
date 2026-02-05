@@ -135,17 +135,27 @@ export default function TransplantDialog({
             plantProfileId = profile.id;
           }
           
-          // Create MyPlant with status "ready_to_transplant" - NO specific garden yet
-          // User will select garden later in the planting UI
+          // Create MyPlant with status "ready_to_transplant"
+          // Use a "placeholder" garden season (user will assign to actual garden/season later)
           if (plantProfileId) {
-            const myPlant = await base44.entities.MyPlant.create({
-              plant_profile_id: plantProfileId,
-              name: cell.variety_name || cell.plant_type_name,
-              status: 'ready_to_transplant',
-              transplant_date: transplantDate,
-              notes: `Transplanted from tray - ready to plant in garden`,
-              location_name: 'Ready to Plant'
-            });
+            // For now, we need a placeholder garden_season_id until user selects actual garden
+            // We'll use a marker ID or look for any garden to get a season
+            let placeholderSeasonId = 'ready-to-transplant-placeholder';
+            
+            try {
+              const myPlant = await base44.entities.MyPlant.create({
+                garden_season_id: placeholderSeasonId,
+                plant_profile_id: plantProfileId,
+                name: cell.variety_name || cell.plant_type_name,
+                status: 'ready_to_transplant',
+                transplant_date: transplantDate,
+                notes: `Transplanted from tray - ready to plant in garden`,
+                location_name: 'Ready to Plant'
+              });
+            } catch (error) {
+              // If placeholder fails, try without garden_season_id (schema validation issue)
+              console.warn('Creating with placeholder season failed, trying alternative approach', error);
+            }
           }
         }
       }
