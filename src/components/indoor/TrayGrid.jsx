@@ -82,12 +82,12 @@ export default function TrayGrid({
               disabled={!cell}
             >
               <span className="text-[8px] text-gray-500 absolute top-0.5 left-1">{cellNumber}</span>
-              {cell && cell.status !== 'empty' && cell.variety_name && (
-                <span className="text-[8px] font-semibold text-emerald-800 mt-0.5 truncate w-full px-0.5 text-center" style={{lineHeight: '8px'}}>
-                  {cell.variety_name.substring(0, 8)}
+              {cell && cell.status !== 'empty' && (cell.variety_name || cell.plant_type_name) && (
+                <span className="text-[7px] font-semibold text-emerald-900 leading-tight truncate w-full px-0.5 text-center block" style={{lineHeight: '7px', maxHeight: '14px', overflow: 'hidden'}}>
+                  {cell.variety_name ? cell.variety_name.substring(0, 9) : cell.plant_type_name?.substring(0, 9)}
                 </span>
               )}
-              {cell && <span className={cell.variety_name ? 'text-[10px]' : 'mt-1'}>{getStatusIcon(cell.status)}</span>}
+              {cell && <span className={(cell.variety_name || cell.plant_type_name) && cell.status !== 'empty' ? 'text-[9px]' : 'mt-1'}>{getStatusIcon(cell.status)}</span>}
               {!cell && <span className="text-red-500">?</span>}
             </button>
           );
