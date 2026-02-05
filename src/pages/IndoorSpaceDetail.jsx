@@ -24,6 +24,153 @@ import { PlantSeedsDialog } from '@/components/indoor/PlantSeedsDialog';
 import MoveTrayDialog from '@/components/indoor/MoveTrayDialog';
 import { createPageUrl } from '@/utils';
 
+// Tray card with live stats
+function TrayCard({ tray, onMove }) {
+  const [stats, setStats] = useState({ filled: 0, total: tray.total_cells, loading: true });
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    loadStats();
+  }, [tray.id]);
+
+  const loadStats = async () => {
+    try {
+      const cells = await base44.entities.TrayCell.filter({ tray_id: tray.id });
+      const filled = cells.filter(c => 
+        c.status !== 'empty' && c.status !== 'failed' && c.status !== 'transplanted'
+      ).length;
+      setStats({ filled, total: cells.length, loading: false });
+    } catch (error) {
+      console.error('Error loading tray stats:', error);
+      setStats({ filled: 0, total: tray.total_cells, loading: false });
+    }
+  };
+
+  const getStatusColor = () => {
+    if (stats.loading) return 'bg-gray-100 border-gray-300';
+    const fillPercent = (stats.filled / stats.total) * 100;
+    if (fillPercent === 0) return 'bg-gray-50 border-gray-300';
+    if (fillPercent < 50) return 'bg-red-50 border-red-300';
+    if (fillPercent < 90) return 'bg-yellow-50 border-yellow-300';
+    return 'bg-green-50 border-green-300';
+  };
+
+  const getStatusIndicator = () => {
+    if (stats.loading) return '⏳';
+    const fillPercent = (stats.filled / stats.total) * 100;
+    if (fillPercent === 0) return '⬜';
+    if (fillPercent < 50) return '🔴';
+    if (fillPercent < 90) return '🟡';
+    if (fillPercent === 100) return '🟢';
+    return '🟢';
+  };
+
+  return (
+    <div className="relative group">
+      <button
+        onClick={() => navigate(createPageUrl('TrayDetail') + `?id=${tray.id}`)}
+        className={cn(
+          "w-full p-3 border-2 rounded-lg transition-all text-left hover:shadow-md",
+          getStatusColor()
+        )}
+      >
+        <div className="flex items-start justify-between mb-2">
+          <p className="text-xs font-bold text-gray-900">{tray.name}</p>
+          <span className="text-base">{getStatusIndicator()}</span>
+        </div>
+        <p className="text-[10px] text-gray-600">{tray.insert_type}</p>
+        <div className="mt-2 flex items-center gap-1">
+          <div className="flex-1 h-1.5 bg-gray-200 rounded-full overflow-hidden">
+            <div 
+              className="h-full bg-emerald-500 transition-all"
+              style={{ width: `${stats.loading ? 0 : (stats.filled / stats.total * 100)}%` }}
+            />
+          </div>
+          <span className="text-[9px] font-medium text-gray-700">
+            {stats.loading ? '...' : `${stats.filled}/${stats.total}`}
+          </span>
+        </div>
+      </button>
+      <Button
+        size="sm"
+        variant="ghost"
+        className="absolute top-1 right-1 h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition"
+        onClick={(e) => {
+          e.stopPropagation();
+          onMove();
+        }}
+      >
+        <MoveHorizontal className="w-3 h-3" />
+      </Button>
+    </div>
+  );
+}
+
+// Stats component with real-time counts
+function StatsCards({ racks, trays, containers }) {
+  const [stats, setStats] = useState({
+    activeSeedlings: 0,
+    readyToTransplant: 0,
+    totalCells: 0,
+    loading: true
+  });
+
+  useEffect(() => {
+    calculateStats();
+  }, [trays, containers]);
+
+  const calculateStats = async () => {
+    try {
+      let activeSeedlings = 0;
+      let readyToTransplant = 0;
+      let totalCells = 0;
+
+      // Count active cells in trays
+      for (const tray of trays) {
+        const cells = await base44.entities.TrayCell.filter({ tray_id: tray.id });
+        totalCells += cells.length;
+        activeSeedlings += cells.filter(c => 
+          c.status === 'seeded' || c.status === 'germinated' || c.status === 'growing'
+        ).length;
+        readyToTransplant += cells.filter(c => c.status === 'growing').length;
+      }
+
+      // Count containers ready to transplant
+      readyToTransplant += containers.filter(c => c.status === 'ready_to_transplant').length;
+
+      setStats({ activeSeedlings, readyToTransplant, totalCells, loading: false });
+    } catch (error) {
+      console.error('Error calculating stats:', error);
+      setStats({ activeSeedlings: 0, readyToTransplant: 0, totalCells: 0, loading: false });
+    }
+  };
+
+  return (
+    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <Card className="p-4">
+        <p className="text-sm text-gray-600">Racks</p>
+        <p className="text-2xl font-bold text-purple-600">{racks.length}</p>
+      </Card>
+      <Card className="p-4">
+        <p className="text-sm text-gray-600">Trays</p>
+        <p className="text-2xl font-bold text-blue-600">📋 {trays.length}</p>
+      </Card>
+      <Card className="p-4">
+        <p className="text-sm text-gray-600">Active Seedlings</p>
+        <p className="text-2xl font-bold text-green-600">
+          {stats.loading ? '...' : `🌱 ${stats.activeSeedlings}`}
+        </p>
+      </Card>
+      <Card className="p-4">
+        <p className="text-sm text-gray-600">Ready to Move</p>
+        <p className="text-2xl font-bold text-orange-600">
+          {stats.loading ? '...' : `🔄 ${stats.readyToTransplant}`}
+        </p>
+      </Card>
+    </div>
+  );
+}
+
 export default function IndoorSpaceDetail() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -65,13 +212,26 @@ export default function IndoorSpaceDetail() {
       const space = spaceData[0];
       setSpace(space);
 
-      // Load racks, shelves, trays and containers
-      const [racksData, shelvesData, traysData, containersData] = await Promise.all([
-        base44.entities.GrowRack.filter({ indoor_space_id: spaceId }, 'name'),
-        base44.entities.GrowShelf.filter({}, 'shelf_number'),
-        base44.entities.SeedTray.filter({}, 'name'),
-        base44.entities.IndoorContainer.filter({ indoor_space_id: spaceId }, 'name')
-      ]);
+      // Load racks for this space
+      const racksData = await base44.entities.GrowRack.filter({ indoor_space_id: spaceId }, 'name');
+      
+      // Load all shelves for these racks
+      const rackIds = racksData.map(r => r.id);
+      const shelvesData = rackIds.length > 0 
+        ? await base44.entities.GrowShelf.filter({ rack_id: { $in: rackIds } }, 'shelf_number')
+        : [];
+      
+      // Load all trays for these shelves OR directly in this space
+      const shelfIds = shelvesData.map(s => s.id);
+      const traysData = await base44.entities.SeedTray.filter({
+        $or: [
+          { shelf_id: { $in: shelfIds } },
+          { indoor_space_id: spaceId }
+        ]
+      }, 'name');
+      
+      // Load containers in this space
+      const containersData = await base44.entities.IndoorContainer.filter({ indoor_space_id: spaceId }, 'name');
 
       setRacks(racksData);
       setShelves(shelvesData);
@@ -130,24 +290,7 @@ export default function IndoorSpaceDetail() {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-4 gap-4">
-        <Card className="p-4">
-          <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>Racks</p>
-          <p className="text-2xl font-bold text-emerald-600">{racks.length}</p>
-        </Card>
-        <Card className="p-4">
-          <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>Containers</p>
-          <p className="text-2xl font-bold text-blue-600">🪴 {containers.length}</p>
-        </Card>
-        <Card className="p-4">
-          <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>Active Seedlings</p>
-          <p className="text-2xl font-bold text-green-600">🌱 0</p>
-        </Card>
-        <Card className="p-4">
-          <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>Ready to Transplant</p>
-          <p className="text-2xl font-bold text-orange-600">0</p>
-        </Card>
-      </div>
+      <StatsCards racks={racks} trays={trays} containers={containers} />
 
       {/* Tabs */}
       <Tabs defaultValue="racks">
@@ -221,37 +364,16 @@ export default function IndoorSpaceDetail() {
                             {shelfTrays.length === 0 ? (
                               <p className="text-xs text-gray-500">No trays yet</p>
                             ) : (
-                              <div className="grid grid-cols-2 md:grid-cols-3 gap-2 mt-2">
+                              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 mt-2">
                                 {shelfTrays.map(tray => (
-                                 <div key={tray.id} className="relative group">
-                                   <button
-                                     onClick={() => {
-                                       window.location.href = createPageUrl('TrayDetail') + `?id=${tray.id}`;
-                                     }}
-                                     className="w-full p-2 bg-white border border-emerald-200 rounded hover:border-emerald-600 transition text-left"
-                                   >
-                                     <p className="text-xs font-medium text-gray-900">{tray.name}</p>
-                                     <p className="text-[10px] text-gray-600">{tray.total_cells} cells</p>
-                                     <p className="text-[10px] text-emerald-600 mt-1 font-medium">
-                                       {tray.status === 'seeded' ? '🌱 Seeded' : '📋 Empty'}
-                                     </p>
-                                     {tray.notes && (
-                                       <p className="text-[9px] text-gray-500 mt-1 truncate">📝 {tray.notes}</p>
-                                     )}
-                                   </button>
-                                   <Button
-                                     size="sm"
-                                     variant="ghost"
-                                     className="absolute top-1 right-1 h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition"
-                                     onClick={(e) => {
-                                       e.stopPropagation();
-                                       setTrayToMove(tray);
-                                       setShowMoveTray(true);
-                                     }}
-                                   >
-                                     <MoveHorizontal className="w-3 h-3" />
-                                   </Button>
-                                 </div>
+                                 <TrayCard 
+                                   key={tray.id} 
+                                   tray={tray}
+                                   onMove={() => {
+                                     setTrayToMove(tray);
+                                     setShowMoveTray(true);
+                                   }}
+                                 />
                                 ))}
                               </div>
                             )}

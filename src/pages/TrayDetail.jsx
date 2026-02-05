@@ -228,21 +228,58 @@ export default function TrayDetail() {
         </Card>
       )}
 
+      {/* Info Bar */}
+      <Card className="border-emerald-200 bg-gradient-to-r from-emerald-50 to-blue-50">
+        <div className="p-4">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-center">
+            <div>
+              <p className="text-xs text-gray-600">Started</p>
+              <p className="text-sm font-medium text-gray-900">
+                {tray.start_date ? new Date(tray.start_date).toLocaleDateString() : 'Not set'}
+              </p>
+            </div>
+            <div>
+              <p className="text-xs text-gray-600">Expected Transplant</p>
+              <p className="text-sm font-medium text-gray-900">
+                {tray.expected_transplant_date 
+                  ? new Date(tray.expected_transplant_date).toLocaleDateString() 
+                  : 'Not set'}
+              </p>
+            </div>
+            <div>
+              <p className="text-xs text-gray-600">Progress</p>
+              <p className="text-sm font-medium text-emerald-700">
+                {stats.active}/{stats.total}
+              </p>
+            </div>
+            <div>
+              <p className="text-xs text-gray-600">Success Rate</p>
+              <p className="text-sm font-medium text-blue-700">
+                {stats.total > 0 ? Math.round((stats.active / stats.total) * 100) : 0}%
+              </p>
+            </div>
+          </div>
+        </div>
+      </Card>
+
       {/* Quick Actions */}
       <div className="flex flex-wrap gap-2">
         <Button 
           onClick={() => setShowPlantSeeds(true)}
-          className="bg-emerald-600 hover:bg-emerald-700"
+          className="bg-emerald-600 hover:bg-emerald-700 gap-2"
         >
-          <Plus className="w-4 h-4 mr-2" />
+          <Plus className="w-4 h-4" />
           Plant Seeds
         </Button>
         <Button
-          onClick={() => {
-            // Select ALL cells, including those without cell numbers
-            const allCells = cells.filter(c => c);
-            setSelectedCells(allCells);
-          }}
+          onClick={() => setSelectedCells(cells.filter(c => c.status === 'empty'))}
+          variant="outline"
+          className="gap-1"
+        >
+          Select Empty ({cells.filter(c => c.status === 'empty').length})
+        </Button>
+        <Button
+          onClick={() => setSelectedCells(cells)}
           variant="outline"
         >
           Select All ({cells.length})
