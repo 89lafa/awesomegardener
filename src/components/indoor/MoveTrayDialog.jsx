@@ -27,11 +27,20 @@ export default function MoveTrayDialog({
 
   const loadRacksAndShelves = async () => {
     try {
-      const [racksData, shelvesData] = await Promise.all([
-        base44.entities.GrowRack.filter({ indoor_space_id: tray.indoor_space_id }),
+      const [shelvesData] = await Promise.all([
         base44.entities.GrowShelf.list()
       ]);
-      setRacks(racksData);
+      
+      // Find all racks from available shelves and get their space info
+      const rackIds = [...new Set(shelvesData.map(s => s.rack_id))];
+      const racksData = rackIds.length > 0 
+        ? await Promise.all(rackIds.map(id => base44.entities.GrowRack.filter({ id })).then(results => results.flat()))
+        : [];
+      
+      // Filter to only racks in this space
+      const filteredRacks = racksData.filter(r => r.indoor_space_id === tray.indoor_space_id);
+      
+      setRacks(filteredRacks);
       setShelves(shelvesData);
       
       // Pre-select current rack
