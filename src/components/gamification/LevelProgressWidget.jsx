@@ -15,9 +15,21 @@ export default function LevelProgressWidget() {
   const loadProgress = async () => {
     try {
       const progressRecords = await base44.entities.UserProgress.filter({});
-      setProgress(progressRecords[0] || { level: 1, total_xp: 0, xp_to_next_level: 100 });
+      
+      // Auto-create if none exists
+      if (!progressRecords || progressRecords.length === 0) {
+        const newProgress = await base44.entities.UserProgress.create({
+          level: 1,
+          total_xp: 0,
+          xp_to_next_level: 100
+        });
+        setProgress(newProgress);
+      } else {
+        setProgress(progressRecords[0]);
+      }
     } catch (error) {
       console.error('Error loading progress:', error);
+      setProgress({ level: 1, total_xp: 0, xp_to_next_level: 100 });
     } finally {
       setLoading(false);
     }
@@ -31,6 +43,10 @@ export default function LevelProgressWidget() {
         </CardContent>
       </Card>
     );
+  }
+
+  if (!progress) {
+    return null;
   }
 
   const currentXP = progress.total_xp % progress.xp_to_next_level;
