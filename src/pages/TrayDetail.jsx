@@ -33,7 +33,7 @@ export default function TrayDetail() {
     }
   }, [trayId]);
 
-  const loadTrayData = async () => {
+  const loadTrayData = async (retryCount = 0) => {
     if (!trayId) {
       console.error('[TrayDetail] No tray ID');
       return;
@@ -41,7 +41,12 @@ export default function TrayDetail() {
 
     try {
       setLoading(true);
-      console.log('[TrayDetail] Fetching tray:', trayId);
+      console.log('[TrayDetail] Fetching tray:', trayId, 'Retry:', retryCount);
+      
+      // Add small delay on retry to avoid rate limits
+      if (retryCount > 0) {
+        await new Promise(resolve => setTimeout(resolve, 1000 * retryCount));
+      }
       
       const [trayData, cellsData] = await Promise.all([
         base44.entities.SeedTray.filter({ id: trayId }),
@@ -63,10 +68,21 @@ export default function TrayDetail() {
       console.log('[TrayDetail] Successfully loaded:', trayData[0].name);
     } catch (error) {
       console.error('[TrayDetail] Error loading tray:', error);
+      
+      // Retry on rate limit errors
+      if (error.message?.includes('Rate limit') && retryCount < 3) {
+        console.log('[TrayDetail] Rate limited, retrying in', (retryCount + 1), 'seconds...');
+        setTimeout(() => loadTrayData(retryCount + 1), 1000 * (retryCount + 1));
+        return;
+      }
+      
       toast.error(`Failed to load tray: ${error.message}`);
       setTray(null);
-    } finally {
       setLoading(false);
+    } finally {
+      if (retryCount === 0) {
+        setLoading(false);
+      }
     }
   };
 

@@ -195,9 +195,15 @@ export default function IndoorSpaceDetail() {
     }
   }, [spaceId]);
 
-  const loadSpaceData = async () => {
+  const loadSpaceData = async (retryCount = 0) => {
     try {
       setLoading(true);
+      console.log('[IndoorSpaceDetail] Loading space:', spaceId, 'Retry:', retryCount);
+      
+      // Add delay on retry
+      if (retryCount > 0) {
+        await new Promise(resolve => setTimeout(resolve, 1000 * retryCount));
+      }
       
       const spaceData = await base44.entities.IndoorGrowSpace.filter({ id: spaceId });
       if (spaceData.length === 0) {
@@ -241,9 +247,19 @@ export default function IndoorSpaceDetail() {
       }
     } catch (error) {
       console.error('Error loading space:', error);
+      
+      // Retry on rate limit
+      if (error.message?.includes('Rate limit') && retryCount < 3) {
+        console.log('[IndoorSpaceDetail] Rate limited, retrying...');
+        setTimeout(() => loadSpaceData(retryCount + 1), 1000 * (retryCount + 1));
+        return;
+      }
+      
       toast.error('Failed to load space');
     } finally {
-      setLoading(false);
+      if (retryCount === 0) {
+        setLoading(false);
+      }
     }
   };
 
