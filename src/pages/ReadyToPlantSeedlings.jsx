@@ -226,8 +226,9 @@ export default function ReadyToPlantSeedlings() {
                       <div className="flex items-end justify-end">
                         <Button
                           onClick={() => {
-                            // Navigate to Gardens to plant this seedling
-                            window.location.href = '/Gardens';
+                            // Navigate to Gardens page with seedling ID to plant
+                            const url = createPageUrl('Gardens') + `?plant_seedling=${seedling.source_id}&source_type=${seedling.source_type}`;
+                            window.location.href = url;
                           }}
                           className="w-full bg-emerald-600 hover:bg-emerald-700"
                         >
