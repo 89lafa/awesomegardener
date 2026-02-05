@@ -30,10 +30,15 @@ Deno.serve(async (req) => {
     // Step 3: Create a tray with cells
     const tray = await base44.entities.SeedTray.create({
       indoor_space_id: '6984df040623412334045158', // Your grow space
-      name: 'Test Tray for Seedling',
-      rows: 6,
-      columns: 8,
-      cell_type: 'standard'
+      name: 'Test Tray for Seedling Transplant',
+      insert_type: '72-cell',
+      total_cells: 72,
+      cells_rows: 8,
+      cells_cols: 9,
+      width_inches: 21,
+      length_inches: 11,
+      start_date: new Date().toISOString().split('T')[0],
+      status: 'seeded'
     });
 
     // Step 4: Ensure cells exist
