@@ -110,24 +110,29 @@ export function PlantSeedsDialog({ isOpen, onClose, trayId, trayName, onSeedPlan
     // Build display names from cached data WITHOUT calling getVarietyDisplayName
     for (const item of items) {
       try {
-        let varietyName = '';
-        let plantTypeName = '';
+        let varietyName = null;
+        let plantTypeName = null;
         
         if (item.variety_id && varietyMap.has(item.variety_id)) {
           const variety = varietyMap.get(item.variety_id);
-          varietyName = variety.variety_name || '';
+          varietyName = variety.variety_name;
           if (variety.plant_type_id && plantTypeMap.has(variety.plant_type_id)) {
-            plantTypeName = plantTypeMap.get(variety.plant_type_id).common_name || '';
+            plantTypeName = plantTypeMap.get(variety.plant_type_id).common_name;
           }
         } else if (item.plant_profile_id && profileMap.has(item.plant_profile_id)) {
           const profile = profileMap.get(item.plant_profile_id);
-          varietyName = profile.custom_label || '';
+          varietyName = profile.custom_label;
           if (profile.plant_type_id && plantTypeMap.has(profile.plant_type_id)) {
-            plantTypeName = plantTypeMap.get(profile.plant_type_id).common_name || '';
+            plantTypeName = plantTypeMap.get(profile.plant_type_id).common_name;
           }
         }
         
-        if (!varietyName) varietyName = item.variety_name || item.custom_label || item.name || 'Unknown';
+        // Fallback to item properties if not found in related entities
+        if (!varietyName) {
+          varietyName = item.variety_name || item.custom_label || item.name;
+        }
+        
+        // Build final display name
         if (varietyName && plantTypeName) {
           names[item.id] = `${varietyName} - ${plantTypeName}`;
         } else {
