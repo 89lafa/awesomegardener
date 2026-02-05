@@ -79,12 +79,6 @@ export default function SeedlingSelector({ isOpen, onClose, onSeedlingSelected }
       let varietyName = null;
       let plantTypeName = null;
 
-      // For MyPlant records, use name directly
-      if (item.source_type === 'my_plant') {
-        names[item.source_id] = item.name || 'Unknown Plant';
-        continue;
-      }
-
       if (item.variety_id && varietyMap.has(item.variety_id)) {
         const variety = varietyMap.get(item.variety_id);
         varietyName = variety.variety_name;
