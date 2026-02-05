@@ -89,7 +89,7 @@ export function PlantSeedsDialog({ isOpen, onClose, trayId, trayName, onSeedPlan
       if (item.plant_profile_id) profileIds.add(item.plant_profile_id);
     }
     
-    // Batch fetch all varieties and profiles at once
+    // Batch fetch ONLY varieties and profiles - ONE CALL EACH
     const [varieties, profiles] = await Promise.all([
       varietyIds.size > 0 ? base44.entities.Variety.list() : Promise.resolve([]),
       profileIds.size > 0 ? base44.entities.PlantProfile.list() : Promise.resolve([])
@@ -98,15 +98,40 @@ export function PlantSeedsDialog({ isOpen, onClose, trayId, trayName, onSeedPlan
     const varietyMap = new Map(varieties.map(v => [v.id, v]));
     const profileMap = new Map(profiles.map(p => [p.id, p]));
     
-    // Build display names from cached data
+    // Collect plant type IDs from varieties and profiles
+    const plantTypeIds = new Set();
+    varieties.forEach(v => { if (v.plant_type_id) plantTypeIds.add(v.plant_type_id); });
+    profiles.forEach(p => { if (p.plant_type_id) plantTypeIds.add(p.plant_type_id); });
+    
+    // Batch fetch plant types - ONE CALL ONLY
+    const plantTypes = plantTypeIds.size > 0 ? await base44.entities.PlantType.list() : [];
+    const plantTypeMap = new Map(plantTypes.map(pt => [pt.id, pt]));
+    
+    // Build display names from cached data WITHOUT calling getVarietyDisplayName
     for (const item of items) {
       try {
+        let varietyName = '';
+        let plantTypeName = '';
+        
         if (item.variety_id && varietyMap.has(item.variety_id)) {
-          names[item.id] = await getVarietyDisplayName(varietyMap.get(item.variety_id));
+          const variety = varietyMap.get(item.variety_id);
+          varietyName = variety.variety_name || '';
+          if (variety.plant_type_id && plantTypeMap.has(variety.plant_type_id)) {
+            plantTypeName = plantTypeMap.get(variety.plant_type_id).common_name || '';
+          }
         } else if (item.plant_profile_id && profileMap.has(item.plant_profile_id)) {
-          names[item.id] = await getVarietyDisplayName(profileMap.get(item.plant_profile_id));
+          const profile = profileMap.get(item.plant_profile_id);
+          varietyName = profile.custom_label || '';
+          if (profile.plant_type_id && plantTypeMap.has(profile.plant_type_id)) {
+            plantTypeName = plantTypeMap.get(profile.plant_type_id).common_name || '';
+          }
+        }
+        
+        if (!varietyName) varietyName = item.variety_name || item.custom_label || item.name || 'Unknown';
+        if (varietyName && plantTypeName) {
+          names[item.id] = `${varietyName} - ${plantTypeName}`;
         } else {
-          names[item.id] = item.variety_name || item.custom_label || item.name || 'Unknown';
+          names[item.id] = varietyName || plantTypeName || 'Unknown';
         }
       } catch (error) {
         names[item.id] = item.variety_name || item.custom_label || item.name || 'Unknown';
