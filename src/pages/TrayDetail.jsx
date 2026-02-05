@@ -294,6 +294,15 @@ export default function TrayDetail() {
         </Button>
       </div>
 
+      {/* Tray Grid */}
+      <TrayGrid
+        tray={tray}
+        cells={cells}
+        selectedCells={selectedCells}
+        onCellClick={(cell, event) => handleCellClick(cell, event)}
+        loading={false}
+      />
+
       {/* Planted Varieties Summary */}
       {cells.filter(c => c.variety_name || c.plant_type_name).length > 0 && (
         <Card>
@@ -333,15 +342,6 @@ export default function TrayDetail() {
           </CardContent>
         </Card>
       )}
-
-      {/* Tray Grid */}
-      <TrayGrid
-        tray={tray}
-        cells={cells}
-        selectedCells={selectedCells}
-        onCellClick={(cell, event) => handleCellClick(cell, event)}
-        loading={false}
-      />
 
       {/* Notes & Log */}
       <Card>
