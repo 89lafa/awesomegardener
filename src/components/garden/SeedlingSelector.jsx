@@ -53,34 +53,40 @@ export default function SeedlingSelector({ isOpen, onClose, onSeedlingSelected }
 
   const loadDisplayNames = async (items) => {
     const names = {};
-    
+
     const varietyIds = new Set();
     const profileIds = new Set();
-    
+
     for (const item of items) {
       if (item.variety_id) varietyIds.add(item.variety_id);
       if (item.plant_profile_id) profileIds.add(item.plant_profile_id);
     }
-    
+
     const [varieties, profiles] = await Promise.all([
       varietyIds.size > 0 ? base44.entities.Variety.list() : Promise.resolve([]),
       profileIds.size > 0 ? base44.entities.PlantProfile.list() : Promise.resolve([])
     ]);
-    
+
     const varietyMap = new Map(varieties.map(v => [v.id, v]));
     const profileMap = new Map(profiles.map(p => [p.id, p]));
-    
+
     const plantTypeIds = new Set();
     varieties.forEach(v => { if (v.plant_type_id) plantTypeIds.add(v.plant_type_id); });
     profiles.forEach(p => { if (p.plant_type_id) plantTypeIds.add(p.plant_type_id); });
-    
+
     const plantTypes = plantTypeIds.size > 0 ? await base44.entities.PlantType.list() : [];
     const plantTypeMap = new Map(plantTypes.map(pt => [pt.id, pt]));
-    
+
     for (const item of items) {
       let varietyName = null;
       let plantTypeName = null;
-      
+
+      // For MyPlant records, use name directly
+      if (item.source_type === 'my_plant') {
+        names[item.source_id] = item.name || 'Unknown Plant';
+        continue;
+      }
+
       if (item.variety_id && varietyMap.has(item.variety_id)) {
         const variety = varietyMap.get(item.variety_id);
         varietyName = variety.variety_name;
@@ -95,17 +101,17 @@ export default function SeedlingSelector({ isOpen, onClose, onSeedlingSelected }
           plantTypeName = plantTypeMap.get(profile.plant_type_id).common_name;
         }
       }
-      
+
       if (!varietyName) varietyName = item.variety_name || item.custom_label;
       if (!plantTypeName) plantTypeName = item.plant_type_name;
-      
+
       if (varietyName && plantTypeName) {
         names[item.source_id] = `${varietyName} - ${plantTypeName}`;
       } else {
         names[item.source_id] = varietyName || plantTypeName || item.name || 'Unknown';
       }
     }
-    
+
     setDisplayNames(names);
   };
 
