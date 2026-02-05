@@ -28,38 +28,43 @@ export default function TrayDetail() {
 
   useEffect(() => {
     if (trayId) {
+      console.log('[TrayDetail] Tray ID from URL:', trayId);
       loadTrayData();
-    } else {
-      console.error('[TrayDetail] No tray ID provided');
-      toast.error('No tray selected');
-      navigate('/IndoorGrowSpaces');
     }
   }, [trayId]);
 
   const loadTrayData = async () => {
+    if (!trayId) {
+      console.error('[TrayDetail] No tray ID');
+      return;
+    }
+
     try {
       setLoading(true);
-      console.log('[TrayDetail] Loading tray:', trayId);
+      console.log('[TrayDetail] Fetching tray:', trayId);
       
       const [trayData, cellsData] = await Promise.all([
         base44.entities.SeedTray.filter({ id: trayId }),
         base44.entities.TrayCell.filter({ tray_id: trayId }, 'cell_number')
       ]);
 
-      console.log('[TrayDetail] Found tray data:', trayData.length, 'cells:', cellsData.length);
+      console.log('[TrayDetail] Results - Trays:', trayData.length, 'Cells:', cellsData.length);
 
       if (trayData.length === 0) {
+        console.error('[TrayDetail] Tray not found in database');
         toast.error('Tray not found');
-        navigate('/IndoorGrowSpaces');
+        setTray(null);
+        setLoading(false);
         return;
       }
 
       setTray(trayData[0]);
       setCells(cellsData);
+      console.log('[TrayDetail] Successfully loaded:', trayData[0].name);
     } catch (error) {
       console.error('[TrayDetail] Error loading tray:', error);
-      toast.error('Failed to load tray');
-      navigate('/IndoorGrowSpaces');
+      toast.error(`Failed to load tray: ${error.message}`);
+      setTray(null);
     } finally {
       setLoading(false);
     }
