@@ -35,9 +35,11 @@ export function PlantSeedsDialog({ isOpen, onClose, trayId, trayName, onSeedPlan
       const user = await base44.auth.me();
       
       // Load all sources
-      const [lots, lists] = await Promise.all([
-        base44.entities.SeedLot.filter({ created_by: user.email, quantity: { $gt: 0 } }, '-updated_date'),
-        base44.entities.GrowList.filter({ created_by: user.email })
+      const [lots, lists, containers, trayCells] = await Promise.all([
+        base44.entities.SeedLot.filter({ created_by: user.email }, '-updated_date'),
+        base44.entities.GrowList.filter({ created_by: user.email }),
+        base44.entities.IndoorContainer.filter({ created_by: user.email, status: 'ready_to_transplant' }),
+        base44.entities.TrayCell.filter({ created_by: user.email, status: 'ready_to_transplant' })
       ]);
       
       setSeedLots(lots);
@@ -58,8 +60,15 @@ export function PlantSeedsDialog({ isOpen, onClose, trayId, trayName, onSeedPlan
       }
       setGrowListItems(allItems);
       
+      // Combine seedlings
+      const allSeedlings = [
+        ...containers.map(c => ({ ...c, source: 'container', type: 'container' })),
+        ...trayCells.map(c => ({ ...c, source: 'tray', type: 'cell' }))
+      ];
+      setSeedlings(allSeedlings);
+      
       // Load display names
-      await loadDisplayNames([...lots, ...allItems]);
+      await loadDisplayNames([...lots, ...allItems, ...allSeedlings]);
     } catch (error) {
       console.error('Error loading data:', error);
       toast.error('Failed to load data');
@@ -220,9 +229,10 @@ export function PlantSeedsDialog({ isOpen, onClose, trayId, trayName, onSeedPlan
           <div className="space-y-6">
             {/* Tabs for Seed Source */}
             <Tabs value={activeTab} onValueChange={setActiveTab}>
-              <TabsList className="grid w-full grid-cols-2">
+              <TabsList className="grid w-full grid-cols-3">
                 <TabsTrigger value="stash">Seed Stash</TabsTrigger>
                 <TabsTrigger value="grow-list">Grow Lists</TabsTrigger>
+                <TabsTrigger value="seedlings">Seedlings</TabsTrigger>
               </TabsList>
 
               {/* Seed Stash Tab */}
@@ -308,6 +318,51 @@ export function PlantSeedsDialog({ isOpen, onClose, trayId, trayName, onSeedPlan
                 </div>
               </TabsContent>
 
+              {/* Seedlings Tab - Ready to transplant from indoor grow */}
+              <TabsContent value="seedlings" className="space-y-4">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                  <Input
+                    placeholder="Search seedlings..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="pl-10"
+                  />
+                </div>
+
+                <div className="space-y-2 max-h-64 overflow-y-auto border rounded-lg p-2">
+                  {seedlings.filter(s => 
+                    !searchTerm || 
+                    s.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                    displayNames[s.id]?.toLowerCase().includes(searchTerm.toLowerCase())
+                  ).map((seedling, idx) => (
+                    <button
+                      key={seedling.id || idx}
+                      onClick={() => setSelectedLot({ ...seedling, source: 'seedling' })}
+                      className={cn(
+                        "w-full p-3 border rounded-lg text-left transition",
+                        selectedLot?.id === seedling.id && selectedLot?.source === 'seedling'
+                          ? "border-emerald-600 bg-emerald-50"
+                          : "border-gray-300 hover:border-emerald-400"
+                      )}
+                    >
+                      <p className="font-medium text-sm">
+                        {displayNames[seedling.id] || seedling.name}
+                      </p>
+                      <p className="text-xs text-gray-600">
+                        {seedling.source === 'container' ? `Container: ${seedling.container_type}` : 'From tray cell'}
+                      </p>
+                      <Badge variant="outline" className="text-[10px] mt-1">Ready to Transplant</Badge>
+                    </button>
+                  ))}
+
+                  {seedlings.length === 0 && (
+                    <p className="text-sm text-gray-500 text-center py-6">
+                      No seedlings ready to transplant yet
+                    </p>
+                  )}
+                </div>
+              </TabsContent>
               </Tabs>
 
             {/* Select Cells */}
