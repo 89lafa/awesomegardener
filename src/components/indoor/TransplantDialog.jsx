@@ -84,49 +84,70 @@ export default function TransplantDialog({
       let containerCount = 0;
 
       for (const cell of selectedCells) {
-        // Update TrayCell - EMPTY it after transplanting
-        await base44.entities.TrayCell.update(cell.id, {
-          status: destination === 'discard' ? 'failed' : 'empty',
-          transplanted_date: transplantDate,
-          transplanted_to_type: destination,
-          transplanted_to_id: destination === 'indoor_container' ? selectedSpace : 
-                              destination === 'outdoor_garden' ? selectedStructure : null,
-          // Clear plant data when emptying
-          variety_id: null,
-          variety_name: null,
-          plant_type_id: null,
-          plant_type_name: null,
-          user_seed_id: null,
-          plant_profile_id: null
-        });
+         // Update TrayCell based on destination
+         if (destination === 'discard') {
+           // Mark as failed when discarding
+           await base44.entities.TrayCell.update(cell.id, {
+             status: 'failed',
+             transplanted_date: transplantDate,
+             transplanted_to_type: destination,
+             // Clear plant data when failing
+             variety_id: null,
+             variety_name: null,
+             plant_type_id: null,
+             plant_type_name: null,
+             user_seed_id: null,
+             plant_profile_id: null
+           });
+         } else if (destination === 'outdoor_garden') {
+           // Mark as ready_to_transplant for outdoor garden (so it appears in Ready To Plant)
+           await base44.entities.TrayCell.update(cell.id, {
+             status: 'ready_to_transplant',
+             transplanted_date: transplantDate,
+             transplanted_to_type: destination,
+             transplanted_to_id: selectedStructure
+             // KEEP the variety/plant data so it shows in Ready To Plant list
+           });
+         } else if (destination === 'indoor_container') {
+           // Mark as empty when moving to indoor container (it's now in a container)
+           await base44.entities.TrayCell.update(cell.id, {
+             status: 'empty',
+             transplanted_date: transplantDate,
+             transplanted_to_type: destination,
+             transplanted_to_id: selectedSpace,
+             // Clear plant data when emptying tray cell
+             variety_id: null,
+             variety_name: null,
+             plant_type_id: null,
+             plant_type_name: null,
+             user_seed_id: null,
+             plant_profile_id: null
+           });
+         }
 
-        // Create destination record
-        if (destination === 'indoor_container') {
-          const displayName = cell.variety_name && cell.plant_type_name 
-            ? `${cell.variety_name} - ${cell.plant_type_name}`
-            : cell.variety_name || 'Plant';
-            
-          await base44.entities.IndoorContainer.create({
-            indoor_space_id: selectedSpace,
-            name: `${displayName} Cup ${++containerCount}`,
-            container_type: containerType,
-            variety_id: cell.variety_id,
-            variety_name: cell.variety_name,
-            plant_type_name: cell.plant_type_name,
-            plant_type_id: cell.plant_type_id,
-            plant_profile_id: cell.plant_profile_id,
-            user_seed_id: cell.user_seed_id,
-            crop_plan_id: cell.crop_plan_id,
-            source_tray_cell_id: cell.id,
-            status: 'ready_to_transplant',
-            planted_date: transplantDate
-          });
-        } else if (destination === 'outdoor_garden') {
-          // DON'T create MyPlant yet - user marks as "ready_to_plant" status on TrayCell
-          // This status is then picked up by ReadyToPlantSeedlings and SeedlingSelector
-          // User selects garden + season when actually planting
-        }
-      }
+         // Create destination record
+         if (destination === 'indoor_container') {
+           const displayName = cell.variety_name && cell.plant_type_name 
+             ? `${cell.variety_name} - ${cell.plant_type_name}`
+             : cell.variety_name || 'Plant';
+
+           await base44.entities.IndoorContainer.create({
+             indoor_space_id: selectedSpace,
+             name: `${displayName} Cup ${++containerCount}`,
+             container_type: containerType,
+             variety_id: cell.variety_id,
+             variety_name: cell.variety_name,
+             plant_type_name: cell.plant_type_name,
+             plant_type_id: cell.plant_type_id,
+             plant_profile_id: cell.plant_profile_id,
+             user_seed_id: cell.user_seed_id,
+             crop_plan_id: cell.crop_plan_id,
+             source_tray_cell_id: cell.id,
+             status: 'ready_to_transplant',
+             planted_date: transplantDate
+           });
+         }
+       }
 
       // Get tray info for global logging
       const trays = await base44.entities.SeedTray.filter({ id: trayId });
