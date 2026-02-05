@@ -27,28 +27,24 @@ export default function MoveTrayDialog({
 
   const loadRacksAndShelves = async () => {
     try {
-      const [shelvesData] = await Promise.all([
+      // Step 1: Get current shelf to find the space
+      const [currentShelfData] = await base44.entities.GrowShelf.filter({ id: tray.shelf_id });
+      if (!currentShelfData) return;
+
+      // Step 2: Get the rack for space info
+      const [rackData] = await base44.entities.GrowRack.filter({ id: currentShelfData.rack_id });
+      if (!rackData) return;
+
+      // Step 3: Get all racks and shelves for this space (only 2 queries)
+      const [racksData, shelvesData] = await Promise.all([
+        base44.entities.GrowRack.filter({ indoor_space_id: rackData.indoor_space_id }),
         base44.entities.GrowShelf.list()
       ]);
-      
-      // Find all racks from available shelves and get their space info
-      const rackIds = [...new Set(shelvesData.map(s => s.rack_id))];
-      const racksData = rackIds.length > 0 
-        ? await Promise.all(rackIds.map(id => base44.entities.GrowRack.filter({ id })).then(results => results.flat()))
-        : [];
-      
-      // Filter to only racks in this space
-      const filteredRacks = racksData.filter(r => r.indoor_space_id === tray.indoor_space_id);
-      
-      setRacks(filteredRacks);
+
+      setRacks(racksData);
       setShelves(shelvesData);
-      
-      // Pre-select current rack
-      const currentShelf = shelvesData.find(s => s.id === tray.shelf_id);
-      if (currentShelf) {
-        setSelectedRack(currentShelf.rack_id);
-        setSelectedShelf(tray.shelf_id);
-      }
+      setSelectedRack(currentShelfData.rack_id);
+      setSelectedShelf(tray.shelf_id);
     } catch (error) {
       console.error('Error loading racks/shelves:', error);
     }
