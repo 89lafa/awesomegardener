@@ -298,7 +298,10 @@ export default function IndoorSpaceDetail() {
                       <Button
                         size="sm"
                         variant="outline"
-                        onClick={() => navigate(createPageUrl('TrayDetail') + `?spaceId=${spaceId}&rackId=${rack.id}&shelfId=${shelf.id}`)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          navigate(createPageUrl('TrayDetail') + `?spaceId=${spaceId}&shelfId=${shelf.id}`);
+                        }}
                       >
                         <Plus className="w-3 h-3 mr-1" />
                         Add Tray
