@@ -1233,8 +1233,35 @@ export default function PlantingModal({
               ✓ Done
             </Button>
           </DialogFooter>
-        )}
-      </DialogContent>
-    </Dialog>
-  );
-}
+          )}
+
+          {/* Seedling Selector Modal */}
+          <SeedlingSelector 
+          isOpen={showSeedlingSelector}
+          onClose={() => setShowSeedlingSelector(false)}
+          onSeedlingSelected={(seedlingData) => {
+            setSelectedPlant({
+              variety_id: seedlingData.variety_id,
+              variety_name: seedlingData.display_name,
+              plant_type_id: seedlingData.plant_type_id,
+              plant_type_name: seedlingData.display_name?.split(' - ')[1] || 'Seedling',
+              display_name: seedlingData.display_name,
+              spacing_cols: 1,
+              spacing_rows: 1,
+              plantsPerSlot: 1,
+              growing_method: 'SEEDLING_TRANSPLANT',
+              seedling_source_id: seedlingData.seedling_source_id,
+              seedling_source_type: seedlingData.seedling_source_type,
+              seedling_age_days: seedlingData.seedling_age_days,
+              seedling_location: seedlingData.seedling_location
+            });
+            checkCompanionAndRotation({
+              plant_type_id: seedlingData.plant_type_id,
+              plant_type_name: seedlingData.display_name?.split(' - ')[1] || 'Seedling'
+            });
+          }}
+          />
+          </DialogContent>
+          </Dialog>
+          );
+          }
