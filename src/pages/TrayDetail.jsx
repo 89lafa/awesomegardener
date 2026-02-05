@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { base44 } from '@/api/base44Client';
-import { ArrowLeft, Plus, Loader2, Check, X, Upload } from 'lucide-react';
+import { ArrowLeft, Plus, Loader2, Check, X, Upload, Settings, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -12,6 +12,7 @@ import TrayGrid from '@/components/indoor/TrayGrid';
 import TransplantDialog from '@/components/indoor/TransplantDialog';
 import { PlantSeedsDialog } from '@/components/indoor/PlantSeedsDialog';
 import GrowLogComponent from '@/components/indoor/GrowLogComponent';
+import EditTrayDialog from '@/components/indoor/EditTrayDialog';
 
 export default function TrayDetail() {
   const navigate = useNavigate();
@@ -24,6 +25,7 @@ export default function TrayDetail() {
   const [loading, setLoading] = useState(true);
   const [showPlantSeeds, setShowPlantSeeds] = useState(false);
   const [showTransplant, setShowTransplant] = useState(false);
+  const [showEditTray, setShowEditTray] = useState(false);
   const [lastClickedCell, setLastClickedCell] = useState(null);
 
   useEffect(() => {
@@ -252,6 +254,13 @@ export default function TrayDetail() {
           <Plus className="w-4 h-4 mr-2" />
           Plant Seeds
         </Button>
+        <Button 
+          onClick={() => setShowEditTray(true)}
+          variant="outline"
+        >
+          <Settings className="w-4 h-4 mr-2" />
+          Edit Tray
+        </Button>
         <Button
           onClick={() => {
             // Select ALL cells, including those without cell numbers
@@ -309,6 +318,20 @@ export default function TrayDetail() {
         onTransplanted={() => {
           loadTrayData();
           setSelectedCells([]);
+        }}
+      />
+
+      <EditTrayDialog
+        isOpen={showEditTray}
+        onClose={() => setShowEditTray(false)}
+        tray={tray}
+        cells={cells}
+        onTrayUpdated={() => {
+          loadTrayData();
+        }}
+        onTrayDeleted={() => {
+          toast.success('Tray deleted');
+          navigate(-1);
         }}
       />
     </div>

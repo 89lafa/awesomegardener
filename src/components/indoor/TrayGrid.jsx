@@ -68,11 +68,26 @@ export default function TrayGrid({
                   : 'bg-gray-200 border-gray-400 opacity-50 cursor-not-allowed',
                 isSelected && 'ring-2 ring-blue-500 scale-105'
               )}
-              title={cell ? `#${cellNumber} - ${cell.variety_name && cell.plant_type_name ? `${cell.variety_name} - ${cell.plant_type_name}` : cell.variety_name || 'Empty'} - ${cell.status}` : `Cell ${cellNumber} - Missing`}
+              title={cell ? `#${cellNumber} - ${
+                cell.variety_name && cell.plant_type_name 
+                  ? `${cell.plant_type_name} - ${cell.variety_name}` 
+                  : cell.variety_name 
+                    ? cell.variety_name
+                    : cell.plant_type_name 
+                      ? cell.plant_type_name
+                      : cell.status === 'seeded' || cell.status === 'germinated' || cell.status === 'growing'
+                        ? 'Unknown Plant'
+                        : 'Empty'
+              } (${cell.status})` : `Cell ${cellNumber} - Missing`}
               disabled={!cell}
             >
               <span className="text-[8px] text-gray-500 absolute top-0.5 left-1">{cellNumber}</span>
-              {cell && <span className="mt-1">{getStatusIcon(cell.status)}</span>}
+              {cell && cell.status !== 'empty' && cell.variety_name && (
+                <span className="text-[8px] font-semibold text-emerald-800 mt-0.5 truncate w-full px-0.5 text-center" style={{lineHeight: '8px'}}>
+                  {cell.variety_name.substring(0, 8)}
+                </span>
+              )}
+              {cell && <span className={cell.variety_name ? 'text-[10px]' : 'mt-1'}>{getStatusIcon(cell.status)}</span>}
               {!cell && <span className="text-red-500">?</span>}
             </button>
           );
