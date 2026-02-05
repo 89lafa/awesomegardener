@@ -102,7 +102,6 @@ import IssuesLog from './pages/IssuesLog';
 import Landing from './pages/Landing';
 import Leaderboard from './pages/Leaderboard';
 import LeaderboardV2 from './pages/LeaderboardV2';
-import ManageFeatureRequests from './pages/ManageFeatureRequests';
 import ManageForumCategories from './pages/ManageForumCategories';
 import Messages from './pages/Messages';
 import MyGarden from './pages/MyGarden';
@@ -140,6 +139,7 @@ import Users from './pages/Users';
 import VarietyReviewQueue from './pages/VarietyReviewQueue';
 import ViewVariety from './pages/ViewVariety';
 import ZoneMap from './pages/ZoneMap';
+import ManageFeatureRequests from './pages/ManageFeatureRequests';
 import __Layout from './Layout.jsx';
 
 
@@ -199,7 +199,6 @@ export const PAGES = {
     "Landing": Landing,
     "Leaderboard": Leaderboard,
     "LeaderboardV2": LeaderboardV2,
-    "ManageFeatureRequests": ManageFeatureRequests,
     "ManageForumCategories": ManageForumCategories,
     "Messages": Messages,
     "MyGarden": MyGarden,
@@ -237,6 +236,7 @@ export const PAGES = {
     "VarietyReviewQueue": VarietyReviewQueue,
     "ViewVariety": ViewVariety,
     "ZoneMap": ZoneMap,
+    "ManageFeatureRequests": ManageFeatureRequests,
 }
 
 export const pagesConfig = {

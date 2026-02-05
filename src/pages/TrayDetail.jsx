@@ -28,61 +28,31 @@ export default function TrayDetail() {
 
   useEffect(() => {
     if (trayId) {
-      console.log('[TrayDetail] Tray ID from URL:', trayId);
       loadTrayData();
     }
   }, [trayId]);
 
-  const loadTrayData = async (retryCount = 0) => {
-    if (!trayId) {
-      console.error('[TrayDetail] No tray ID');
-      return;
-    }
-
+  const loadTrayData = async () => {
     try {
       setLoading(true);
-      console.log('[TrayDetail] Fetching tray:', trayId, 'Retry:', retryCount);
-      
-      // Add small delay on retry to avoid rate limits
-      if (retryCount > 0) {
-        await new Promise(resolve => setTimeout(resolve, 1000 * retryCount));
-      }
-      
       const [trayData, cellsData] = await Promise.all([
         base44.entities.SeedTray.filter({ id: trayId }),
         base44.entities.TrayCell.filter({ tray_id: trayId }, 'cell_number')
       ]);
 
-      console.log('[TrayDetail] Results - Trays:', trayData.length, 'Cells:', cellsData.length);
-
       if (trayData.length === 0) {
-        console.error('[TrayDetail] Tray not found in database');
         toast.error('Tray not found');
-        setTray(null);
-        setLoading(false);
+        navigate(-1);
         return;
       }
 
       setTray(trayData[0]);
       setCells(cellsData);
-      console.log('[TrayDetail] Successfully loaded:', trayData[0].name);
     } catch (error) {
-      console.error('[TrayDetail] Error loading tray:', error);
-      
-      // Retry on rate limit errors
-      if (error.message?.includes('Rate limit') && retryCount < 3) {
-        console.log('[TrayDetail] Rate limited, retrying in', (retryCount + 1), 'seconds...');
-        setTimeout(() => loadTrayData(retryCount + 1), 1000 * (retryCount + 1));
-        return;
-      }
-      
-      toast.error(`Failed to load tray: ${error.message}`);
-      setTray(null);
-      setLoading(false);
+      console.error('Error loading tray:', error);
+      toast.error('Failed to load tray');
     } finally {
-      if (retryCount === 0) {
-        setLoading(false);
-      }
+      setLoading(false);
     }
   };
 
@@ -258,58 +228,21 @@ export default function TrayDetail() {
         </Card>
       )}
 
-      {/* Info Bar */}
-      <Card className="border-emerald-200 bg-gradient-to-r from-emerald-50 to-blue-50">
-        <div className="p-4">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-center">
-            <div>
-              <p className="text-xs text-gray-600">Started</p>
-              <p className="text-sm font-medium text-gray-900">
-                {tray.start_date ? new Date(tray.start_date).toLocaleDateString() : 'Not set'}
-              </p>
-            </div>
-            <div>
-              <p className="text-xs text-gray-600">Expected Transplant</p>
-              <p className="text-sm font-medium text-gray-900">
-                {tray.expected_transplant_date 
-                  ? new Date(tray.expected_transplant_date).toLocaleDateString() 
-                  : 'Not set'}
-              </p>
-            </div>
-            <div>
-              <p className="text-xs text-gray-600">Progress</p>
-              <p className="text-sm font-medium text-emerald-700">
-                {stats.active}/{stats.total}
-              </p>
-            </div>
-            <div>
-              <p className="text-xs text-gray-600">Success Rate</p>
-              <p className="text-sm font-medium text-blue-700">
-                {stats.total > 0 ? Math.round((stats.active / stats.total) * 100) : 0}%
-              </p>
-            </div>
-          </div>
-        </div>
-      </Card>
-
       {/* Quick Actions */}
       <div className="flex flex-wrap gap-2">
         <Button 
           onClick={() => setShowPlantSeeds(true)}
-          className="bg-emerald-600 hover:bg-emerald-700 gap-2"
+          className="bg-emerald-600 hover:bg-emerald-700"
         >
-          <Plus className="w-4 h-4" />
+          <Plus className="w-4 h-4 mr-2" />
           Plant Seeds
         </Button>
         <Button
-          onClick={() => setSelectedCells(cells.filter(c => c.status === 'empty'))}
-          variant="outline"
-          className="gap-1"
-        >
-          Select Empty ({cells.filter(c => c.status === 'empty').length})
-        </Button>
-        <Button
-          onClick={() => setSelectedCells(cells)}
+          onClick={() => {
+            // Select ALL cells, including those without cell numbers
+            const allCells = cells.filter(c => c);
+            setSelectedCells(allCells);
+          }}
           variant="outline"
         >
           Select All ({cells.length})
