@@ -122,41 +122,9 @@ export default function TransplantDialog({
             planted_date: transplantDate
           });
         } else if (destination === 'outdoor_garden') {
-          // Create MyPlant record as READY_TO_TRANSPLANT (not yet in a specific garden)
-          // Get or create plant profile if needed
-          let plantProfileId = cell.plant_profile_id;
-          if (!plantProfileId && cell.plant_type_id) {
-            // Create a simple profile for this plant
-            const profile = await base44.entities.PlantProfile.create({
-              plant_type_id: cell.plant_type_id,
-              common_name: cell.plant_type_name || 'Plant',
-              variety_name: cell.variety_name || 'Unknown'
-            });
-            plantProfileId = profile.id;
-          }
-          
-          // Create MyPlant with status "ready_to_transplant"
-          // Use a "placeholder" garden season (user will assign to actual garden/season later)
-          if (plantProfileId) {
-            // For now, we need a placeholder garden_season_id until user selects actual garden
-            // We'll use a marker ID or look for any garden to get a season
-            let placeholderSeasonId = 'ready-to-transplant-placeholder';
-            
-            try {
-              const myPlant = await base44.entities.MyPlant.create({
-                garden_season_id: placeholderSeasonId,
-                plant_profile_id: plantProfileId,
-                name: cell.variety_name || cell.plant_type_name,
-                status: 'ready_to_transplant',
-                transplant_date: transplantDate,
-                notes: `Transplanted from tray - ready to plant in garden`,
-                location_name: 'Ready to Plant'
-              });
-            } catch (error) {
-              // If placeholder fails, try without garden_season_id (schema validation issue)
-              console.warn('Creating with placeholder season failed, trying alternative approach', error);
-            }
-          }
+          // DON'T create MyPlant yet - user marks as "ready_to_plant" status on TrayCell
+          // This status is then picked up by ReadyToPlantSeedlings and SeedlingSelector
+          // User selects garden + season when actually planting
         }
       }
 
