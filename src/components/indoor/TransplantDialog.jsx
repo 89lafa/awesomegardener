@@ -122,18 +122,39 @@ export default function TransplantDialog({
             planted_date: transplantDate
           });
         } else if (destination === 'outdoor_garden') {
-          // Create PlantInstance for outdoor garden
+          // Create MyPlant record for outdoor garden
           const structure = plotStructures.find(s => s.id === selectedStructure);
           if (structure) {
+            const garden = gardens.find(g => g.id === selectedGarden);
+            
+            // Get or create garden season
+            let gardenSeason = null;
+            if (garden && garden.current_season_year) {
+              const seasons = await base44.entities.GardenSeason.filter({
+                garden_id: selectedGarden,
+                season_year: garden.current_season_year
+              });
+              gardenSeason = seasons[0];
+              if (!gardenSeason) {
+                gardenSeason = await base44.entities.GardenSeason.create({
+                  garden_id: selectedGarden,
+                  season_year: garden.current_season_year,
+                  start_date: transplantDate
+                });
+              }
+            }
+            
             await base44.entities.MyPlant.create({
-              garden_id: selectedGarden,
-              variety_id: cell.variety_id,
+              garden_season_id: gardenSeason?.id || '',
               plant_profile_id: cell.plant_profile_id,
-              name: cell.variety_name,
-              planted_date: transplantDate,
+              name: cell.variety_name || cell.plant_type_name,
+              status: 'transplanted',
+              transplant_date: transplantDate,
+              notes: `Transplanted from tray to ${structure.name}. Source: ${cell.tray_name || 'tray'}`,
               source_type: 'indoor_transplant',
               source_tray_cell_id: cell.id,
-              notes: `Transplanted from ${cell.tray_name || 'tray'}`
+              location_name: structure.name,
+              garden_item_id: selectedStructure
             });
           }
         }
