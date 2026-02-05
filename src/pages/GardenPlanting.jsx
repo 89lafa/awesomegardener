@@ -51,10 +51,10 @@ const PAGE_DATA_CACHE = {
   lastFetch: 0
 };
 
-function SpaceCard({ space, garden, activeSeason, seasonId, sharedData, autoOpenSeedling }) {
+function SpaceCard({ space, garden, activeSeason, seasonId, sharedData }) {
    const [plantings, setPlantings] = useState([]);
    const [loading, setLoading] = useState(true);
-   const [showPlantingModal, setShowPlantingModal] = useState(!!autoOpenSeedling);
+   const [showPlantingModal, setShowPlantingModal] = useState(false);
 
   useEffect(() => {
     loadPlantings();
