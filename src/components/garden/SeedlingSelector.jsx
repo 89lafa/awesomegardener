@@ -127,6 +127,9 @@ export default function SeedlingSelector({ isOpen, onClose, onSeedlingSelected }
     if (seedling.source_type === 'container') {
       return `${seedling.location_name || 'Container'}`;
     }
+    if (seedling.source_type === 'my_plant') {
+      return `${seedling.location_name || 'Ready to Plant'}`;
+    }
     return `Tray Cell ${seedling.cell_number || '?'}`;
   };
 
