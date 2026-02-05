@@ -25,15 +25,17 @@ export default function ReadyToPlantSeedlings() {
       setLoading(true);
       const user = await base44.auth.me();
       
-      // Get all seedlings ready to plant
-      const [containers, trayCells] = await Promise.all([
+      // Get all seedlings ready to plant (indoor sources)
+      const [containers, trayCells, myPlants] = await Promise.all([
         base44.entities.IndoorContainer.filter({ created_by: user.email, status: 'ready_to_transplant' }),
-        base44.entities.TrayCell.filter({ created_by: user.email, status: 'ready_to_transplant' })
+        base44.entities.TrayCell.filter({ created_by: user.email, status: 'ready_to_transplant' }),
+        base44.entities.MyPlant.filter({ created_by: user.email, source_type: 'indoor_transplant', status: 'transplanted' })
       ]);
 
       const allSeedlings = [
         ...containers.map(c => ({ ...c, source: 'container', source_type: 'container', source_id: c.id })),
-        ...trayCells.map(c => ({ ...c, source: 'tray', source_type: 'tray_cell', source_id: c.id }))
+        ...trayCells.map(c => ({ ...c, source: 'tray', source_type: 'tray_cell', source_id: c.id })),
+        ...myPlants.map(mp => ({ ...mp, source: 'garden', source_type: 'my_plant', source_id: mp.id }))
       ];
 
       setSeedlings(allSeedlings);

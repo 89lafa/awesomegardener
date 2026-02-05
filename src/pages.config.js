@@ -121,6 +121,7 @@ import Profile from './pages/Profile';
 import PublicGarden from './pages/PublicGarden';
 import PublicPlant from './pages/PublicPlant';
 import PublicSeed from './pages/PublicSeed';
+import ReadyToPlantSeedlings from './pages/ReadyToPlantSeedlings';
 import RecipeDetail from './pages/RecipeDetail';
 import Recipes from './pages/Recipes';
 import ResourceArticle from './pages/ResourceArticle';
@@ -140,7 +141,6 @@ import Users from './pages/Users';
 import VarietyReviewQueue from './pages/VarietyReviewQueue';
 import ViewVariety from './pages/ViewVariety';
 import ZoneMap from './pages/ZoneMap';
-import ReadyToPlantSeedlings from './pages/ReadyToPlantSeedlings';
 import __Layout from './Layout.jsx';
 
 
@@ -219,6 +219,7 @@ export const PAGES = {
     "PublicGarden": PublicGarden,
     "PublicPlant": PublicPlant,
     "PublicSeed": PublicSeed,
+    "ReadyToPlantSeedlings": ReadyToPlantSeedlings,
     "RecipeDetail": RecipeDetail,
     "Recipes": Recipes,
     "ResourceArticle": ResourceArticle,
@@ -238,7 +239,6 @@ export const PAGES = {
     "VarietyReviewQueue": VarietyReviewQueue,
     "ViewVariety": ViewVariety,
     "ZoneMap": ZoneMap,
-    "ReadyToPlantSeedlings": ReadyToPlantSeedlings,
 }
 
 export const pagesConfig = {
