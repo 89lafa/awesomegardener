@@ -200,7 +200,7 @@ export default function ReadyToPlantSeedlings() {
                         </p>
                         <div className="flex gap-2 flex-wrap">
                           <Badge variant="outline" className="text-xs">
-                            {seedling.source_type === 'container' ? '📦 Container' : '🌱 Tray'}
+                            {seedling.source_type === 'container' ? '📦 Container' : seedling.source_type === 'my_plant' ? '🌾 Garden' : '🌱 Tray'}
                           </Badge>
                           {seedling.variety_name && (
                             <Badge variant="secondary" className="text-xs">
