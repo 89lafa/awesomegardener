@@ -112,6 +112,23 @@ export default function TrayDetail() {
     }
   };
 
+  const handleMarkStatus = async (newStatus) => {
+    if (selectedCells.length === 0) return;
+    
+    try {
+      for (const cell of selectedCells) {
+        await base44.entities.TrayCell.update(cell.id, { status: newStatus });
+      }
+      
+      await loadTrayData();
+      setSelectedCells([]);
+      toast.success(`Marked ${selectedCells.length} cells as ${newStatus}`);
+    } catch (error) {
+      console.error('Error updating status:', error);
+      toast.error('Failed to update cells');
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -130,7 +147,10 @@ export default function TrayDetail() {
 
   const stats = {
     total: tray.total_cells,
-    active: cells.filter(c => c.status === 'growing' || c.status === 'germinated' || c.status === 'seeded').length,
+    seeded: cells.filter(c => c.status === 'seeded').length,
+    germinated: cells.filter(c => c.status === 'germinated').length,
+    growing: cells.filter(c => c.status === 'growing').length,
+    ready: cells.filter(c => c.status === 'ready').length,
     failed: cells.filter(c => c.status === 'failed').length,
     transplanted: cells.filter(c => c.status === 'transplanted').length,
     empty: cells.filter(c => c.status === 'empty').length
@@ -154,35 +174,41 @@ export default function TrayDetail() {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+      <div className="grid grid-cols-3 md:grid-cols-6 gap-2">
         <Card>
-          <CardContent className="p-4 text-center">
-            <p className="text-2xl font-bold text-gray-900">{stats.total}</p>
-            <p className="text-xs text-gray-600">Total Cells</p>
+          <CardContent className="p-3 text-center">
+            <p className="text-xl font-bold text-gray-900">{stats.total}</p>
+            <p className="text-[10px] text-gray-600">Total</p>
           </CardContent>
         </Card>
         <Card>
-          <CardContent className="p-4 text-center">
-            <p className="text-2xl font-bold text-green-600">{stats.active}</p>
-            <p className="text-xs text-gray-600">Active</p>
+          <CardContent className="p-3 text-center">
+            <p className="text-xl font-bold text-yellow-600">{stats.seeded}</p>
+            <p className="text-[10px] text-gray-600">Seeded</p>
           </CardContent>
         </Card>
         <Card>
-          <CardContent className="p-4 text-center">
-            <p className="text-2xl font-bold text-red-600">{stats.failed}</p>
-            <p className="text-xs text-gray-600">Failed</p>
+          <CardContent className="p-3 text-center">
+            <p className="text-xl font-bold text-green-600">{stats.germinated}</p>
+            <p className="text-[10px] text-gray-600">Germinated</p>
           </CardContent>
         </Card>
         <Card>
-          <CardContent className="p-4 text-center">
-            <p className="text-2xl font-bold text-blue-600">{stats.transplanted}</p>
-            <p className="text-xs text-gray-600">Transplanted</p>
+          <CardContent className="p-3 text-center">
+            <p className="text-xl font-bold text-emerald-600">{stats.growing}</p>
+            <p className="text-[10px] text-gray-600">Growing</p>
           </CardContent>
         </Card>
         <Card>
-          <CardContent className="p-4 text-center">
-            <p className="text-2xl font-bold text-gray-400">{stats.empty}</p>
-            <p className="text-xs text-gray-600">Empty</p>
+          <CardContent className="p-3 text-center">
+            <p className="text-xl font-bold text-orange-600">{stats.ready}</p>
+            <p className="text-[10px] text-gray-600">Ready</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-3 text-center">
+            <p className="text-xl font-bold text-red-600">{stats.failed}</p>
+            <p className="text-[10px] text-gray-600">Failed</p>
           </CardContent>
         </Card>
       </div>
@@ -200,19 +226,35 @@ export default function TrayDetail() {
                   size="sm"
                   variant="outline"
                   onClick={handleMarkGerminated}
-                  className="gap-1"
+                  className="gap-1 bg-green-50 hover:bg-green-100"
                 >
                   <Check className="w-4 h-4" />
-                  Mark Germinated
+                  Germinated
+                </Button>
+                <Button 
+                  size="sm"
+                  variant="outline"
+                  onClick={() => handleMarkStatus('growing')}
+                  className="gap-1 bg-emerald-50 hover:bg-emerald-100"
+                >
+                  Growing
+                </Button>
+                <Button 
+                  size="sm"
+                  variant="outline"
+                  onClick={() => handleMarkStatus('ready')}
+                  className="gap-1 bg-orange-50 hover:bg-orange-100"
+                >
+                  Ready
                 </Button>
                 <Button 
                   size="sm"
                   variant="outline"
                   onClick={handleMarkFailed}
-                  className="gap-1"
+                  className="gap-1 bg-red-50 hover:bg-red-100"
                 >
                   <X className="w-4 h-4" />
-                  Mark Failed
+                  Failed
                 </Button>
                 <Button 
                   size="sm"

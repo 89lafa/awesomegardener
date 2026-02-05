@@ -65,11 +65,16 @@ export default function IndoorSpaceDetail() {
       const space = spaceData[0];
       setSpace(space);
 
-      // Load racks, shelves, trays and containers
-      const [racksData, shelvesData, traysData, containersData] = await Promise.all([
-        base44.entities.GrowRack.filter({ indoor_space_id: spaceId }, 'name'),
-        base44.entities.GrowShelf.filter({}, 'shelf_number'),
-        base44.entities.SeedTray.filter({}, 'name'),
+      // Load racks and related data for this space only
+      const racksData = await base44.entities.GrowRack.filter({ indoor_space_id: spaceId }, 'name');
+      
+      // Load shelves only for racks in this space
+      const rackIds = racksData.map(r => r.id);
+      const [shelvesData, traysData, containersData] = await Promise.all([
+        rackIds.length > 0 
+          ? base44.entities.GrowShelf.filter({}, 'shelf_number').then(all => all.filter(s => rackIds.includes(s.rack_id)))
+          : Promise.resolve([]),
+        base44.entities.SeedTray.filter({ indoor_space_id: spaceId }, 'name'),
         base44.entities.IndoorContainer.filter({ indoor_space_id: spaceId }, 'name')
       ]);
 
@@ -140,12 +145,12 @@ export default function IndoorSpaceDetail() {
           <p className="text-2xl font-bold text-blue-600">🪴 {containers.length}</p>
         </Card>
         <Card className="p-4">
-          <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>Active Seedlings</p>
-          <p className="text-2xl font-bold text-green-600">🌱 0</p>
+          <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>Trays</p>
+          <p className="text-2xl font-bold text-purple-600">📋 {trays.length}</p>
         </Card>
         <Card className="p-4">
-          <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>Ready to Transplant</p>
-          <p className="text-2xl font-bold text-orange-600">0</p>
+          <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>Shelves</p>
+          <p className="text-2xl font-bold text-yellow-600">{shelves.length}</p>
         </Card>
       </div>
 

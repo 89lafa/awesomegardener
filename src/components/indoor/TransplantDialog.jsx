@@ -61,13 +61,13 @@ export default function TransplantDialog({
 
   const loadPlotStructures = async (gardenId) => {
     try {
-      const structures = await base44.entities.PlotStructure.filter({ garden_id: gardenId });
-      setPlotStructures(structures);
-      if (structures.length > 0) {
-        setSelectedStructure(structures[0].id);
+      const beds = await base44.entities.Bed.filter({ garden_id: gardenId });
+      setPlotStructures(beds);
+      if (beds.length > 0) {
+        setSelectedStructure(beds[0].id);
       }
     } catch (error) {
-      console.error('Error loading plot structures:', error);
+      console.error('Error loading beds:', error);
     }
   };
 
@@ -112,17 +112,20 @@ export default function TransplantDialog({
           });
         } else if (destination === 'outdoor_garden') {
           // Create PlantInstance for outdoor garden
-          const structure = plotStructures.find(s => s.id === selectedStructure);
-          if (structure) {
-            await base44.entities.MyPlant.create({
+          const garden = gardens.find(g => g.id === selectedGarden);
+          if (garden) {
+            await base44.entities.PlantInstance.create({
               garden_id: selectedGarden,
+              season_year: garden.current_season_year || '2026-Spring',
               variety_id: cell.variety_id,
-              plant_profile_id: cell.plant_profile_id,
-              name: cell.variety_name,
-              planted_date: transplantDate,
-              source_type: 'indoor_transplant',
-              source_tray_cell_id: cell.id,
-              notes: `Transplanted from ${cell.tray_name || 'tray'}`
+              plant_type_id: cell.plant_type_id,
+              display_name: cell.variety_name && cell.plant_type_name 
+                ? `${cell.plant_type_name} - ${cell.variety_name}`
+                : cell.variety_name || cell.plant_type_name || 'Plant',
+              growing_method: 'INDOOR_TRANSPLANT',
+              actual_transplant_date: transplantDate,
+              status: 'transplanted',
+              notes: `Transplanted from indoor grow tray`
             });
           }
         }
@@ -269,20 +272,25 @@ export default function TransplantDialog({
               
               {plotStructures.length > 0 && (
                 <div>
-                  <Label>Planting Location</Label>
+                  <Label>Bed / Planting Area</Label>
                   <Select value={selectedStructure} onValueChange={setSelectedStructure}>
                     <SelectTrigger className="mt-2">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      {plotStructures.map(structure => (
-                        <SelectItem key={structure.id} value={structure.id}>
-                          {structure.name} ({structure.structure_type})
+                      {plotStructures.map(bed => (
+                        <SelectItem key={bed.id} value={bed.id}>
+                          {bed.name} ({bed.type})
                         </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
                 </div>
+              )}
+              {plotStructures.length === 0 && selectedGarden && (
+                <p className="text-sm text-gray-600 italic">
+                  No beds found in this garden. Create beds in Garden Planting first.
+                </p>
               )}
             </div>
           )}
