@@ -8,7 +8,8 @@ import {
   Mic,
   MoveHorizontal,
   Edit,
-  FileText
+  FileText,
+  Lightbulb
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -19,6 +20,7 @@ import AIGrowAssistant from '@/components/indoor/AIGrowAssistant';
 import GrowLogComponent from '@/components/indoor/GrowLogComponent';
 import { AddRackDialog } from '@/components/indoor/AddRackDialog';
 import EditRackDialog from '@/components/indoor/EditRackDialog';
+import EditShelfDialog from '@/components/indoor/EditShelfDialog';
 import { AddTrayDialog } from '@/components/indoor/AddTrayDialog';
 import { AddContainerDialog } from '@/components/indoor/AddContainerDialog';
 import { PlantSeedsDialog } from '@/components/indoor/PlantSeedsDialog';
@@ -47,6 +49,8 @@ export default function IndoorSpaceDetail() {
   const [trayToMove, setTrayToMove] = useState(null);
   const [showEditRack, setShowEditRack] = useState(false);
   const [rackToEdit, setRackToEdit] = useState(null);
+  const [showEditShelf, setShowEditShelf] = useState(false);
+  const [shelfToEdit, setShelfToEdit] = useState(null);
 
   useEffect(() => {
     if (spaceId) {
@@ -234,24 +238,45 @@ export default function IndoorSpaceDetail() {
                         const shelfTrays = trays.filter(t => t.shelf_id === shelf.id);
                         return (
                           <div key={shelf.id} className="bg-gray-50 rounded-lg p-4 border border-gray-200">
-                            <div className="flex items-start justify-between mb-2">
-                              <div>
-                                <h4 className="font-medium" style={{ color: 'var(--text-primary)' }}>{shelf.name}</h4>
-                                <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>
-                                  {shelf.width_ft}ft wide • {shelf.max_trays} max trays
-                                </p>
+                           <div className="flex items-start justify-between mb-2">
+                             <div className="flex-1">
+                               <div className="flex items-center gap-2">
+                                 <h4 className="font-medium" style={{ color: 'var(--text-primary)' }}>{shelf.name}</h4>
+                                 {shelf.light_wattage && (
+                                   <span className="text-xs font-medium text-green-600 flex items-center gap-1 bg-green-50 px-2 py-1 rounded">
+                                     <Lightbulb className="w-3 h-3" />
+                                     {shelf.light_wattage}W
+                                   </span>
+                                 )}
+                               </div>
+                               <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>
+                                 {shelf.width_ft}ft wide • {shelf.max_trays} max trays{shelf.light_hours_per_day ? ` • ${shelf.light_hours_per_day}hrs/day light` : ''}
+                               </p>
+                             </div>
+                              <div className="flex gap-1">
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => {
+                                    setShelfToEdit(shelf);
+                                    setShowEditShelf(true);
+                                  }}
+                                  className="gap-1"
+                                >
+                                  <Edit className="w-3 h-3" />
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  onClick={() => {
+                                    setSelectedShelf(shelf);
+                                    setShowAddTray(true);
+                                  }}
+                                  className="bg-blue-600 hover:bg-blue-700 gap-1"
+                                >
+                                  <Plus className="w-3 h-3" />
+                                  Add Tray
+                                </Button>
                               </div>
-                              <Button
-                                size="sm"
-                                onClick={() => {
-                                  setSelectedShelf(shelf);
-                                  setShowAddTray(true);
-                                }}
-                                className="bg-blue-600 hover:bg-blue-700 gap-1"
-                              >
-                                <Plus className="w-3 h-3" />
-                                Add Tray
-                              </Button>
                             </div>
 
                             {/* Trays on this shelf */}
@@ -447,6 +472,22 @@ export default function IndoorSpaceDetail() {
             loadSpaceData();
             setShowEditRack(false);
             setRackToEdit(null);
+          }}
+        />
+      )}
+
+      {shelfToEdit && (
+        <EditShelfDialog
+          isOpen={showEditShelf}
+          onClose={() => {
+            setShowEditShelf(false);
+            setShelfToEdit(null);
+          }}
+          shelf={shelfToEdit}
+          onShelfUpdated={() => {
+            loadSpaceData();
+            setShowEditShelf(false);
+            setShelfToEdit(null);
           }}
         />
       )}
