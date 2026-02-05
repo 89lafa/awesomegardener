@@ -57,6 +57,22 @@ export default function LatestBadgeWidget() {
     );
   }
 
+  if (!latestBadge && !nextBadge) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-lg">
+            <Award className="w-5 h-5 text-yellow-500" />
+            Latest Badge
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="text-sm text-gray-500 text-center py-4">Start earning badges by completing milestones</p>
+        </CardContent>
+      </Card>
+    );
+  }
+
   return (
     <Card>
       <CardHeader>

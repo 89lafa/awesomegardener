@@ -76,7 +76,7 @@ export default function LeaderboardRankWidget() {
     }
   };
 
-  if (loading) {
+  if (loading || !ranks) {
     return (
       <Card>
         <CardContent className="pt-6 flex justify-center">
