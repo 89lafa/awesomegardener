@@ -53,7 +53,8 @@ export function PlantSeedsDialog({ isOpen, onClose, trayId, trayName, onSeedPlan
             const key = item.variety_id || item.plant_profile_id || item.variety_name;
             if (key && !seen.has(key)) {
               seen.add(key);
-              allItems.push({ ...item, source_list: list.name });
+              // Add unique ID for grow list items
+              allItems.push({ ...item, id: key, source_list: list.name });
             }
           }
         }
