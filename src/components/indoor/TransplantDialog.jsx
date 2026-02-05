@@ -132,28 +132,31 @@ export default function TransplantDialog({
       const trays = await base44.entities.SeedTray.filter({ id: trayId });
       const trayName = trays[0]?.name || 'Tray';
       
+      // Get variety details for logging
+      const firstCell = selectedCells[0];
+      const varietyInfo = firstCell.variety_name && firstCell.plant_type_name 
+        ? `${firstCell.plant_type_name} - ${firstCell.variety_name}`
+        : firstCell.variety_name || firstCell.plant_type_name || 'Unknown variety';
+      
+      const adjustedTimestamp = new Date(Date.now() - 5 * 60 * 60 * 1000).toISOString();
+      
       // Create tray-level log entry
       await base44.entities.GrowLog.create({
         tray_id: trayId,
         log_type: 'action',
         title: `Transplanted ${selectedCells.length} seedlings`,
-        content: notes || `Moved to ${destination === 'indoor_container' ? 'containers' : destination === 'outdoor_garden' ? 'garden' : 'discarded'}`,
-        logged_at: new Date().toISOString()
+        content: `${varietyInfo} ${notes ? '- ' + notes : ''} | Moved to ${destination === 'indoor_container' ? 'containers' : destination === 'outdoor_garden' ? 'garden' : 'discarded'}`,
+        logged_at: adjustedTimestamp
       });
       
       // Create space-level global log entry showing what/where
-      if (destination === 'indoor_container' && selectedCells.length > 0) {
-        const firstCell = selectedCells[0];
-        const varietyInfo = firstCell.variety_name && firstCell.plant_type_name 
-          ? `${firstCell.variety_name} - ${firstCell.plant_type_name}`
-          : firstCell.variety_name || 'Unknown variety';
-          
+      if (destination === 'indoor_container') {
         await base44.entities.GrowLog.create({
           indoor_space_id: selectedSpace,
           log_type: 'action',
           title: `Transplanted from ${trayName}`,
           content: `${selectedCells.length}x ${varietyInfo} moved to ${containerType.replace(/_/g, ' ')} containers`,
-          logged_at: new Date().toISOString()
+          logged_at: adjustedTimestamp
         });
       }
 

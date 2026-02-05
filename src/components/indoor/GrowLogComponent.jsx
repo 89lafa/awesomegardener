@@ -57,14 +57,11 @@ export default function GrowLogComponent({ targetId, targetType, compact = false
 
     setSubmitting(true);
     try {
-      // Adjust for timezone (-5 hours)
-      const now = new Date();
-      now.setHours(now.getHours() - 5);
-      
+      const adjustedTimestamp = new Date(Date.now() - 5 * 60 * 60 * 1000).toISOString();
       const logEntry = {
         [targetType]: targetId,
         ...formData,
-        logged_at: now.toISOString()
+        logged_at: adjustedTimestamp
       };
       
       const newLog = await base44.entities.GrowLog.create(logEntry);
@@ -233,7 +230,7 @@ export default function GrowLogComponent({ targetId, targetType, compact = false
                   )}
 
                   <p className="text-xs text-gray-500 mt-2">
-                    {formatDistanceToNow(new Date(log.created_date), { addSuffix: true })}
+                    {formatDistanceToNow(new Date(new Date(log.created_date).getTime() + 5 * 60 * 60 * 1000), { addSuffix: true })}
                   </p>
                 </div>
               </div>
