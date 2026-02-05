@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
+import { base44 } from '@/api/base44Client';
 
 export default function AIGrowAssistant({ onClose, context }) {
   const [isListening, setIsListening] = useState(false);
@@ -125,6 +126,96 @@ Be strict with JSON format.`,
     if (!text.trim()) return;
     processCommand(text);
     setInput('');
+  };
+
+  const executeCommand = async (commandData) => {
+    if (!commandData?.action) throw new Error('Invalid command data');
+    
+    try {
+      const user = await base44.auth.me();
+      
+      switch (commandData.action) {
+        case 'plant_seeds': {
+          // Plant seeds in specified location
+          if (!commandData.plantName || !commandData.quantity || !commandData.location) {
+            throw new Error('Missing plant name, quantity, or location for planting');
+          }
+          
+          // Find the tray by location (e.g., "Rack 1, Tray 1")
+          const trays = await base44.entities.SeedTray.filter({ created_by: user.email });
+          const tray = trays.find(t => {
+            const nameMatch = commandData.location.toLowerCase();
+            return t.name?.toLowerCase().includes(nameMatch);
+          });
+          
+          if (!tray) throw new Error(`Tray "${commandData.location}" not found`);
+          
+          // Find seed lot by variety name
+          const seedLots = await base44.entities.SeedLot.filter({ created_by: user.email });
+          const seedLot = seedLots.find(lot => 
+            lot.custom_label?.toLowerCase().includes(commandData.plantName.toLowerCase()) ||
+            lot.variety_name?.toLowerCase().includes(commandData.plantName.toLowerCase())
+          );
+          
+          if (!seedLot) {
+            throw new Error(`Seed lot for "${commandData.plantName}" not found`);
+          }
+          
+          // Get tray cells
+          const cells = await base44.entities.TrayCell.filter({ tray_id: tray.id });
+          const emptyCells = cells.filter(c => c.status === 'empty').slice(0, commandData.quantity);
+          
+          if (emptyCells.length < commandData.quantity) {
+            throw new Error(`Only ${emptyCells.length} empty cells available (need ${commandData.quantity})`);
+          }
+          
+          // Fetch plant type info for display
+          let varietyName = seedLot.custom_label || seedLot.variety_name || 'Seeds';
+          let plantTypeName = 'Plant';
+          
+          if (seedLot.variety_id) {
+            const varieties = await base44.entities.Variety.filter({ id: seedLot.variety_id });
+            if (varieties.length > 0) {
+              varietyName = varieties[0].variety_name;
+              const plantTypes = await base44.entities.PlantType.filter({ id: varieties[0].plant_type_id });
+              if (plantTypes.length > 0) plantTypeName = plantTypes[0].common_name;
+            }
+          }
+          
+          // Plant seeds in cells
+          const now = new Date();
+          now.setHours(now.getHours() - 5);
+          const adjustedDate = now.toISOString().split('T')[0];
+          
+          for (const cell of emptyCells) {
+            await base44.entities.TrayCell.update(cell.id, {
+              user_seed_id: seedLot.id,
+              variety_id: seedLot.variety_id,
+              plant_profile_id: seedLot.plant_profile_id,
+              variety_name: varietyName,
+              plant_type_name: plantTypeName,
+              status: 'seeded',
+              seeded_date: adjustedDate
+            });
+          }
+          
+          // Update tray status
+          await base44.entities.SeedTray.update(tray.id, {
+            status: 'seeded',
+            start_date: adjustedDate
+          });
+          
+          toast.success(`Planted ${emptyCells.length} ${varietyName} seeds in ${tray.name}!`);
+          break;
+        }
+        
+        default:
+          throw new Error(`Action "${commandData.action}" not yet implemented`);
+      }
+    } catch (error) {
+      console.error('Command execution error:', error);
+      throw error;
+    }
   };
 
   return (
