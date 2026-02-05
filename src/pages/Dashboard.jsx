@@ -144,19 +144,27 @@ export default function Dashboard() {
 
   useEffect(() => {
     loadDashboard();
-    loadWeather();
-    checkAchievements();
+    
+    // Stagger requests to avoid rate limit hammering
+    const weatherTimer = setTimeout(loadWeather, 100);
+    const achievementTimer = setTimeout(checkAchievements, 200);
+    
+    return () => {
+      clearTimeout(weatherTimer);
+      clearTimeout(achievementTimer);
+    };
   }, []);
 
   const checkAchievements = async () => {
     try {
       const response = await base44.functions.invoke('checkAchievements', {});
-      if (response.data.newlyUnlocked?.length > 0) {
+      if (response?.data?.newlyUnlocked?.length > 0) {
         response.data.newlyUnlocked.forEach(ach => {
           toast.success(`🏆 Achievement Unlocked: ${ach.title} (+${ach.points} pts)`);
         });
       }
     } catch (error) {
+      // Silently fail - don't break dashboard
       console.error('Error checking achievements:', error);
     }
   };
