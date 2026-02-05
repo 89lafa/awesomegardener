@@ -452,16 +452,20 @@ function TrayCellGrid({ trayId, selectedCells, onCellToggle }) {
             return (
               <button
                 key={`${row}-${col}`}
-                onClick={() => cell && onCellToggle(cell.cell_number)}
-                disabled={!cell}
+                onClick={() => {
+                  if (cell && !['seeded', 'germinated', 'growing'].includes(cell.status)) {
+                    onCellToggle(cell.cell_number);
+                  }
+                }}
+                disabled={!cell || ['seeded', 'germinated', 'growing'].includes(cell?.status)}
                 className={`w-8 h-8 border border-gray-200 flex items-center justify-center text-[10px] font-bold transition ${
                   isSelected
                     ? 'bg-red-500 text-white'
-                    : cell?.status === 'seeded'
-                    ? 'bg-green-100 text-green-700'
+                    : cell && ['seeded', 'germinated', 'growing'].includes(cell.status)
+                    ? 'bg-green-100 text-green-700 cursor-not-allowed'
                     : 'bg-white hover:bg-gray-100'
                 }`}
-                title={cell ? `Cell ${cell.cell_number}` : ''}
+                title={cell ? `Cell ${cell.cell_number} - ${cell.status === 'empty' ? 'Empty' : 'Already planted'}` : ''}
               >
                 {cell?.cell_number}
               </button>
