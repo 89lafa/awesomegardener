@@ -88,7 +88,6 @@ const getNavItems = (userRole, isEditor, user) => {
       ? [
           { category: true, label: 'ADMIN' },
           { name: 'Admin Hub', icon: Shield, page: 'AdminHub' },
-          { name: 'Feature Requests', icon: Lightbulb, page: 'AdminFeatureRequests' },
         ]
       : []
     ),

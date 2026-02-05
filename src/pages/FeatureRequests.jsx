@@ -77,7 +77,7 @@ export default function FeatureRequests() {
   const loadData = async () => {
     try {
       const [requestsData, userData] = await Promise.all([
-        base44.entities.FeatureRequest.list('-vote_count'),
+        base44.entities.FeatureRequest.filter({ is_archived: false }, '-vote_count'),
         base44.auth.me()
       ]);
       setRequests(requestsData);
@@ -161,7 +161,7 @@ export default function FeatureRequests() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-2xl lg:text-3xl font-bold text-gray-900">Feature Requests</h1>
-          <p className="text-gray-600 mt-1">Help us build what you need</p>
+          <p className="text-gray-600 mt-1">Vote for your favorite features to help us prioritize</p>
         </div>
         <Button 
           onClick={() => setShowAddDialog(true)}
@@ -170,6 +170,14 @@ export default function FeatureRequests() {
           <Plus className="w-4 h-4" />
           Submit Request
         </Button>
+      </div>
+
+      {/* Voting Instructions */}
+      <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-4">
+        <p className="text-sm text-emerald-900 font-medium flex items-center gap-2">
+          <ChevronUp className="w-5 h-5 text-emerald-600" />
+          Click the up arrow to vote for features you'd like to see! Your votes help us prioritize.
+        </p>
       </div>
 
       {/* Filters */}
@@ -245,14 +253,18 @@ export default function FeatureRequests() {
                         <button
                           onClick={() => handleVote(request)}
                           className={cn(
-                            "flex flex-col items-center justify-center min-w-[60px] p-3 rounded-xl transition-colors",
+                            "flex flex-col items-center justify-center min-w-[70px] p-3 rounded-xl transition-all shadow-sm",
                             hasVoted 
-                              ? "bg-emerald-100 text-emerald-700" 
-                              : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                              ? "bg-emerald-500 text-white ring-2 ring-emerald-300" 
+                              : "bg-white text-gray-700 hover:bg-emerald-50 hover:ring-2 hover:ring-emerald-200 border-2 border-gray-200"
                           )}
+                          title="Vote for this feature"
                         >
-                          <ChevronUp className={cn("w-5 h-5", hasVoted && "fill-current")} />
-                          <span className="font-bold text-lg">{request.vote_count || 0}</span>
+                          <ChevronUp className={cn("w-6 h-6 font-bold", hasVoted && "fill-current")} />
+                          <span className="font-bold text-lg mt-1">{request.vote_count || 0}</span>
+                          <span className="text-[10px] mt-0.5 uppercase tracking-wide">
+                            {hasVoted ? 'Voted' : 'Vote'}
+                          </span>
                         </button>
 
                         {/* Content */}
