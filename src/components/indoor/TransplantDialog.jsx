@@ -118,7 +118,7 @@ export default function TransplantDialog({
             user_seed_id: cell.user_seed_id,
             crop_plan_id: cell.crop_plan_id,
             source_tray_cell_id: cell.id,
-            status: 'planted',
+            status: 'ready_to_transplant',
             planted_date: transplantDate
           });
         } else if (destination === 'outdoor_garden') {

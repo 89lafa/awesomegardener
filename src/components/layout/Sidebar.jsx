@@ -48,6 +48,7 @@ const getNavItems = (userRole, isEditor, user) => {
     { name: 'Calendar', icon: Calendar, page: 'Calendar' },
     { name: 'Tasks', icon: ListChecks, page: 'CalendarTasks' },
     { name: 'Indoor Grow', icon: Sprout, page: 'IndoorGrowSpaces' },
+    { name: 'Ready to Plant', icon: Sprout, page: 'ReadyToPlantSeedlings' },
     { name: 'Plot Layout', icon: Hammer, page: 'MyGarden' },
     { name: 'Garden Planting', icon: TreeDeciduous, page: 'GardenPlanting' },
     
