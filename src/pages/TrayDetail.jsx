@@ -29,28 +29,37 @@ export default function TrayDetail() {
   useEffect(() => {
     if (trayId) {
       loadTrayData();
+    } else {
+      console.error('[TrayDetail] No tray ID provided');
+      toast.error('No tray selected');
+      navigate('/IndoorGrowSpaces');
     }
   }, [trayId]);
 
   const loadTrayData = async () => {
     try {
       setLoading(true);
+      console.log('[TrayDetail] Loading tray:', trayId);
+      
       const [trayData, cellsData] = await Promise.all([
         base44.entities.SeedTray.filter({ id: trayId }),
         base44.entities.TrayCell.filter({ tray_id: trayId }, 'cell_number')
       ]);
 
+      console.log('[TrayDetail] Found tray data:', trayData.length, 'cells:', cellsData.length);
+
       if (trayData.length === 0) {
         toast.error('Tray not found');
-        navigate(-1);
+        navigate('/IndoorGrowSpaces');
         return;
       }
 
       setTray(trayData[0]);
       setCells(cellsData);
     } catch (error) {
-      console.error('Error loading tray:', error);
+      console.error('[TrayDetail] Error loading tray:', error);
       toast.error('Failed to load tray');
+      navigate('/IndoorGrowSpaces');
     } finally {
       setLoading(false);
     }
