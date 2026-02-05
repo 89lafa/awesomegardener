@@ -295,10 +295,6 @@ export default function GardenPlanting() {
      year: new Date().getFullYear() + 1,
      season: 'Spring'
    });
-   const [autoOpenSeedling, setAutoOpenSeedling] = useState(searchParams.get('plant_seedling') ? {
-     seedling_source_id: searchParams.get('plant_seedling'),
-     seedling_source_type: searchParams.get('source_type') || 'container'
-   } : null);
 
   // CRITICAL: Page-level data cache loaded ONCE and passed to all modals
   const [sharedData, setSharedData] = useState({
