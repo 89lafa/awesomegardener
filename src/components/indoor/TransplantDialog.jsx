@@ -122,58 +122,30 @@ export default function TransplantDialog({
             planted_date: transplantDate
           });
         } else if (destination === 'outdoor_garden') {
-          // Create MyPlant record for outdoor garden
-          const garden = gardens.find(g => g.id === selectedGarden);
-          const structure = plotStructures.find(s => s.id === selectedStructure);
-          
-          if (garden) {
-            // Get or create garden season - ALWAYS use current year Spring if not set
-            const currentYear = new Date().getFullYear();
-            const seasonKey = `${currentYear}-Spring`;
-            
-            // Get existing garden season
-            let gardenSeason = null;
-            const seasons = await base44.entities.GardenSeason.filter({
-              garden_id: selectedGarden,
-              season_key: seasonKey
+          // Create MyPlant record as READY_TO_TRANSPLANT (not yet in a specific garden)
+          // Get or create plant profile if needed
+          let plantProfileId = cell.plant_profile_id;
+          if (!plantProfileId && cell.plant_type_id) {
+            // Create a simple profile for this plant
+            const profile = await base44.entities.PlantProfile.create({
+              plant_type_id: cell.plant_type_id,
+              common_name: cell.plant_type_name || 'Plant',
+              variety_name: cell.variety_name || 'Unknown'
             });
-            gardenSeason = seasons[0];
-            
-            // If no season exists, create it
-            if (!gardenSeason) {
-              gardenSeason = await base44.entities.GardenSeason.create({
-                garden_id: selectedGarden,
-                year: currentYear,
-                season: 'Spring',
-                season_key: seasonKey
-              });
-            }
-            
-            // Get or create plant profile if needed
-            let plantProfileId = cell.plant_profile_id;
-            if (!plantProfileId && cell.plant_type_id) {
-              // Create a simple profile for this plant
-              const profile = await base44.entities.PlantProfile.create({
-                plant_type_id: cell.plant_type_id,
-                common_name: cell.plant_type_name || 'Plant',
-                variety_name: cell.variety_name || 'Unknown'
-              });
-              plantProfileId = profile.id;
-            }
-            
-            // Create MyPlant - structure is optional (garden might not have beds yet)
-            if (plantProfileId) {
-              const myPlant = await base44.entities.MyPlant.create({
-                garden_season_id: gardenSeason.id,
-                plant_profile_id: plantProfileId,
-                name: cell.variety_name || cell.plant_type_name,
-                status: 'transplanted',
-                transplant_date: transplantDate,
-                notes: `Transplanted from tray${structure ? ' to ' + structure.name : ' to garden'}`,
-                location_name: structure?.name || `${garden.name} (unassigned)`,
-                garden_item_id: selectedStructure || null
-              });
-            }
+            plantProfileId = profile.id;
+          }
+          
+          // Create MyPlant with status "ready_to_transplant" - NO specific garden yet
+          // User will select garden later in the planting UI
+          if (plantProfileId) {
+            const myPlant = await base44.entities.MyPlant.create({
+              plant_profile_id: plantProfileId,
+              name: cell.variety_name || cell.plant_type_name,
+              status: 'ready_to_transplant',
+              transplant_date: transplantDate,
+              notes: `Transplanted from tray - ready to plant in garden`,
+              location_name: 'Ready to Plant'
+            });
           }
         }
       }
