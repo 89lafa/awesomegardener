@@ -24,12 +24,12 @@ export default function ReadyToPlantSeedlings() {
     try {
       setLoading(true);
       const user = await base44.auth.me();
-      
-      // Get all seedlings ready to plant (indoor sources)
+
+      // Get all seedlings ready to plant (indoor sources + ready_to_transplant MyPlants)
       const [containers, trayCells, myPlants] = await Promise.all([
         base44.entities.IndoorContainer.filter({ created_by: user.email, status: 'ready_to_transplant' }),
         base44.entities.TrayCell.filter({ created_by: user.email, status: 'ready_to_transplant' }),
-        base44.entities.MyPlant.filter({ created_by: user.email, source_type: 'indoor_transplant', status: 'transplanted' })
+        base44.entities.MyPlant.filter({ created_by: user.email, status: 'ready_to_transplant' })
       ]);
 
       const allSeedlings = [
@@ -40,7 +40,7 @@ export default function ReadyToPlantSeedlings() {
 
       setSeedlings(allSeedlings);
       setFilteredSeedlings(allSeedlings);
-      
+
       // Load display names
       await loadDisplayNames(allSeedlings);
     } catch (error) {
