@@ -122,7 +122,7 @@ export function PlantSeedsDialog({ isOpen, onClose, trayId, trayName, onSeedPlan
           }
         } else if (item.plant_profile_id && profileMap.has(item.plant_profile_id)) {
           const profile = profileMap.get(item.plant_profile_id);
-          varietyName = profile.custom_label;
+          varietyName = profile.variety_name || profile.custom_label;
           if (profile.plant_type_id && plantTypeMap.has(profile.plant_type_id)) {
             plantTypeName = plantTypeMap.get(profile.plant_type_id).common_name;
           }
@@ -191,7 +191,7 @@ export function PlantSeedsDialog({ isOpen, onClose, trayId, trayName, onSeedPlan
       } else if (selectedLot.plant_profile_id) {
         const profiles = await base44.entities.PlantProfile.filter({ id: selectedLot.plant_profile_id });
         if (profiles.length > 0) {
-          varietyName = profiles[0].custom_label;
+          varietyName = profiles[0].variety_name || profiles[0].custom_label;
           plantTypeId = profiles[0].plant_type_id;
           if (plantTypeId) {
             const plantTypes = await base44.entities.PlantType.filter({ id: plantTypeId });
