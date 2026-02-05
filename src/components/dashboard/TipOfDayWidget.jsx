@@ -22,11 +22,11 @@ export default function TipOfDayWidget() {
       const tips = await base44.entities.GrowingTip.filter({ is_active: true });
 
       // Filter relevant tips
-      const relevantTips = tips.filter(tip => {
+      const relevantTips = tips?.filter(tip => {
         const zoneMatch = !tip.applies_to_zones || 
                          tip.applies_to_zones.length === 0 ||
                          tip.applies_to_zones.includes('all') ||
-                         (user.growing_zone && tip.applies_to_zones.includes(user.growing_zone));
+                         (user?.growing_zone && tip.applies_to_zones.includes(user.growing_zone));
         
         const monthMatch = !tip.applies_to_months || 
                           tip.applies_to_months.length === 0 ||
@@ -34,7 +34,7 @@ export default function TipOfDayWidget() {
                           tip.applies_to_months.includes(currentMonth);
         
         return zoneMatch && monthMatch;
-      });
+      }) || [];
 
       // Random tip
       if (relevantTips.length > 0) {
@@ -42,6 +42,7 @@ export default function TipOfDayWidget() {
         setTip(randomTip);
       }
     } catch (error) {
+      // Silently fail - don't break dashboard
       console.error('Error loading tip:', error);
     } finally {
       setLoading(false);
