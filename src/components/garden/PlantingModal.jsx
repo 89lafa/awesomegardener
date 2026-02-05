@@ -25,6 +25,7 @@ import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import StashTypeSelector from './StashTypeSelector';
 import CatalogTypeSelector from './CatalogTypeSelector';
+import SeedlingTypeSelector from './SeedlingTypeSelector';
 import CompanionSuggestions from './CompanionSuggestions';
 import DiagonalPlantingPattern from './DiagonalPlantingPattern';
 
@@ -301,8 +302,21 @@ export default function PlantingModal({
         cell_span_cols: 1,
         cell_span_rows: 1,
         season_year: activeSeason || `${new Date().getFullYear()}-Spring`,
-        status: 'planned'
+        status: selectedPlant.source === 'seedling' ? 'transplanted' : 'planned'
         });
+
+      // If from seedling, mark TrayCell as transplanted
+      if (selectedPlant.source === 'seedling' && selectedPlant.available_cells?.length > 0) {
+        const cellToTransplant = selectedPlant.available_cells[0];
+        await base44.entities.TrayCell.update(cellToTransplant.id, {
+          status: 'transplanted',
+          transplanted_date: new Date().toISOString().split('T')[0],
+          transplanted_to_type: 'outdoor_garden',
+          transplanted_to_id: planting.id
+        });
+        // Remove this cell from available pool
+        selectedPlant.available_cells.shift();
+      }
 
       console.log('[PlantingModal] Created PlantInstance:', planting.id);
       
@@ -451,8 +465,27 @@ export default function PlantingModal({
           cell_span_cols: selectedPlant.spacing_cols,
           cell_span_rows: selectedPlant.spacing_rows,
           season_year: activeSeason || `${new Date().getFullYear()}-Spring`,
-          status: 'planned'
+          status: selectedPlant.source === 'seedling' ? 'transplanted' : 'planned'
         });
+
+        // If from seedling, mark TrayCell as transplanted
+        if (selectedPlant.source === 'seedling' && selectedPlant.available_cells?.length > 0) {
+          const cellToTransplant = selectedPlant.available_cells[0];
+          await base44.entities.TrayCell.update(cellToTransplant.id, {
+            status: 'transplanted',
+            transplanted_date: new Date().toISOString().split('T')[0],
+            transplanted_to_type: 'outdoor_garden',
+            transplanted_to_id: planting.id
+          });
+          // Remove this cell from available pool
+          selectedPlant.available_cells.shift();
+          
+          // If no more seedlings available, clear selection
+          if (selectedPlant.available_cells.length === 0) {
+            toast.success('All seedlings transplanted!');
+            setSelectedPlant(null);
+          }
+        }
 
         console.log('[PlantingModal] Created PlantInstance:', planting.id);
 
@@ -797,10 +830,11 @@ export default function PlantingModal({
               />
             )}
             <Tabs defaultValue="stash" className="flex-1 flex flex-col min-h-0 bg-white rounded-lg shadow-md border-2 border-gray-200 lg:shadow-none lg:border-0">
-              <TabsList className="w-full flex-shrink-0 grid grid-cols-3 h-10 lg:h-auto">
-                <TabsTrigger value="stash" className="text-xs lg:text-sm py-1.5 lg:py-2">From Stash</TabsTrigger>
-                <TabsTrigger value="plan" className="text-xs lg:text-sm py-1.5 lg:py-2">From Plan</TabsTrigger>
-                <TabsTrigger value="new" className="text-xs lg:text-sm py-1.5 lg:py-2">Add New</TabsTrigger>
+              <TabsList className="w-full flex-shrink-0 grid grid-cols-4 h-10 lg:h-auto">
+                <TabsTrigger value="stash" className="text-xs lg:text-sm py-1.5 lg:py-2">Stash</TabsTrigger>
+                <TabsTrigger value="seedlings" className="text-xs lg:text-sm py-1.5 lg:py-2">Seedlings</TabsTrigger>
+                <TabsTrigger value="plan" className="text-xs lg:text-sm py-1.5 lg:py-2">Plan</TabsTrigger>
+                <TabsTrigger value="new" className="text-xs lg:text-sm py-1.5 lg:py-2">New</TabsTrigger>
               </TabsList>
               
               <TabsContent value="stash" className="mt-2 lg:mt-4 flex-1 min-h-0 overflow-auto p-2 lg:p-0">
@@ -815,6 +849,20 @@ export default function PlantingModal({
                   stashPlants={stashPlants}
                   profiles={profiles}
                   varieties={varieties}
+                  plantTypes={plantTypes}
+                />
+              </TabsContent>
+
+              <TabsContent value="seedlings" className="mt-2 lg:mt-4 flex-1 min-h-0 overflow-auto p-2 lg:p-0">
+                <SeedlingTypeSelector
+                  onSelect={(plantData) => {
+                    setSelectedPlant(plantData);
+                    checkCompanionAndRotation(plantData);
+                    setShowCompanionSuggestions(true);
+                  }}
+                  selectedPlant={selectedPlant}
+                  getSpacingForPlant={getSpacingForPlant}
+                  getDefaultSpacing={getDefaultSpacing}
                   plantTypes={plantTypes}
                 />
               </TabsContent>
