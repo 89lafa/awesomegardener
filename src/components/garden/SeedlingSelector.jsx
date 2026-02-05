@@ -26,17 +26,15 @@ export default function SeedlingSelector({ isOpen, onClose, onSeedlingSelected }
       setLoading(true);
       const user = await base44.auth.me();
 
-      // Get all ready-to-transplant seedlings (indoor + outdoor ready)
-      const [containers, trayCells, myPlants] = await Promise.all([
+      // Get all ready-to-transplant seedlings (containers + tray cells)
+      const [containers, trayCells] = await Promise.all([
         base44.entities.IndoorContainer.filter({ created_by: user.email, status: 'ready_to_transplant' }),
-        base44.entities.TrayCell.filter({ created_by: user.email, status: 'ready_to_transplant' }),
-        base44.entities.MyPlant.filter({ created_by: user.email, status: 'ready_to_transplant' })
+        base44.entities.TrayCell.filter({ created_by: user.email, status: 'ready_to_transplant' })
       ]);
 
       const allSeedlings = [
         ...containers.map(c => ({ ...c, source_type: 'container', source_id: c.id })),
-        ...trayCells.map(c => ({ ...c, source_type: 'tray_cell', source_id: c.id })),
-        ...myPlants.map(mp => ({ ...mp, source_type: 'my_plant', source_id: mp.id }))
+        ...trayCells.map(c => ({ ...c, source_type: 'tray_cell', source_id: c.id }))
       ];
 
       setSeedlings(allSeedlings);
