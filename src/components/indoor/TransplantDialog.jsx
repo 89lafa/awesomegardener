@@ -124,35 +124,41 @@ export default function TransplantDialog({
         } else if (destination === 'outdoor_garden') {
           // Create MyPlant record for outdoor garden
           const structure = plotStructures.find(s => s.id === selectedStructure);
-          if (structure) {
-            const garden = gardens.find(g => g.id === selectedGarden);
+          const garden = gardens.find(g => g.id === selectedGarden);
+          
+          if (structure && garden) {
+            // Get season_key from garden's current_season_year (e.g., "2026-Spring")
+            const seasonKey = garden.current_season_year || `${new Date().getFullYear()}-Spring`;
             
-            // Get or create garden season
+            // Parse season key to get year and season
+            const [year, season] = seasonKey.split('-');
+            
+            // Get existing garden season
             let gardenSeason = null;
-            if (garden && garden.current_season_year) {
-              const seasons = await base44.entities.GardenSeason.filter({
+            const seasons = await base44.entities.GardenSeason.filter({
+              garden_id: selectedGarden,
+              season_key: seasonKey
+            });
+            gardenSeason = seasons[0];
+            
+            // If no season exists, create it
+            if (!gardenSeason) {
+              gardenSeason = await base44.entities.GardenSeason.create({
                 garden_id: selectedGarden,
-                season_year: garden.current_season_year
+                year: parseInt(year),
+                season: season || 'Spring',
+                season_key: seasonKey
               });
-              gardenSeason = seasons[0];
-              if (!gardenSeason) {
-                gardenSeason = await base44.entities.GardenSeason.create({
-                  garden_id: selectedGarden,
-                  season_year: garden.current_season_year,
-                  start_date: transplantDate
-                });
-              }
             }
             
+            // Create MyPlant with proper garden_season_id
             await base44.entities.MyPlant.create({
-              garden_season_id: gardenSeason?.id || '',
+              garden_season_id: gardenSeason.id,
               plant_profile_id: cell.plant_profile_id,
               name: cell.variety_name || cell.plant_type_name,
               status: 'transplanted',
               transplant_date: transplantDate,
-              notes: `Transplanted from tray to ${structure.name}. Source: ${cell.tray_name || 'tray'}`,
-              source_type: 'indoor_transplant',
-              source_tray_cell_id: cell.id,
+              notes: `Transplanted from tray to ${structure.name}`,
               location_name: structure.name,
               garden_item_id: selectedStructure
             });
