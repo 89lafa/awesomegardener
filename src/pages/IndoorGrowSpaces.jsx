@@ -225,19 +225,19 @@ export default function IndoorGrowSpaces() {
                 <div className="grid grid-cols-2 gap-2 mb-4">
                   <div className="bg-blue-50 rounded-lg p-2">
                     <p className="text-xs text-gray-600">Racks</p>
-                    <p className="text-lg font-semibold text-blue-700">{space.stats.racks}</p>
+                    <p className="text-lg font-semibold text-blue-700">{space.stats?.racks || 0}</p>
                   </div>
                   <div className="bg-green-50 rounded-lg p-2">
                     <p className="text-xs text-gray-600">Trays</p>
-                    <p className="text-lg font-semibold text-green-700">{space.stats.trays}</p>
+                    <p className="text-lg font-semibold text-green-700">{space.stats?.trays || 0}</p>
                   </div>
                   <div className="bg-purple-50 rounded-lg p-2">
                     <p className="text-xs text-gray-600">Active Seedlings</p>
-                    <p className="text-lg font-semibold text-purple-700">🌱 {space.stats.activeSeedlings}</p>
+                    <p className="text-lg font-semibold text-purple-700">🌱 {space.stats?.activeSeedlings || 0}</p>
                   </div>
                   <div className="bg-orange-50 rounded-lg p-2">
                     <p className="text-xs text-gray-600">Containers</p>
-                    <p className="text-lg font-semibold text-orange-700">🪴 {space.stats.containers}</p>
+                    <p className="text-lg font-semibold text-orange-700">🪴 {space.stats?.containers || 0}</p>
                   </div>
                 </div>
 

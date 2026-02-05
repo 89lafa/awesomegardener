@@ -66,13 +66,19 @@ function TrayCard({ tray, onMove }) {
     return '🟢';
   };
 
+  const handleTrayClick = (e) => {
+    e.stopPropagation();
+    e.preventDefault();
+    console.log('[TRAY CLICK] Navigating to tray:', tray.id, tray.name);
+    const url = `${createPageUrl('TrayDetail')}?id=${tray.id}`;
+    console.log('[TRAY CLICK] URL:', url);
+    navigate(url);
+  };
+
   return (
     <div className="relative group">
       <button
-        onClick={(e) => {
-          e.stopPropagation();
-          navigate(`${createPageUrl('TrayDetail')}?id=${tray.id}`);
-        }}
+        onClick={handleTrayClick}
         className={cn(
           "w-full p-3 border-2 rounded-lg transition-all text-left hover:shadow-md",
           getStatusColor()
