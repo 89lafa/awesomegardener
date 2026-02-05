@@ -132,15 +132,24 @@ export function PlantSeedsDialog({ isOpen, onClose, trayId, trayName, onSeedPlan
         if (!varietyName) {
           varietyName = item.variety_name || item.custom_label || item.name;
         }
+        if (!plantTypeName) {
+          plantTypeName = item.plant_type_name;
+        }
         
-        // Build final display name
-        if (varietyName && plantTypeName) {
+        // ALWAYS show both variety and type when possible
+        if (!varietyName && plantTypeName) {
+          // No variety name - use lot number or "Unknown" with type
+          const fallbackName = item.lot_number || item.custom_label || 'Unknown';
+          names[item.id] = `${fallbackName} - ${plantTypeName}`;
+        } else if (varietyName && plantTypeName) {
           names[item.id] = `${varietyName} - ${plantTypeName}`;
+        } else if (varietyName) {
+          names[item.id] = varietyName;
         } else {
-          names[item.id] = varietyName || plantTypeName || 'Unknown';
+          names[item.id] = plantTypeName || item.lot_number || item.custom_label || 'Unknown';
         }
       } catch (error) {
-        names[item.id] = item.variety_name || item.custom_label || item.name || 'Unknown';
+        names[item.id] = item.lot_number || item.custom_label || item.name || 'Unknown';
       }
     }
     
@@ -191,6 +200,14 @@ export function PlantSeedsDialog({ isOpen, onClose, trayId, trayName, onSeedPlan
             }
           }
         }
+      }
+      
+      // CRITICAL: Ensure we always have valid names - use fallbacks
+      if (!varietyName) {
+        varietyName = selectedLot.variety_name || selectedLot.custom_label || selectedLot.lot_number || 'Unknown';
+      }
+      if (!plantTypeName) {
+        plantTypeName = selectedLot.plant_type_name || 'Unknown';
       }
       
       // Adjust for timezone (-5 hours)
