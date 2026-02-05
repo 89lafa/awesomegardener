@@ -57,10 +57,14 @@ export default function GrowLogComponent({ targetId, targetType, compact = false
 
     setSubmitting(true);
     try {
+      // Adjust for timezone (-5 hours)
+      const now = new Date();
+      now.setHours(now.getHours() - 5);
+      
       const logEntry = {
         [targetType]: targetId,
         ...formData,
-        logged_at: new Date().toISOString()
+        logged_at: now.toISOString()
       };
       
       const newLog = await base44.entities.GrowLog.create(logEntry);
