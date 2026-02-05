@@ -261,16 +261,17 @@ function SpaceCard({ space, garden, activeSeason, seasonId, sharedData, autoOpen
       </CardContent>
       
       <PlantingModal
-        open={showPlantingModal}
-        onOpenChange={setShowPlantingModal}
-        item={pseudoItem}
-        itemType={space.space_type}
-        garden={garden}
-        activeSeason={activeSeason}
-        seasonId={seasonId}
-        onPlantingUpdate={handlePlantingUpdate}
-        sharedData={sharedData}
-      />
+         open={showPlantingModal}
+         onOpenChange={setShowPlantingModal}
+         item={pseudoItem}
+         itemType={space.space_type}
+         garden={garden}
+         activeSeason={activeSeason}
+         seasonId={seasonId}
+         onPlantingUpdate={handlePlantingUpdate}
+         sharedData={sharedData}
+         autoOpenSeedling={autoOpenSeedling}
+       />
     </Card>
   );
 }
