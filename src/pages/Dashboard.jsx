@@ -270,16 +270,35 @@ export default function Dashboard() {
 
   return (
     <div className="space-y-6 max-w-6xl">
-        {/* Header */}
-        <div>
-          <h1 className="text-3xl font-bold" style={{ color: 'var(--text-primary)' }}>
-            {greeting}, {user?.nickname || user?.full_name?.split(' ')[0] || 'Gardener'}! 🌅
-          </h1>
-          <p style={{ color: 'var(--text-muted)' }} className="mt-1">
-            {format(new Date(), 'MMMM d, yyyy')}
-            {user?.zone && ` • Zone ${user.zone}`}
-            {user?.last_frost_date && ` • Last frost: ${format(new Date(user.last_frost_date), 'MMM d')}`}
-          </p>
+        {/* Header with Sir Sproutington */}
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <h1 className="text-3xl font-bold" style={{ color: 'var(--text-primary)' }}>
+              {greeting}, {user?.nickname || user?.full_name?.split(' ')[0] || 'Gardener'}! 🌅
+            </h1>
+            <p style={{ color: 'var(--text-muted)' }} className="mt-1">
+              {format(new Date(), 'MMMM d, yyyy')}
+              {user?.zone && ` • Zone ${user.zone}`}
+              {user?.last_frost_date && ` • Last frost: ${format(new Date(user.last_frost_date), 'MMM d')}`}
+            </p>
+          </div>
+          
+          {/* Sir Sproutington Mascot */}
+          <div className="hidden md:flex items-start gap-3 flex-shrink-0">
+            <div className="relative">
+              <div className="absolute -top-2 -left-16 bg-white dark:bg-gray-800 rounded-lg shadow-lg px-3 py-2 whitespace-nowrap">
+                <p className="text-xs font-medium text-emerald-700 dark:text-emerald-400">
+                  Welcome to your garden!<br />I'm Sir Sproutington. 🌱
+                </p>
+                <div className="absolute bottom-2 right-[-6px] w-3 h-3 bg-white dark:bg-gray-800 transform rotate-45"></div>
+              </div>
+              <img 
+                src="https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/69574c64117f491d092417ec/40f1c1296_SirSproutington.png"
+                alt="Sir Sproutington"
+                className="w-24 h-24 object-contain"
+              />
+            </div>
+          </div>
         </div>
 
       {/* Gamification Widgets Row */}
