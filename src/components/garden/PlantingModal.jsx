@@ -7,7 +7,7 @@ import {
   DialogTitle,
   DialogFooter,
 } from '@/components/ui/dialog';
-import { useMobile } from "@/components/ui/use-mobile";
+import { useIsMobile } from "@/components/ui/use-mobile";
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -39,7 +39,7 @@ export default function PlantingModal({
   seasonId,
   sharedData // CRITICAL: Pre-loaded data from parent page to prevent rate limits
 }) {
-  const { isMobile } = useMobile();
+  const isMobile = useIsMobile();
   const [plantings, setPlantings] = useState([]);
   const [stashPlants, setStashPlants] = useState([]);
   const [profiles, setProfiles] = useState({});
