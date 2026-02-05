@@ -22,10 +22,14 @@ export function PlantSeedsDialog({ isOpen, onClose, trayId, trayName, onSeedPlan
   const [loading, setLoading] = useState(false);
   const [activeTab, setActiveTab] = useState('stash');
   const [displayNames, setDisplayNames] = useState({});
+  const [plantedSummary, setPlantedSummary] = useState([]);
 
   useEffect(() => {
     if (isOpen) {
       loadData();
+      setPlantedSummary([]);
+      setSelectedCells([]);
+      setSelectedLot(null);
     }
   }, [isOpen]);
 
@@ -237,17 +241,24 @@ export function PlantSeedsDialog({ isOpen, onClose, trayId, trayName, onSeedPlan
         }
       }
 
-      // Update tray status
-      await base44.entities.SeedTray.update(trayId, {
-        status: 'seeded',
-        start_date: adjustedDate
+      // Add to planted summary (track multiple plantings in session)
+      const summaryKey = `${selectedLot.id}-${varietyName}`;
+      setPlantedSummary(prev => {
+        const existing = prev.find(p => p.key === summaryKey);
+        if (existing) {
+          return prev.map(p => p.key === summaryKey ? {...p, count: p.count + selectedCells.length} : p);
+        }
+        return [...prev, { key: summaryKey, varietyName, count: selectedCells.length }];
       });
 
-      toast.success(`Planted ${selectedCells.length} cells!`);
-      onSeedPlanted?.();
-      onClose();
+      toast.success(`Planted ${selectedCells.length} ${varietyName} cells!`);
+      
+      // Clear selection for next planting WITHOUT closing dialog
       setSelectedCells([]);
       setSelectedLot(null);
+      
+      // Update tray status only once (on final close)
+      onSeedPlanted?.();
     } catch (error) {
       console.error('Error planting seeds:', error);
       toast.error('Failed to plant seeds');
@@ -423,6 +434,20 @@ export function PlantSeedsDialog({ isOpen, onClose, trayId, trayName, onSeedPlan
               </TabsContent>
               </Tabs>
 
+            {/* Planted Summary */}
+            {plantedSummary.length > 0 && (
+              <div className="bg-emerald-50 border border-emerald-300 rounded-lg p-3">
+                <p className="text-sm font-medium text-emerald-900 mb-2">✓ Planted This Session:</p>
+                <div className="space-y-1">
+                  {plantedSummary.map((item, idx) => (
+                    <p key={idx} className="text-sm text-emerald-800">
+                      {item.count} × {item.varietyName}
+                    </p>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {/* Select Cells */}
             <div>
               <label className="block text-sm font-medium mb-2">
@@ -447,8 +472,30 @@ export function PlantSeedsDialog({ isOpen, onClose, trayId, trayName, onSeedPlan
             </div>
 
             <div className="flex gap-2 pt-4">
-              <Button onClick={onClose} variant="outline" className="flex-1">
-                Cancel
+              <Button 
+                onClick={() => {
+                  // Update tray status before closing
+                  const updateTray = async () => {
+                    try {
+                      const now = new Date();
+                      now.setHours(now.getHours() - 5);
+                      const adjustedDate = now.toISOString().split('T')[0];
+                      if (plantedSummary.length > 0) {
+                        await base44.entities.SeedTray.update(trayId, {
+                          status: 'seeded',
+                          start_date: adjustedDate
+                        });
+                      }
+                    } catch (error) {
+                      console.error('Error updating tray:', error);
+                    }
+                  };
+                  updateTray().then(() => onClose());
+                }} 
+                variant="outline" 
+                className="flex-1"
+              >
+                Done
               </Button>
               <Button
                 onClick={handlePlantSeeds}
