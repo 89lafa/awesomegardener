@@ -291,9 +291,13 @@ export default function GardenPlanting() {
   const [rateLimitError, setRateLimitError] = useState(null);
   const [retrying, setRetrying] = useState(false);
   const [newSeasonData, setNewSeasonData] = useState({
-    year: new Date().getFullYear() + 1,
-    season: 'Spring'
-  });
+     year: new Date().getFullYear() + 1,
+     season: 'Spring'
+   });
+   const [autoOpenSeedling, setAutoOpenSeedling] = useState(searchParams.get('plant_seedling') ? {
+     seedling_source_id: searchParams.get('plant_seedling'),
+     seedling_source_type: searchParams.get('source_type') || 'container'
+   } : null);
 
   // CRITICAL: Page-level data cache loaded ONCE and passed to all modals
   const [sharedData, setSharedData] = useState({
