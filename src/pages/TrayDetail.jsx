@@ -50,6 +50,22 @@ export default function TrayDetail() {
 
       const currentTray = trayData[0];
       
+      // Ensure all tray cells exist (fix missing cells with question marks)
+      const expectedCells = currentTray.total_cells || (currentTray.cells_rows * currentTray.cells_cols);
+      if (cellsData.length < expectedCells) {
+        try {
+          await base44.functions.invoke('ensureTrayCells', { trayId });
+          // Reload cells after creating missing ones
+          const refreshedCells = await base44.entities.TrayCell.filter({ tray_id: trayId }, 'cell_number');
+          setCells(refreshedCells);
+        } catch (error) {
+          console.error('Error ensuring cells:', error);
+          setCells(cellsData);
+        }
+      } else {
+        setCells(cellsData);
+      }
+      
       // Load location hierarchy: Shelf -> Rack -> Space
       let locationPath = currentTray.name;
       if (currentTray.shelf_id) {
@@ -64,7 +80,6 @@ export default function TrayDetail() {
       }
 
       setTray({...currentTray, _locationPath: locationPath});
-      setCells(cellsData);
     } catch (error) {
       console.error('Error loading tray:', error);
       toast.error('Failed to load tray');
