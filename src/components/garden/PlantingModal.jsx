@@ -82,10 +82,14 @@ export default function PlantingModal({
   const plantingPattern = item.metadata?.planting_pattern || 'square_foot';
 
   useEffect(() => {
-    if (open && item) {
-      loadData();
-    }
-  }, [open, item, activeSeason]);
+     if (open && item) {
+       loadData();
+       // Auto-load seedling if passed in from URL params
+       if (autoOpenSeedling) {
+         setShowSeedlingSelector(true);
+       }
+     }
+   }, [open, item, activeSeason, autoOpenSeedling]);
 
   useEffect(() => {
     if (plantings.length > 0) {
