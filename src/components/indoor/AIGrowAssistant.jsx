@@ -72,18 +72,45 @@ export default function AIGrowAssistant({ onClose, context }) {
     setProcessing(true);
     
     try {
-      // For now, show a simple response
-      // In production, call an API endpoint that uses Claude to parse
-      const response = {
+      // Use LLM to parse the natural language command
+      const parseResponse = await base44.integrations.Core.InvokeLLM({
+        prompt: `Parse this gardening command and extract action details:
+"${text}"
+
+Return a JSON object with:
+{
+  "action": "plant_seeds" | "transplant" | "mark_germinated" | "query",
+  "details": ["detail1", "detail2"],
+  "plantName": "variety name if planting",
+  "quantity": number or null,
+  "location": "rack/shelf/tray reference if applicable",
+  "success": true
+}
+
+Be strict with JSON format.`,
+        response_json_schema: {
+          type: 'object',
+          properties: {
+            action: { type: 'string' },
+            details: { type: 'array', items: { type: 'string' } },
+            plantName: { type: 'string' },
+            quantity: { type: ['integer', 'null'] },
+            location: { type: 'string' },
+            success: { type: 'boolean' }
+          }
+        }
+      });
+      
+      setAiResponse({
         success: true,
         message: `Processing: "${text}"`,
-        action: 'parse',
-        details: ['Ready to execute this command'],
-        confirmation: 'Command understood. Ready to proceed.'
-      };
-      
-      setAiResponse(response);
+        action: 'execute',
+        commandData: parseResponse,
+        details: parseResponse.details || ['Ready to execute this command'],
+        confirmation: `Will ${parseResponse.action}: ${(parseResponse.details || []).join(', ')}`
+      });
     } catch (error) {
+      console.error('Error parsing command:', error);
       setAiResponse({
         success: false,
         message: 'Sorry, I couldn\'t understand that command.',
@@ -172,6 +199,7 @@ export default function AIGrowAssistant({ onClose, context }) {
                   className="flex-1 bg-emerald-600 hover:bg-emerald-700 gap-2"
                   onClick={async () => {
                     try {
+                      await executeCommand(aiResponse.commandData);
                       toast.success('Command executed!');
                       setAiResponse(null);
                       setTranscript('');
