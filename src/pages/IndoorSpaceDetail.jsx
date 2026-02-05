@@ -18,6 +18,7 @@ import { useNavigate } from 'react-router-dom';
 import AIGrowAssistant from '@/components/indoor/AIGrowAssistant';
 import GrowLogComponent from '@/components/indoor/GrowLogComponent';
 import { AddRackDialog } from '@/components/indoor/AddRackDialog';
+import EditRackDialog from '@/components/indoor/EditRackDialog';
 import { AddTrayDialog } from '@/components/indoor/AddTrayDialog';
 import { AddContainerDialog } from '@/components/indoor/AddContainerDialog';
 import { PlantSeedsDialog } from '@/components/indoor/PlantSeedsDialog';
@@ -44,6 +45,8 @@ export default function IndoorSpaceDetail() {
   const [selectedTray, setSelectedTray] = useState(null);
   const [showMoveTray, setShowMoveTray] = useState(false);
   const [trayToMove, setTrayToMove] = useState(null);
+  const [showEditRack, setShowEditRack] = useState(false);
+  const [rackToEdit, setRackToEdit] = useState(null);
 
   useEffect(() => {
     if (spaceId) {
@@ -199,11 +202,18 @@ export default function IndoorSpaceDetail() {
                 return (
                   <Card key={rack.id} className="p-6">
                     <div className="flex items-start justify-between mb-4">
-                      <div>
+                      <div className="flex-1">
                         <h3 className="font-semibold" style={{ color: 'var(--text-primary)' }}>{rack.name}</h3>
                         <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
                           {rack.width_ft}ft × {rack.depth_ft}ft • {rack.num_shelves} shelves
                         </p>
+                        {(rack.temperature || rack.humidity) && (
+                          <p className="text-sm mt-1 font-medium text-blue-700">
+                            {rack.temperature && `${rack.temperature}°F`}
+                            {rack.temperature && rack.humidity && ' • '}
+                            {rack.humidity && `${rack.humidity}% humidity`}
+                          </p>
+                        )}
                         {rack.notes && (
                           <p className="text-xs text-gray-500 mt-1 flex items-center gap-1">
                             <FileText className="w-3 h-3" />
@@ -211,6 +221,18 @@ export default function IndoorSpaceDetail() {
                           </p>
                         )}
                       </div>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => {
+                          setRackToEdit(rack);
+                          setShowEditRack(true);
+                        }}
+                        className="gap-1"
+                      >
+                        <Edit className="w-3 h-3" />
+                        Edit
+                      </Button>
                     </div>
 
                     {/* Shelves */}
@@ -411,6 +433,27 @@ export default function IndoorSpaceDetail() {
             loadSpaceData();
             setShowMoveTray(false);
             setTrayToMove(null);
+          }}
+        />
+      )}
+
+      {rackToEdit && (
+        <EditRackDialog
+          isOpen={showEditRack}
+          onClose={() => {
+            setShowEditRack(false);
+            setRackToEdit(null);
+          }}
+          rack={rackToEdit}
+          onRackUpdated={() => {
+            loadSpaceData();
+            setShowEditRack(false);
+            setRackToEdit(null);
+          }}
+          onRackDeleted={() => {
+            loadSpaceData();
+            setShowEditRack(false);
+            setRackToEdit(null);
           }}
         />
       )}
