@@ -126,6 +126,8 @@ export default function TransplantDialog({
           const structure = plotStructures.find(s => s.id === selectedStructure);
           const garden = gardens.find(g => g.id === selectedGarden);
           
+          console.log('[TransplantDialog] Creating MyPlant - structure:', structure?.name, 'garden:', garden?.name);
+          
           if (structure && garden) {
             // Get season_key from garden's current_season_year (e.g., "2026-Spring")
             const seasonKey = garden.current_season_year || `${new Date().getFullYear()}-Spring`;
@@ -141,27 +143,45 @@ export default function TransplantDialog({
             });
             gardenSeason = seasons[0];
             
+            console.log('[TransplantDialog] GardenSeason found:', gardenSeason?.id);
+            
             // If no season exists, create it
             if (!gardenSeason) {
+              console.log('[TransplantDialog] Creating new GardenSeason');
               gardenSeason = await base44.entities.GardenSeason.create({
                 garden_id: selectedGarden,
                 year: parseInt(year),
                 season: season || 'Spring',
                 season_key: seasonKey
               });
+              console.log('[TransplantDialog] Created GardenSeason:', gardenSeason?.id);
             }
             
             // Create MyPlant with proper garden_season_id
-            await base44.entities.MyPlant.create({
-              garden_season_id: gardenSeason.id,
+            console.log('[TransplantDialog] About to create MyPlant with:', {
+              garden_season_id: gardenSeason?.id,
               plant_profile_id: cell.plant_profile_id,
-              name: cell.variety_name || cell.plant_type_name,
-              status: 'transplanted',
-              transplant_date: transplantDate,
-              notes: `Transplanted from tray to ${structure.name}`,
-              location_name: structure.name,
-              garden_item_id: selectedStructure
+              name: cell.variety_name || cell.plant_type_name
             });
+            
+            try {
+              const myPlant = await base44.entities.MyPlant.create({
+                garden_season_id: gardenSeason.id,
+                plant_profile_id: cell.plant_profile_id,
+                name: cell.variety_name || cell.plant_type_name,
+                status: 'transplanted',
+                transplant_date: transplantDate,
+                notes: `Transplanted from tray to ${structure.name}`,
+                location_name: structure.name,
+                garden_item_id: selectedStructure
+              });
+              console.log('[TransplantDialog] MyPlant created successfully:', myPlant?.id);
+            } catch (err) {
+              console.error('[TransplantDialog] MyPlant creation failed:', err);
+              throw err;
+            }
+          } else {
+            console.log('[TransplantDialog] Missing structure or garden - skipping MyPlant');
           }
         }
       }
