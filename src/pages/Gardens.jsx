@@ -329,12 +329,12 @@ export default function Gardens() {
                           Layout
                         </Button>
                       </Link>
-                      <Link to={createPageUrl('GardenPlanting') + `?gardenId=${garden.id}`}>
-                        <Button size="sm" variant="secondary">
-                          <Sprout className="w-4 h-4 mr-1" />
-                          Plant
-                        </Button>
-                      </Link>
+                      <Link to={createPageUrl('GardenPlanting') + `?gardenId=${garden.id}${searchParams.get('plant_seedling') ? `&plant_seedling=${searchParams.get('plant_seedling')}&source_type=${searchParams.get('source_type')}` : ''}`}>
+                         <Button size="sm" variant="secondary">
+                           <Sprout className="w-4 h-4 mr-1" />
+                           Plant
+                         </Button>
+                       </Link>
                     </div>
 
                     {/* Privacy Badge */}
