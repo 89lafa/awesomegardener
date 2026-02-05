@@ -162,6 +162,11 @@ export function PlantSeedsDialog({ isOpen, onClose, trayId, trayName, onSeedPlan
         }
       }
       
+      // Adjust for timezone (-5 hours)
+      const now = new Date();
+      now.setHours(now.getHours() - 5);
+      const adjustedDate = now.toISOString().split('T')[0];
+
       // Update selected cells with cached names
       for (const cellNum of selectedCells) {
         const cell = allCells.find(c => c.cell_number === cellNum);
@@ -174,7 +179,7 @@ export function PlantSeedsDialog({ isOpen, onClose, trayId, trayName, onSeedPlan
             variety_name: varietyName,
             plant_type_name: plantTypeName,
             status: 'seeded',
-            seeded_date: new Date().toISOString().split('T')[0]
+            seeded_date: adjustedDate
           });
         }
       }
@@ -182,7 +187,7 @@ export function PlantSeedsDialog({ isOpen, onClose, trayId, trayName, onSeedPlan
       // Update tray status
       await base44.entities.SeedTray.update(trayId, {
         status: 'seeded',
-        start_date: new Date().toISOString().split('T')[0]
+        start_date: adjustedDate
       });
 
       toast.success(`Planted ${selectedCells.length} cells!`);

@@ -26,7 +26,11 @@ export default function TransplantDialog({
   const [selectedSpace, setSelectedSpace] = useState('');
   const [selectedGarden, setSelectedGarden] = useState('');
   const [selectedStructure, setSelectedStructure] = useState('');
-  const [transplantDate, setTransplantDate] = useState(new Date().toISOString().split('T')[0]);
+  const [transplantDate, setTransplantDate] = useState(() => {
+    const now = new Date();
+    now.setHours(now.getHours() - 5);
+    return now.toISOString().split('T')[0];
+  });
   const [notes, setNotes] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -132,25 +136,28 @@ export default function TransplantDialog({
       const trays = await base44.entities.SeedTray.filter({ id: trayId });
       const trayName = trays[0]?.name || 'Tray';
       
-      // Get variety details for logging
+      // Adjust for timezone (-5 hours)
+      const now = new Date();
+      now.setHours(now.getHours() - 5);
+      const adjustedTimestamp = now.toISOString();
+
+      // Get variety info from first cell for log message
       const firstCell = selectedCells[0];
       const varietyInfo = firstCell.variety_name && firstCell.plant_type_name 
         ? `${firstCell.plant_type_name} - ${firstCell.variety_name}`
-        : firstCell.variety_name || firstCell.plant_type_name || 'Unknown variety';
-      
-      const adjustedTimestamp = new Date(Date.now() - 5 * 60 * 60 * 1000).toISOString();
-      
-      // Create tray-level log entry
+        : firstCell.variety_name || 'Unknown variety';
+
+      // Create tray-level log entry with variety info
       await base44.entities.GrowLog.create({
         tray_id: trayId,
         log_type: 'action',
-        title: `Transplanted ${selectedCells.length} seedlings`,
-        content: `${varietyInfo} ${notes ? '- ' + notes : ''} | Moved to ${destination === 'indoor_container' ? 'containers' : destination === 'outdoor_garden' ? 'garden' : 'discarded'}`,
+        title: `Transplanted ${selectedCells.length} ${varietyInfo} seedlings`,
+        content: notes || `Moved ${selectedCells.length}x ${varietyInfo} to ${destination === 'indoor_container' ? 'containers' : destination === 'outdoor_garden' ? 'garden' : 'discarded'}`,
         logged_at: adjustedTimestamp
       });
       
       // Create space-level global log entry showing what/where
-      if (destination === 'indoor_container') {
+      if (destination === 'indoor_container' && selectedCells.length > 0) {
         await base44.entities.GrowLog.create({
           indoor_space_id: selectedSpace,
           log_type: 'action',
