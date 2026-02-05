@@ -342,7 +342,7 @@ export function PlantSeedsDialog({ isOpen, onClose, trayId, trayName, onSeedPlan
                          }`}
                         >
                          <p className="font-medium text-sm">
-                           {item.variety_name || 'Unnamed Variety'}
+                           {displayNames[item.id] || item.variety_name || 'Unnamed Variety'}
                          </p>
                          <p className="text-xs text-gray-600 mt-1">
                            from "{item.source_list}"
