@@ -288,6 +288,17 @@ export default function PlantingModal({
       const plantFamily = plantType?.plant_family_id || selectedPlant.plant_family;
 
       console.log('[PlantingModal] Creating PlantInstance in slot', slotIdx, 'for bed', item.id);
+
+      // Build seedling metadata if from seedling
+      const seedlingData = selectedPlant.seedling_source_id ? {
+        growing_method: 'SEEDLING_TRANSPLANT',
+        seedling_source_id: selectedPlant.seedling_source_id,
+        seedling_source_type: selectedPlant.seedling_source_type,
+        seedling_age_days: selectedPlant.seedling_age_days,
+        seedling_location: selectedPlant.seedling_location,
+        actual_transplant_date: new Date().toISOString().split('T')[0]
+      } : {};
+
       const planting = await base44.entities.PlantInstance.create({
         garden_id: garden.id,
         bed_id: item.id,
@@ -303,7 +314,8 @@ export default function PlantingModal({
         cell_span_cols: 1,
         cell_span_rows: 1,
         season_year: activeSeason || `${new Date().getFullYear()}-Spring`,
-        status: 'planned'
+        status: 'planned',
+        ...seedlingData
         });
 
       console.log('[PlantingModal] Created PlantInstance:', planting.id);
