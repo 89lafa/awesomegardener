@@ -83,12 +83,8 @@ export default function PlantingModal({
   useEffect(() => {
      if (open && item) {
        loadData();
-       // Auto-load seedling if passed in from URL params
-       if (autoOpenSeedling) {
-         setShowSeedlingSelector(true);
-       }
      }
-   }, [open, item, activeSeason, autoOpenSeedling]);
+   }, [open, item, activeSeason]);
 
   useEffect(() => {
     if (plantings.length > 0) {
