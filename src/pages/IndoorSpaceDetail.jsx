@@ -69,7 +69,10 @@ function TrayCard({ tray, onMove }) {
   return (
     <div className="relative group">
       <button
-        onClick={() => navigate(createPageUrl('TrayDetail') + `?id=${tray.id}`)}
+        onClick={(e) => {
+          e.stopPropagation();
+          navigate(`${createPageUrl('TrayDetail')}?id=${tray.id}`);
+        }}
         className={cn(
           "w-full p-3 border-2 rounded-lg transition-all text-left hover:shadow-md",
           getStatusColor()
