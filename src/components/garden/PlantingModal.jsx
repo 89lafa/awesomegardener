@@ -27,6 +27,7 @@ import StashTypeSelector from './StashTypeSelector';
 import CatalogTypeSelector from './CatalogTypeSelector';
 import CompanionSuggestions from './CompanionSuggestions';
 import DiagonalPlantingPattern from './DiagonalPlantingPattern';
+import SeedlingSelector from './SeedlingSelector';
 
 export default function PlantingModal({ 
   open, 
@@ -57,6 +58,7 @@ export default function PlantingModal({
   const [selectedPlanItem, setSelectedPlanItem] = useState(null);
   const [cropPlans, setCropPlans] = useState([]);
   const [showCompanionSuggestions, setShowCompanionSuggestions] = useState(false);
+  const [showSeedlingSelector, setShowSeedlingSelector] = useState(false);
   
   const [newPlant, setNewPlant] = useState({
     variety_id: '',
@@ -797,9 +799,10 @@ export default function PlantingModal({
               />
             )}
             <Tabs defaultValue="stash" className="flex-1 flex flex-col min-h-0 bg-white rounded-lg shadow-md border-2 border-gray-200 lg:shadow-none lg:border-0">
-              <TabsList className="w-full flex-shrink-0 grid grid-cols-3 h-10 lg:h-auto">
+              <TabsList className="w-full flex-shrink-0 grid grid-cols-4 h-10 lg:h-auto">
                 <TabsTrigger value="stash" className="text-xs lg:text-sm py-1.5 lg:py-2">From Stash</TabsTrigger>
                 <TabsTrigger value="plan" className="text-xs lg:text-sm py-1.5 lg:py-2">From Plan</TabsTrigger>
+                <TabsTrigger value="seedlings" className="text-xs lg:text-sm py-1.5 lg:py-2">Seedlings</TabsTrigger>
                 <TabsTrigger value="new" className="text-xs lg:text-sm py-1.5 lg:py-2">Add New</TabsTrigger>
               </TabsList>
               
@@ -873,7 +876,25 @@ export default function PlantingModal({
                   </div>
                 )}
               </TabsContent>
-              
+
+              <TabsContent value="seedlings" className="mt-2 lg:mt-4 flex-1 min-h-0 overflow-auto p-2 lg:p-0">
+                <Button
+                  onClick={() => setShowSeedlingSelector(true)}
+                  className="w-full bg-emerald-600 hover:bg-emerald-700 mb-3"
+                >
+                  <Plus className="w-4 h-4 mr-2" />
+                  Select Seedling
+                </Button>
+                {selectedPlant?.seedling_source_id && (
+                  <div className="p-3 bg-emerald-50 rounded-lg border border-emerald-200">
+                    <p className="text-xs text-emerald-600 mb-1">Selected Seedling:</p>
+                    <p className="font-medium text-sm text-emerald-900">{selectedPlant.display_name}</p>
+                    <p className="text-xs text-emerald-700 mt-1">📍 {selectedPlant.seedling_location}</p>
+                    <p className="text-xs text-emerald-700">📅 Age: {selectedPlant.seedling_age_days}d</p>
+                  </div>
+                )}
+              </TabsContent>
+
               <TabsContent value="new" className="mt-2 lg:mt-4 flex-1 overflow-auto p-2 lg:p-0">
                 <CatalogTypeSelector
                   onSelect={(plantData) => {
