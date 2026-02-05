@@ -46,7 +46,22 @@ export default function TrayDetail() {
         return;
       }
 
-      setTray(trayData[0]);
+      const currentTray = trayData[0];
+      
+      // Load location hierarchy: Shelf -> Rack -> Space
+      let locationPath = currentTray.name;
+      if (currentTray.shelf_id) {
+        const [shelf] = await base44.entities.GrowShelf.filter({ id: currentTray.shelf_id });
+        if (shelf?.rack_id) {
+          const [rack] = await base44.entities.GrowRack.filter({ id: shelf.rack_id });
+          if (rack?.indoor_space_id) {
+            const [space] = await base44.entities.IndoorGrowSpace.filter({ id: rack.indoor_space_id });
+            locationPath = `${space?.name || 'Unknown Space'} - ${rack?.name || 'Unknown Rack'} - ${shelf?.name || 'Unknown Shelf'} - ${currentTray.name}`;
+          }
+        }
+      }
+
+      setTray({...currentTray, _locationPath: locationPath});
       setCells(cellsData);
     } catch (error) {
       console.error('Error loading tray:', error);
@@ -145,7 +160,7 @@ export default function TrayDetail() {
             <ArrowLeft className="w-5 h-5" />
           </Button>
           <div>
-            <h1 className="text-2xl font-bold">{tray.name}</h1>
+            <h1 className="text-2xl font-bold">{tray._locationPath || tray.name}</h1>
             <p className="text-sm text-gray-600">
               {tray.insert_type} • {tray.cells_rows}×{tray.cells_cols} grid
             </p>

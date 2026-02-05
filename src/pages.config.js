@@ -97,6 +97,7 @@ import GrowingProfile from './pages/GrowingProfile';
 import HarvestLog from './pages/HarvestLog';
 import ImageSubmissions from './pages/ImageSubmissions';
 import IndoorGrowSpaces from './pages/IndoorGrowSpaces';
+import IndoorSpaceDetail from './pages/IndoorSpaceDetail';
 import IssuesLog from './pages/IssuesLog';
 import Landing from './pages/Landing';
 import Leaderboard from './pages/Leaderboard';
@@ -133,13 +134,12 @@ import ShipAudit from './pages/ShipAudit';
 import StreakCalendar from './pages/StreakCalendar';
 import SubcategoryMapping from './pages/SubcategoryMapping';
 import Tracking from './pages/Tracking';
+import TrayDetail from './pages/TrayDetail';
 import UserReports from './pages/UserReports';
 import Users from './pages/Users';
 import VarietyReviewQueue from './pages/VarietyReviewQueue';
 import ViewVariety from './pages/ViewVariety';
 import ZoneMap from './pages/ZoneMap';
-import IndoorSpaceDetail from './pages/IndoorSpaceDetail';
-import TrayDetail from './pages/TrayDetail';
 import __Layout from './Layout.jsx';
 
 
@@ -194,6 +194,7 @@ export const PAGES = {
     "HarvestLog": HarvestLog,
     "ImageSubmissions": ImageSubmissions,
     "IndoorGrowSpaces": IndoorGrowSpaces,
+    "IndoorSpaceDetail": IndoorSpaceDetail,
     "IssuesLog": IssuesLog,
     "Landing": Landing,
     "Leaderboard": Leaderboard,
@@ -230,13 +231,12 @@ export const PAGES = {
     "StreakCalendar": StreakCalendar,
     "SubcategoryMapping": SubcategoryMapping,
     "Tracking": Tracking,
+    "TrayDetail": TrayDetail,
     "UserReports": UserReports,
     "Users": Users,
     "VarietyReviewQueue": VarietyReviewQueue,
     "ViewVariety": ViewVariety,
     "ZoneMap": ZoneMap,
-    "IndoorSpaceDetail": IndoorSpaceDetail,
-    "TrayDetail": TrayDetail,
 }
 
 export const pagesConfig = {
