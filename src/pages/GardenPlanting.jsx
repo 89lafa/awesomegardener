@@ -847,7 +847,7 @@ export default function GardenPlanting() {
            <div className="grid gap-6" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))' }}>
              {plantingSpaces
                .filter(space => spaceTypeFilter === 'all' || space.space_type === spaceTypeFilter)
-               .map((space, idx) => (
+               .map((space) => (
                  <SpaceCard 
                    key={space.id} 
                    space={space} 
@@ -855,11 +855,10 @@ export default function GardenPlanting() {
                    activeSeason={activeSeason}
                    seasonId={seasonId}
                    sharedData={sharedData}
-                   autoOpenSeedling={idx === 0 ? autoOpenSeedling : null}
                  />
                ))}
-           </div>
-         )}
+               </div>
+               )}
 
         {/* Add Season Dialog */}
         <Dialog open={showAddSeason} onOpenChange={setShowAddSeason}>
