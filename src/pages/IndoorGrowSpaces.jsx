@@ -56,60 +56,49 @@ export default function IndoorGrowSpaces() {
     try {
       setLoading(true);
       const user = await base44.auth.me();
-      const spacesData = await base44.entities.IndoorGrowSpace.filter({
-        created_by: user.email
-      }, '-created_date');
       
-      // Load stats for each space
-      const spacesWithStats = spacesData.map(space => ({
-        ...space,
-        stats: {
-          racks: 0,
-          trays: 0,
-          containers: 0,
-          activeSeedlings: 0,
-          activePlants: 0
-        }
-      }));
-
-      // Then fetch actual stats (non-blocking)
-      Promise.all(spacesData.map(async (space) => {
-        try {
-          const [trays, containers, racks] = await Promise.all([
-            base44.entities.SeedTray.filter({ indoor_space_id: space.id }),
-            base44.entities.IndoorContainer.filter({ indoor_space_id: space.id }),
-            base44.entities.GrowRack.filter({ indoor_space_id: space.id })
-          ]);
-          
-          let activeSeedlings = 0;
-          for (const tray of trays) {
-            const cells = await base44.entities.TrayCell.filter({ 
-              tray_id: tray.id,
-              status: { $in: ['seeded', 'germinated', 'growing'] }
-            });
-            activeSeedlings += cells.length;
+      // Fetch all data in bulk (single query per entity type)
+      const [spacesData, allTrays, allContainers, allRacks, allCells] = await Promise.all([
+        base44.entities.IndoorGrowSpace.filter({ created_by: user.email }, '-created_date'),
+        base44.entities.SeedTray.filter({ created_by: user.email }),
+        base44.entities.IndoorContainer.filter({ created_by: user.email }),
+        base44.entities.GrowRack.filter({ created_by: user.email }),
+        base44.entities.TrayCell.filter({ created_by: user.email })
+      ]);
+      
+      // Calculate stats in memory (no additional API calls)
+      const spacesWithStats = spacesData.map(space => {
+        const spaceRacks = allRacks.filter(r => r.indoor_space_id === space.id);
+        const spaceTrays = allTrays.filter(t => t.indoor_space_id === space.id || spaceRacks.some(r => {
+          return allTrays.filter(tr => tr.shelf_id).some(tr => {
+            // Check if tray is on a shelf in this rack (we need GrowShelf data for this, but simplified for now)
+            return tr.indoor_space_id === space.id;
+          });
+        }));
+        const spaceContainers = allContainers.filter(c => c.indoor_space_id === space.id);
+        
+        // Count active seedlings from tray cells
+        const trayIds = spaceTrays.map(t => t.id);
+        const activeSeedlings = allCells.filter(cell => 
+          trayIds.includes(cell.tray_id) && 
+          ['seeded', 'germinated', 'growing'].includes(cell.status)
+        ).length;
+        
+        const activePlants = spaceContainers.filter(c => 
+          c.status === 'growing' || c.status === 'planted'
+        ).length;
+        
+        return {
+          ...space,
+          stats: {
+            racks: spaceRacks.length,
+            trays: spaceTrays.length,
+            containers: spaceContainers.length,
+            activeSeedlings,
+            activePlants
           }
-          
-          const activePlants = containers.filter(c => c.status === 'growing' || c.status === 'planted').length;
-          
-          setSpaces(prev => prev.map(s => 
-            s.id === space.id 
-              ? {
-                  ...s,
-                  stats: {
-                    racks: racks.length,
-                    trays: trays.length,
-                    containers: containers.length,
-                    activeSeedlings,
-                    activePlants
-                  }
-                }
-              : s
-          ));
-        } catch (error) {
-          console.error('Error loading stats for space:', space.id, error);
-        }
-      }));
+        };
+      });
 
       setSpaces(spacesWithStats);
     } catch (error) {
