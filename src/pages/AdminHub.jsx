@@ -39,6 +39,7 @@ const ADMIN_TOOLS = {
   'Content Management': [
     { name: 'Manage Resources', route: 'AdminResources', icon: FileText, description: 'Add and edit learning guides and articles' },
     { name: 'Manage Pest Library', route: 'AdminPestLibrary', icon: Bug, description: 'Add and edit pest/disease entries' },
+    { name: 'Feature Requests', route: 'ManageFeatureRequests', icon: MessageSquare, description: 'Manage user feature requests, reply to users, and archive' },
   ],
   'Community Moderation': [
     { name: 'User Reports', route: 'UserReports', icon: Shield, description: 'Review user-reported content' },

@@ -139,6 +139,7 @@ import Users from './pages/Users';
 import VarietyReviewQueue from './pages/VarietyReviewQueue';
 import ViewVariety from './pages/ViewVariety';
 import ZoneMap from './pages/ZoneMap';
+import ManageFeatureRequests from './pages/ManageFeatureRequests';
 import __Layout from './Layout.jsx';
 
 
@@ -235,6 +236,7 @@ export const PAGES = {
     "VarietyReviewQueue": VarietyReviewQueue,
     "ViewVariety": ViewVariety,
     "ZoneMap": ZoneMap,
+    "ManageFeatureRequests": ManageFeatureRequests,
 }
 
 export const pagesConfig = {
