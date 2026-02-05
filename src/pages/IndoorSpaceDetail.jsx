@@ -15,6 +15,7 @@ import { Card } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
+import { cn } from '@/lib/utils';
 import AIGrowAssistant from '@/components/indoor/AIGrowAssistant';
 import GrowLogComponent from '@/components/indoor/GrowLogComponent';
 import { AddRackDialog } from '@/components/indoor/AddRackDialog';
