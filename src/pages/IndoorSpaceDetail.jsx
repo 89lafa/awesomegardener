@@ -58,11 +58,10 @@ export default function IndoorSpaceDetail() {
     try {
       setLoading(true);
       
-      // Load space and its racks + containers in parallel
-      const [spaceData, racksData, containersData] = await Promise.all([
+      // Load space and racks only first
+      const [spaceData, racksData] = await Promise.all([
         base44.entities.IndoorGrowSpace.filter({ id: spaceId }),
-        base44.entities.GrowRack.filter({ indoor_space_id: spaceId }, 'name'),
-        base44.entities.IndoorContainer.filter({ indoor_space_id: spaceId }, 'name')
+        base44.entities.GrowRack.filter({ indoor_space_id: spaceId }, 'name')
       ]);
       
       if (spaceData.length === 0) {
@@ -74,32 +73,26 @@ export default function IndoorSpaceDetail() {
       const space = spaceData[0];
       setSpace(space);
       setRacks(racksData);
+
+      // Load shelves and containers in parallel
+      const [shelvesData, containersData] = await Promise.all([
+        racksData.length > 0 
+          ? base44.entities.GrowShelf.filter({ rack_id: { $in: racksData.map(r => r.id) } }, 'shelf_number')
+          : Promise.resolve([]),
+        base44.entities.IndoorContainer.filter({ indoor_space_id: spaceId }, 'name')
+      ]);
+      
+      setShelves(shelvesData);
       setContainers(containersData);
 
-      // Only load shelves and trays if we have racks
-      if (racksData.length > 0) {
-        const rackIds = racksData.map(r => r.id);
-        
-        // Load shelves for these racks
-        const shelvesData = await base44.entities.GrowShelf.filter(
-          { rack_id: { $in: rackIds } }, 
-          'shelf_number'
+      // Load trays only if we have shelves
+      if (shelvesData.length > 0) {
+        const traysData = await base44.entities.SeedTray.filter(
+          { shelf_id: { $in: shelvesData.map(s => s.id) } },
+          'name'
         );
-        setShelves(shelvesData);
-        
-        // Only load trays if we have shelves
-        if (shelvesData.length > 0) {
-          const shelfIds = shelvesData.map(s => s.id);
-          const traysData = await base44.entities.SeedTray.filter(
-            { shelf_id: { $in: shelfIds } },
-            'name'
-          );
-          setTrays(traysData);
-        } else {
-          setTrays([]);
-        }
+        setTrays(traysData);
       } else {
-        setShelves([]);
         setTrays([]);
       }
     } catch (error) {
