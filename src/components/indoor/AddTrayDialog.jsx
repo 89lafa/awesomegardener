@@ -45,48 +45,112 @@ export function AddTrayDialog({ isOpen, onClose, shelfId, onTrayAdded }) {
     try {
       const qty = parseInt(quantity) || 1;
       
+      // Get shelf and rack info to check capacity
+      const [shelf] = await base44.entities.GrowShelf.filter({ id: shelfId });
+      if (!shelf) {
+        toast.error('Shelf not found');
+        return;
+      }
+
+      // Get all shelves on this rack ordered by shelf_number
+      const allShelves = await base44.entities.GrowShelf.filter({ rack_id: shelf.rack_id });
+      const sortedShelves = allShelves.sort((a, b) => a.shelf_number - b.shelf_number);
+      
+      // Count existing trays on each shelf
+      const allTrays = await base44.entities.SeedTray.filter({ created_by: (await base44.auth.me()).email });
+      const trayCountByShelf = {};
+      sortedShelves.forEach(s => trayCountByShelf[s.id] = 0);
+      allTrays.forEach(t => {
+        if (trayCountByShelf[t.shelf_id] !== undefined) {
+          trayCountByShelf[t.shelf_id]++;
+        }
+      });
+
+      // Distribute trays across shelves starting from selected shelf
+      const startShelfIndex = sortedShelves.findIndex(s => s.id === shelfId);
+      if (startShelfIndex === -1) {
+        toast.error('Shelf configuration error');
+        return;
+      }
+
+      const traysToCreate = [];
+      let remainingTrays = qty;
+      let currentShelfIndex = startShelfIndex;
+
+      // Calculate distribution
+      while (remainingTrays > 0 && currentShelfIndex < sortedShelves.length) {
+        const currentShelf = sortedShelves[currentShelfIndex];
+        const currentCount = trayCountByShelf[currentShelf.id] || 0;
+        const availableSpace = currentShelf.max_trays - currentCount;
+        
+        if (availableSpace > 0) {
+          const traysForThisShelf = Math.min(remainingTrays, availableSpace);
+          traysToCreate.push({
+            shelf_id: currentShelf.id,
+            shelf_name: currentShelf.name,
+            count: traysForThisShelf
+          });
+          remainingTrays -= traysForThisShelf;
+        }
+        
+        currentShelfIndex++;
+      }
+
+      // Check if all trays can fit
+      if (remainingTrays > 0) {
+        const [rack] = await base44.entities.GrowRack.filter({ id: shelf.rack_id });
+        toast.error(`Not enough space on ${rack?.name || 'rack'} shelves. Only ${qty - remainingTrays} of ${qty} trays can fit.`);
+        return;
+      }
+      
       // Extract base name and starting number
       const match = trayName.match(/^(.*?)(\d+)$/);
       const baseName = match ? match[1].trim() : trayName;
       const startNum = match ? parseInt(match[2]) : 1;
       
-      for (let i = 0; i < qty; i++) {
-        const currentName = qty > 1 ? `${baseName} ${startNum + i}` : trayName;
-        
-        const tray = await base44.entities.SeedTray.create({
-          shelf_id: shelfId,
-          name: currentName,
-          tray_code: `T-${Date.now().toString(36)}-${i}`,
-          total_cells: parseInt(currentPreset.cells),
-          cells_rows: parseInt(currentPreset.rows),
-          cells_cols: parseInt(currentPreset.cols),
-          insert_type: currentPreset.insert,
-          width_inches: 20,
-          length_inches: 10,
-          status: 'empty',
-          notes: notes || null
-        });
+      let trayCounter = 0;
+      for (const allocation of traysToCreate) {
+        for (let i = 0; i < allocation.count; i++) {
+          const currentName = qty > 1 ? `${baseName} ${startNum + trayCounter}` : trayName;
+          
+          const tray = await base44.entities.SeedTray.create({
+            shelf_id: allocation.shelf_id,
+            name: currentName,
+            tray_code: `T-${Date.now().toString(36)}-${trayCounter}`,
+            total_cells: parseInt(currentPreset.cells),
+            cells_rows: parseInt(currentPreset.rows),
+            cells_cols: parseInt(currentPreset.cols),
+            insert_type: currentPreset.insert,
+            width_inches: 20,
+            length_inches: 10,
+            status: 'empty',
+            notes: notes || null
+          });
 
-        // Create individual tray cells using bulkCreate to avoid rate limits
-        const cellsToCreate = [];
-        for (let r = 0; r < currentPreset.rows; r++) {
-          for (let c = 0; c < currentPreset.cols; c++) {
-            cellsToCreate.push({
-              tray_id: tray.id,
-              row: r,
-              col: c,
-              cell_number: r * currentPreset.cols + c + 1,
-              status: 'empty'
-            });
+          // Create individual tray cells using bulkCreate to avoid rate limits
+          const cellsToCreate = [];
+          for (let r = 0; r < currentPreset.rows; r++) {
+            for (let c = 0; c < currentPreset.cols; c++) {
+              cellsToCreate.push({
+                tray_id: tray.id,
+                row: r,
+                col: c,
+                cell_number: r * currentPreset.cols + c + 1,
+                status: 'empty'
+              });
+            }
           }
+          await base44.entities.TrayCell.bulkCreate(cellsToCreate);
+          trayCounter++;
         }
-        await base44.entities.TrayCell.bulkCreate(cellsToCreate);
       }
 
-      toast.success(qty > 1 
-        ? `Created ${qty} trays with ${currentPreset.cells} cells each!`
-        : `Tray "${trayName}" created with ${currentPreset.cells} cells!`
-      );
+      let successMsg = `Created ${qty} tray${qty > 1 ? 's' : ''} with ${currentPreset.cells} cells each!`;
+      if (traysToCreate.length > 1) {
+        successMsg += ` Distributed across ${traysToCreate.length} shelves.`;
+      }
+      toast.success(successMsg);
+      
       onTrayAdded?.();
       onClose();
       setTrayName('');

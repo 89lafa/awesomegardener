@@ -22,6 +22,8 @@ export function AddRackDialog({ isOpen, onClose, spaceId, onRackAdded }) {
   const [width, setWidth] = useState(6);
   const [depth, setDepth] = useState(3);
   const [numShelves, setNumShelves] = useState(4);
+  const [temperature, setTemperature] = useState('');
+  const [humidity, setHumidity] = useState('');
   const [notes, setNotes] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -42,6 +44,8 @@ export function AddRackDialog({ isOpen, onClose, spaceId, onRackAdded }) {
         num_shelves: parseInt(numShelves),
         x_position: 0,
         y_position: 0,
+        temperature: temperature ? parseFloat(temperature) : null,
+        humidity: humidity ? parseFloat(humidity) : null,
         notes: notes || null
       });
 
@@ -62,6 +66,8 @@ export function AddRackDialog({ isOpen, onClose, spaceId, onRackAdded }) {
       onRackAdded?.();
       onClose();
       setRackName('');
+      setTemperature('');
+      setHumidity('');
       setNotes('');
     } catch (error) {
       console.error('Error creating rack:', error);
@@ -95,6 +101,27 @@ export function AddRackDialog({ isOpen, onClose, spaceId, onRackAdded }) {
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
             />
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium mb-2">Temperature (°F)</label>
+              <Input
+                type="number"
+                placeholder="e.g., 72"
+                value={temperature}
+                onChange={(e) => setTemperature(e.target.value)}
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-2">Humidity (%)</label>
+              <Input
+                type="number"
+                placeholder="e.g., 65"
+                value={humidity}
+                onChange={(e) => setHumidity(e.target.value)}
+              />
+            </div>
           </div>
 
           <div>
