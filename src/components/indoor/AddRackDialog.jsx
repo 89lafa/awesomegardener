@@ -58,7 +58,9 @@ export function AddRackDialog({ isOpen, onClose, spaceId, onRackAdded }) {
           shelf_number: i,
           width_ft: width,
           depth_ft: depth,
-          max_trays: capacity
+          max_trays: capacity,
+          has_light: false,
+          light_wattage: null
         });
       }
 
