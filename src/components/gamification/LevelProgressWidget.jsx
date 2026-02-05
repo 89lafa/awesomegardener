@@ -23,7 +23,7 @@ export default function LevelProgressWidget() {
     }
   };
 
-  if (loading) {
+  if (loading || !progress) {
     return (
       <Card>
         <CardContent className="pt-6 flex justify-center">
