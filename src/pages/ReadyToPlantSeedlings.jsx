@@ -130,6 +130,9 @@ export default function ReadyToPlantSeedlings() {
     if (seedling.source_type === 'container') {
       return `${seedling.location_name || 'Container'} • ${seedling.container_type || 'Indoor'}`;
     }
+    if (seedling.source_type === 'my_plant') {
+      return `${seedling.location_name || 'Garden'} • Transplanted`;
+    }
     return `Tray • Cell ${seedling.cell_number || '?'}`;
   };
 
