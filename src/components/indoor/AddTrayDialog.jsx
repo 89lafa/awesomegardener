@@ -25,7 +25,7 @@ const TRAY_PRESETS = [
   { name: '288-cell', cells: 288, rows: 12, cols: 24, insert: '288-cell' },
 ];
 
-export function AddTrayDialog({ isOpen, onClose, shelfId, spaceId, onTrayAdded }) {
+export function AddTrayDialog({ isOpen, onClose, shelfId, onTrayAdded }) {
   const [trayName, setTrayName] = useState('');
   const [quantity, setQuantity] = useState(1);
   const [selectedPreset, setSelectedPreset] = useState('72-cell-1206'); // Unique key
@@ -55,7 +55,6 @@ export function AddTrayDialog({ isOpen, onClose, shelfId, spaceId, onTrayAdded }
         
         const tray = await base44.entities.SeedTray.create({
           shelf_id: shelfId,
-          indoor_space_id: spaceId,
           name: currentName,
           tray_code: `T-${Date.now().toString(36)}-${i}`,
           total_cells: parseInt(currentPreset.cells),
