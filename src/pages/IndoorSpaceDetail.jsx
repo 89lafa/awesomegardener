@@ -25,27 +25,9 @@ import { PlantSeedsDialog } from '@/components/indoor/PlantSeedsDialog';
 import MoveTrayDialog from '@/components/indoor/MoveTrayDialog';
 import { createPageUrl } from '@/utils';
 
-// Tray card with live stats
-function TrayCard({ tray, onMove }) {
-  const [stats, setStats] = useState({ filled: 0, total: tray.total_cells, loading: true });
+// Tray card - stats passed from parent to avoid N+1 queries
+function TrayCard({ tray, stats, onMove }) {
   const navigate = useNavigate();
-
-  useEffect(() => {
-    loadStats();
-  }, [tray.id]);
-
-  const loadStats = async () => {
-    try {
-      const cells = await base44.entities.TrayCell.filter({ tray_id: tray.id });
-      const filled = cells.filter(c => 
-        c.status !== 'empty' && c.status !== 'failed' && c.status !== 'transplanted'
-      ).length;
-      setStats({ filled, total: cells.length, loading: false });
-    } catch (error) {
-      console.error('Error loading tray stats:', error);
-      setStats({ filled: 0, total: tray.total_cells, loading: false });
-    }
-  };
 
   const getStatusColor = () => {
     if (stats.loading) return 'bg-gray-100 border-gray-300';
@@ -135,14 +117,18 @@ function StatsCards({ racks, trays, containers }) {
       let readyToTransplant = 0;
       let totalCells = 0;
 
-      // Count active cells in trays
-      for (const tray of trays) {
-        const cells = await base44.entities.TrayCell.filter({ tray_id: tray.id });
-        totalCells += cells.length;
-        activeSeedlings += cells.filter(c => 
+      if (trays.length > 0) {
+        // Fetch ALL cells for ALL trays in ONE query to avoid rate limits
+        const trayIds = trays.map(t => t.id);
+        const allCells = await base44.entities.TrayCell.filter({ 
+          tray_id: { $in: trayIds }
+        });
+
+        totalCells = allCells.length;
+        activeSeedlings = allCells.filter(c => 
           c.status === 'seeded' || c.status === 'germinated' || c.status === 'growing'
         ).length;
-        readyToTransplant += cells.filter(c => c.status === 'growing').length;
+        readyToTransplant = allCells.filter(c => c.status === 'growing').length;
       }
 
       // Count containers ready to transplant
@@ -201,6 +187,7 @@ export default function IndoorSpaceDetail() {
   const [selectedTray, setSelectedTray] = useState(null);
   const [showMoveTray, setShowMoveTray] = useState(false);
   const [trayToMove, setTrayToMove] = useState(null);
+  const [trayStats, setTrayStats] = useState({});
 
   useEffect(() => {
     if (spaceId) {
@@ -247,11 +234,51 @@ export default function IndoorSpaceDetail() {
       setShelves(shelvesData);
       setTrays(traysData);
       setContainers(containersData);
+
+      // Load ALL tray stats in one batch to avoid rate limits
+      if (traysData.length > 0) {
+        loadAllTrayStats(traysData);
+      }
     } catch (error) {
       console.error('Error loading space:', error);
       toast.error('Failed to load space');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadAllTrayStats = async (traysData) => {
+    try {
+      const trayIds = traysData.map(t => t.id);
+      
+      // Fetch ALL cells for ALL trays in ONE query
+      const allCells = await base44.entities.TrayCell.filter({ 
+        tray_id: { $in: trayIds }
+      });
+
+      // Group cells by tray_id
+      const statsByTray = {};
+      traysData.forEach(tray => {
+        const trayCells = allCells.filter(c => c.tray_id === tray.id);
+        const filled = trayCells.filter(c => 
+          c.status !== 'empty' && c.status !== 'failed' && c.status !== 'transplanted'
+        ).length;
+        statsByTray[tray.id] = {
+          filled,
+          total: trayCells.length || tray.total_cells,
+          loading: false
+        };
+      });
+
+      setTrayStats(statsByTray);
+    } catch (error) {
+      console.error('Error loading tray stats:', error);
+      // Set default stats on error
+      const defaultStats = {};
+      traysData.forEach(tray => {
+        defaultStats[tray.id] = { filled: 0, total: tray.total_cells, loading: false };
+      });
+      setTrayStats(defaultStats);
     }
   };
 
@@ -379,6 +406,7 @@ export default function IndoorSpaceDetail() {
                                  <TrayCard 
                                    key={tray.id} 
                                    tray={tray}
+                                   stats={trayStats[tray.id] || { filled: 0, total: tray.total_cells, loading: true }}
                                    onMove={() => {
                                      setTrayToMove(tray);
                                      setShowMoveTray(true);
