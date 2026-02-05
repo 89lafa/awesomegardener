@@ -38,8 +38,7 @@ export default function PlantingModal({
    onPlantingUpdate, 
    activeSeason, 
    seasonId,
-   sharedData, // CRITICAL: Pre-loaded data from parent page to prevent rate limits
-   autoOpenSeedling // Auto-select seedling from URL params
+   sharedData // CRITICAL: Pre-loaded data from parent page to prevent rate limits
  }) {
   const isMobile = useIsMobile();
   const [plantings, setPlantings] = useState([]);
