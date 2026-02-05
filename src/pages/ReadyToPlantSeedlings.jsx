@@ -224,23 +224,35 @@ export default function ReadyToPlantSeedlings() {
 
                       {/* Action */}
                       <div className="flex items-end justify-end">
-                        <Button
-                          onClick={() => {
-                            // Copy to clipboard for user reference
-                            navigator.clipboard.writeText(JSON.stringify({
-                              seedling_source_id: seedling.source_id,
-                              seedling_source_type: seedling.source_type,
-                              variety: displayNames[seedling.source_id],
-                              location: getSourceLocation(seedling),
-                              age_days: getDaysInGrow(seedling)
-                            }, null, 2));
-                            toast.success('Seedling info copied!');
-                          }}
-                          variant="outline"
-                          className="w-full"
-                        >
-                          Use in Garden
-                        </Button>
+                        {seedling.source_type === 'my_plant' ? (
+                          <Button
+                            onClick={() => {
+                              // For garden seedlings, navigate to gardens to plant
+                              window.location.href = '/Gardens';
+                            }}
+                            className="w-full bg-emerald-600 hover:bg-emerald-700"
+                          >
+                            Plant Now →
+                          </Button>
+                        ) : (
+                          <Button
+                            onClick={() => {
+                              // For indoor seedlings, copy info
+                              navigator.clipboard.writeText(JSON.stringify({
+                                seedling_source_id: seedling.source_id,
+                                seedling_source_type: seedling.source_type,
+                                variety: displayNames[seedling.source_id],
+                                location: getSourceLocation(seedling),
+                                age_days: getDaysInGrow(seedling)
+                              }, null, 2));
+                              toast.success('Seedling info copied!');
+                            }}
+                            variant="outline"
+                            className="w-full"
+                          >
+                            Use in Garden
+                          </Button>
+                        )}
                       </div>
                     </div>
                   </CardContent>
