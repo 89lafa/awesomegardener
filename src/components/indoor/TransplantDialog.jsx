@@ -149,17 +149,31 @@ export default function TransplantDialog({
               });
             }
             
+            // Get or create plant profile if needed
+            let plantProfileId = cell.plant_profile_id;
+            if (!plantProfileId && cell.plant_type_id) {
+              // Create a simple profile for this plant
+              const profile = await base44.entities.PlantProfile.create({
+                plant_type_id: cell.plant_type_id,
+                common_name: cell.plant_type_name || 'Plant',
+                variety_name: cell.variety_name || 'Unknown'
+              });
+              plantProfileId = profile.id;
+            }
+            
             // Create MyPlant - structure is optional (garden might not have beds yet)
-            const myPlant = await base44.entities.MyPlant.create({
-              garden_season_id: gardenSeason.id,
-              plant_profile_id: cell.plant_profile_id,
-              name: cell.variety_name || cell.plant_type_name,
-              status: 'transplanted',
-              transplant_date: transplantDate,
-              notes: `Transplanted from tray${structure ? ' to ' + structure.name : ' to garden'}`,
-              location_name: structure?.name || `${garden.name} (unassigned)`,
-              garden_item_id: selectedStructure || null
-            });
+            if (plantProfileId) {
+              const myPlant = await base44.entities.MyPlant.create({
+                garden_season_id: gardenSeason.id,
+                plant_profile_id: plantProfileId,
+                name: cell.variety_name || cell.plant_type_name,
+                status: 'transplanted',
+                transplant_date: transplantDate,
+                notes: `Transplanted from tray${structure ? ' to ' + structure.name : ' to garden'}`,
+                location_name: structure?.name || `${garden.name} (unassigned)`,
+                garden_item_id: selectedStructure || null
+              });
+            }
           }
         }
       }
