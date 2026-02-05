@@ -79,36 +79,28 @@ export default function ReadyToPlantSeedlings() {
     
     for (const item of items) {
       try {
-        let varietyName = null;
-        let plantTypeName = null;
+        let name = null;
         
-        if (item.variety_id && varietyMap.has(item.variety_id)) {
-          const variety = varietyMap.get(item.variety_id);
-          varietyName = variety.variety_name;
-          if (variety.plant_type_id && plantTypeMap.has(variety.plant_type_id)) {
-            plantTypeName = plantTypeMap.get(variety.plant_type_id).common_name;
-          }
+        // For MyPlant records, use the name directly
+        if (item.source_type === 'my_plant') {
+          name = item.name || 'Unknown Plant';
         } else if (item.plant_profile_id && profileMap.has(item.plant_profile_id)) {
+          // For container/tray - use plant profile
           const profile = profileMap.get(item.plant_profile_id);
-          varietyName = profile.variety_name || profile.custom_label;
-          plantTypeName = profile.common_name;
-          if (!plantTypeName && profile.plant_type_id && plantTypeMap.has(profile.plant_type_id)) {
-            plantTypeName = plantTypeMap.get(profile.plant_type_id).common_name;
-          }
-        }
-        
-        if (!varietyName) varietyName = item.variety_name || item.custom_label || item.name;
-        if (!plantTypeName) plantTypeName = item.plant_type_name;
-        
-        if (varietyName && plantTypeName) {
-          names[item.source_id] = `${varietyName} - ${plantTypeName}`;
-        } else if (varietyName) {
-          names[item.source_id] = varietyName;
-        } else if (plantTypeName) {
-          names[item.source_id] = plantTypeName;
+          const varietyName = profile.variety_name || profile.custom_label;
+          const plantTypeName = profile.common_name || (profile.plant_type_id && plantTypeMap.has(profile.plant_type_id) ? plantTypeMap.get(profile.plant_type_id).common_name : '');
+          name = varietyName && plantTypeName ? `${varietyName} - ${plantTypeName}` : varietyName || plantTypeName || item.name;
+        } else if (item.variety_id && varietyMap.has(item.variety_id)) {
+          // Fallback to variety
+          const variety = varietyMap.get(item.variety_id);
+          const varietyName = variety.variety_name;
+          const plantTypeName = variety.plant_type_id && plantTypeMap.has(variety.plant_type_id) ? plantTypeMap.get(variety.plant_type_id).common_name : '';
+          name = varietyName && plantTypeName ? `${varietyName} - ${plantTypeName}` : varietyName || plantTypeName;
         } else {
-          names[item.source_id] = item.name || 'Unknown Seedling';
+          name = item.variety_name || item.plant_type_name || item.name || 'Unknown';
         }
+        
+        names[item.source_id] = name;
       } catch (error) {
         names[item.source_id] = item.name || 'Unknown Seedling';
       }
