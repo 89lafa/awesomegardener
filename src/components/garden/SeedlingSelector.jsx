@@ -141,6 +141,9 @@ export default function SeedlingSelector({ isOpen, onClose, onSeedlingSelected }
   };
 
   const handleSelectSeedling = (seedling) => {
+    // For MyPlant records, we need to fetch the profile to get plant_type_id
+    let plantTypeId = seedling.plant_type_id;
+
     onSeedlingSelected({
       seedling_source_id: seedling.source_id,
       seedling_source_type: seedling.source_type,
@@ -148,7 +151,7 @@ export default function SeedlingSelector({ isOpen, onClose, onSeedlingSelected }
       seedling_location: getSourceLocation(seedling),
       variety_id: seedling.variety_id,
       plant_profile_id: seedling.plant_profile_id,
-      plant_type_id: seedling.plant_type_id,
+      plant_type_id: plantTypeId,
       display_name: displayNames[seedling.source_id] || seedling.name
     });
     onClose();
