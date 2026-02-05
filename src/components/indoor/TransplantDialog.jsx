@@ -84,13 +84,20 @@ export default function TransplantDialog({
       let containerCount = 0;
 
       for (const cell of selectedCells) {
-        // Update TrayCell
+        // Update TrayCell - EMPTY it after transplanting
         await base44.entities.TrayCell.update(cell.id, {
-          status: destination === 'discard' ? 'failed' : 'transplanted',
+          status: destination === 'discard' ? 'failed' : 'empty',
           transplanted_date: transplantDate,
           transplanted_to_type: destination,
           transplanted_to_id: destination === 'indoor_container' ? selectedSpace : 
-                              destination === 'outdoor_garden' ? selectedStructure : null
+                              destination === 'outdoor_garden' ? selectedStructure : null,
+          // Clear plant data when emptying
+          variety_id: null,
+          variety_name: null,
+          plant_type_id: null,
+          plant_type_name: null,
+          user_seed_id: null,
+          plant_profile_id: null
         });
 
         // Create destination record

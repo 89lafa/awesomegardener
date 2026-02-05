@@ -279,6 +279,46 @@ export default function TrayDetail() {
         </Button>
       </div>
 
+      {/* Planted Varieties Summary */}
+      {cells.filter(c => c.variety_name || c.plant_type_name).length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg">🌱 What's Planted in This Tray</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2">
+              {(() => {
+                const varietyCounts = {};
+                cells.forEach(cell => {
+                  if (cell.status !== 'empty' && (cell.variety_name || cell.plant_type_name)) {
+                    const key = `${cell.plant_type_name || 'Unknown'} - ${cell.variety_name || 'Unknown Variety'}`;
+                    if (!varietyCounts[key]) {
+                      varietyCounts[key] = { count: 0, status: {} };
+                    }
+                    varietyCounts[key].count++;
+                    varietyCounts[key].status[cell.status] = (varietyCounts[key].status[cell.status] || 0) + 1;
+                  }
+                });
+
+                return Object.entries(varietyCounts).map(([varietyKey, data]) => (
+                  <div key={varietyKey} className="flex items-center justify-between p-3 bg-emerald-50 rounded-lg border border-emerald-200">
+                    <div>
+                      <p className="font-semibold text-emerald-900">{varietyKey}</p>
+                      <p className="text-xs text-emerald-700">
+                        {Object.entries(data.status).map(([status, count]) => 
+                          `${count} ${status}`
+                        ).join(', ')}
+                      </p>
+                    </div>
+                    <Badge className="bg-emerald-600 text-white">{data.count} cells</Badge>
+                  </div>
+                ));
+              })()}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Tray Grid */}
       <TrayGrid
         tray={tray}
