@@ -18,7 +18,8 @@ export function SeedTradeCard({
   isInitiator,
   showInterestButton,
   showInterestManagement,
-  showDeleteButton
+  showDeleteButton,
+  statusOverride = null
 }) {
   const statusColors = {
     pending: 'bg-yellow-100 text-yellow-800',
@@ -27,6 +28,8 @@ export function SeedTradeCard({
     completed: 'bg-blue-100 text-blue-800',
     cancelled: 'bg-gray-100 text-gray-800'
   };
+  
+  const displayStatus = statusOverride || trade.status;
 
   return (
     <Card>
@@ -40,8 +43,8 @@ export function SeedTradeCard({
               {format(new Date(trade.created_date), 'MMM d, yyyy')}
             </p>
           </div>
-          <Badge className={statusColors[trade.status]}>
-            {trade.status}
+          <Badge className={statusOverride ? 'bg-blue-100 text-blue-800' : statusColors[trade.status]}>
+            {displayStatus}
           </Badge>
         </div>
       </CardHeader>
