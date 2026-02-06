@@ -43,6 +43,12 @@ export default function SeedTrading() {
       const trade = trades.find(t => t.id === tradeId);
       const interested = trade.interested_users || [];
       
+      // Check if user already expressed interest
+      if (interested.some(u => u.user_id === user.id)) {
+        toast.error('You already expressed interest in this trade');
+        return;
+      }
+      
       // Add current user to interested_users
       interested.push({
         user_id: user.id,
@@ -51,9 +57,9 @@ export default function SeedTrading() {
         timestamp: new Date().toISOString()
       });
       
+      // Keep status as 'public' - don't change it
       await base44.entities.SeedTrade.update(tradeId, {
-        interested_users: interested,
-        status: 'pending' // Move to pending so seller sees it
+        interested_users: interested
       });
       
       // Create notification for seller
@@ -105,9 +111,9 @@ export default function SeedTrading() {
       const trade = trades.find(t => t.id === tradeId);
       const interested = (trade.interested_users || []).filter(u => u.user_id !== interestedUserId);
       
+      // Keep status as 'public' always - just update interested_users
       await base44.entities.SeedTrade.update(tradeId, {
-        interested_users: interested,
-        status: interested.length > 0 ? 'pending' : 'public' // Back to public if no interested users
+        interested_users: interested
       });
       
       toast.success('Interest declined');
@@ -130,6 +136,21 @@ export default function SeedTrading() {
     }
   };
 
+  const handleDelete = async (tradeId) => {
+    if (!confirm('Are you sure you want to delete this trade offer?')) {
+      return;
+    }
+    
+    try {
+      await base44.entities.SeedTrade.delete(tradeId);
+      toast.success('Trade offer deleted');
+      loadData();
+    } catch (error) {
+      console.error('Error deleting trade:', error);
+      toast.error('Failed to delete trade');
+    }
+  };
+
   const handleMessage = (trade) => {
     const otherUserId = trade.initiator_id === user.id ? trade.recipient_id : trade.initiator_id;
     window.location.href = createPageUrl('Messages') + `?user=${otherUserId}&trade_id=${trade.id}`;
@@ -145,17 +166,20 @@ export default function SeedTrading() {
 
   const myInitiated = trades.filter(t => t.initiator_id === user.id);
   
-  // Pending = trades where I'm the seller and someone expressed interest
+  // Pending = trades where I'm the seller and someone expressed interest (status still public)
   const myPendingAsSeller = trades.filter(t => 
     t.initiator_id === user.id && 
-    t.status === 'pending' && 
+    t.is_public &&
     t.interested_users && 
-    t.interested_users.length > 0
+    t.interested_users.length > 0 &&
+    t.status !== 'accepted' &&
+    t.status !== 'rejected' &&
+    t.status !== 'completed'
   );
   
   const completed = trades.filter(t => t.status === 'completed' || t.status === 'accepted');
   
-  // Public offers = not initiated by me, and I haven't expressed interest yet
+  // Public offers = public status, not initiated by me, and I haven't expressed interest yet
   const publicOffers = trades.filter(t => 
     t.is_public && 
     t.status === 'public' && 
@@ -261,7 +285,10 @@ export default function SeedTrading() {
                 key={trade.id}
                 trade={trade}
                 onMessage={handleMessage}
+                onDelete={handleDelete}
+                currentUserId={user.id}
                 isInitiator={true}
+                showDeleteButton={trade.status !== 'accepted' && trade.status !== 'completed'}
               />
             ))
           )}

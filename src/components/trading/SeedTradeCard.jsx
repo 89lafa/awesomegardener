@@ -13,10 +13,12 @@ export function SeedTradeCard({
   onInterest,
   onAcceptInterest,
   onRejectInterest,
+  onDelete,
   currentUserId,
   isInitiator,
   showInterestButton,
-  showInterestManagement
+  showInterestManagement,
+  showDeleteButton
 }) {
   const statusColors = {
     pending: 'bg-yellow-100 text-yellow-800',
@@ -151,10 +153,21 @@ export function SeedTradeCard({
 
         {/* Seller waiting for interest badge */}
         {trade.is_public && trade.status === 'public' && isInitiator && (
-          <div className="pt-2">
+          <div className="pt-2 flex items-center justify-between">
             <Badge className="bg-blue-100 text-blue-800 px-3 py-1">
               Public - Waiting for interest
             </Badge>
+            {showDeleteButton && onDelete && (
+              <Button
+                onClick={() => onDelete(trade.id)}
+                variant="ghost"
+                size="sm"
+                className="text-red-600 hover:text-red-700 hover:bg-red-50 gap-1"
+              >
+                <Trash2 className="w-4 h-4" />
+                Delete
+              </Button>
+            )}
           </div>
         )}
       </CardContent>
