@@ -11,6 +11,30 @@ import {
   FileText,
   Lightbulb
 } from 'lucide-react';
+
+// Helper component to show tray status
+function TrayStatusBadge({ trayId }) {
+  const [status, setStatus] = useState('loading');
+  
+  useEffect(() => {
+    const checkStatus = async () => {
+      const cells = await base44.entities.TrayCell.filter({ tray_id: trayId });
+      const activeCount = cells.filter(c => 
+        c.status === 'seeded' || c.status === 'germinated' || c.status === 'growing'
+      ).length;
+      setStatus(activeCount > 0 ? 'seeded' : 'empty');
+    };
+    checkStatus();
+  }, [trayId]);
+  
+  if (status === 'loading') return <p className="text-[10px] text-gray-400 mt-1">...</p>;
+  
+  return (
+    <p className={`text-[10px] mt-1 font-bold uppercase ${status === 'empty' ? 'text-gray-500' : 'text-emerald-600'}`}>
+      {status === 'empty' ? '📭 EMPTY' : '🌱 SEEDED'}
+    </p>
+  );
+}
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -287,31 +311,17 @@ export default function IndoorSpaceDetail() {
                                 {shelfTrays.map(tray => (
                                  <div key={tray.id} className="relative group">
                                   <button
-                                    onClick={async () => {
-                                      // Calculate status from cells before navigating
-                                      const trayCells = await base44.entities.TrayCell.filter({ tray_id: tray.id });
-                                      const activeCount = trayCells.filter(c => 
-                                        c.status === 'seeded' || c.status === 'germinated' || c.status === 'growing'
-                                      ).length;
-
-                                      // Update tray status based on cells
-                                      const newStatus = activeCount > 0 ? 'seeded' : 'empty';
-                                      if (tray.status !== newStatus) {
-                                        await base44.entities.SeedTray.update(tray.id, { status: newStatus });
-                                      }
-
-                                      window.location.href = createPageUrl('TrayDetail') + `?id=${tray.id}`;
-                                    }}
-                                    className="w-full p-2 bg-white border border-emerald-200 rounded hover:border-emerald-600 transition text-left"
+                                   onClick={async () => {
+                                     window.location.href = createPageUrl('TrayDetail') + `?id=${tray.id}`;
+                                   }}
+                                   className="w-full p-2 bg-white border border-emerald-200 rounded hover:border-emerald-600 transition text-left"
                                   >
-                                    <p className="text-xs font-medium text-gray-900">{tray.name}</p>
-                                    <p className="text-[10px] text-gray-600">{tray.total_cells} cells</p>
-                                    <p className="text-[10px] text-emerald-600 mt-1 font-medium">
-                                      📋 Click to view
-                                    </p>
-                                    {tray.notes && (
-                                      <p className="text-[9px] text-gray-500 mt-1 truncate">📝 {tray.notes}</p>
-                                    )}
+                                   <p className="text-xs font-medium text-gray-900">{tray.name}</p>
+                                   <p className="text-[10px] text-gray-600">{tray.total_cells} cells</p>
+                                   <TrayStatusBadge trayId={tray.id} />
+                                   {tray.notes && (
+                                     <p className="text-[9px] text-gray-500 mt-1 truncate">📝 {tray.notes}</p>
+                                   )}
                                   </button>
                                    <Button
                                      size="sm"
