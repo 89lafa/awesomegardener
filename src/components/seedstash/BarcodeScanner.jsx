@@ -15,8 +15,13 @@ export default function BarcodeScanner({ onScanComplete, onClose }) {
   const scannerRef = useRef(null);
 
   useEffect(() => {
-    startScanner();
+    // Delay scanner start to ensure DOM is ready
+    const timer = setTimeout(() => {
+      startScanner();
+    }, 100);
+    
     return () => {
+      clearTimeout(timer);
       stopScanner();
     };
   }, []);
@@ -24,6 +29,15 @@ export default function BarcodeScanner({ onScanComplete, onClose }) {
   async function startScanner() {
     try {
       setError(null);
+      setScanning(true);
+      
+      // Check if container exists
+      const container = document.getElementById("barcode-scanner-container");
+      if (!container) {
+        setError('Scanner container not found. Please try again.');
+        setScanning(false);
+        return;
+      }
       
       const scanner = new Html5Qrcode("barcode-scanner-container");
       scannerRef.current = scanner;
@@ -44,11 +58,10 @@ export default function BarcodeScanner({ onScanComplete, onClose }) {
           // Ignore scan errors
         }
       );
-      
-      setScanning(true);
     } catch (err) {
       console.error('Scanner error:', err);
       setError('Could not start camera. Please allow camera permissions.');
+      setScanning(false);
     }
   }
 

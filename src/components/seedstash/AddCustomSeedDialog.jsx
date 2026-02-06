@@ -277,18 +277,21 @@ export default function AddCustomSeedDialog({ open, onOpenChange, onSuccess, pre
             {/* Plant Type */}
             <div>
               <Label>Plant Type <span className="text-red-500">*</span></Label>
-              <Combobox
-                options={plantTypes.map(type => ({
-                  value: type.id,
-                  label: `${type.icon || '🌱'} ${type.common_name}`,
-                  searchValue: type.common_name.toLowerCase()
-                }))}
-                value={formData.plant_type_id}
-                onChange={(value) => setFormData({ ...formData, plant_type_id: value })}
-                placeholder="Select or search plant type"
-                searchPlaceholder="Type to search (e.g., 'pep' for Pepper)..."
-                className="mt-1"
-              />
+              <Select 
+                value={formData.plant_type_id} 
+                onValueChange={(value) => setFormData({ ...formData, plant_type_id: value })}
+              >
+                <SelectTrigger className="mt-1">
+                  <SelectValue placeholder="Select plant type" />
+                </SelectTrigger>
+                <SelectContent>
+                  {plantTypes.map(type => (
+                    <SelectItem key={type.id} value={type.id}>
+                      {type.icon || '🌱'} {type.common_name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
 
             {/* Variety Name */}
