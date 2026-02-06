@@ -84,10 +84,13 @@ export function SeedTradeCard({
         )}
 
         {/* I'm Interested Button (for buyers viewing public offers) */}
-        {showInterestButton && (
+        {showInterestButton && onInterest && (
           <div className="pt-2">
             <Button
-              onClick={() => onInterest?.(trade.id)}
+              onClick={() => {
+                console.log('I\'m Interested clicked for trade:', trade.id);
+                onInterest(trade.id);
+              }}
               className="w-full bg-emerald-600 hover:bg-emerald-700 gap-2"
             >
               <Check className="w-4 h-4" />
