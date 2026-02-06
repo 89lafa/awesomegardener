@@ -2,7 +2,7 @@ import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Check, X, MessageSquare, Package } from 'lucide-react';
+import { Check, X, MessageSquare, Package, Trash2 } from 'lucide-react';
 import { format } from 'date-fns';
 
 export function SeedTradeCard({ 
