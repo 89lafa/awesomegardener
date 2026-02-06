@@ -18,41 +18,40 @@ Deno.serve(async (req) => {
     
     const trade = trades[0];
     
-    // Check what data we have
+    // Check what data we have - dump ENTIRE trade object
     const result = {
-      trade_id: trade.id,
-      initiator_id: trade.initiator_id,
-      created_by: trade.created_by,
+      trade_full_object: trade,
       current_user_id: user.id,
-      current_user_email: user.email,
-      
-      // Try to create notification
-      notification_data: {
-        user_email: trade.created_by,
-        type: 'system',
-        title: 'Test Trade Interest',
-        body: `Test from ${user.email}`,
-        link_url: '/SeedTrading',
-        is_read: false
-      }
+      current_user_email: user.email
     };
     
-    // Try to create a test notification
-    try {
-      const notification = await base44.asServiceRole.entities.Notification.create({
-        user_email: trade.created_by,
-        type: 'system',
-        title: 'Test Trade Interest',
-        body: `Test from ${user.email}`,
-        link_url: '/SeedTrading',
-        is_read: false
-      });
-      
-      result.notification_created = true;
-      result.notification_id = notification.id;
-    } catch (notifError) {
-      result.notification_error = notifError.message;
-      result.notification_created = false;
+    // Get the initiator's email from User entity
+    const allUsers = await base44.asServiceRole.entities.User.list();
+    const initiator = allUsers.find(u => u.id === trade.initiator_id);
+    
+    result.initiator_user = initiator;
+    result.all_users_count = allUsers.length;
+    
+    if (initiator) {
+      // Try to create a test notification
+      try {
+        const notification = await base44.asServiceRole.entities.Notification.create({
+          user_email: initiator.email,
+          type: 'system',
+          title: 'Test Trade Interest',
+          body: `Test from ${user.email}`,
+          link_url: '/SeedTrading',
+          is_read: false
+        });
+        
+        result.notification_created = true;
+        result.notification_id = notification.id;
+      } catch (notifError) {
+        result.notification_error = notifError.message;
+        result.notification_created = false;
+      }
+    } else {
+      result.notification_error = 'Initiator user not found';
     }
     
     return Response.json(result);
