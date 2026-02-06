@@ -98,25 +98,31 @@ export default function ProposeTradeDialog({ open, onOpenChange, onSuccess }) {
     setLoading(true);
     try {
       const currentUser = await base44.auth.me();
-      const recipient = users.find(u => u.nickname === recipientNickname);
-
-      if (!recipient) {
-        toast.error('Selected gardener not found');
-        return;
+      
+      const isPublicTrade = recipientNickname === 'anybody';
+      let recipient = null;
+      
+      if (!isPublicTrade) {
+        recipient = users.find(u => u.nickname === recipientNickname);
+        if (!recipient) {
+          toast.error('Selected gardener not found');
+          return;
+        }
       }
 
       await base44.entities.SeedTrade.create({
         initiator_id: currentUser.id,
         initiator_nickname: currentUser.nickname,
-        recipient_id: recipient.id,
-        recipient_nickname: recipient.nickname,
+        recipient_id: isPublicTrade ? null : recipient.id,
+        recipient_nickname: isPublicTrade ? 'anybody' : recipient.nickname,
         offering_seeds: validOffering,
         requesting_seeds: validRequesting,
         trade_notes: tradeNotes,
-        status: 'pending'
+        status: isPublicTrade ? 'public' : 'pending',
+        is_public: isPublicTrade
       });
 
-      toast.success('Trade proposal sent!');
+      toast.success(isPublicTrade ? 'Public trade posted!' : 'Trade proposal sent!');
       onSuccess();
       handleClose();
     } catch (error) {
@@ -151,6 +157,7 @@ export default function ProposeTradeDialog({ open, onOpenChange, onSuccess }) {
                 <SelectValue placeholder={loadingUsers ? "Loading gardeners..." : "Select a gardener"} />
               </SelectTrigger>
               <SelectContent>
+                <SelectItem value="anybody">🌍 Anybody (Public Post)</SelectItem>
                 {users.map(user => (
                   <SelectItem key={user.id} value={user.nickname}>
                     {user.nickname}

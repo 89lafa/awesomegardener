@@ -330,13 +330,30 @@ export default function PestDetail() {
                 </div>
                 
                 <div>
-                  <Label>Hero Image URL</Label>
-                  <Input
-                    value={editData.primary_photo_url}
-                    onChange={(e) => setEditData({ ...editData, primary_photo_url: e.target.value })}
-                    placeholder="https://..."
-                    className="mt-2"
-                  />
+                  <Label>Hero Image</Label>
+                  <div className="mt-2 space-y-2">
+                    <Input
+                      type="file"
+                      accept="image/*"
+                      onChange={async (e) => {
+                        const file = e.target.files?.[0];
+                        if (file) {
+                          try {
+                            const { data } = await base44.integrations.Core.UploadFile({ file });
+                            setEditData({ ...editData, primary_photo_url: data.file_url });
+                            toast.success('Image uploaded!');
+                          } catch (error) {
+                            toast.error('Failed to upload image');
+                          }
+                        }
+                      }}
+                    />
+                    {editData.primary_photo_url && (
+                      <div className="mt-2">
+                        <img src={editData.primary_photo_url} alt="Preview" className="h-32 object-cover rounded" />
+                      </div>
+                    )}
+                  </div>
                 </div>
                 
                 <div>

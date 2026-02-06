@@ -76,12 +76,12 @@ export default function FeatureRequests() {
 
   const loadData = async () => {
     try {
-      const [requestsData, userData] = await Promise.all([
-        base44.entities.FeatureRequest.filter({ is_archived: false }, '-vote_count'),
-        base44.auth.me()
-      ]);
-      setRequests(requestsData);
+      const userData = await base44.auth.me();
       setUser(userData);
+      
+      // Load all non-archived requests (public view)
+      const requestsData = await base44.entities.FeatureRequest.filter({}, '-vote_count');
+      setRequests(requestsData.filter(r => !r.is_archived));
     } catch (error) {
       console.error('Error loading feature requests:', error);
     } finally {
