@@ -5,7 +5,19 @@ import { Badge } from '@/components/ui/badge';
 import { Check, X, MessageSquare, Package } from 'lucide-react';
 import { format } from 'date-fns';
 
-export function SeedTradeCard({ trade, onAccept, onReject, onMessage, isInitiator }) {
+export function SeedTradeCard({ 
+  trade, 
+  onAccept, 
+  onReject, 
+  onMessage, 
+  onInterest,
+  onAcceptInterest,
+  onRejectInterest,
+  currentUserId,
+  isInitiator,
+  showInterestButton,
+  showInterestManagement
+}) {
   const statusColors = {
     pending: 'bg-yellow-100 text-yellow-800',
     accepted: 'bg-green-100 text-green-800',
@@ -71,52 +83,74 @@ export function SeedTradeCard({ trade, onAccept, onReject, onMessage, isInitiato
           </div>
         )}
 
-        {/* Actions */}
-        <div className="flex gap-2 pt-2">
-          {!isInitiator && trade.status === 'pending' && (
-            <>
-              <Button
-                onClick={() => onAccept(trade.id)}
-                className="flex-1 bg-green-600 hover:bg-green-700 gap-2"
-              >
-                <Check className="w-4 h-4" />
-                Accept Trade
-              </Button>
-              <Button
-                onClick={() => onReject(trade.id)}
-                variant="outline"
-                className="flex-1 text-red-600 border-red-300 hover:bg-red-50 gap-2"
-              >
-                <X className="w-4 h-4" />
-                Decline
-              </Button>
-            </>
-          )}
-          {trade.is_public && trade.status === 'public' && !isInitiator && (
+        {/* I'm Interested Button (for buyers on public offers) */}
+        {showInterestButton && (
+          <div className="pt-2">
             <Button
-              onClick={() => onAccept(trade.id)}
-              className="flex-1 bg-emerald-600 hover:bg-emerald-700 gap-2"
+              onClick={() => onInterest(trade.id)}
+              className="w-full bg-emerald-600 hover:bg-emerald-700 gap-2"
             >
               <Check className="w-4 h-4" />
               I'm Interested
             </Button>
-          )}
-          {(trade.status === 'accepted' || trade.status === 'pending') && (
+          </div>
+        )}
+
+        {/* Interest Management (for sellers reviewing interest) */}
+        {showInterestManagement && trade.interested_users && trade.interested_users.length > 0 && (
+          <div className="pt-2 space-y-3">
+            <p className="text-sm font-medium text-gray-700">Interested Gardeners:</p>
+            {trade.interested_users.map((interestedUser, idx) => (
+              <div key={idx} className="flex items-center justify-between bg-gray-50 p-3 rounded-lg">
+                <div>
+                  <p className="font-medium text-gray-900">{interestedUser.user_nickname}</p>
+                  <p className="text-xs text-gray-500">
+                    {format(new Date(interestedUser.timestamp), 'MMM d, yyyy')}
+                  </p>
+                </div>
+                <div className="flex gap-2">
+                  <Button
+                    onClick={() => onAcceptInterest(trade.id, interestedUser.user_id)}
+                    size="sm"
+                    className="bg-emerald-600 hover:bg-emerald-700"
+                  >
+                    Accept
+                  </Button>
+                  <Button
+                    onClick={() => onRejectInterest(trade.id, interestedUser.user_id)}
+                    size="sm"
+                    variant="outline"
+                  >
+                    Decline
+                  </Button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Message Button */}
+        {(trade.status === 'accepted' || (trade.status === 'pending' && !showInterestManagement)) && (
+          <div className="pt-2">
             <Button
               onClick={() => onMessage(trade)}
               variant="outline"
-              className="flex-1 gap-2"
+              className="w-full gap-2"
             >
               <MessageSquare className="w-4 h-4" />
               Send Private Message
             </Button>
-          )}
-          {trade.is_public && trade.status === 'public' && isInitiator && (
+          </div>
+        )}
+
+        {/* Seller waiting badge */}
+        {trade.is_public && trade.status === 'public' && isInitiator && (
+          <div className="pt-2">
             <Badge className="bg-blue-100 text-blue-800 px-3 py-1">
               Public - waiting for interest
             </Badge>
-          )}
-        </div>
+          </div>
+        )}
       </CardContent>
     </Card>
   );
