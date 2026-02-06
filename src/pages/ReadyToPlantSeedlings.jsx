@@ -39,8 +39,21 @@ export default function ReadyToPlantSeedlings() {
         ...myPlants.map(p => ({ ...p, source: 'my_plant', source_type: 'my_plant', source_id: p.id }))
       ];
 
-      setSeedlings(allSeedlings);
-      setFilteredSeedlings(allSeedlings);
+      // Group by display name and count duplicates
+      const grouped = {};
+      for (const seedling of allSeedlings) {
+        const key = `${seedling.variety_name || 'Unknown'}_${seedling.plant_type_name || 'Plant'}`;
+        if (!grouped[key]) {
+          grouped[key] = { ...seedling, quantity: 1, ids: [seedling.source_id] };
+        } else {
+          grouped[key].quantity += 1;
+          grouped[key].ids.push(seedling.source_id);
+        }
+      }
+
+      const deduplicated = Object.values(grouped);
+      setSeedlings(deduplicated);
+      setFilteredSeedlings(deduplicated);
 
       // Load display names
       await loadDisplayNames(allSeedlings);
@@ -223,18 +236,23 @@ export default function ReadyToPlantSeedlings() {
                         </div>
                       </div>
 
-                      {/* Action */}
-                      <div className="flex items-end justify-end">
-                        <Button
-                          onClick={() => {
-                            // Navigate to Gardens page with seedling ID to plant
-                            const url = createPageUrl('Gardens') + `?plant_seedling=${seedling.source_id}&source_type=${seedling.source_type}`;
-                            window.location.href = url;
-                          }}
-                          className="w-full bg-emerald-600 hover:bg-emerald-700"
-                        >
-                          Plant in Garden →
-                        </Button>
+                      {/* Quantity & Action */}
+                      <div className="flex flex-col gap-2">
+                       {seedling.quantity > 1 && (
+                         <Badge variant="secondary" className="text-sm font-bold w-fit">
+                           x{seedling.quantity} available
+                         </Badge>
+                       )}
+                       <Button
+                         onClick={() => {
+                           // Navigate to Gardens page with seedling ID to plant
+                           const url = createPageUrl('Gardens') + `?plant_seedling=${seedling.source_id}&source_type=${seedling.source_type}`;
+                           window.location.href = url;
+                         }}
+                         className="w-full bg-emerald-600 hover:bg-emerald-700"
+                       >
+                         Plant in Garden →
+                       </Button>
                       </div>
                     </div>
                   </CardContent>
