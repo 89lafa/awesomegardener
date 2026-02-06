@@ -55,26 +55,47 @@ Deno.serve(async (req) => {
 
     // Build type map
     const typeMap = new Map(plantTypes.map(t => [t.id, t]));
+    const varietyMap = new Map(varieties.map(v => [v.id, v]));
 
     // Calculate popularity for each variety
     const varietyPopularity = [];
     
-    for (const variety of varieties) {
-      const varietyUserCount = varietyUsers.get(variety.id)?.size || 0;
-      const plantTypeUserCount = plantTypeUsers.get(variety.plant_type_id)?.size || 0;
-      const uniqueUserCount = Math.max(varietyUserCount, plantTypeUserCount);
+    // Add all varieties that users have
+    for (const [varietyId, userSet] of varietyUsers.entries()) {
+      const variety = varietyMap.get(varietyId);
+      if (!variety) continue;
       
-      if (uniqueUserCount < 1) continue;
-
       const plantType = typeMap.get(variety.plant_type_id);
-
+      
       varietyPopularity.push({
         variety_id: variety.id,
         variety_name: variety.variety_name,
         plant_type_id: plantType?.id,
         plant_type_name: plantType?.common_name,
-        unique_users: uniqueUserCount
+        unique_users: userSet.size
       });
+    }
+    
+    // Add plant types without specific varieties (use generic variety for display)
+    for (const [plantTypeId, userSet] of plantTypeUsers.entries()) {
+      const plantType = typeMap.get(plantTypeId);
+      if (!plantType) continue;
+      
+      // Check if already counted via variety
+      const alreadyCounted = varietyPopularity.some(v => v.plant_type_id === plantTypeId);
+      if (!alreadyCounted) {
+        // Find a representative variety for this plant type
+        const representativeVariety = varieties.find(v => v.plant_type_id === plantTypeId);
+        if (representativeVariety) {
+          varietyPopularity.push({
+            variety_id: representativeVariety.id,
+            variety_name: representativeVariety.variety_name,
+            plant_type_id: plantType.id,
+            plant_type_name: plantType.common_name,
+            unique_users: userSet.size
+          });
+        }
+      }
     }
 
     console.log('[getPopularCrops] Found', varietyPopularity.length, 'popular varieties');
