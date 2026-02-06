@@ -141,39 +141,100 @@ Be strict with JSON format.`,
             throw new Error('Missing plant name, quantity, or location for planting');
           }
           
-          // Find the tray by location (e.g., "Rack 1, Tray 1")
-          const trays = await base44.entities.SeedTray.filter({ created_by: user.email });
-          const tray = trays.find(t => {
-            const nameMatch = commandData.location.toLowerCase();
-            return t.name?.toLowerCase().includes(nameMatch);
-          });
+          // Parse location to extract rack/tray numbers (e.g., "Rack 1 Tray 2")
+          const locationLower = commandData.location.toLowerCase();
+          const rackMatch = locationLower.match(/rack\s*(\d+)/);
+          const shelfMatch = locationLower.match(/shelf\s*(\d+)/);
+          const trayMatch = locationLower.match(/tray\s*(\d+)/);
           
-          if (!tray) throw new Error(`Tray "${commandData.location}" not found`);
+          let targetTray = null;
+          const allTrays = await base44.entities.SeedTray.filter({ created_by: user.email });
+          
+          // If tray number specified, find trays with that number in name
+          if (trayMatch) {
+            const trayNum = trayMatch[1];
+            let candidateTrays = allTrays.filter(t => 
+              t.name?.toLowerCase().includes(`tray ${trayNum}`) || 
+              t.name?.toLowerCase().includes(`tray${trayNum}`) ||
+              t.name?.toLowerCase() === trayNum
+            );
+            
+            // If rack specified, narrow down by rack
+            if (rackMatch && candidateTrays.length > 1) {
+              const rackNum = rackMatch[1];
+              const allRacks = await base44.entities.GrowRack.filter({ created_by: user.email });
+              const targetRack = allRacks.find(r => 
+                r.name?.toLowerCase().includes(`rack ${rackNum}`) ||
+                r.name?.toLowerCase().includes(`rack${rackNum}`)
+              );
+              
+              if (targetRack) {
+                const allShelves = await base44.entities.GrowShelf.filter({ rack_id: targetRack.id });
+                const shelfIds = allShelves.map(s => s.id);
+                candidateTrays = candidateTrays.filter(t => shelfIds.includes(t.shelf_id));
+              }
+            }
+            
+            // If shelf specified, narrow down by shelf
+            if (shelfMatch && candidateTrays.length > 1) {
+              const shelfNum = parseInt(shelfMatch[1]);
+              const allShelves = await base44.entities.GrowShelf.filter({ created_by: user.email });
+              const targetShelf = allShelves.find(s => s.shelf_number === shelfNum);
+              if (targetShelf) {
+                candidateTrays = candidateTrays.filter(t => t.shelf_id === targetShelf.id);
+              }
+            }
+            
+            if (candidateTrays.length === 1) {
+              targetTray = candidateTrays[0];
+            } else if (candidateTrays.length > 1) {
+              throw new Error(`Multiple trays found matching "${commandData.location}". Please be more specific.`);
+            }
+          }
+          
+          if (!targetTray) throw new Error(`Tray "${commandData.location}" not found`);
           
           // Find seed lot by variety name
           const seedLots = await base44.entities.SeedLot.filter({ created_by: user.email });
-          const seedLot = seedLots.find(lot => 
-            lot.custom_label?.toLowerCase().includes(commandData.plantName.toLowerCase()) ||
-            lot.variety_name?.toLowerCase().includes(commandData.plantName.toLowerCase())
+          const plantNameLower = commandData.plantName.toLowerCase();
+          let seedLot = seedLots.find(lot => 
+            lot.custom_label?.toLowerCase().includes(plantNameLower) ||
+            lot.variety_name?.toLowerCase().includes(plantNameLower)
           );
           
+          // If not found in stash, try finding in catalog
           if (!seedLot) {
-            throw new Error(`Seed lot for "${commandData.plantName}" not found`);
+            const varieties = await base44.entities.Variety.filter({ 
+              variety_name: { "$ilike": `%${commandData.plantName}%` } 
+            });
+            if (varieties.length > 0) {
+              seedLot = seedLots.find(lot => lot.variety_id === varieties[0].id);
+            }
+          }
+          
+          if (!seedLot) {
+            throw new Error(`Seed lot for "${commandData.plantName}" not found in your stash`);
           }
           
           // Get tray cells
-          const cells = await base44.entities.TrayCell.filter({ tray_id: tray.id });
+          const cells = await base44.entities.TrayCell.filter({ tray_id: targetTray.id });
           const emptyCells = cells.filter(c => c.status === 'empty').slice(0, commandData.quantity);
           
           if (emptyCells.length < commandData.quantity) {
-            throw new Error(`Only ${emptyCells.length} empty cells available (need ${commandData.quantity})`);
+            throw new Error(`Only ${emptyCells.length} empty cells available in ${targetTray.name} (need ${commandData.quantity})`);
           }
           
           // Fetch plant type info for display
-          let varietyName = seedLot.custom_label || seedLot.variety_name || 'Seeds';
+          let varietyName = seedLot.custom_label || seedLot.variety_name || commandData.plantName;
           let plantTypeName = 'Plant';
           
-          if (seedLot.variety_id) {
+          if (seedLot.plant_profile_id) {
+            const plantProfiles = await base44.entities.PlantProfile.filter({ id: seedLot.plant_profile_id });
+            if (plantProfiles.length > 0) {
+              varietyName = plantProfiles[0].variety_name;
+              plantTypeName = plantProfiles[0].common_name;
+            }
+          } else if (seedLot.variety_id) {
             const varieties = await base44.entities.Variety.filter({ id: seedLot.variety_id });
             if (varieties.length > 0) {
               varietyName = varieties[0].variety_name;
@@ -200,20 +261,35 @@ Be strict with JSON format.`,
           }
           
           // Update tray status
-          await base44.entities.SeedTray.update(tray.id, {
+          await base44.entities.SeedTray.update(targetTray.id, {
             status: 'seeded',
             start_date: adjustedDate
           });
           
-          toast.success(`Planted ${emptyCells.length} ${varietyName} seeds in ${tray.name}!`);
+          toast.success(`Planted ${emptyCells.length} ${varietyName} seeds in ${targetTray.name}!`);
+          onClose(); // Close dialog after success
           break;
         }
         
+        case 'query':
+          // Handle questions - show friendly message
+          setAiResponse({
+            success: false,
+            message: `I can help with: planting seeds (e.g., "Plant 10 tomatoes in Tray 5"). What would you like to do?`,
+            error: 'Question handling not yet implemented'
+          });
+          break;
+          
         default:
           throw new Error(`Action "${commandData.action}" not yet implemented`);
       }
     } catch (error) {
       console.error('Command execution error:', error);
+      setAiResponse({
+        success: false,
+        message: error.message || 'Failed to execute command',
+        error: error.message
+      });
       throw error;
     }
   };
