@@ -254,45 +254,73 @@ export default function Dashboard() {
       const userData = await base44.auth.me();
       setUser(userData);
 
-      const [gardens, seedLots, crops, tasks, spaces, trades] = await Promise.all([
+      // Load only essential stats first - stagger the rest
+      const [gardens, seedLots] = await Promise.all([
         base44.entities.Garden.filter({ created_by: userData.email, archived: false }),
-        base44.entities.SeedLot.filter({ created_by: userData.email }),
-        base44.entities.CropPlan.filter({ created_by: userData.email, status: 'active' }),
-        base44.entities.CropTask.filter({ created_by: userData.email, is_completed: false }),
-        base44.entities.IndoorGrowSpace.filter({ created_by: userData.email }),
-        base44.entities.SeedTrade.filter({ recipient_id: userData.id, status: 'pending' })
+        base44.entities.SeedLot.filter({ created_by: userData.email })
       ]);
+
+      // Delay loading non-critical stats
+      setTimeout(async () => {
+        try {
+          const [crops, tasks, spaces, trades] = await Promise.all([
+            base44.entities.CropPlan.filter({ created_by: userData.email, status: 'active' }),
+            base44.entities.CropTask.filter({ created_by: userData.email, is_completed: false }),
+            base44.entities.IndoorGrowSpace.filter({ created_by: userData.email }),
+            base44.entities.SeedTrade.filter({ recipient_id: userData.id, status: 'pending' })
+          ]);
+
+          setStats(prev => ({
+            ...prev,
+            activeCrops: crops.length,
+            tasks: tasks.length,
+            indoorSpaces: spaces.length,
+            tradesPending: trades.length
+          }));
+        } catch (err) {
+          console.error('Error loading secondary stats:', err);
+        }
+      }, 500);
 
       const newStats = {
         gardens: gardens.length,
         seedLots: seedLots.length,
-        activeCrops: crops.length,
-        tasks: tasks.length,
-        indoorSpaces: spaces.length,
-        tradesPending: trades.length
+        activeCrops: 0,
+        tasks: 0,
+        indoorSpaces: 0,
+        tradesPending: 0
       };
       setStats(newStats);
 
-      // Load popular crops
-      let popularData = null;
-      try {
-        const popularResponse = await base44.functions.invoke('getPopularCrops', {});
-        popularData = popularResponse.data;
-        setPopularCrops(popularData);
-      } catch (error) {
-        console.error('Error loading popular crops:', error);
-      }
+      // Load popular crops - delay and skip if rate limited
+      setTimeout(async () => {
+        try {
+          const popularResponse = await base44.functions.invoke('getPopularCrops', {});
+          setPopularCrops(popularResponse.data);
+          
+          // Update cache with popular crops
+          sessionStorage.setItem('dashboard_state', JSON.stringify({
+            stats: newStats,
+            popularCrops: popularResponse.data,
+            weather: weather,
+            timestamp: Date.now()
+          }));
+        } catch (error) {
+          if (error.message?.includes('Rate limit')) {
+            console.warn('Rate limit hit loading popular crops - skipping');
+          } else {
+            console.error('Error loading popular crops:', error);
+          }
+        }
+      }, 1000);
       
-      // Cache dashboard state
-      sessionStorage.setItem('dashboard_state', JSON.stringify({
-        stats: newStats,
-        popularCrops: popularData,
-        weather: weather,
-        timestamp: Date.now()
-      }));
     } catch (error) {
       console.error('Error loading dashboard:', error);
-      toast.error('Failed to load dashboard');
+      if (error.message?.includes('Rate limit')) {
+        toast.error('Loading slowly to avoid rate limits - please wait');
+      } else {
+        toast.error('Failed to load dashboard');
+      }
     } finally {
       setLoading(false);
     }

@@ -5,10 +5,11 @@ Deno.serve(async (req) => {
     const base44 = createClientFromRequest(req);
     
     // Get all plantings AND crop plans to determine what's being grown
-    const plantings = await base44.asServiceRole.entities.PlantInstance.list();
-    const cropPlans = await base44.asServiceRole.entities.CropPlan.filter({ status: { $in: ['active', 'scheduled'] } });
-    const varieties = await base44.asServiceRole.entities.Variety.list();
-    const plantTypes = await base44.asServiceRole.entities.PlantType.list();
+    // CRITICAL: Limit queries to reduce load
+    const plantings = await base44.asServiceRole.entities.PlantInstance.list('-created_date', 100);
+    const cropPlans = await base44.asServiceRole.entities.CropPlan.filter({ status: { $in: ['active', 'scheduled'] } }, '-created_date', 50);
+    const varieties = await base44.asServiceRole.entities.Variety.list('variety_name', 200);
+    const plantTypes = await base44.asServiceRole.entities.PlantType.list('common_name', 50);
 
     // Track unique users per variety
     const varietyUsers = new Map(); // variety_id => Set of user emails
