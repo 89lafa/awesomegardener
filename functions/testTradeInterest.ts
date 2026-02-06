@@ -33,6 +33,15 @@ Deno.serve(async (req) => {
     result.all_users_count = allUsers.length;
     
     if (initiator) {
+      result.notification_attempt = {
+        user_email: initiator.email,
+        type: 'system',
+        title: 'Test Trade Interest',
+        body: `Test from ${user.email}`,
+        link_url: '/SeedTrading',
+        is_read: false
+      };
+      
       // Try to create a test notification
       try {
         const notification = await base44.asServiceRole.entities.Notification.create({
