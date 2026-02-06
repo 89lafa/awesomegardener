@@ -62,10 +62,14 @@ export default function SeedTrading() {
         interested_users: interested
       });
       
+      // Fetch the seller's user record to get their email
+      const sellerUsers = await base44.entities.User.filter({ id: trade.initiator_id });
+      const sellerEmail = sellerUsers.length > 0 ? sellerUsers[0].email : trade.created_by;
+      
       // Create notification for seller with user_email
       await base44.entities.Notification.create({
         user_id: trade.initiator_id,
-        user_email: trade.created_by, // CRITICAL FIX: Add the seller's email
+        user_email: sellerEmail,
         type: 'trade_interest',
         title: 'Trade Interest',
         message: `${user.full_name || user.email} is interested in your seed trade offer!`,
@@ -92,10 +96,14 @@ export default function SeedTrading() {
         accepted_at: new Date().toISOString()
       });
       
+      // Fetch the interested user's email
+      const buyerUsers = await base44.entities.User.filter({ id: interestedUserId });
+      const buyerEmail = buyerUsers.length > 0 ? buyerUsers[0].email : interestedUser?.user_nickname;
+      
       // Notify the interested user
       await base44.entities.Notification.create({
         user_id: interestedUserId,
-        user_email: interestedUser?.user_nickname || 'unknown@example.com', // Best effort to get email
+        user_email: buyerEmail,
         type: 'trade_accepted',
         title: 'Trade Accepted',
         message: 'Your trade interest was accepted!',
@@ -184,11 +192,10 @@ export default function SeedTrading() {
   
   const completed = trades.filter(t => t.status === 'completed' || t.status === 'accepted');
   
-  // Public offers = ALL public trades, regardless of who posted them
-  // But we'll conditionally show the "I'm Interested" button only for trades not initiated by the current user
+  // Public offers = ALL public trades WHERE I haven't expressed interest
   const publicOffers = trades.filter(t => 
     t.is_public && 
-    t.status === 'public' &&
+    (t.status === 'public' || t.status === 'pending') &&
     (!t.interested_users || !t.interested_users.some(u => u.user_id === user.id))
   );
 
