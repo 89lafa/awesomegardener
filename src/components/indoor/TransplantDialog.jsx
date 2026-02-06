@@ -100,12 +100,19 @@ export default function TransplantDialog({
              plant_profile_id: null
            });
          } else if (destination === 'outdoor_garden') {
-           // Mark cell as transplanted (it left the tray) and create MyPlant record
+           // Mark cell as EMPTY (seedling is gone) and create MyPlant record
            await base44.entities.TrayCell.update(cell.id, {
-             status: 'transplanted',
+             status: 'empty',
              transplanted_date: transplantDate,
              transplanted_to_type: destination,
-             transplanted_to_id: selectedStructure
+             transplanted_to_id: selectedStructure,
+             // Clear plant data when emptying
+             variety_id: null,
+             variety_name: null,
+             plant_type_id: null,
+             plant_type_name: null,
+             user_seed_id: null,
+             plant_profile_id: null
            });
            
            // Create MyPlant record with ready_to_transplant status for Ready to Plant page
@@ -121,6 +128,7 @@ export default function TransplantDialog({
              plant_type_id: cell.plant_type_id,
              plant_type_name: cell.plant_type_name,
              status: 'ready_to_transplant',
+             location_name: 'Ready to Plant',
              name: displayName,
              source_tray_cell_id: cell.id,
              transplant_date: transplantDate
