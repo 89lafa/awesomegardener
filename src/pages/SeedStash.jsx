@@ -98,6 +98,7 @@ export default function SeedStash() {
   const [showAIAssistant, setShowAIAssistant] = useState(false);
   const [showPacketScanner, setShowPacketScanner] = useState(false);
   const [showBarcodeScanner, setShowBarcodeScanner] = useState(false);
+  const [scannedData, setScannedData] = useState(null);
   const [viewMode, setViewMode] = useState('grid');
   const [filterTab, setFilterTab] = useState('stash');
   const [searchQuery, setSearchQuery] = useState('');
@@ -1498,9 +1499,10 @@ export default function SeedStash() {
       {showPacketScanner && (
         <SeedPacketScanner
           onScanComplete={(data) => {
+            console.log('[SeedStash] Packet scanned:', data);
             setShowPacketScanner(false);
+            setScannedData(data);
             setShowAddCustomDialog(true);
-            toast.success('Seed packet data extracted! Review and save.');
           }}
           onClose={() => setShowPacketScanner(false)}
         />
@@ -1509,7 +1511,8 @@ export default function SeedStash() {
       {/* Barcode Scanner */}
       {showBarcodeScanner && (
         <BarcodeScanner
-          onScanComplete={() => {
+          onScanComplete={(product) => {
+            console.log('[SeedStash] Barcode scanned:', product);
             setShowBarcodeScanner(false);
             loadData();
           }}

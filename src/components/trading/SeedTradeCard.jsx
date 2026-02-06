@@ -92,6 +92,15 @@ export function SeedTradeCard({ trade, onAccept, onReject, onMessage, isInitiato
               </Button>
             </>
           )}
+          {trade.is_public && trade.status === 'public' && !isInitiator && (
+            <Button
+              onClick={() => onAccept(trade.id)}
+              className="flex-1 bg-emerald-600 hover:bg-emerald-700 gap-2"
+            >
+              <Check className="w-4 h-4" />
+              I'm Interested
+            </Button>
+          )}
           {(trade.status === 'accepted' || trade.status === 'pending') && (
             <Button
               onClick={() => onMessage(trade)}
@@ -101,6 +110,11 @@ export function SeedTradeCard({ trade, onAccept, onReject, onMessage, isInitiato
               <MessageSquare className="w-4 h-4" />
               Send Private Message
             </Button>
+          )}
+          {trade.is_public && trade.status === 'public' && isInitiator && (
+            <Badge className="bg-blue-100 text-blue-800 px-3 py-1">
+              Public - waiting for interest
+            </Badge>
           )}
         </div>
       </CardContent>
