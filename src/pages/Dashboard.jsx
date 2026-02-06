@@ -143,7 +143,26 @@ export default function Dashboard() {
 
 
   useEffect(() => {
-    loadDashboard();
+    // Check for cached state first
+    const cachedState = sessionStorage.getItem('dashboard_state');
+    if (cachedState) {
+      try {
+        const parsed = JSON.parse(cachedState);
+        setStats(parsed.stats || {});
+        setPopularCrops(parsed.popularCrops);
+        setWeather(parsed.weather);
+        setLoading(false);
+        setWeatherLoading(false);
+        // Still refresh in background
+        setTimeout(loadDashboard, 500);
+        setTimeout(loadWeather, 1000);
+        setTimeout(checkAchievements, 1500);
+      } catch (err) {
+        loadDashboard();
+      }
+    } else {
+      loadDashboard();
+    }
     
     // Stagger requests to avoid rate limit hammering
     const weatherTimer = setTimeout(loadWeather, 100);
@@ -244,22 +263,33 @@ export default function Dashboard() {
         base44.entities.SeedTrade.filter({ recipient_id: userData.id, status: 'pending' })
       ]);
 
-      setStats({
+      const newStats = {
         gardens: gardens.length,
         seedLots: seedLots.length,
         activeCrops: crops.length,
         tasks: tasks.length,
         indoorSpaces: spaces.length,
         tradesPending: trades.length
-      });
+      };
+      setStats(newStats);
 
       // Load popular crops
+      let popularData = null;
       try {
         const popularResponse = await base44.functions.invoke('getPopularCrops', {});
-        setPopularCrops(popularResponse.data);
+        popularData = popularResponse.data;
+        setPopularCrops(popularData);
       } catch (error) {
         console.error('Error loading popular crops:', error);
       }
+      
+      // Cache dashboard state
+      sessionStorage.setItem('dashboard_state', JSON.stringify({
+        stats: newStats,
+        popularCrops: popularData,
+        weather: weather,
+        timestamp: Date.now()
+      }));
     } catch (error) {
       console.error('Error loading dashboard:', error);
       toast.error('Failed to load dashboard');
