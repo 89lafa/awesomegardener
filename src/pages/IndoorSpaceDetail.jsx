@@ -286,21 +286,33 @@ export default function IndoorSpaceDetail() {
                               <div className="grid grid-cols-2 md:grid-cols-3 gap-2 mt-2">
                                 {shelfTrays.map(tray => (
                                  <div key={tray.id} className="relative group">
-                                   <button
-                                     onClick={() => {
-                                       window.location.href = createPageUrl('TrayDetail') + `?id=${tray.id}`;
-                                     }}
-                                     className="w-full p-2 bg-white border border-emerald-200 rounded hover:border-emerald-600 transition text-left"
-                                   >
-                                     <p className="text-xs font-medium text-gray-900">{tray.name}</p>
-                                     <p className="text-[10px] text-gray-600">{tray.total_cells} cells</p>
-                                     <p className="text-[10px] text-emerald-600 mt-1 font-medium">
-                                       {tray.status === 'seeded' ? '🌱 Seeded' : '📋 Empty'}
-                                     </p>
-                                     {tray.notes && (
-                                       <p className="text-[9px] text-gray-500 mt-1 truncate">📝 {tray.notes}</p>
-                                     )}
-                                   </button>
+                                  <button
+                                    onClick={async () => {
+                                      // Calculate status from cells before navigating
+                                      const trayCells = await base44.entities.TrayCell.filter({ tray_id: tray.id });
+                                      const activeCount = trayCells.filter(c => 
+                                        c.status === 'seeded' || c.status === 'germinated' || c.status === 'growing'
+                                      ).length;
+
+                                      // Update tray status based on cells
+                                      const newStatus = activeCount > 0 ? 'seeded' : 'empty';
+                                      if (tray.status !== newStatus) {
+                                        await base44.entities.SeedTray.update(tray.id, { status: newStatus });
+                                      }
+
+                                      window.location.href = createPageUrl('TrayDetail') + `?id=${tray.id}`;
+                                    }}
+                                    className="w-full p-2 bg-white border border-emerald-200 rounded hover:border-emerald-600 transition text-left"
+                                  >
+                                    <p className="text-xs font-medium text-gray-900">{tray.name}</p>
+                                    <p className="text-[10px] text-gray-600">{tray.total_cells} cells</p>
+                                    <p className="text-[10px] text-emerald-600 mt-1 font-medium">
+                                      📋 Click to view
+                                    </p>
+                                    {tray.notes && (
+                                      <p className="text-[9px] text-gray-500 mt-1 truncate">📝 {tray.notes}</p>
+                                    )}
+                                  </button>
                                    <Button
                                      size="sm"
                                      variant="ghost"

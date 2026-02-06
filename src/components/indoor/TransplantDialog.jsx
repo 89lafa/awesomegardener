@@ -100,13 +100,30 @@ export default function TransplantDialog({
              plant_profile_id: null
            });
          } else if (destination === 'outdoor_garden') {
-           // Mark as ready_to_transplant for outdoor garden (so it appears in Ready To Plant)
+           // Mark cell as transplanted (it left the tray) and create MyPlant record
            await base44.entities.TrayCell.update(cell.id, {
-             status: 'ready_to_transplant',
+             status: 'transplanted',
              transplanted_date: transplantDate,
              transplanted_to_type: destination,
              transplanted_to_id: selectedStructure
-             // KEEP the variety/plant data so it shows in Ready To Plant list
+           });
+           
+           // Create MyPlant record with ready_to_transplant status for Ready to Plant page
+           const displayName = cell.variety_name && cell.plant_type_name 
+             ? `${cell.variety_name} - ${cell.plant_type_name}`
+             : cell.variety_name || 'Seedling';
+             
+           await base44.entities.MyPlant.create({
+             plant_profile_id: cell.plant_profile_id,
+             seed_lot_id: cell.user_seed_id,
+             variety_id: cell.variety_id,
+             variety_name: cell.variety_name,
+             plant_type_id: cell.plant_type_id,
+             plant_type_name: cell.plant_type_name,
+             status: 'ready_to_transplant',
+             name: displayName,
+             source_tray_cell_id: cell.id,
+             transplant_date: transplantDate
            });
          } else if (destination === 'indoor_container') {
            // Mark as empty when moving to indoor container (it's now in a container)
