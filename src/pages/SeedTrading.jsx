@@ -29,11 +29,7 @@ export default function SeedTrading() {
       setUser(userData);
 
       const allTrades = await base44.entities.SeedTrade.filter({}, '-created_date');
-      const userTrades = allTrades.filter(t =>
-        t.initiator_id === userData.id || t.recipient_id === userData.id
-      );
-
-      setTrades(userTrades);
+      setTrades(allTrades);
     } catch (error) {
       console.error('Error loading trades:', error);
       toast.error('Failed to load trades');
@@ -44,11 +40,13 @@ export default function SeedTrading() {
 
   const handleAccept = async (tradeId) => {
     try {
+      const trade = trades.find(t => t.id === tradeId);
       await base44.entities.SeedTrade.update(tradeId, {
-        status: 'accepted',
+        status: trade.is_public ? 'pending' : 'accepted',
+        recipient_id: user.id,
         accepted_at: new Date().toISOString()
       });
-      toast.success('Trade accepted!');
+      toast.success(trade.is_public ? 'Interest sent! Trade moved to pending.' : 'Trade accepted!');
       loadData();
     } catch (error) {
       toast.error('Failed to accept trade');
@@ -83,6 +81,7 @@ export default function SeedTrading() {
   const myInitiated = trades.filter(t => t.initiator_id === user.id);
   const myReceived = trades.filter(t => t.recipient_id === user.id && t.status === 'pending');
   const completed = trades.filter(t => t.status === 'completed' || t.status === 'accepted');
+  const publicOffers = trades.filter(t => t.is_public && t.status === 'public' && t.initiator_id !== user.id);
 
   return (
     <div className="max-w-4xl mx-auto">
@@ -110,18 +109,41 @@ export default function SeedTrading() {
         />
       </div>
 
-      <Tabs defaultValue="pending">
-        <TabsList className="w-full">
-          <TabsTrigger value="pending" className="flex-1">
+      <Tabs defaultValue="public">
+        <TabsList className="w-full grid grid-cols-4">
+          <TabsTrigger value="public">
+            Public Offers ({publicOffers.length})
+          </TabsTrigger>
+          <TabsTrigger value="pending">
             Pending {myReceived.length > 0 && <Badge className="ml-2 bg-yellow-600">{myReceived.length}</Badge>}
           </TabsTrigger>
-          <TabsTrigger value="my-trades" className="flex-1">
+          <TabsTrigger value="my-trades">
             My Trades ({myInitiated.length})
           </TabsTrigger>
-          <TabsTrigger value="completed" className="flex-1">
+          <TabsTrigger value="completed">
             Completed ({completed.length})
           </TabsTrigger>
         </TabsList>
+
+        <TabsContent value="public" className="space-y-4 mt-4">
+          {publicOffers.length === 0 ? (
+            <Card>
+              <CardContent className="flex flex-col items-center justify-center py-12">
+                <p className="text-gray-500">No public offers available</p>
+              </CardContent>
+            </Card>
+          ) : (
+            publicOffers.map(trade => (
+              <SeedTradeCard
+                key={trade.id}
+                trade={trade}
+                onAccept={handleAccept}
+                onMessage={handleMessage}
+                isInitiator={false}
+              />
+            ))
+          )}
+        </TabsContent>
 
         <TabsContent value="pending" className="space-y-4 mt-4">
           {myReceived.length === 0 ? (
