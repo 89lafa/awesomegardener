@@ -9,7 +9,7 @@ export function SeedTradeCard({
   trade, 
   onAccept, 
   onReject, 
-  onMessage, 
+  onMessage,
   onInterest,
   onAcceptInterest,
   onRejectInterest,
@@ -83,11 +83,11 @@ export function SeedTradeCard({
           </div>
         )}
 
-        {/* I'm Interested Button (for buyers on public offers) */}
+        {/* I'm Interested Button (for buyers viewing public offers) */}
         {showInterestButton && (
           <div className="pt-2">
             <Button
-              onClick={() => onInterest(trade.id)}
+              onClick={() => onInterest?.(trade.id)}
               className="w-full bg-emerald-600 hover:bg-emerald-700 gap-2"
             >
               <Check className="w-4 h-4" />
@@ -96,31 +96,34 @@ export function SeedTradeCard({
           </div>
         )}
 
-        {/* Interest Management (for sellers reviewing interest) */}
+        {/* Interest Management (for sellers reviewing who's interested) */}
         {showInterestManagement && trade.interested_users && trade.interested_users.length > 0 && (
           <div className="pt-2 space-y-3">
-            <p className="text-sm font-medium text-gray-700">Interested Gardeners:</p>
+            <p className="text-sm font-semibold text-gray-700">Interested Gardeners:</p>
             {trade.interested_users.map((interestedUser, idx) => (
-              <div key={idx} className="flex items-center justify-between bg-gray-50 p-3 rounded-lg">
+              <div key={idx} className="flex items-center justify-between bg-emerald-50 p-3 rounded-lg border border-emerald-200">
                 <div>
                   <p className="font-medium text-gray-900">{interestedUser.user_nickname}</p>
                   <p className="text-xs text-gray-500">
-                    {format(new Date(interestedUser.timestamp), 'MMM d, yyyy')}
+                    {format(new Date(interestedUser.timestamp), 'MMM d, h:mm a')}
                   </p>
                 </div>
                 <div className="flex gap-2">
                   <Button
-                    onClick={() => onAcceptInterest(trade.id, interestedUser.user_id)}
+                    onClick={() => onAcceptInterest?.(trade.id, interestedUser.user_id)}
                     size="sm"
-                    className="bg-emerald-600 hover:bg-emerald-700"
+                    className="bg-green-600 hover:bg-green-700 gap-1"
                   >
+                    <Check className="w-4 h-4" />
                     Accept
                   </Button>
                   <Button
-                    onClick={() => onRejectInterest(trade.id, interestedUser.user_id)}
+                    onClick={() => onRejectInterest?.(trade.id, interestedUser.user_id)}
                     size="sm"
                     variant="outline"
+                    className="text-red-600 border-red-300 hover:bg-red-50 gap-1"
                   >
+                    <X className="w-4 h-4" />
                     Decline
                   </Button>
                 </div>
@@ -129,11 +132,11 @@ export function SeedTradeCard({
           </div>
         )}
 
-        {/* Message Button */}
-        {(trade.status === 'accepted' || (trade.status === 'pending' && !showInterestManagement)) && (
+        {/* Message Button (for accepted trades) */}
+        {trade.status === 'accepted' && (
           <div className="pt-2">
             <Button
-              onClick={() => onMessage(trade)}
+              onClick={() => onMessage?.(trade)}
               variant="outline"
               className="w-full gap-2"
             >
@@ -143,11 +146,11 @@ export function SeedTradeCard({
           </div>
         )}
 
-        {/* Seller waiting badge */}
+        {/* Seller waiting for interest badge */}
         {trade.is_public && trade.status === 'public' && isInitiator && (
           <div className="pt-2">
             <Badge className="bg-blue-100 text-blue-800 px-3 py-1">
-              Public - waiting for interest
+              Public - Waiting for interest
             </Badge>
           </div>
         )}
