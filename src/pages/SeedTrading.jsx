@@ -49,6 +49,15 @@ export default function SeedTrading() {
         return;
       }
       
+      // Get seller's email from User entity
+      const allUsers = await base44.entities.User.list();
+      const seller = allUsers.find(u => u.id === trade.initiator_id);
+      
+      if (!seller) {
+        toast.error('Could not find seller');
+        return;
+      }
+      
       // Add current user to interested_users
       interested.push({
         user_id: user.id,
@@ -62,9 +71,9 @@ export default function SeedTrading() {
         interested_users: interested
       });
       
-      // Use created_by which is the seller's email
+      // Create notification with seller's email
       await base44.entities.Notification.create({
-        user_email: trade.created_by,
+        user_email: seller.email,
         type: 'system',
         title: 'New Trade Interest',
         body: `${user.full_name || user.email} is interested in your seed trade offer!`,
