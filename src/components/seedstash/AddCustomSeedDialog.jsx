@@ -54,9 +54,21 @@ export default function AddCustomSeedDialog({ open, onOpenChange, onSuccess, pre
   useEffect(() => {
     if (open) {
       loadPlantTypes();
-      resetForm();
+      if (prefilledData) {
+        console.log('[AddCustomSeed] Prefilling with scanned data:', prefilledData);
+        setFormData(prev => ({
+          ...prev,
+          variety_name: prefilledData.variety_name || prev.variety_name,
+          description: prefilledData.description || prev.description,
+          days_to_maturity_seed: prefilledData.days_to_maturity || prev.days_to_maturity_seed,
+          source_vendor_name: prefilledData.vendor || prev.source_vendor_name,
+          sun_requirement: prefilledData.sun_requirement || prev.sun_requirement
+        }));
+      } else {
+        resetForm();
+      }
     }
-  }, [open]);
+  }, [open, prefilledData]);
 
   const loadPlantTypes = async () => {
     try {

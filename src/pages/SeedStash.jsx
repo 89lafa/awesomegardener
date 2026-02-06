@@ -1471,8 +1471,12 @@ export default function SeedStash() {
       {/* New Dialogs */}
       <AddCustomSeedDialog 
         open={showAddCustomDialog}
-        onOpenChange={setShowAddCustomDialog}
+        onOpenChange={(open) => {
+          setShowAddCustomDialog(open);
+          if (!open) setScannedData(null);
+        }}
         onSuccess={loadData}
+        prefilledData={scannedData}
       />
 
       <AddFromCatalogDialog 
@@ -1502,9 +1506,14 @@ export default function SeedStash() {
             console.log('[SeedStash] Packet scanned:', data);
             setShowPacketScanner(false);
             setScannedData(data);
-            setShowAddCustomDialog(true);
+            setTimeout(() => {
+              setShowAddCustomDialog(true);
+            }, 100);
           }}
-          onClose={() => setShowPacketScanner(false)}
+          onClose={() => {
+            setShowPacketScanner(false);
+            setScannedData(null);
+          }}
         />
       )}
 
