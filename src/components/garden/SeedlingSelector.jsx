@@ -26,15 +26,17 @@ export default function SeedlingSelector({ isOpen, onClose, onSeedlingSelected }
       setLoading(true);
       const user = await base44.auth.me();
 
-      // Get all ready-to-transplant seedlings (containers + tray cells)
-      const [containers, trayCells] = await Promise.all([
+      // Get all ready-to-transplant seedlings (containers + tray cells + MyPlants)
+      const [containers, trayCells, myPlants] = await Promise.all([
         base44.entities.IndoorContainer.filter({ created_by: user.email, status: 'ready_to_transplant' }),
-        base44.entities.TrayCell.filter({ created_by: user.email, status: 'ready_to_transplant' })
+        base44.entities.TrayCell.filter({ created_by: user.email, status: 'ready_to_transplant' }),
+        base44.entities.MyPlant.filter({ created_by: user.email, status: 'ready_to_transplant' })
       ]);
 
       const allSeedlings = [
         ...containers.map(c => ({ ...c, source_type: 'container', source_id: c.id })),
-        ...trayCells.map(c => ({ ...c, source_type: 'tray_cell', source_id: c.id }))
+        ...trayCells.map(c => ({ ...c, source_type: 'tray_cell', source_id: c.id })),
+        ...myPlants.map(c => ({ ...c, source_type: 'my_plant', source_id: c.id }))
       ];
 
       setSeedlings(allSeedlings);
@@ -118,6 +120,8 @@ export default function SeedlingSelector({ isOpen, onClose, onSeedlingSelected }
   const getSourceLocation = (seedling) => {
     if (seedling.source_type === 'container') {
       return `${seedling.location_name || 'Container'}`;
+    } else if (seedling.source_type === 'my_plant') {
+      return seedling.location_name || 'Ready to Plant';
     }
     return `Tray Cell ${seedling.cell_number || '?'}`;
   };
@@ -186,7 +190,7 @@ export default function SeedlingSelector({ isOpen, onClose, onSeedlingSelected }
                           {displayNames[seedling.source_id] || seedling.name}
                         </p>
                         <Badge variant="outline" className="text-xs mt-1">
-                          {seedling.source_type === 'container' ? '📦 Container' : '🌱 Tray'}
+                          {seedling.source_type === 'container' ? '📦 Container' : seedling.source_type === 'my_plant' ? '🌱 Garden' : '🌱 Tray'}
                         </Badge>
                       </div>
                       <div className="text-right text-sm text-gray-600">
