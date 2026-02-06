@@ -62,19 +62,14 @@ export default function SeedTrading() {
         interested_users: interested
       });
       
-      // Fetch the seller's user record to get their email
-      const sellerUsers = await base44.entities.User.filter({ id: trade.initiator_id });
-      const sellerEmail = sellerUsers.length > 0 ? sellerUsers[0].email : trade.created_by;
-      
-      // Create notification for seller with user_email
+      // Use created_by which is the seller's email
       await base44.entities.Notification.create({
-        user_id: trade.initiator_id,
-        user_email: sellerEmail,
-        type: 'trade_interest',
-        title: 'Trade Interest',
-        message: `${user.full_name || user.email} is interested in your seed trade offer!`,
-        link: createPageUrl('SeedTrading'),
-        read: false
+        user_email: trade.created_by,
+        type: 'system',
+        title: 'New Trade Interest',
+        body: `${user.full_name || user.email} is interested in your seed trade offer!`,
+        link_url: '/SeedTrading',
+        is_read: false
       });
       
       toast.success('Interest sent! The seller will review your request.');
@@ -90,25 +85,29 @@ export default function SeedTrading() {
       const trade = trades.find(t => t.id === tradeId);
       const interestedUser = (trade.interested_users || []).find(u => u.user_id === interestedUserId);
       
+      // Get the interested user's email from User entity
+      const buyerList = await base44.entities.User.list();
+      const buyer = buyerList.find(u => u.id === interestedUserId);
+      
+      if (!buyer) {
+        toast.error('Could not find buyer user');
+        return;
+      }
+      
       await base44.entities.SeedTrade.update(tradeId, {
         status: 'accepted',
         recipient_id: interestedUserId,
         accepted_at: new Date().toISOString()
       });
       
-      // Fetch the interested user's email
-      const buyerUsers = await base44.entities.User.filter({ id: interestedUserId });
-      const buyerEmail = buyerUsers.length > 0 ? buyerUsers[0].email : interestedUser?.user_nickname;
-      
       // Notify the interested user
       await base44.entities.Notification.create({
-        user_id: interestedUserId,
-        user_email: buyerEmail,
-        type: 'trade_accepted',
+        user_email: buyer.email,
+        type: 'system',
         title: 'Trade Accepted',
-        message: 'Your trade interest was accepted!',
-        link: createPageUrl('SeedTrading'),
-        read: false
+        body: 'Your trade interest was accepted! You can now message the seller.',
+        link_url: '/SeedTrading',
+        is_read: false
       });
       
       toast.success('Trade accepted!');
