@@ -49,15 +49,6 @@ export default function SeedTrading() {
         return;
       }
       
-      // Get seller's email from User entity
-      const allUsers = await base44.entities.User.list();
-      const seller = allUsers.find(u => u.id === trade.initiator_id);
-      
-      if (!seller) {
-        toast.error('Could not find seller');
-        return;
-      }
-      
       // Add current user to interested_users
       interested.push({
         user_id: user.id,
@@ -71,7 +62,14 @@ export default function SeedTrading() {
         interested_users: interested
       });
       
-      // Create notification with seller's email
+      // Get seller's email from User entity using initiator_id
+      const allUsers = await base44.entities.User.list();
+      const seller = allUsers.find(u => u.id === trade.initiator_id);
+      
+      if (!seller) {
+        throw new Error('Seller user not found');
+      }
+      
       await base44.entities.Notification.create({
         user_email: seller.email,
         type: 'system',
