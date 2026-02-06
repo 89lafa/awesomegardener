@@ -74,6 +74,8 @@ import { getPlantTypesCached, getSubcategoriesCached } from '../components/utils
 import AIGrowAssistant from '@/components/indoor/AIGrowAssistant';
 import { usePullToRefresh } from '@/components/utils/usePullToRefresh';
 import PullToRefreshIndicator from '@/components/common/PullToRefreshIndicator';
+import SeedPacketScanner from '@/components/seedstash/SeedPacketScanner';
+import BarcodeScanner from '@/components/seedstash/BarcodeScanner';
 
 const TAGS = [
   { value: 'favorite', label: 'Favorite', icon: Star, color: 'text-yellow-500' },
@@ -94,6 +96,8 @@ export default function SeedStash() {
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [editingSeed, setEditingSeed] = useState(null);
   const [showAIAssistant, setShowAIAssistant] = useState(false);
+  const [showPacketScanner, setShowPacketScanner] = useState(false);
+  const [showBarcodeScanner, setShowBarcodeScanner] = useState(false);
   const [viewMode, setViewMode] = useState('grid');
   const [filterTab, setFilterTab] = useState('stash');
   const [searchQuery, setSearchQuery] = useState('');
@@ -596,7 +600,7 @@ export default function SeedStash() {
         {/* Compact Mobile Action Row */}
         <div className="flex gap-1.5 lg:gap-2 flex-wrap">
            <Button 
-             onClick={() => toast.info('Hold your phone camera over a barcode or QR code to scan it. Coming soon!')}
+             onClick={() => setShowBarcodeScanner(true)}
              size="sm"
              variant="outline"
              className="gap-1 lg:gap-2 text-xs lg:text-sm h-8 lg:h-9"
@@ -605,7 +609,7 @@ export default function SeedStash() {
              <span className="sm:hidden">📷</span>
            </Button>
            <Button 
-             onClick={() => toast.info('Take a photo of your seed packet to extract data. Coming soon!')}
+             onClick={() => setShowPacketScanner(true)}
              size="sm"
              variant="outline"
              className="gap-1 lg:gap-2 text-xs lg:text-sm h-8 lg:h-9"
@@ -1487,6 +1491,29 @@ export default function SeedStash() {
         <AIGrowAssistant 
           onClose={() => setShowAIAssistant(false)}
           context={{ seeds, profiles, plantTypes }}
+        />
+      )}
+
+      {/* Packet Scanner */}
+      {showPacketScanner && (
+        <SeedPacketScanner
+          onScanComplete={(data) => {
+            setShowPacketScanner(false);
+            setShowAddCustomDialog(true);
+            toast.success('Seed packet data extracted! Review and save.');
+          }}
+          onClose={() => setShowPacketScanner(false)}
+        />
+      )}
+
+      {/* Barcode Scanner */}
+      {showBarcodeScanner && (
+        <BarcodeScanner
+          onScanComplete={() => {
+            setShowBarcodeScanner(false);
+            loadData();
+          }}
+          onClose={() => setShowBarcodeScanner(false)}
         />
       )}
 

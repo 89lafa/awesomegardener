@@ -179,13 +179,13 @@ export default function QuickHelpWidget() {
 
         {/* Footer */}
         <div className="border-t p-3 bg-gray-50 text-center">
-          <button
-            onClick={() => window.location.href = '/AIAssistants'}
+          <a
+            href="/AIAssistants"
             className="text-sm text-emerald-600 hover:underline flex items-center justify-center gap-1 mx-auto"
           >
             <MessageCircle className="w-3 h-3" />
-            Open full AI chat for more help
-          </button>
+            Open full AI Assistants for more help
+          </a>
         </div>
       </div>
     </div>
