@@ -40,50 +40,12 @@ export default function SeedTrading() {
 
   const handleInterest = async (tradeId) => {
     try {
-      const trade = trades.find(t => t.id === tradeId);
-      const interested = trade.interested_users || [];
-      
-      // Check if user already expressed interest
-      if (interested.some(u => u.user_id === user.id)) {
-        toast.error('You already expressed interest in this trade');
-        return;
-      }
-      
-      // Add current user to interested_users
-      interested.push({
-        user_id: user.id,
-        user_nickname: user.full_name || user.email,
-        message: '',
-        timestamp: new Date().toISOString()
-      });
-      
-      // Keep status as 'public' - don't change it
-      await base44.entities.SeedTrade.update(tradeId, {
-        interested_users: interested
-      });
-      
-      // Get seller's email from User entity using initiator_id
-      const allUsers = await base44.entities.User.list();
-      const seller = allUsers.find(u => u.id === trade.initiator_id);
-      
-      if (!seller) {
-        throw new Error('Seller user not found');
-      }
-      
-      await base44.entities.Notification.create({
-        user_email: seller.email,
-        type: 'system',
-        title: 'New Trade Interest',
-        body: `${user.full_name || user.email} is interested in your seed trade offer!`,
-        link_url: '/SeedTrading',
-        is_read: false
-      });
-      
+      await base44.functions.invoke('expressTradeInterest', { tradeId });
       toast.success('Interest sent! The seller will review your request.');
       loadData();
     } catch (error) {
       console.error('Error expressing interest:', error);
-      toast.error('Failed to send interest');
+      toast.error(error.message || 'Failed to send interest');
     }
   };
 
