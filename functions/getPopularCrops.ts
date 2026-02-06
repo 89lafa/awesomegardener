@@ -4,27 +4,54 @@ Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
     
-    // Get all plantings (actual planted items) to determine what's being grown
-    const [plantings, varieties, plantTypes] = await Promise.all([
+    // Get all plantings AND crop plans to determine what's being grown
+    const [plantings, cropPlans, varieties, plantTypes] = await Promise.all([
       base44.asServiceRole.entities.PlantInstance.list(),
+      base44.asServiceRole.entities.CropPlan.filter({ status: { $in: ['active', 'scheduled'] } }),
       base44.asServiceRole.entities.Variety.list(),
       base44.asServiceRole.entities.PlantType.list()
     ]);
 
-    // Track unique users per variety (based on ACTUAL PLANTINGS)
+    // Track unique users per variety
     const varietyUsers = new Map(); // variety_id => Set of user emails
+    const plantTypeUsers = new Map(); // For items without variety_id, track by plant_type
 
-    // Process plantings - these are actual plants in gardens/plots
+    // Process plantings - actual plants in gardens
     for (const planting of plantings) {
-      if (planting.variety_id && planting.created_by) {
+      const createdBy = planting.created_by || '89lafa@gmail.com';
+      
+      if (planting.variety_id) {
         if (!varietyUsers.has(planting.variety_id)) {
           varietyUsers.set(planting.variety_id, new Set());
         }
-        varietyUsers.get(planting.variety_id).add(planting.created_by);
+        varietyUsers.get(planting.variety_id).add(createdBy);
+      } else if (planting.plant_type_id) {
+        // Track by plant type when no variety
+        if (!plantTypeUsers.has(planting.plant_type_id)) {
+          plantTypeUsers.set(planting.plant_type_id, new Set());
+        }
+        plantTypeUsers.get(planting.plant_type_id).add(createdBy);
       }
     }
 
-    console.log('[getPopularCrops] Tracking', varietyUsers.size, 'varieties from', plantings.length, 'plantings');
+    // Process crop plans
+    for (const plan of cropPlans) {
+      const createdBy = plan.created_by || plan.user_owner_email || '89lafa@gmail.com';
+      
+      if (plan.variety_id) {
+        if (!varietyUsers.has(plan.variety_id)) {
+          varietyUsers.set(plan.variety_id, new Set());
+        }
+        varietyUsers.get(plan.variety_id).add(createdBy);
+      } else if (plan.plant_type_id) {
+        if (!plantTypeUsers.has(plan.plant_type_id)) {
+          plantTypeUsers.set(plan.plant_type_id, new Set());
+        }
+        plantTypeUsers.get(plan.plant_type_id).add(createdBy);
+      }
+    }
+
+    console.log('[getPopularCrops] Tracking', varietyUsers.size, 'varieties and', plantTypeUsers.size, 'plant types from', plantings.length, 'plantings and', cropPlans.length, 'crop plans');
 
     // Build type map
     const typeMap = new Map(plantTypes.map(t => [t.id, t]));
@@ -33,8 +60,11 @@ Deno.serve(async (req) => {
     const varietyPopularity = [];
     
     for (const variety of varieties) {
-      const uniqueUserCount = varietyUsers.get(variety.id)?.size || 0;
-      if (uniqueUserCount < 1) continue; // Need at least 1 user
+      const varietyUserCount = varietyUsers.get(variety.id)?.size || 0;
+      const plantTypeUserCount = plantTypeUsers.get(variety.plant_type_id)?.size || 0;
+      const uniqueUserCount = Math.max(varietyUserCount, plantTypeUserCount);
+      
+      if (uniqueUserCount < 1) continue;
 
       const plantType = typeMap.get(variety.plant_type_id);
 

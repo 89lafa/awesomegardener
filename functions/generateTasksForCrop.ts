@@ -300,11 +300,11 @@ Deno.serve(async (req) => {
       fertCount++;
     }
     
-    // Watering (weekly from planting to harvest end)
+    // Watering (every 3 days from planting to harvest end)
     let waterDate = new Date(plantingDate);
-    waterDate.setDate(waterDate.getDate() + 7);
+    waterDate.setDate(waterDate.getDate() + 3);
     let waterCount = 0;
-    while (waterDate < harvestEndDate && waterCount < 20) {
+    while (waterDate < harvestEndDate && waterCount < 40) {
       tasksToCreate.push({
         garden_season_id: crop.garden_season_id,
         crop_plan_id: crop.id,
@@ -317,7 +317,7 @@ Deno.serve(async (req) => {
         quantity_completed: 0,
         created_by: user.email
       });
-      waterDate.setDate(waterDate.getDate() + 7);
+      waterDate.setDate(waterDate.getDate() + 3);
       waterCount++;
     }
     
