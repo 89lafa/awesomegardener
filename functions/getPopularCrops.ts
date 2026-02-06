@@ -51,9 +51,12 @@ Deno.serve(async (req) => {
 
     console.log('[getPopularCrops] Tracking', varietyUsers.size, 'varieties and', plantTypeUsers.size, 'plant types from', plantings.length, 'plantings and', cropPlans.length, 'crop plans');
 
-    // Build type map
-    const typeMap = new Map(plantTypes.map(t => [t.id, t]));
-    const varietyMap = new Map(varieties.map(v => [v.id, v]));
+    // Build type map - handle arrays or objects
+    const plantTypesArray = Array.isArray(plantTypes) ? plantTypes : [plantTypes];
+    const varietiesArray = Array.isArray(varieties) ? varieties : [varieties];
+    
+    const typeMap = new Map(plantTypesArray.map(t => [t.id, t]));
+    const varietyMap = new Map(varietiesArray.map(v => [v.id, v]));
 
     // Calculate popularity for each variety
     const varietyPopularity = [];
@@ -83,7 +86,7 @@ Deno.serve(async (req) => {
       const alreadyCounted = varietyPopularity.some(v => v.plant_type_id === plantTypeId);
       if (!alreadyCounted) {
         // Find a representative variety for this plant type
-        const representativeVariety = varieties.find(v => v.plant_type_id === plantTypeId);
+        const representativeVariety = varietiesArray.find(v => v.plant_type_id === plantTypeId);
         if (representativeVariety) {
           varietyPopularity.push({
             variety_id: representativeVariety.id,
