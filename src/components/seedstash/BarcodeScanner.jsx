@@ -171,7 +171,7 @@ export default function BarcodeScanner({ onScanComplete, onClose }) {
         <X size={24} />
       </button>
 
-      {scanning && !result && !loading && (
+      {!result && !loading && (
         <div className="w-full max-w-lg">
           <div className="bg-white rounded-2xl overflow-hidden">
             <div className="p-4 border-b">
@@ -179,10 +179,11 @@ export default function BarcodeScanner({ onScanComplete, onClose }) {
               <p className="text-gray-600 text-sm">Point camera at the barcode on the seed packet</p>
             </div>
             
-            <div id="barcode-scanner-container" className="w-full" />
+            <div id="barcode-scanner-container" className="w-full min-h-[300px]" />
             
             {error && (
-              <div className="p-4 bg-red-50 text-red-700">
+              <div className="p-4 bg-red-50 text-red-700 text-sm">
+                <AlertCircle className="w-4 h-4 inline mr-2" />
                 {error}
               </div>
             )}

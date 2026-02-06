@@ -38,18 +38,83 @@ export default function SeedTrading() {
     }
   };
 
-  const handleAccept = async (tradeId) => {
+  const handleInterest = async (tradeId) => {
     try {
       const trade = trades.find(t => t.id === tradeId);
-      await base44.entities.SeedTrade.update(tradeId, {
-        status: trade.is_public ? 'pending' : 'accepted',
-        recipient_id: user.id,
-        accepted_at: new Date().toISOString()
+      const interested = trade.interested_users || [];
+      
+      // Add current user to interested_users
+      interested.push({
+        user_id: user.id,
+        user_nickname: user.full_name || user.email,
+        message: '',
+        timestamp: new Date().toISOString()
       });
-      toast.success(trade.is_public ? 'Interest sent! Trade moved to pending.' : 'Trade accepted!');
+      
+      await base44.entities.SeedTrade.update(tradeId, {
+        interested_users: interested,
+        status: 'pending' // Move to pending so seller sees it
+      });
+      
+      // Create notification for seller
+      await base44.entities.Notification.create({
+        user_id: trade.initiator_id,
+        type: 'trade_interest',
+        title: 'Trade Interest',
+        message: `${user.full_name || user.email} is interested in your seed trade offer!`,
+        link: createPageUrl('SeedTrading'),
+        read: false
+      });
+      
+      toast.success('Interest sent! The seller will review your request.');
       loadData();
     } catch (error) {
+      console.error('Error expressing interest:', error);
+      toast.error('Failed to send interest');
+    }
+  };
+
+  const handleAcceptInterest = async (tradeId, interestedUserId) => {
+    try {
+      await base44.entities.SeedTrade.update(tradeId, {
+        status: 'accepted',
+        recipient_id: interestedUserId,
+        accepted_at: new Date().toISOString()
+      });
+      
+      // Notify the interested user
+      await base44.entities.Notification.create({
+        user_id: interestedUserId,
+        type: 'trade_accepted',
+        title: 'Trade Accepted',
+        message: 'Your trade interest was accepted!',
+        link: createPageUrl('SeedTrading'),
+        read: false
+      });
+      
+      toast.success('Trade accepted!');
+      loadData();
+    } catch (error) {
+      console.error('Error accepting interest:', error);
       toast.error('Failed to accept trade');
+    }
+  };
+
+  const handleRejectInterest = async (tradeId, interestedUserId) => {
+    try {
+      const trade = trades.find(t => t.id === tradeId);
+      const interested = (trade.interested_users || []).filter(u => u.user_id !== interestedUserId);
+      
+      await base44.entities.SeedTrade.update(tradeId, {
+        interested_users: interested,
+        status: interested.length > 0 ? 'pending' : 'public' // Back to public if no interested users
+      });
+      
+      toast.success('Interest declined');
+      loadData();
+    } catch (error) {
+      console.error('Error declining interest:', error);
+      toast.error('Failed to decline interest');
     }
   };
 
@@ -79,9 +144,24 @@ export default function SeedTrading() {
   }
 
   const myInitiated = trades.filter(t => t.initiator_id === user.id);
-  const myReceived = trades.filter(t => t.recipient_id === user.id && t.status === 'pending');
+  
+  // Pending = trades where I'm the seller and someone expressed interest
+  const myPendingAsSeller = trades.filter(t => 
+    t.initiator_id === user.id && 
+    t.status === 'pending' && 
+    t.interested_users && 
+    t.interested_users.length > 0
+  );
+  
   const completed = trades.filter(t => t.status === 'completed' || t.status === 'accepted');
-  const publicOffers = trades.filter(t => t.is_public && t.status === 'public');
+  
+  // Public offers = not initiated by me, and I haven't expressed interest yet
+  const publicOffers = trades.filter(t => 
+    t.is_public && 
+    t.status === 'public' && 
+    t.initiator_id !== user.id &&
+    (!t.interested_users || !t.interested_users.some(u => u.user_id === user.id))
+  );
 
   return (
     <div className="max-w-4xl mx-auto">
@@ -115,7 +195,7 @@ export default function SeedTrading() {
             Public Offers ({publicOffers.length})
           </TabsTrigger>
           <TabsTrigger value="pending">
-            Pending {myReceived.length > 0 && <Badge className="ml-2 bg-yellow-600">{myReceived.length}</Badge>}
+            Pending {myPendingAsSeller.length > 0 && <Badge className="ml-2 bg-yellow-600">{myPendingAsSeller.length}</Badge>}
           </TabsTrigger>
           <TabsTrigger value="my-trades">
             My Trades ({myInitiated.length})
@@ -137,30 +217,32 @@ export default function SeedTrading() {
               <SeedTradeCard
                 key={trade.id}
                 trade={trade}
-                onAccept={handleAccept}
+                onInterest={handleInterest}
                 onMessage={handleMessage}
-                isInitiator={false}
+                currentUserId={user.id}
+                showInterestButton={true}
               />
             ))
           )}
         </TabsContent>
 
         <TabsContent value="pending" className="space-y-4 mt-4">
-          {myReceived.length === 0 ? (
+          {myPendingAsSeller.length === 0 ? (
             <Card>
               <CardContent className="flex flex-col items-center justify-center py-12">
-                <p className="text-gray-500">No pending trade requests</p>
+                <p className="text-gray-500">No pending interest from buyers</p>
               </CardContent>
             </Card>
           ) : (
-            myReceived.map(trade => (
+            myPendingAsSeller.map(trade => (
               <SeedTradeCard
                 key={trade.id}
                 trade={trade}
-                onAccept={handleAccept}
-                onReject={handleReject}
+                onAcceptInterest={handleAcceptInterest}
+                onRejectInterest={handleRejectInterest}
                 onMessage={handleMessage}
-                isInitiator={false}
+                currentUserId={user.id}
+                showInterestManagement={true}
               />
             ))
           )}
