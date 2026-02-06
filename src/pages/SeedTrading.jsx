@@ -146,7 +146,7 @@ export default function SeedTrading() {
   }
 
   const myInitiated = trades.filter(t => t.initiator_id === user.id);
-  
+
   // Pending = trades where I'm the seller and someone expressed interest (status still public)
   const myPendingAsSeller = trades.filter(t => 
     t.initiator_id === user.id && 
@@ -157,9 +157,19 @@ export default function SeedTrading() {
     t.status !== 'rejected' &&
     t.status !== 'completed'
   );
-  
+
+  // Awaiting Response = trades where I expressed interest and waiting for seller
+  const awaitingResponse = trades.filter(t =>
+    t.initiator_id !== user.id &&
+    t.interested_users &&
+    t.interested_users.some(u => u.user_id === user.id) &&
+    t.status !== 'accepted' &&
+    t.status !== 'rejected' &&
+    t.status !== 'completed'
+  );
+
   const completed = trades.filter(t => t.status === 'completed' || t.status === 'accepted');
-  
+
   // Public offers = ALL public trades WHERE I haven't expressed interest
   const publicOffers = trades.filter(t => 
     t.is_public && 
@@ -194,18 +204,21 @@ export default function SeedTrading() {
       </div>
 
       <Tabs defaultValue="public">
-        <TabsList className="w-full grid grid-cols-4">
+        <TabsList className="w-full grid grid-cols-5">
           <TabsTrigger value="public">
-            Public Offers ({publicOffers.length})
+            Browse ({publicOffers.length})
+          </TabsTrigger>
+          <TabsTrigger value="awaiting">
+            Awaiting {awaitingResponse.length > 0 && <Badge className="ml-2 bg-blue-600">{awaitingResponse.length}</Badge>}
           </TabsTrigger>
           <TabsTrigger value="pending">
             Pending {myPendingAsSeller.length > 0 && <Badge className="ml-2 bg-yellow-600">{myPendingAsSeller.length}</Badge>}
           </TabsTrigger>
           <TabsTrigger value="my-trades">
-            My Trades ({myInitiated.length})
+            My Offers ({myInitiated.length})
           </TabsTrigger>
           <TabsTrigger value="completed">
-            Completed ({completed.length})
+            Done ({completed.length})
           </TabsTrigger>
         </TabsList>
 
@@ -225,6 +238,26 @@ export default function SeedTrading() {
                 onMessage={handleMessage}
                 currentUserId={user.id}
                 showInterestButton={trade.initiator_id !== user.id}
+              />
+            ))
+          )}
+        </TabsContent>
+
+        <TabsContent value="awaiting" className="space-y-4 mt-4">
+          {awaitingResponse.length === 0 ? (
+            <Card>
+              <CardContent className="flex flex-col items-center justify-center py-12">
+                <p className="text-gray-500">No trades awaiting response</p>
+              </CardContent>
+            </Card>
+          ) : (
+            awaitingResponse.map(trade => (
+              <SeedTradeCard
+                key={trade.id}
+                trade={trade}
+                onMessage={handleMessage}
+                currentUserId={user.id}
+                statusOverride="Awaiting seller response"
               />
             ))
           )}
