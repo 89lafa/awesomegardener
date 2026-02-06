@@ -81,7 +81,7 @@ export default function SeedTrading() {
   const myInitiated = trades.filter(t => t.initiator_id === user.id);
   const myReceived = trades.filter(t => t.recipient_id === user.id && t.status === 'pending');
   const completed = trades.filter(t => t.status === 'completed' || t.status === 'accepted');
-  const publicOffers = trades.filter(t => t.is_public && t.status === 'public' && t.initiator_id !== user.id);
+  const publicOffers = trades.filter(t => t.is_public && t.status === 'public');
 
   return (
     <div className="max-w-4xl mx-auto">
