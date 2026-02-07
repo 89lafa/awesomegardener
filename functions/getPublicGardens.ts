@@ -4,8 +4,8 @@ Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
     
-    // Fetch ALL gardens using service role to bypass RLS
-    const allGardens = await base44.asServiceRole.entities.Garden.list('-updated_date', 1000);
+    // Fetch ALL gardens using service role to bypass RLS - use filter instead of list
+    const allGardens = await base44.asServiceRole.entities.Garden.filter({}, '-updated_date', 1000);
     
     console.log(`Total gardens fetched: ${allGardens.length}`);
     console.log('All gardens:', JSON.stringify(allGardens.map(g => ({
