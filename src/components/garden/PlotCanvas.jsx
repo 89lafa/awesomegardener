@@ -18,6 +18,7 @@ import PlotSettingsDialog from './PlotSettingsDialog';
 import PlantingModal from './PlantingModal';
 import AISuggestLayoutButton from './AISuggestLayoutButton';
 import SunPathOverlay from './SunPathOverlay';
+import PlotItem from './PlotItem';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
