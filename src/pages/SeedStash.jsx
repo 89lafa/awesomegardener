@@ -71,7 +71,7 @@ import { smartQuery } from '@/components/utils/smartQuery';
 import RateLimitBanner from '@/components/common/RateLimitBanner';
 import { useDebouncedValue } from '../components/utils/useDebouncedValue';
 import { getPlantTypesCached, getSubcategoriesCached } from '../components/utils/dataCache';
-import AIGrowAssistant from '@/components/indoor/AIGrowAssistant';
+
 import { usePullToRefresh } from '@/components/utils/usePullToRefresh';
 import PullToRefreshIndicator from '@/components/common/PullToRefreshIndicator';
 import SeedPacketScanner from '@/components/seedstash/SeedPacketScanner';
@@ -95,7 +95,6 @@ export default function SeedStash() {
   const [showImportDialog, setShowImportDialog] = useState(false);
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [editingSeed, setEditingSeed] = useState(null);
-  const [showAIAssistant, setShowAIAssistant] = useState(false);
   const [showPacketScanner, setShowPacketScanner] = useState(false);
   const [showBarcodeScanner, setShowBarcodeScanner] = useState(false);
   const [scannedData, setScannedData] = useState(null);
@@ -1483,13 +1482,7 @@ export default function SeedStash() {
         onSuccess={loadData}
       />
 
-      {/* AI Assistant */}
-      {showAIAssistant && (
-        <AIGrowAssistant 
-          onClose={() => setShowAIAssistant(false)}
-          context={{ seeds, profiles, plantTypes }}
-        />
-      )}
+
 
       {/* Packet Scanner */}
       {showPacketScanner && (
