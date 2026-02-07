@@ -4,30 +4,38 @@ Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
     
-    // Fetch ALL gardens using service role to bypass RLS - use filter instead of list
-    const allGardens = await base44.asServiceRole.entities.Garden.filter({}, '-updated_date', 1000);
+    // Get app and environment from request
+    const url = new URL(req.url);
+    const appId = Deno.env.get('BASE44_APP_ID');
     
+    console.log('App ID:', appId);
+    
+    // Try to fetch gardens using direct API call with service role
+    const serviceRoleKey = Deno.env.get('BASE44_SERVICE_ROLE_KEY');
+    const apiUrl = Deno.env.get('BASE44_API_URL') || 'https://api.base44.com';
+    
+    const response = await fetch(`${apiUrl}/entities/Garden`, {
+      headers: {
+        'X-App-Id': appId,
+        'Authorization': `Bearer ${serviceRoleKey}`
+      }
+    });
+    
+    const data = await response.json();
+    console.log('Direct API response:', JSON.stringify(data));
+    
+    const allGardens = data.entities || [];
     console.log(`Total gardens fetched: ${allGardens.length}`);
-    console.log('All gardens:', JSON.stringify(allGardens.map(g => ({
-      id: g.id,
-      name: g.name,
-      is_public: g.is_public,
-      privacy: g.privacy,
-      archived: g.archived
-    }))));
     
     // Find gardens that are public and not archived
     const publicGardens = allGardens.filter(g => {
-      const isPublic = g.is_public === true;
-      const notArchived = g.archived !== true;
-      console.log(`Garden ${g.name}: is_public=${g.is_public}, archived=${g.archived}, passes=${isPublic && notArchived}`);
+      const isPublic = g.data?.is_public === true;
+      const notArchived = g.data?.archived !== true;
+      console.log(`Garden ${g.data?.name}: is_public=${g.data?.is_public}, archived=${g.data?.archived}, passes=${isPublic && notArchived}`);
       return isPublic && notArchived;
     });
     
     console.log(`Public gardens count: ${publicGardens.length}`);
-
-    // Extract unique created_by emails/ids from public gardens
-    const ownerIds = [...new Set(publicGardens.map(g => g.created_by_id || g.created_by).filter(Boolean))];
 
     // Fetch user details using service role
     const allUsers = await base44.asServiceRole.entities.User.list();
@@ -38,11 +46,16 @@ Deno.serve(async (req) => {
       ownersMap[u.email] = u;
     });
 
-    // Attach owner data to gardens
+    // Attach owner data to gardens and flatten structure
     const gardensWithOwners = publicGardens.map(g => {
       const ownerId = g.created_by_id || g.created_by;
       return {
-        ...g,
+        ...g.data,
+        id: g.id,
+        created_date: g.created_date,
+        updated_date: g.updated_date,
+        created_by_id: g.created_by_id,
+        is_sample: g.is_sample,
         owner: ownersMap[ownerId] || null
       };
     });
