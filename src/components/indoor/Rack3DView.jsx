@@ -4,6 +4,8 @@ import {
   Box, 
   ChevronLeft, 
   ChevronRight, 
+  ChevronUp,
+  ChevronDown,
   RotateCcw, 
   ZoomIn, 
   ZoomOut,
@@ -283,18 +285,18 @@ function RackStructure3D({ rack, shelves, trays, allCells, showLabels }) {
   );
 }
 
-function Rack3DVisualization({ rack, shelves, trays, allCells, viewAngle, zoom, showLabels }) {
+function Rack3DVisualization({ rack, shelves, trays, allCells, viewAngle, viewPitch, zoom, showLabels }) {
   const getTransform = () => {
     const baseScale = zoom;
     switch (viewAngle) {
       case 'front-left':
-        return `scale(${baseScale}) perspective(1200px) rotateX(10deg) rotateY(-25deg)`;
+        return `scale(${baseScale}) perspective(1200px) rotateX(${viewPitch}deg) rotateY(-25deg)`;
       case 'front-right':
-        return `scale(${baseScale}) perspective(1200px) rotateX(10deg) rotateY(25deg)`;
+        return `scale(${baseScale}) perspective(1200px) rotateX(${viewPitch}deg) rotateY(25deg)`;
       case 'side':
-        return `scale(${baseScale}) perspective(1200px) rotateX(10deg) rotateY(45deg)`;
+        return `scale(${baseScale}) perspective(1200px) rotateX(${viewPitch}deg) rotateY(45deg)`;
       default:
-        return `scale(${baseScale}) perspective(1200px) rotateX(10deg) rotateY(25deg)`;
+        return `scale(${baseScale}) perspective(1200px) rotateX(${viewPitch}deg) rotateY(25deg)`;
     }
   };
 
@@ -321,6 +323,7 @@ function Rack3DVisualization({ rack, shelves, trays, allCells, viewAngle, zoom, 
 
 export default function Rack3DView({ racks, shelves, trays, selectedRackId, onSelectRack }) {
   const [viewAngle, setViewAngle] = useState('front-right');
+  const [viewPitch, setViewPitch] = useState(10);
   const [zoom, setZoom] = useState(1);
   const [showLabels, setShowLabels] = useState(true);
   const [allCells, setAllCells] = useState([]);
@@ -414,6 +417,7 @@ export default function Rack3DView({ racks, shelves, trays, selectedRackId, onSe
               className={`p-2 rounded transition-colors ${
                 viewAngle === 'front-left' ? 'bg-emerald-600 text-white' : 'hover:bg-gray-200 text-gray-600'
               }`}
+              title="Rotate Left"
             >
               <ChevronLeft size={18} />
             </button>
@@ -422,6 +426,7 @@ export default function Rack3DView({ racks, shelves, trays, selectedRackId, onSe
               className={`p-2 rounded transition-colors ${
                 viewAngle === 'front-right' ? 'bg-emerald-600 text-white' : 'hover:bg-gray-200 text-gray-600'
               }`}
+              title="Center View"
             >
               <RotateCcw size={18} />
             </button>
@@ -430,8 +435,27 @@ export default function Rack3DView({ racks, shelves, trays, selectedRackId, onSe
               className={`p-2 rounded transition-colors ${
                 viewAngle === 'side' ? 'bg-emerald-600 text-white' : 'hover:bg-gray-200 text-gray-600'
               }`}
+              title="Rotate Right"
             >
               <ChevronRight size={18} />
+            </button>
+          </div>
+
+          {/* Pitch Controls (NEW) */}
+          <div className="flex flex-col gap-1 bg-gray-100 rounded-lg p-1">
+            <button
+              onClick={() => setViewPitch(Math.min(viewPitch + 5, 40))}
+              className="p-1 rounded transition-colors hover:bg-gray-200 text-gray-600"
+              title="Tilt Up (Look Down)"
+            >
+              <ChevronUp size={18} />
+            </button>
+            <button
+              onClick={() => setViewPitch(Math.max(viewPitch - 5, -30))}
+              className="p-1 rounded transition-colors hover:bg-gray-200 text-gray-600"
+              title="Tilt Down (Look Up)"
+            >
+              <ChevronDown size={18} />
             </button>
           </div>
 
@@ -469,6 +493,7 @@ export default function Rack3DView({ racks, shelves, trays, selectedRackId, onSe
             trays={rackTrays}
             allCells={allCells}
             viewAngle={viewAngle}
+            viewPitch={viewPitch}
             zoom={zoom}
             showLabels={showLabels}
           />
