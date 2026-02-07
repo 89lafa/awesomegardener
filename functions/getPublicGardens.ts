@@ -7,11 +7,14 @@ Deno.serve(async (req) => {
     // Get current user to verify auth
     const user = await base44.auth.me();
 
-    // Fetch ALL gardens using service role first
-    const allGardens = await base44.asServiceRole.entities.Garden.list('-updated_date', 100);
+    // Try fetching gardens with user context first
+    const userGardens = await base44.entities.Garden.list('-updated_date', 100);
+
+    // Fetch ALL gardens using service role
+    const serviceGardens = await base44.asServiceRole.entities.Garden.list('-updated_date', 100);
     
     // Filter for public and non-archived in JavaScript
-    const publicGardens = allGardens.filter(g => 
+    const publicGardens = serviceGardens.filter(g => 
       g.privacy === 'public' && g.archived === false
     );
 
@@ -37,10 +40,13 @@ Deno.serve(async (req) => {
       gardens: gardensWithOwners,
       debug: {
         currentUser: user.email,
-        totalGardens: allGardens.length,
+        userGardensCount: userGardens.length,
+        serviceGardensCount: serviceGardens.length,
         publicGardens: publicGardens.length,
         ownerEmailsFound: ownerEmails.length,
-        totalUsersInSystem: allUsers.length
+        totalUsersInSystem: allUsers.length,
+        sampleUserGarden: userGardens[0] || null,
+        sampleServiceGarden: serviceGardens[0] || null
       }
     });
   } catch (error) {
