@@ -3,6 +3,9 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.6';
 Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
+    
+    // Get current user to verify auth
+    const user = await base44.auth.me();
 
     // Fetch ALL gardens using service role first
     const allGardens = await base44.asServiceRole.entities.Garden.list('-updated_date', 100);
@@ -33,9 +36,11 @@ Deno.serve(async (req) => {
     return Response.json({ 
       gardens: gardensWithOwners,
       debug: {
+        currentUser: user.email,
         totalGardens: allGardens.length,
         publicGardens: publicGardens.length,
-        ownerEmailsFound: ownerEmails.length
+        ownerEmailsFound: ownerEmails.length,
+        totalUsersInSystem: allUsers.length
       }
     });
   } catch (error) {
