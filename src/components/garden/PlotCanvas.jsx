@@ -194,13 +194,16 @@ export default function PlotCanvas({ garden, plot, activeSeason, seasonId, onPlo
     try {
       const user = await base44.auth.me();
       
+      // CRITICAL: Use smartQuery to prevent rate limits
+      const { smartQuery: sq } = await import('@/components/utils/smartQuery');
+      
       const [itemsData, allPlantings] = await Promise.all([
-        base44.entities.PlotItem.filter({ 
+        sq(base44, 'PlotItem', { 
           garden_id: garden.id,
           plot_id: plot.id,
           created_by: user.email
         }, 'z_index'),
-        base44.entities.PlantInstance.filter({ garden_id: garden.id, created_by: user.email })
+        sq(base44, 'PlantInstance', { garden_id: garden.id, created_by: user.email })
       ]);
       
       // Filter plantings by season client-side to handle old plantings without season_year
