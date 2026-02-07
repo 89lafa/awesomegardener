@@ -9,7 +9,9 @@ import {
   MoveHorizontal,
   Edit,
   FileText,
-  Lightbulb
+  Lightbulb,
+  List,
+  Box
 } from 'lucide-react';
 
 // Helper component to show tray status
@@ -50,6 +52,7 @@ import { AddContainerDialog } from '@/components/indoor/AddContainerDialog';
 import { PlantSeedsDialog } from '@/components/indoor/PlantSeedsDialog';
 import MoveTrayDialog from '@/components/indoor/MoveTrayDialog';
 import { createPageUrl } from '@/utils';
+import Rack3DView from '@/components/indoor/Rack3DView';
 
 export default function IndoorSpaceDetail() {
   const navigate = useNavigate();
@@ -75,6 +78,8 @@ export default function IndoorSpaceDetail() {
   const [rackToEdit, setRackToEdit] = useState(null);
   const [showEditShelf, setShowEditShelf] = useState(false);
   const [shelfToEdit, setShelfToEdit] = useState(null);
+  const [viewMode, setViewMode] = useState('list');
+  const [selected3DRack, setSelected3DRack] = useState(null);
 
   useEffect(() => {
     if (spaceId) {
@@ -166,13 +171,7 @@ export default function IndoorSpaceDetail() {
             </p>
           </div>
         </div>
-        <Button 
-          onClick={() => setShowAI(true)}
-          className="bg-purple-600 hover:bg-purple-700 gap-2"
-        >
-          <Mic className="w-4 h-4" />
-          AI Assistant
-        </Button>
+
       </div>
 
       {/* Stats */}
@@ -204,19 +203,57 @@ export default function IndoorSpaceDetail() {
         </TabsList>
 
         <TabsContent value="racks" className="space-y-4">
-          <Button 
-            onClick={() => setShowAddRack(true)}
-            className="bg-emerald-600 hover:bg-emerald-700 gap-2"
-          >
-            <Plus className="w-4 h-4" />
-            Add Rack
-          </Button>
+          <div className="flex items-center gap-3 mb-4 flex-wrap">
+            <Button 
+              onClick={() => setShowAddRack(true)}
+              className="bg-emerald-600 hover:bg-emerald-700 gap-2"
+            >
+              <Plus className="w-4 h-4" />
+              Add Rack
+            </Button>
+            
+            {racks.length > 0 && (
+              <div className="flex items-center gap-1 bg-white rounded-lg border border-gray-200 p-1">
+                <button
+                  onClick={() => {
+                    setViewMode('list');
+                    setSelected3DRack(null);
+                  }}
+                  className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors ${
+                    viewMode === 'list'
+                      ? 'bg-emerald-600 text-white'
+                      : 'text-gray-600 hover:bg-gray-100'
+                  }`}
+                >
+                  <List size={18} />
+                  List View
+                </button>
+                
+                <button
+                  onClick={() => {
+                    setViewMode('3d');
+                    if (!selected3DRack) {
+                      setSelected3DRack(racks[0].id);
+                    }
+                  }}
+                  className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors ${
+                    viewMode === '3d'
+                      ? 'bg-emerald-600 text-white'
+                      : 'text-gray-600 hover:bg-gray-100'
+                  }`}
+                >
+                  <Box size={18} />
+                  3D View
+                </button>
+              </div>
+            )}
+          </div>
 
           {racks.length === 0 ? (
             <Card className="p-8 text-center">
               <p className="text-gray-600">No racks yet. Click "Add Rack" to create one.</p>
             </Card>
-          ) : (
+          ) : viewMode === 'list' ? (
             <div className="space-y-4">
               {racks.map(rack => {
                 const rackShelves = shelves.filter(s => s.rack_id === rack.id);
