@@ -4,15 +4,12 @@ Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
     
-    // Get current user to verify auth
-    const user = await base44.auth.me();
-
-    // Fetch gardens with user context (this respects RLS and should get public gardens)
-    const allGardens = await base44.entities.Garden.list('-updated_date', 100);
+    // Fetch ALL gardens using service role to bypass RLS
+    const allGardens = await base44.asServiceRole.entities.Garden.list('-updated_date', 1000);
     
-    // Find gardens that are public
+    // Find gardens that are public and not archived
     const publicGardens = allGardens.filter(g => 
-      g.privacy === 'public' && g.archived === false
+      g.is_public === true && g.archived === false
     );
 
     // Extract unique created_by emails/ids from public gardens
