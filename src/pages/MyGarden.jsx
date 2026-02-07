@@ -421,8 +421,11 @@ export default function MyGarden() {
                     checked={activeGarden?.is_public || false}
                     onCheckedChange={async (checked) => {
                       try {
-                        await base44.entities.Garden.update(activeGarden.id, { is_public: checked });
-                        setActiveGarden({ ...activeGarden, is_public: checked });
+                        await base44.entities.Garden.update(activeGarden.id, { 
+                          is_public: checked,
+                          privacy: checked ? 'public' : 'private'
+                        });
+                        setActiveGarden({ ...activeGarden, is_public: checked, privacy: checked ? 'public' : 'private' });
                         toast.success(checked ? 'Garden is now public' : 'Garden is now private');
                         loadData();
                       } catch (error) {
