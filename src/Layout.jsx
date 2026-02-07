@@ -12,7 +12,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useLocation } from 'react-router-dom';
 
 // Public pages that don't require authentication
-const publicPages = ['Landing', 'PublicGarden', 'PublicPlant', 'Community', 'GardeningBasics'];
+const publicPages = ['Landing', 'PublicGarden', 'PublicPlant', 'Community', 'GardeningBasics', 'BrowseGardens'];
 
 export default function Layout({ children, currentPageName }) {
   const location = useLocation();

@@ -4,8 +4,8 @@ Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
     
-    // Fetch gardens using normal user context (RLS should allow reading public gardens)
-    const allGardens = await base44.entities.Garden.filter({}, '-updated_date', 1000);
+    // Fetch ALL gardens using service role to bypass any RLS issues
+    const allGardens = await base44.asServiceRole.entities.Garden.filter({}, '-updated_date', 1000);
     
     console.log(`Total gardens fetched: ${allGardens.length}`);
     console.log('All gardens:', JSON.stringify(allGardens.map(g => ({
@@ -17,12 +17,13 @@ Deno.serve(async (req) => {
       created_by: g.created_by
     }))));
     
-    // Find gardens that are public and not archived
+    // Filter for gardens that are public and not archived
     const publicGardens = allGardens.filter(g => {
       const isPublic = g.is_public === true;
+      const privacyPublic = g.privacy === 'public';
       const notArchived = g.archived !== true;
-      console.log(`Garden ${g.name}: is_public=${g.is_public}, archived=${g.archived}, passes=${isPublic && notArchived}`);
-      return isPublic && notArchived;
+      console.log(`Garden ${g.name}: is_public=${g.is_public}, privacy=${g.privacy}, archived=${g.archived}, passes=${isPublic && privacyPublic && notArchived}`);
+      return isPublic && privacyPublic && notArchived;
     });
     
     console.log(`Public gardens count: ${publicGardens.length}`);
