@@ -64,11 +64,13 @@ function SpaceCard({ space, garden, activeSeason, seasonId, sharedData }) {
     if (!activeSeason || !space.plot_item_id) return;
 
     try {
-      // CRITICAL FIX: Use smartQuery to prevent rate limits
-      const allPlants = await smartQuery(base44, 'PlantInstance', { 
-        bed_id: space.plot_item_id,
-        garden_id: space.garden_id
-      });
+      // CRITICAL FIX: Load from cache or batch load to prevent rate limits
+      // Instead of loading plantings per-space, parent should pass them down
+      const allPlants = sharedData?.plantings?.[space.plot_item_id] || 
+        await smartQuery(base44, 'PlantInstance', { 
+          bed_id: space.plot_item_id,
+          garden_id: space.garden_id
+        });
 
       // Filter by season - show plantings for selected season OR old plantings without season_year (show in current year only)
       const currentYear = new Date().getFullYear();
@@ -302,7 +304,8 @@ export default function GardenPlanting() {
     plantingRules: [],
     cropPlans: [],
     stashPlants: [],
-    profiles: {}
+    profiles: {},
+    plantings: {} // Key: plot_item_id -> Value: plantings array
   });
 
   useEffect(() => {
@@ -332,11 +335,12 @@ export default function GardenPlanting() {
       const user = await base44.auth.me();
       
       console.log('[GardenPlanting] Loading shared data for all modals...');
-      const [varietiesData, typesData, rulesData, stashData] = await Promise.all([
+      const [varietiesData, typesData, rulesData, stashData, companionRules] = await Promise.all([
         smartQuery(base44, 'Variety', {}, 'variety_name', 500),
         smartQuery(base44, 'PlantType', {}, 'common_name', 100),
         smartQuery(base44, 'PlantingRule', {}),
-        base44.entities.SeedLot.filter({ is_wishlist: false, created_by: user.email })
+        base44.entities.SeedLot.filter({ is_wishlist: false, created_by: user.email }),
+        smartQuery(base44, 'CompanionRule', {})
       ]);
       
       let cropPlansData = [];
@@ -358,14 +362,16 @@ export default function GardenPlanting() {
         profilesMap[p.id] = p;
       });
       
-      setSharedData({
+      setSharedData(prev => ({
+        ...prev,
         varieties: varietiesData,
         plantTypes: typesData,
         plantingRules: rulesData,
         cropPlans: cropPlansData.filter(p => (p.quantity_planted || 0) < (p.quantity_planned || 0)),
         stashPlants: stashData,
-        profiles: profilesMap
-      });
+        profiles: profilesMap,
+        companionRules: companionRules
+      }));
       
       console.log('[GardenPlanting] Shared data loaded:', {
         varieties: varietiesData.length,
@@ -464,12 +470,24 @@ export default function GardenPlanting() {
     
     try {
       console.log('[GardenPlanting] Loading planting spaces for garden:', activeGarden.id);
-      const spaces = await base44.entities.PlantingSpace.filter({ 
-        garden_id: activeGarden.id,
-        is_active: true 
-      }, 'name');
-      console.log('[GardenPlanting] Found planting spaces:', spaces.length, spaces);
+      const [spaces, allPlantings] = await Promise.all([
+        smartQuery(base44, 'PlantingSpace', { 
+          garden_id: activeGarden.id,
+          is_active: true 
+        }, 'name'),
+        smartQuery(base44, 'PlantInstance', { garden_id: activeGarden.id })
+      ]);
+      
+      console.log('[GardenPlanting] Found planting spaces:', spaces.length, 'and plantings:', allPlantings.length);
       setPlantingSpaces(spaces);
+      
+      // Pre-group plantings by plot_item_id to prevent repeated queries
+      const plantingsByPlotItem = {};
+      spaces.forEach(s => {
+        plantingsByPlotItem[s.plot_item_id] = allPlantings.filter(p => p.bed_id === s.plot_item_id);
+      });
+      
+      setSharedData(prev => ({ ...prev, plantings: plantingsByPlotItem }));
     } catch (error) {
       console.error('Error loading planting spaces:', error);
     }

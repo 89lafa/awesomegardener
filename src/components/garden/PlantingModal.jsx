@@ -608,10 +608,11 @@ export default function PlantingModal({
     }
     
     try {
-      // Load companion rules for this plant type
-      const companionRules = await base44.entities.CompanionRule.filter({
-        plant_type_id: plantData.plant_type_id
-      });
+      // Use shared data if available to prevent rate limits
+      const companionRules = sharedData?.companionRules || 
+        await base44.entities.CompanionRule.filter({
+          plant_type_id: plantData.plant_type_id
+        });
       
       // Check companions - look for existing plantings in this bed
       const bedPlantings = plantings.filter(p => p.bed_id === item.id && p.id !== selectedPlanting?.id);
@@ -663,7 +664,9 @@ export default function PlantingModal({
     }
 
     try {
-      const companionRules = await base44.entities.CompanionRule.list();
+      // Use shared data if available to prevent rate limits
+      const companionRules = sharedData?.companionRules || 
+        await base44.entities.CompanionRule.list();
       const results = [];
 
       // Check ALL pairs of plantings for companion relationships
