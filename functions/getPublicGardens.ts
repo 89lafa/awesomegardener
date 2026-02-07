@@ -48,7 +48,11 @@ Deno.serve(async (req) => {
     });
 
     return Response.json({ 
-      gardens: gardensWithOwners
+      gardens: gardensWithOwners,
+      debug: {
+        totalGardens: allGardens.length,
+        publicGardensCount: publicGardens.length
+      }
     });
   } catch (error) {
     console.error('Error in getPublicGardens:', error);
