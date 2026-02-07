@@ -1445,14 +1445,28 @@ export default function PlotCanvas({ garden, plot, activeSeason, seasonId, onPlo
             const isFull = status?.status === 'full';
 
             return (
-            <div
+            <PlotItem
               key={item.id}
-              onDoubleClick={isMobile ? () => {
+              item={item}
+              itemType={itemType}
+              status={status}
+              counts={counts}
+              isGrowBagOrContainer={isGrowBagOrContainer}
+              isFull={isFull}
+              selectedItem={selectedItem}
+              isDragging={isDragging}
+              draggingItem={draggingItem}
+              zoom={zoom}
+              isMobile={isMobile}
+              getItemColor={getItemColor}
+              onDoubleClick={() => {
                 setLongPressedItem(item);
                 setSelectedItem(item);
                 setShowContextMenu(true);
-              } : undefined}
-              className={cn(
+              }}
+            />
+            );
+          })}
                 "absolute border-4 rounded-lg flex items-center justify-center text-sm font-medium overflow-hidden plot-item group",
                 selectedItem?.id === item.id && "ring-4 ring-emerald-300",
                 !status && "border-gray-400",

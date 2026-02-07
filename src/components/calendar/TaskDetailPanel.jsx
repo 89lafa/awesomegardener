@@ -69,7 +69,7 @@ export default function TaskDetailPanel({ task, onClose, onUpdate }) {
   };
 
   return (
-    <div className="fixed right-0 top-0 bottom-0 w-96 bg-white border-l shadow-lg z-50 flex flex-col">
+    <div className="fixed right-0 top-0 bottom-0 w-full sm:w-96 bg-white border-l shadow-lg z-50 flex flex-col">
       <div className="p-4 border-b flex items-center justify-between">
         <h3 className="font-semibold text-lg">Task Details</h3>
         <Button variant="ghost" size="icon" onClick={onClose}>
@@ -110,7 +110,8 @@ export default function TaskDetailPanel({ task, onClose, onUpdate }) {
                 size="icon"
                 variant="outline"
                 onClick={() => handleUpdateQuantity(completedQty - 1)}
-                disabled={completedQty === 0 || updating}
+                disabled={completedQty === 0}
+                className="touch-manipulation min-h-[44px] min-w-[44px]"
               >
                 <Minus className="w-4 h-4" />
               </Button>
@@ -125,13 +126,14 @@ export default function TaskDetailPanel({ task, onClose, onUpdate }) {
                     handleUpdateQuantity(val);
                   }
                 }}
-                className="text-center"
+                className="text-center touch-manipulation min-h-[44px]"
               />
               <Button
                 size="icon"
                 variant="outline"
                 onClick={() => handleUpdateQuantity(completedQty + 1)}
-                disabled={completedQty >= task.quantity_target || updating}
+                disabled={completedQty >= task.quantity_target}
+                className="touch-manipulation min-h-[44px] min-w-[44px]"
               >
                 <Plus className="w-4 h-4" />
               </Button>
