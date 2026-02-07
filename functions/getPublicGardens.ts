@@ -18,12 +18,11 @@ Deno.serve(async (req) => {
     // Extract unique created_by emails from public gardens
     const ownerEmails = [...new Set(publicGardens.map(g => g.created_by))];
 
-    // Fetch user details using service role (since we can't list all users normally)
+    // Fetch user details using service role
     const allUsers = await base44.asServiceRole.entities.User.list();
-    const usersForOwners = allUsers.filter(u => ownerEmails.includes(u.email));
     
     const ownersMap = {};
-    usersForOwners.forEach(u => {
+    allUsers.forEach(u => {
       ownersMap[u.email] = u;
     });
 
