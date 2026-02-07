@@ -378,16 +378,24 @@ export default function IndoorSpaceDetail() {
                             )}
                           </div>
                         );
-                      })}
-                    </div>
-                  </Card>
-                );
-              })}
-            </div>
-          )}
-        </TabsContent>
+                        })}
+                        </div>
+                        </Card>
+                        );
+                        })}
+                        </div>
+                        ) : (
+                        <Rack3DView
+                        racks={racks}
+                        shelves={shelves}
+                        trays={trays}
+                        selectedRackId={selected3DRack}
+                        onSelectRack={setSelected3DRack}
+                        />
+                        )}
+                        </TabsContent>
 
-        <TabsContent value="containers" className="space-y-4">
+                        <TabsContent value="containers" className="space-y-4">
           <Button 
             onClick={() => setShowAddContainer(true)}
             className="bg-emerald-600 hover:bg-emerald-700 gap-2"
