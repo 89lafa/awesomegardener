@@ -81,12 +81,12 @@ export function AddRackDialog({ isOpen, onClose, spaceId, onRackAdded }) {
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent>
+      <DialogContent className="max-h-[85vh] flex flex-col">
         <DialogHeader>
           <DialogTitle>Add Grow Rack</DialogTitle>
         </DialogHeader>
 
-        <div className="space-y-4">
+        <div className="space-y-4 overflow-y-auto flex-1 pr-2">
           <div>
             <label className="block text-sm font-medium mb-2">Rack Name</label>
             <Input

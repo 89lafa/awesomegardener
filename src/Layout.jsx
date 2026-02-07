@@ -264,7 +264,7 @@ export default function Layout({ children, currentPageName }) {
           onSidebarToggle={toggleDesktopSidebar}
           sidebarCollapsed={desktopSidebarCollapsed}
         />
-        <main className="p-4 lg:p-6">
+        <main className="p-4 lg:p-6 pb-24 lg:pb-6">
           <AnimatePresence mode="wait">
             <motion.div
               key={location.pathname}

@@ -213,7 +213,7 @@ export default function IndoorSpaceDetail() {
             </Button>
             
             {racks.length > 0 && (
-              <div className="flex items-center gap-1 bg-white rounded-lg border border-gray-200 p-1">
+              <div className="hidden md:flex items-center gap-1 bg-white rounded-lg border border-gray-200 p-1">
                 <button
                   onClick={() => {
                     setViewMode('list');
@@ -253,7 +253,7 @@ export default function IndoorSpaceDetail() {
             <Card className="p-8 text-center">
               <p className="text-gray-600">No racks yet. Click "Add Rack" to create one.</p>
             </Card>
-          ) : viewMode === 'list' ? (
+          ) : viewMode === 'list' || window.innerWidth < 768 ? (
             <div className="space-y-4">
               {racks.map(rack => {
                 const rackShelves = shelves.filter(s => s.rack_id === rack.id);
@@ -417,12 +417,14 @@ export default function IndoorSpaceDetail() {
                   
                 return (
                   <Card key={container.id} className="p-4 text-center cursor-pointer hover:shadow-md transition">
-                    <p className="text-3xl mb-2">🪴</p>
-                    <p className="font-semibold text-sm text-gray-900">{displayName}</p>
-                    <p className="text-xs text-gray-600">{container.container_type?.replace(/_/g, ' ')}</p>
-                    <p className="text-[10px] text-emerald-600 mt-2 font-medium">
-                      {container.status === 'planted' ? '🌱 Planted' : '📋 Empty'}
-                    </p>
+                   <p className="text-3xl mb-2">🪴</p>
+                   <p className="font-semibold text-sm text-gray-900">{displayName}</p>
+                   <p className="text-xs text-gray-600">{container.container_type?.replace(/_/g, ' ')}</p>
+                   {container.status === 'planted' && (
+                     <p className="text-[10px] text-emerald-600 mt-2 font-medium">
+                       🌱 Planted
+                     </p>
+                   )}
                   </Card>
                 );
               })}
