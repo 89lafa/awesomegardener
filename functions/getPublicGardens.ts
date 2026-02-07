@@ -7,21 +7,19 @@ Deno.serve(async (req) => {
     // Get current user to verify auth
     const user = await base44.auth.me();
 
-    // Try fetching gardens with user context first
-    const userGardens = await base44.entities.Garden.list('-updated_date', 100);
-
-    // Fetch ALL gardens using service role
-    const serviceGardens = await base44.asServiceRole.entities.Garden.list('-updated_date', 100);
+    // Fetch gardens with user context (this respects RLS)
+    const allGardens = await base44.entities.Garden.list('-updated_date', 100);
     
-    // Filter for public and non-archived in JavaScript
-    const publicGardens = serviceGardens.filter(g => 
+    // Find gardens that are public from ALL users
+    // Since RLS allows reading public gardens, this should work
+    const publicGardens = allGardens.filter(g => 
       g.privacy === 'public' && g.archived === false
     );
 
     // Extract unique created_by emails from public gardens
-    const ownerEmails = [...new Set(publicGardens.map(g => g.created_by))];
+    const ownerEmails = [...new Set(allGardens.map(g => g.created_by))];
 
-    // Fetch user details for these owners using service role
+    // Fetch user details using service role (since we can't list all users normally)
     const allUsers = await base44.asServiceRole.entities.User.list();
     const usersForOwners = allUsers.filter(u => ownerEmails.includes(u.email));
     
@@ -37,17 +35,7 @@ Deno.serve(async (req) => {
     }));
 
     return Response.json({ 
-      gardens: gardensWithOwners,
-      debug: {
-        currentUser: user.email,
-        userGardensCount: userGardens.length,
-        serviceGardensCount: serviceGardens.length,
-        publicGardens: publicGardens.length,
-        ownerEmailsFound: ownerEmails.length,
-        totalUsersInSystem: allUsers.length,
-        sampleUserGarden: userGardens[0] || null,
-        sampleServiceGarden: serviceGardens[0] || null
-      }
+      gardens: gardensWithOwners
     });
   } catch (error) {
     console.error('Error in getPublicGardens:', error);
