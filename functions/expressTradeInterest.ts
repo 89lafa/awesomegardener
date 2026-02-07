@@ -32,9 +32,10 @@ Deno.serve(async (req) => {
     // Add current user to interested_users
     interested.push({
       user_id: user.id,
-      user_nickname: user.full_name || user.email,
-      message: '',
-      timestamp: new Date().toISOString()
+      nickname: user.nickname || user.full_name || user.email,
+      full_name: user.full_name,
+      email: user.email,
+      expressed_at: new Date().toISOString()
     });
     
     // Update the trade
@@ -55,7 +56,7 @@ Deno.serve(async (req) => {
       user_email: seller.email,
       type: 'system',
       title: 'New Trade Interest',
-      body: `${user.full_name || user.email} is interested in your seed trade offer!`,
+      body: `${user.nickname || user.full_name || user.email} is interested in your seed trade offer!`,
       link_url: '/SeedTrading',
       is_read: false
     });
