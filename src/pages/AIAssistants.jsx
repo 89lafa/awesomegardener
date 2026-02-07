@@ -105,7 +105,7 @@ export default function AIAssistants() {
             Quick Help Widget
           </CardTitle>
           <CardDescription>
-            Look for the "Need Help?" button in the bottom-left corner on any page for instant context-aware assistance
+            Look for the "Need Help?" button in the bottom-right corner on any page for instant context-aware assistance
           </CardDescription>
         </CardHeader>
       </Card>

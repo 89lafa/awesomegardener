@@ -618,15 +618,7 @@ export default function SeedStash() {
              <span className="hidden sm:inline">📸 Packet Scanner</span>
              <span className="sm:hidden">📸</span>
            </Button>
-           <Button 
-             onClick={() => setShowAIAssistant(true)}
-             size="sm"
-             className="bg-purple-600 hover:bg-purple-700 gap-1 lg:gap-2 text-xs lg:text-sm h-8 lg:h-9"
-           >
-             <Mic className="w-3 h-3 lg:w-4 lg:h-4" />
-             <span className="hidden sm:inline">AI Voice</span>
-             <span className="sm:hidden">AI</span>
-           </Button>
+
            <Button 
              onClick={() => setShowAddCustomDialog(true)}
              size="sm"

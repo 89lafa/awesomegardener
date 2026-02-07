@@ -350,9 +350,9 @@ export default function Dashboard() {
           </div>
           
           {/* Sir Sproutington Mascot */}
-          <div className="hidden md:flex items-center gap-4 flex-shrink-0">
-            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg px-4 py-3 max-w-[200px]">
-              <p className="text-xs font-medium text-emerald-700 dark:text-emerald-400">
+          <div className="hidden md:flex items-start gap-4 flex-shrink-0">
+            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg px-8 py-6 max-w-[400px]">
+              <p className="text-base font-medium text-emerald-700 dark:text-emerald-400">
                 Welcome to your garden!<br />I'm Sir Sproutington. 🌱
               </p>
             </div>
