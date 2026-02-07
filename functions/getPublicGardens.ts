@@ -7,10 +7,24 @@ Deno.serve(async (req) => {
     // Fetch ALL gardens using service role to bypass RLS
     const allGardens = await base44.asServiceRole.entities.Garden.list('-updated_date', 1000);
     
+    console.log(`Total gardens fetched: ${allGardens.length}`);
+    console.log('All gardens:', JSON.stringify(allGardens.map(g => ({
+      id: g.id,
+      name: g.name,
+      is_public: g.is_public,
+      privacy: g.privacy,
+      archived: g.archived
+    }))));
+    
     // Find gardens that are public and not archived
-    const publicGardens = allGardens.filter(g => 
-      g.is_public === true && g.archived === false
-    );
+    const publicGardens = allGardens.filter(g => {
+      const isPublic = g.is_public === true;
+      const notArchived = g.archived !== true;
+      console.log(`Garden ${g.name}: is_public=${g.is_public}, archived=${g.archived}, passes=${isPublic && notArchived}`);
+      return isPublic && notArchived;
+    });
+    
+    console.log(`Public gardens count: ${publicGardens.length}`);
 
     // Extract unique created_by emails/ids from public gardens
     const ownerIds = [...new Set(publicGardens.map(g => g.created_by_id || g.created_by).filter(Boolean))];
