@@ -37,29 +37,8 @@ export default function BrowseGardens() {
 
   const loadGardens = async () => {
     try {
-      const allGardens = await base44.entities.Garden.filter({ 
-        is_public: true,
-        archived: false 
-      }, '-updated_date');
-      
-      // Load owner data for each garden
-      const ownerEmails = [...new Set(allGardens.map(g => g.created_by))];
-      const allUsers = await base44.entities.User.list();
-      const ownersMap = {};
-      ownerEmails.forEach(email => {
-        const owner = allUsers.find(u => u.email === email);
-        if (owner) {
-          ownersMap[email] = owner;
-        }
-      });
-      
-      // Attach owner data to gardens
-      const gardensWithOwners = allGardens.map(g => ({
-        ...g,
-        owner: ownersMap[g.created_by]
-      }));
-      
-      setGardens(gardensWithOwners);
+      const { data } = await base44.functions.invoke('getPublicGardens');
+      setGardens(data.gardens || []);
     } catch (error) {
       console.error('Error loading gardens:', error);
     } finally {
