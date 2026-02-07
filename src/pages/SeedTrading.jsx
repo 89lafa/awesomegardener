@@ -54,7 +54,7 @@ export default function SeedTrading() {
       const trade = trades.find(t => t.id === tradeId);
       const interestedUser = (trade.interested_users || []).find(u => u.user_id === interestedUserId);
       
-      // Get the interested user's email from User entity
+      // Get the interested user's email and nickname from User entity
       const buyerList = await base44.entities.User.list();
       const buyer = buyerList.find(u => u.id === interestedUserId);
       
@@ -66,6 +66,7 @@ export default function SeedTrading() {
       await base44.entities.SeedTrade.update(tradeId, {
         status: 'accepted',
         recipient_id: interestedUserId,
+        recipient_nickname: buyer.nickname,
         accepted_at: new Date().toISOString()
       });
       
@@ -132,9 +133,27 @@ export default function SeedTrading() {
     }
   };
 
-  const handleMessage = (trade) => {
-    const otherUserId = trade.initiator_id === user.id ? trade.recipient_id : trade.initiator_id;
-    window.location.href = createPageUrl('Messages') + `?user=${otherUserId}&trade_id=${trade.id}`;
+  const handleMessage = async (trade) => {
+    try {
+      // Determine the other user's ID
+      const otherUserId = trade.initiator_id === user.id ? trade.recipient_id : trade.initiator_id;
+      
+      // Fetch the other user to get their nickname
+      const allUsers = await base44.entities.User.list();
+      const otherUser = allUsers.find(u => u.id === otherUserId);
+      
+      if (!otherUser) {
+        toast.error('Could not find the other user');
+        return;
+      }
+      
+      // Navigate to Messages with nickname pre-filled
+      const recipientIdentifier = otherUser.nickname || otherUser.email;
+      window.location.href = createPageUrl('Messages') + `?to=${encodeURIComponent(recipientIdentifier)}`;
+    } catch (error) {
+      console.error('Error getting user info:', error);
+      toast.error('Failed to open message');
+    }
   };
 
   if (loading) {

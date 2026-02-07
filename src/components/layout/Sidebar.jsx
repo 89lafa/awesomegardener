@@ -59,6 +59,7 @@ const getNavItems = (userRole, isEditor, user) => {
     // Trading & community
     { category: true, label: 'COMMUNITY' },
     { name: 'Seed Trading', icon: Apple, page: 'SeedTrading' },
+    { name: 'Messages', icon: Mail, page: 'Messages' },
     { name: 'Companion Planting', icon: Sprout, page: 'CompanionPlanner' },
     { name: 'Browse Gardens', icon: Globe, page: 'BrowseGardens' },
     { name: 'Leaderboard', icon: Trophy, page: 'LeaderboardV2' },

@@ -42,6 +42,14 @@ export default function Messages() {
 
   useEffect(() => {
     loadData();
+    
+    // Check URL params for pre-filled recipient
+    const urlParams = new URLSearchParams(window.location.search);
+    const recipientParam = urlParams.get('to');
+    if (recipientParam) {
+      setNewThreadData(prev => ({ ...prev, recipient_email: recipientParam }));
+      setShowNewMessage(true);
+    }
   }, []);
 
   useEffect(() => {
