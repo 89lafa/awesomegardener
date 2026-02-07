@@ -9,10 +9,10 @@ export default function RateLimitBanner({ retryInMs, onRetry, retrying = false }
   return (
     <Alert className="bg-amber-50 border-amber-300">
       <AlertCircle className="w-4 h-4 text-amber-600" />
-      <AlertDescription className="flex items-center justify-between gap-4">
-        <div>
+      <AlertDescription className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-4">
+        <div className="text-sm sm:text-base">
           <span className="font-medium text-amber-900">We're getting a lot of requests.</span>
-          <span className="text-amber-800"> Retrying automatically in {seconds} second{seconds !== 1 ? 's' : ''}...</span>
+          <span className="text-amber-800 block sm:inline"> Retrying in {seconds}s...</span>
         </div>
         {onRetry && (
           <Button
@@ -20,7 +20,7 @@ export default function RateLimitBanner({ retryInMs, onRetry, retrying = false }
             variant="outline"
             onClick={onRetry}
             disabled={retrying}
-            className="border-amber-400 text-amber-700 hover:bg-amber-100 flex-shrink-0"
+            className="border-amber-400 text-amber-700 hover:bg-amber-100 flex-shrink-0 w-full sm:w-auto"
           >
             {retrying ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
             Retry Now

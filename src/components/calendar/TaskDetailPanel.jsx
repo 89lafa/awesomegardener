@@ -26,24 +26,29 @@ export default function TaskDetailPanel({ task, onClose, onUpdate }) {
   const handleUpdateQuantity = async (newQty) => {
     if (newQty < 0 || newQty > (task.quantity_target || 0)) return;
     
-    setUpdating(true);
+    // Optimistic UI update
+    const previousQty = completedQty;
+    setCompletedQty(newQty);
+    
     try {
       await base44.entities.CropTask.update(task.id, {
         quantity_completed: newQty,
         is_completed: newQty >= (task.quantity_target || 0)
       });
-      setCompletedQty(newQty);
       toast.success('Progress updated');
       if (onUpdate) onUpdate();
     } catch (error) {
       console.error('Error updating task:', error);
+      // Revert on error
+      setCompletedQty(previousQty);
       toast.error('Failed to update');
-    } finally {
-      setUpdating(false);
     }
   };
 
   const handleMarkComplete = async () => {
+    // Optimistic UI update
+    setCompletedQty(task.quantity_target || 0);
+    
     setUpdating(true);
     try {
       await base44.entities.CropTask.update(task.id, {
@@ -56,8 +61,9 @@ export default function TaskDetailPanel({ task, onClose, onUpdate }) {
       onClose();
     } catch (error) {
       console.error('Error completing task:', error);
+      // Revert on error
+      setCompletedQty(task.quantity_completed || 0);
       toast.error('Failed to complete task');
-    } finally {
       setUpdating(false);
     }
   };

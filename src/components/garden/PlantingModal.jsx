@@ -341,13 +341,14 @@ export default function PlantingModal({
         }
       }
       
+      // Optimistic UI update
       const updatedPlantings = [...plantings, planting];
       setPlantings(updatedPlantings);
-      // DON'T clear selection - keep it for multiple plantings
-      // setSelectedPlant(null);
       toast.success('Plant added - click more cells to keep planting');
+
+      // Trigger parent update immediately for UI responsiveness
       onPlantingUpdate?.(updatedPlantings);
-      
+
       // Re-run companion analysis with new plantings state
       analyzeCompanionsWithPlantings(updatedPlantings);
     } catch (error) {
@@ -502,11 +503,12 @@ export default function PlantingModal({
           }
         }
 
+        // Optimistic UI update
         const updatedPlantings = [...plantings, planting];
         setPlantings(updatedPlantings);
-        // DON'T clear selection - keep it for multiple plantings
-        // setSelectedPlant(null);
         toast.success('Plant added - click more cells to keep planting');
+        
+        // Trigger parent update immediately for UI responsiveness
         onPlantingUpdate?.(updatedPlantings);
       } catch (error) {
         console.error('[PlantingModal] Error adding plant:', error);

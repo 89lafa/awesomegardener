@@ -92,12 +92,12 @@ export default function DayTasksPanel({ date, tasks, open, onOpenChange, onToggl
                       {pendingInGroup.map(task => (
                         <label 
                           key={task.id}
-                          className="flex items-start gap-3 p-3 bg-white border rounded-lg hover:bg-emerald-50 cursor-pointer transition-all active:scale-[0.99]"
+                          className="flex items-start gap-3 p-3 bg-white border rounded-lg hover:bg-emerald-50 cursor-pointer transition-all active:scale-[0.99] touch-manipulation"
                         >
                           <Checkbox
                             checked={task.is_completed}
                             onCheckedChange={() => onToggleComplete?.(task)}
-                            className="mt-0.5"
+                            className="mt-0.5 min-w-[20px] min-h-[20px]"
                           />
                           <div className="flex-1 min-w-0">
                             <p className="font-medium text-sm text-gray-900">
@@ -133,12 +133,12 @@ export default function DayTasksPanel({ date, tasks, open, onOpenChange, onToggl
                   {completedTasks.map(task => (
                     <label 
                       key={task.id}
-                      className="flex items-start gap-3 p-3 bg-gray-50 border rounded-lg cursor-pointer hover:bg-gray-100 transition-colors active:scale-[0.99]"
+                      className="flex items-start gap-3 p-3 bg-gray-50 border rounded-lg cursor-pointer hover:bg-gray-100 transition-colors active:scale-[0.99] touch-manipulation"
                     >
                       <Checkbox
                         checked={true}
                         onCheckedChange={() => onToggleComplete?.(task)}
-                        className="mt-0.5"
+                        className="mt-0.5 min-w-[20px] min-h-[20px]"
                       />
                       <div className="flex-1 min-w-0">
                         <p className="text-sm text-gray-600 line-through">

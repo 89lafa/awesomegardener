@@ -159,21 +159,30 @@ export default function CalendarTasks() {
   };
 
   const handleToggleComplete = async (task) => {
+    const newCompleted = !task.is_completed;
+    
+    // Optimistic UI update
+    setTasks(tasks.map(t => t.id === task.id ? { 
+      ...t, 
+      is_completed: newCompleted,
+      quantity_completed: newCompleted ? task.quantity_target : 0
+    } : t));
+    
     try {
-      const newCompleted = !task.is_completed;
       await base44.entities.CropTask.update(task.id, { 
         is_completed: newCompleted,
         completed_at: newCompleted ? new Date().toISOString() : null,
         quantity_completed: newCompleted ? task.quantity_target : 0
       });
-
-      setTasks(tasks.map(t => t.id === task.id ? { 
-        ...t, 
-        is_completed: newCompleted,
-        quantity_completed: newCompleted ? task.quantity_target : 0
-      } : t));
     } catch (error) {
       console.error('Error toggling task:', error);
+      // Revert on error
+      setTasks(tasks.map(t => t.id === task.id ? { 
+        ...t, 
+        is_completed: task.is_completed,
+        quantity_completed: task.quantity_completed
+      } : t));
+      toast.error('Failed to update task');
     }
   };
 
