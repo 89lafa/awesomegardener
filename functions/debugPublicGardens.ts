@@ -4,25 +4,23 @@ Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
 
-    // Test 1: Fetch gardens with privacy filter
-    const publicGardens = await base44.asServiceRole.entities.Garden.filter({
-      privacy: 'public',
-      archived: false
-    }, '-updated_date');
+    // Test: Direct query without filters
+    const response1 = await fetch(`${Deno.env.get('BASE44_API_URL')}/apps/${Deno.env.get('BASE44_APP_ID')}/entities/Garden`, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${Deno.env.get('BASE44_SERVICE_ROLE_KEY')}`,
+        'Content-Type': 'application/json'
+      }
+    });
+    const data1 = await response1.json();
 
-    // Test 2: Fetch all gardens
-    const allGardens = await base44.asServiceRole.entities.Garden.list('-updated_date');
-
-    // Test 3: Check what archived field looks like
-    const nonArchived = allGardens.filter(g => !g.archived);
-    const withPrivacy = allGardens.filter(g => g.privacy === 'public');
+    // Test 2: Using SDK
+    const allGardens = await base44.asServiceRole.entities.Garden.list('-updated_date', 100);
 
     return Response.json({ 
-      publicGardens,
-      allGardensCount: allGardens.length,
-      nonArchivedCount: nonArchived.length,
-      withPrivacyPublicCount: withPrivacy.length,
-      sampleGarden: allGardens[0] || null
+      directAPICall: data1,
+      sdkCall: allGardens,
+      sdkCount: allGardens.length
     });
   } catch (error) {
     console.error('Error in debugPublicGardens:', error);
