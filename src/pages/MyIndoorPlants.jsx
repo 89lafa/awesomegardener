@@ -1,16 +1,18 @@
 import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { createPageUrl } from '@/utils';
-import { Link } from 'react-router-dom';
-import { Plus, Search, Filter, Grid3X3, List, Table, Loader2 } from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom';
+import { Plus, Search, Grid3X3, List, Table, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
 import { motion, AnimatePresence } from 'framer-motion';
 
 export default function MyIndoorPlants() {
+  const navigate = useNavigate();
   const [plants, setPlants] = useState([]);
   const [varieties, setVarieties] = useState({});
   const [spaces, setSpaces] = useState({});
@@ -31,7 +33,7 @@ export default function MyIndoorPlants() {
     try {
       const [plantsData, varietiesData, spacesData] = await Promise.all([
         base44.entities.IndoorPlant.filter({ is_active: true }, '-created_date'),
-        base44.entities.Variety.list(),
+        base44.entities.Variety.list('variety_name', 1000),
         base44.entities.IndoorSpace.filter({ is_active: true })
       ]);
 
@@ -41,7 +43,6 @@ export default function MyIndoorPlants() {
       const spacesMap = {};
       spacesData.forEach(s => spacesMap[s.id] = s);
 
-      // Enrich plants with calculated data
       const enrichedPlants = plantsData.map(plant => {
         const variety = varietiesMap[plant.variety_id];
         const space = spacesMap[plant.indoor_space_id];
@@ -123,7 +124,6 @@ export default function MyIndoorPlants() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
           <h1 className="text-2xl lg:text-3xl font-bold text-gray-800">
@@ -134,13 +134,12 @@ export default function MyIndoorPlants() {
           </p>
         </div>
         
-        <Button className="bg-emerald-600 hover:bg-emerald-700">
+        <Button className="bg-emerald-600 hover:bg-emerald-700" onClick={() => navigate(createPageUrl('AddIndoorPlant'))}>
           <Plus className="w-4 h-4 mr-2" />
           Add Plant
         </Button>
       </div>
 
-      {/* Filters */}
       <Card>
         <CardContent className="p-4">
           <div className="flex flex-col sm:flex-row gap-3">
@@ -154,42 +153,36 @@ export default function MyIndoorPlants() {
               />
             </div>
 
-            <select
-              value={filters.space_id}
-              onChange={(e) => setFilters({ ...filters, space_id: e.target.value })}
-              className="px-4 py-2 border rounded-lg"
-            >
-              <option value="all">All Spaces</option>
-              {Object.values(spaces).map(space => (
-                <option key={space.id} value={space.id}>{space.name}</option>
-              ))}
-            </select>
+            <Select value={filters.space_id} onValueChange={(v) => setFilters({ ...filters, space_id: v })}>
+              <SelectTrigger className="w-full sm:w-48">
+                <SelectValue placeholder="All Spaces" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Spaces</SelectItem>
+                {Object.values(spaces).map(space => (
+                  <SelectItem key={space.id} value={space.id}>{space.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
 
-            <select
-              value={filters.health_status}
-              onChange={(e) => setFilters({ ...filters, health_status: e.target.value })}
-              className="px-4 py-2 border rounded-lg"
-            >
-              <option value="all">All Status</option>
-              <option value="thriving">🌿 Thriving</option>
-              <option value="healthy">🌱 Healthy</option>
-              <option value="struggling">⚠️ Struggling</option>
-              <option value="sick">🚨 Sick</option>
-            </select>
+            <Select value={filters.health_status} onValueChange={(v) => setFilters({ ...filters, health_status: v })}>
+              <SelectTrigger className="w-full sm:w-48">
+                <SelectValue placeholder="All Status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Status</SelectItem>
+                <SelectItem value="thriving">🌿 Thriving</SelectItem>
+                <SelectItem value="healthy">🌱 Healthy</SelectItem>
+                <SelectItem value="struggling">⚠️ Struggling</SelectItem>
+                <SelectItem value="sick">🚨 Sick</SelectItem>
+              </SelectContent>
+            </Select>
 
             <div className="flex gap-1 border rounded-lg p-1">
-              <Button
-                variant={viewMode === 'grid' ? 'secondary' : 'ghost'}
-                size="icon"
-                onClick={() => setViewMode('grid')}
-              >
+              <Button variant={viewMode === 'grid' ? 'secondary' : 'ghost'} size="icon" onClick={() => setViewMode('grid')}>
                 <Grid3X3 className="w-4 h-4" />
               </Button>
-              <Button
-                variant={viewMode === 'list' ? 'secondary' : 'ghost'}
-                size="icon"
-                onClick={() => setViewMode('list')}
-              >
+              <Button variant={viewMode === 'list' ? 'secondary' : 'ghost'} size="icon" onClick={() => setViewMode('list')}>
                 <List className="w-4 h-4" />
               </Button>
             </div>
@@ -197,7 +190,6 @@ export default function MyIndoorPlants() {
         </CardContent>
       </Card>
 
-      {/* Stats */}
       <div className="grid grid-cols-3 gap-4">
         <Card>
           <CardContent className="p-4 bg-emerald-50">
@@ -219,7 +211,6 @@ export default function MyIndoorPlants() {
         </Card>
       </div>
 
-      {/* Plants Grid/List */}
       {filteredPlants.length === 0 ? (
         <Card className="py-16">
           <CardContent className="text-center">
@@ -228,13 +219,10 @@ export default function MyIndoorPlants() {
               {filters.search ? 'No plants found' : 'No Indoor Plants Yet'}
             </h3>
             <p className="text-gray-600 mb-6">
-              {filters.search 
-                ? 'Try a different search term'
-                : 'Start building your indoor plant collection!'
-              }
+              {filters.search ? 'Try a different search term' : 'Start building your indoor plant collection!'}
             </p>
             {!filters.search && (
-              <Button className="bg-emerald-600 hover:bg-emerald-700">
+              <Button className="bg-emerald-600 hover:bg-emerald-700" onClick={() => navigate(createPageUrl('AddIndoorPlant'))}>
                 <Plus className="w-4 h-4 mr-2" />
                 Add Your First Plant
               </Button>

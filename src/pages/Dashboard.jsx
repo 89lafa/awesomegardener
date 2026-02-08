@@ -4,19 +4,8 @@ import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { 
-  Loader2, 
-  Sprout, 
-  Calendar, 
-  Package, 
-  ListChecks,
-  MessageSquare,
-  TrendingUp,
-  CloudRain,
-  AlertTriangle,
-  ArrowRight,
-  Cloud,
-  Wind,
-  Droplets
+  Loader2, Sprout, Calendar, Package, ListChecks,
+  MessageSquare, TrendingUp, AlertTriangle, ArrowRight, Cloud
 } from 'lucide-react';
 import { createPageUrl } from '@/utils';
 import { toast } from 'sonner';
@@ -30,6 +19,7 @@ import LatestBadgeWidget from '@/components/gamification/LatestBadgeWidget';
 import LevelProgressWidget from '@/components/gamification/LevelProgressWidget';
 import LeaderboardRankWidget from '@/components/gamification/LeaderboardRankWidget';
 import ChallengeProgressWidget from '@/components/gamification/ChallengeProgressWidget';
+import IndoorCareWidget from '@/components/dashboard/IndoorCareWidget';
 
 const QuickAccessCard = ({ icon: Icon, title, count, color, page }) => {
   const navigate = useNavigate();
@@ -125,6 +115,7 @@ export default function Dashboard() {
     activeCrops: 0,
     tasks: 0,
     indoorSpaces: 0,
+    indoorPlants: 0,
     tradesPending: 0
   });
   const [weather, setWeather] = useState(null);
@@ -140,10 +131,7 @@ export default function Dashboard() {
     else setGreeting('Good evening');
   }, []);
 
-
-
   useEffect(() => {
-    // Check for cached state first
     const cachedState = sessionStorage.getItem('dashboard_state');
     if (cachedState) {
       try {
@@ -153,7 +141,6 @@ export default function Dashboard() {
         setWeather(parsed.weather);
         setLoading(false);
         setWeatherLoading(false);
-        // Still refresh in background
         setTimeout(loadDashboard, 500);
         setTimeout(loadWeather, 1000);
         setTimeout(checkAchievements, 1500);
@@ -164,7 +151,6 @@ export default function Dashboard() {
       loadDashboard();
     }
     
-    // Stagger requests to avoid rate limit hammering
     const weatherTimer = setTimeout(loadWeather, 100);
     const achievementTimer = setTimeout(checkAchievements, 200);
     
@@ -183,7 +169,6 @@ export default function Dashboard() {
         });
       }
     } catch (error) {
-      // Silently fail - don't break dashboard
       console.error('Error checking achievements:', error);
     }
   };
@@ -191,14 +176,9 @@ export default function Dashboard() {
   const loadWeather = async () => {
     try {
       const user = await base44.auth.me();
-      
-      // User entity stores location_zip directly
       const zipCode = user?.location_zip;
       
-      console.log('[Dashboard] Weather lookup - User:', user.email, 'ZIP:', zipCode);
-      
       if (!zipCode) {
-        console.warn('[Dashboard] No ZIP code found on user');
         setWeatherLoading(false);
         return;
       }
@@ -254,19 +234,19 @@ export default function Dashboard() {
       const userData = await base44.auth.me();
       setUser(userData);
 
-      // Load only essential stats first - stagger the rest
       const [gardens, seedLots] = await Promise.all([
         base44.entities.Garden.filter({ created_by: userData.email, archived: false }),
         base44.entities.SeedLot.filter({ created_by: userData.email })
       ]);
 
-      // Delay loading non-critical stats
       setTimeout(async () => {
         try {
-          const [crops, tasks, spaces, trades] = await Promise.all([
+          const [crops, tasks, spaces, indoorSpaces, indoorPlants, trades] = await Promise.all([
             base44.entities.CropPlan.filter({ created_by: userData.email, status: 'active' }),
             base44.entities.CropTask.filter({ created_by: userData.email, is_completed: false }),
             base44.entities.IndoorGrowSpace.filter({ created_by: userData.email }),
+            base44.entities.IndoorSpace.filter({ is_active: true }),
+            base44.entities.IndoorPlant.filter({ is_active: true }),
             base44.entities.SeedTrade.filter({ recipient_id: userData.id, status: 'pending' })
           ]);
 
@@ -274,7 +254,8 @@ export default function Dashboard() {
             ...prev,
             activeCrops: crops.length,
             tasks: tasks.length,
-            indoorSpaces: spaces.length,
+            indoorSpaces: indoorSpaces.length,
+            indoorPlants: indoorPlants.length,
             tradesPending: trades.length
           }));
         } catch (err) {
@@ -288,17 +269,16 @@ export default function Dashboard() {
         activeCrops: 0,
         tasks: 0,
         indoorSpaces: 0,
+        indoorPlants: 0,
         tradesPending: 0
       };
       setStats(newStats);
 
-      // Load popular crops - delay and skip if rate limited
       setTimeout(async () => {
         try {
           const popularResponse = await base44.functions.invoke('getPopularCrops', {});
           setPopularCrops(popularResponse.data);
           
-          // Update cache with popular crops
           sessionStorage.setItem('dashboard_state', JSON.stringify({
             stats: newStats,
             popularCrops: popularResponse.data,
@@ -306,9 +286,7 @@ export default function Dashboard() {
             timestamp: Date.now()
           }));
         } catch (error) {
-          if (error.message?.includes('Rate limit')) {
-            console.warn('Rate limit hit loading popular crops - skipping');
-          } else {
+          if (!error.message?.includes('Rate limit')) {
             console.error('Error loading popular crops:', error);
           }
         }
@@ -336,109 +314,61 @@ export default function Dashboard() {
 
   return (
     <div className="space-y-6 max-w-6xl">
-        {/* Header with Sir Sproutington */}
-        <div className="flex items-start justify-between gap-4">
-          <div>
-            <h1 className="text-3xl font-bold" style={{ color: 'var(--text-primary)' }}>
-              {greeting}, {user?.nickname || user?.full_name?.split(' ')[0] || 'Gardener'}! 🌅
-            </h1>
-            <p style={{ color: 'var(--text-muted)' }} className="mt-1">
-              {format(new Date(), 'MMMM d, yyyy')}
-              {user?.zone && ` • Zone ${user.zone}`}
-              {user?.last_frost_date && ` • Last frost: ${format(new Date(user.last_frost_date), 'MMM d')}`}
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-bold" style={{ color: 'var(--text-primary)' }}>
+            {greeting}, {user?.nickname || user?.full_name?.split(' ')[0] || 'Gardener'}! 🌅
+          </h1>
+          <p style={{ color: 'var(--text-muted)' }} className="mt-1">
+            {format(new Date(), 'MMMM d, yyyy')}
+            {user?.zone && ` • Zone ${user.zone}`}
+            {user?.last_frost_date && ` • Last frost: ${format(new Date(user.last_frost_date), 'MMM d')}`}
+          </p>
+        </div>
+        
+        <div className="hidden md:flex items-start gap-4 flex-shrink-0">
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg px-8 py-6 max-w-[400px]">
+            <p className="text-base font-medium text-emerald-700 dark:text-emerald-400">
+              Welcome to your garden!<br />I'm Sir Sproutington. 🌱
             </p>
           </div>
-          
-          {/* Sir Sproutington Mascot */}
-          <div className="hidden md:flex items-start gap-4 flex-shrink-0">
-            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg px-8 py-6 max-w-[400px]">
-              <p className="text-base font-medium text-emerald-700 dark:text-emerald-400">
-                Welcome to your garden!<br />I'm Sir Sproutington. 🌱
-              </p>
-            </div>
-            <img 
-              src="https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/69574c64117f491d092417ec/40f1c1296_SirSproutington.png"
-              alt="Sir Sproutington"
-              className="w-48 h-48 object-contain flex-shrink-0"
-            />
-          </div>
+          <img 
+            src="https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/69574c64117f491d092417ec/40f1c1296_SirSproutington.png"
+            alt="Sir Sproutington"
+            className="w-48 h-48 object-contain flex-shrink-0"
+          />
         </div>
+      </div>
 
-      {/* Gamification Widgets Row */}
       <div className="grid md:grid-cols-3 gap-4">
         <LevelProgressWidget />
         <StreakWidget />
         <LatestBadgeWidget />
       </div>
 
-      {/* Top Row - Quick Stats + Weather */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
-        <QuickAccessCard
-          icon={Sprout}
-          title="Active Crops"
-          count={stats.activeCrops}
-          color="bg-emerald-500"
-          page="Calendar"
-        />
-        <QuickAccessCard
-          icon={Calendar}
-          title="Tasks Today"
-          count={stats.tasks}
-          color="bg-blue-500"
-          page="CalendarTasks"
-        />
-        <QuickAccessCard
-          icon={Package}
-          title="Seed Lots"
-          count={stats.seedLots}
-          color="bg-amber-500"
-          page="SeedStash"
-        />
+        <QuickAccessCard icon={Sprout} title="Active Crops" count={stats.activeCrops} color="bg-emerald-500" page="Calendar" />
+        <QuickAccessCard icon={Calendar} title="Tasks Today" count={stats.tasks} color="bg-blue-500" page="CalendarTasks" />
+        <QuickAccessCard icon={Package} title="Seed Lots" count={stats.seedLots} color="bg-amber-500" page="SeedStash" />
         <WeatherCard weather={weather} weatherLoading={weatherLoading} />
       </div>
 
-      {/* More Stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
-        <QuickAccessCard
-          icon={ListChecks}
-          title="Gardens"
-          count={stats.gardens}
-          color="bg-green-600"
-          page="Gardens"
-        />
-        <QuickAccessCard
-          icon={Sprout}
-          title="Indoor Spaces"
-          count={stats.indoorSpaces}
-          color="bg-purple-500"
-          page="IndoorGrowSpaces"
-        />
-        <QuickAccessCard
-          icon={MessageSquare}
-          title="Trade Offers"
-          count={stats.tradesPending}
-          color="bg-pink-500"
-          page="SeedTrading"
-        />
+        <QuickAccessCard icon={ListChecks} title="Gardens" count={stats.gardens} color="bg-green-600" page="Gardens" />
+        <QuickAccessCard icon={Sprout} title="Indoor Plants" count={stats.indoorPlants} color="bg-purple-500" page="MyIndoorPlants" />
+        <QuickAccessCard icon={MessageSquare} title="Trade Offers" count={stats.tradesPending} color="bg-pink-500" page="SeedTrading" />
         <div className="glass-card flex flex-col items-center justify-center">
           <TrendingUp className="w-12 h-12 mb-3" style={{ color: '#10b981' }} />
           <p className="text-sm font-medium mb-3" style={{ color: 'var(--text-primary)' }}>Ready to plan?</p>
-          <Button
-            onClick={() => navigate(createPageUrl('Calendar'))}
-            className="w-full bg-emerald-600 hover:bg-emerald-700"
-            size="sm"
-          >
+          <Button onClick={() => navigate(createPageUrl('Calendar'))} className="w-full bg-emerald-600 hover:bg-emerald-700" size="sm">
             Plan Your Garden
           </Button>
         </div>
       </div>
 
-      {/* Gamification & Quick Actions */}
       <div className="grid md:grid-cols-3 gap-4">
         <LeaderboardRankWidget />
         <ChallengeProgressWidget />
-        
-        {/* Quick Actions */}
         <div className="glass-card-no-padding">
           <div className="p-6">
             <h3 className="flex items-center gap-2 text-lg font-semibold mb-4" style={{ color: 'var(--text-primary)' }}>
@@ -446,192 +376,103 @@ export default function Dashboard() {
               Quick Actions
             </h3>
             <div className="space-y-2">
-            <Button
-              onClick={() => navigate(createPageUrl('Calendar'))}
-              variant="outline"
-              className="w-full justify-between"
-            >
-              <span>📅 Plan Crops</span>
-              <ArrowRight className="w-4 h-4" />
-            </Button>
-            <Button
-              onClick={() => navigate(createPageUrl('SeedStash'))}
-              variant="outline"
-              className="w-full justify-between"
-            >
-              <span>🌱 Manage Seeds</span>
-              <ArrowRight className="w-4 h-4" />
-            </Button>
-            <Button
-              onClick={() => navigate(createPageUrl('CalendarTasks'))}
-              variant="outline"
-              className="w-full justify-between"
-            >
-              <span>✓ View Tasks</span>
-              <ArrowRight className="w-4 h-4" />
-            </Button>
-            <Button
-              onClick={() => navigate(createPageUrl('IndoorGrowSpaces'))}
-              variant="outline"
-              className="w-full justify-between"
-            >
-              <span>🏠 Indoor Growing</span>
-              <ArrowRight className="w-4 h-4" />
-            </Button>
+              <Button onClick={() => navigate(createPageUrl('Calendar'))} variant="outline" className="w-full justify-between">
+                <span>📅 Plan Crops</span>
+                <ArrowRight className="w-4 h-4" />
+              </Button>
+              <Button onClick={() => navigate(createPageUrl('SeedStash'))} variant="outline" className="w-full justify-between">
+                <span>🌱 Manage Seeds</span>
+                <ArrowRight className="w-4 h-4" />
+              </Button>
+              <Button onClick={() => navigate(createPageUrl('CalendarTasks'))} variant="outline" className="w-full justify-between">
+                <span>✓ View Tasks</span>
+                <ArrowRight className="w-4 h-4" />
+              </Button>
+              <Button onClick={() => navigate(createPageUrl('MyIndoorPlants'))} variant="outline" className="w-full justify-between">
+                <span>🪴 Indoor Plants</span>
+                <ArrowRight className="w-4 h-4" />
+              </Button>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Quick Check-In + AI Tools */}
       <div className="grid md:grid-cols-2 gap-4">
         <QuickCheckInWidget />
-        
-        {/* AI Tools */}
+        <IndoorCareWidget />
+      </div>
+
+      <div className="grid md:grid-cols-2 gap-4">
         <div className="glass-card-no-padding">
           <div className="p-6">
             <h3 className="flex items-center gap-2 text-lg font-semibold mb-4" style={{ color: 'var(--text-primary)' }}>
               ✨ AI Tools
             </h3>
             <div className="space-y-3 text-sm">
-            <div>
-              <p className="font-medium" style={{ color: 'var(--text-primary)' }}>🤖 AI Assistants</p>
-              <p className="text-xs mt-1" style={{ color: 'var(--text-secondary)' }}>Photo diagnosis, plant ID, smart suggestions</p>
-              <Button
-                onClick={() => navigate(createPageUrl('AIAssistants'))}
-                size="sm"
-                variant="outline"
-                className="mt-2 w-full"
-              >
-                Explore AI Tools
-              </Button>
-            </div>
-            <div className="border-t pt-3" style={{ borderColor: 'rgba(148, 163, 184, 0.2)' }}>
-              <p className="font-medium" style={{ color: 'var(--text-primary)' }}>🌾 Seed Trading</p>
-              <p className="text-xs mt-1" style={{ color: 'var(--text-secondary)' }}>Trade with other gardeners</p>
-              <Button
-                onClick={() => navigate(createPageUrl('SeedTrading'))}
-                size="sm"
-                variant="outline"
-                className="mt-2 w-full"
-              >
-                Browse Trades
-              </Button>
+              <div>
+                <p className="font-medium" style={{ color: 'var(--text-primary)' }}>🤖 AI Assistants</p>
+                <p className="text-xs mt-1" style={{ color: 'var(--text-secondary)' }}>Photo diagnosis, plant ID, smart suggestions</p>
+                <Button onClick={() => navigate(createPageUrl('AIAssistants'))} size="sm" variant="outline" className="mt-2 w-full">
+                  Explore AI Tools
+                </Button>
+              </div>
+              <div className="border-t pt-3" style={{ borderColor: 'rgba(148, 163, 184, 0.2)' }}>
+                <p className="font-medium" style={{ color: 'var(--text-primary)' }}>🌾 Seed Trading</p>
+                <p className="text-xs mt-1" style={{ color: 'var(--text-secondary)' }}>Trade with other gardeners</p>
+                <Button onClick={() => navigate(createPageUrl('SeedTrading'))} size="sm" variant="outline" className="mt-2 w-full">
+                  Browse Trades
+                </Button>
+              </div>
             </div>
           </div>
         </div>
-      </div>
-      </div>
 
-      {/* Activity Feed and Widgets */}
-      <div className="grid md:grid-cols-2 gap-6">
         <ActivityFeed limit={5} />
-        <div className="space-y-6">
-          <TipOfDayWidget />
-          <RecipeSuggestionsWidget />
-        </div>
       </div>
 
-      {/* Popular Crops */}
+      <div className="grid md:grid-cols-2 gap-6">
+        <TipOfDayWidget />
+        <RecipeSuggestionsWidget />
+      </div>
+
       {popularCrops && (
         <div className="space-y-4">
           <h2 className="text-xl font-bold" style={{ color: 'var(--text-primary)' }}>🔥 What Others Are Growing</h2>
           
           <div className="grid md:grid-cols-3 gap-6">
-            {/* Top Tomatoes */}
-            <div className="glass-card-no-padding">
-              <div className="p-6">
-                <h3 className="text-lg flex items-center gap-2 mb-4 font-semibold" style={{ color: 'var(--text-primary)' }}>
-                  🍅 Top Tomatoes
-                </h3>
-                <div className="space-y-2">
-                  {popularCrops.tomatoes && popularCrops.tomatoes.length > 0 ? (
-                    popularCrops.tomatoes.map((crop, idx) => (
-                      <a 
-                        href={`/ViewVariety?id=${crop.variety_id}`}
-                        key={crop.variety_id} 
-                        className="flex items-center justify-between text-sm p-2 rounded transition-colors hover:bg-emerald-600/20 cursor-pointer" 
-                        style={{ backgroundColor: 'rgba(51, 65, 85, 0.3)' }}
-                      >
-                        <div className="flex items-center gap-2">
-                          <span className="font-bold" style={{ color: 'var(--text-muted)' }}>#{idx + 1}</span>
-                          <span className="truncate" style={{ color: 'var(--text-primary)' }}>{crop.variety_name}</span>
-                        </div>
-                        <span className="text-xs" style={{ color: 'var(--text-muted)' }}>{crop.unique_users} growers</span>
-                      </a>
-                    ))
-                  ) : (
-                    <p className="text-sm" style={{ color: 'var(--text-muted)' }}>Not enough data yet</p>
-                  )}
-                </div>
-              </div>
-            </div>
-
-            {/* Top Peppers */}
-            <div className="glass-card-no-padding">
-              <div className="p-6">
-                <h3 className="text-lg flex items-center gap-2 mb-4 font-semibold" style={{ color: 'var(--text-primary)' }}>
-                  🌶️ Top Peppers
-                </h3>
-                <div className="space-y-2">
-                  {popularCrops.peppers && popularCrops.peppers.length > 0 ? (
-                    popularCrops.peppers.map((crop, idx) => (
-                      <a 
-                        href={`/ViewVariety?id=${crop.variety_id}`}
-                        key={crop.variety_id} 
-                        className="flex items-center justify-between text-sm p-2 rounded transition-colors hover:bg-emerald-600/20 cursor-pointer" 
-                        style={{ backgroundColor: 'rgba(51, 65, 85, 0.3)' }}
-                      >
-                        <div className="flex items-center gap-2">
-                          <span className="font-bold" style={{ color: 'var(--text-muted)' }}>#{idx + 1}</span>
-                          <span className="truncate" style={{ color: 'var(--text-primary)' }}>{crop.variety_name}</span>
-                        </div>
-                        <span className="text-xs" style={{ color: 'var(--text-muted)' }}>{crop.unique_users} growers</span>
-                      </a>
-                    ))
-                  ) : (
-                    <p className="text-sm" style={{ color: 'var(--text-muted)' }}>Not enough data yet</p>
-                  )}
-                </div>
-              </div>
-            </div>
-
-            {/* Top Other Crops */}
-            <div className="glass-card-no-padding">
-              <div className="p-6">
-                <h3 className="text-lg flex items-center gap-2 mb-4 font-semibold" style={{ color: 'var(--text-primary)' }}>
-                  🥬 Top Other Crops
-                </h3>
-                <div className="space-y-2">
-                  {popularCrops.other && popularCrops.other.length > 0 ? (
-                    popularCrops.other.map((crop, idx) => (
-                      <a 
-                        href={`/ViewVariety?id=${crop.variety_id}`}
-                        key={crop.variety_id} 
-                        className="flex items-center justify-between text-sm p-2 rounded transition-colors hover:bg-emerald-600/20 cursor-pointer" 
-                        style={{ backgroundColor: 'rgba(51, 65, 85, 0.3)' }}
-                      >
-                        <div className="flex items-center gap-2">
-                          <span className="font-bold" style={{ color: 'var(--text-muted)' }}>#{idx + 1}</span>
-                          <div className="flex-1 min-w-0">
-                            <p className="truncate font-medium" style={{ color: 'var(--text-primary)' }}>{crop.variety_name}</p>
-                            <p className="text-xs" style={{ color: 'var(--text-muted)' }}>{crop.plant_type_name}</p>
+            {['tomatoes', 'peppers', 'other'].map(cropType => (
+              <div key={cropType} className="glass-card-no-padding">
+                <div className="p-6">
+                  <h3 className="text-lg flex items-center gap-2 mb-4 font-semibold" style={{ color: 'var(--text-primary)' }}>
+                    {cropType === 'tomatoes' ? '🍅 Top Tomatoes' : cropType === 'peppers' ? '🌶️ Top Peppers' : '🥬 Top Other Crops'}
+                  </h3>
+                  <div className="space-y-2">
+                    {popularCrops[cropType]?.length > 0 ? (
+                      popularCrops[cropType].map((crop, idx) => (
+                        <a 
+                          href={`/ViewVariety?id=${crop.variety_id}`}
+                          key={crop.variety_id} 
+                          className="flex items-center justify-between text-sm p-2 rounded transition-colors hover:bg-emerald-600/20 cursor-pointer" 
+                          style={{ backgroundColor: 'rgba(51, 65, 85, 0.3)' }}
+                        >
+                          <div className="flex items-center gap-2 flex-1 min-w-0">
+                            <span className="font-bold" style={{ color: 'var(--text-muted)' }}>#{idx + 1}</span>
+                            <span className="truncate" style={{ color: 'var(--text-primary)' }}>{crop.variety_name}</span>
                           </div>
-                        </div>
-                        <span className="text-xs flex-shrink-0" style={{ color: 'var(--text-muted)' }}>{crop.unique_users}</span>
-                      </a>
-                    ))
-                  ) : (
-                    <p className="text-sm" style={{ color: 'var(--text-muted)' }}>Not enough data yet</p>
-                  )}
+                          <span className="text-xs" style={{ color: 'var(--text-muted)' }}>{crop.unique_users}</span>
+                        </a>
+                      ))
+                    ) : (
+                      <p className="text-sm" style={{ color: 'var(--text-muted)' }}>Not enough data yet</p>
+                    )}
+                  </div>
                 </div>
               </div>
-            </div>
+            ))}
           </div>
         </div>
       )}
 
-      {/* Getting Started */}
       {stats.gardens === 0 && (
         <div className="glass-card">
           <div className="flex items-center gap-2 mb-4">
@@ -641,14 +482,11 @@ export default function Dashboard() {
           <p className="text-sm mb-4 text-emerald-100">
             Create your first garden to start planning crops, tracking seeds, and managing your growing space.
           </p>
-          <Button
-            onClick={() => navigate(createPageUrl('Gardens'))}
-            className="bg-emerald-600 hover:bg-emerald-700"
-          >
+          <Button onClick={() => navigate(createPageUrl('Gardens'))} className="bg-emerald-600 hover:bg-emerald-700">
             Create Garden
           </Button>
         </div>
       )}
-      </div>
+    </div>
   );
 }

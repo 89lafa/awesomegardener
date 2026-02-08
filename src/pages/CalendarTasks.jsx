@@ -1,36 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { 
-  Plus, 
-  Calendar as CalendarIcon,
-  Filter,
-  Loader2,
-  CheckCircle2,
-  Circle,
-  Sprout,
-  Shovel,
-  Droplets,
-  TreeDeciduous,
-  Scissors,
-  Bug,
-  Leaf
+  Plus, Calendar as CalendarIcon, Filter, Loader2, CheckCircle2, Circle, Sprout, Shovel, Droplets,
+  TreeDeciduous, Scissors, Bug, Leaf, Wind, RotateCw
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
-import { format, parseISO, isBefore, isAfter, addDays } from 'date-fns';
+import { format, parseISO, isBefore, addDays } from 'date-fns';
 import { cn } from '@/lib/utils';
-import DayTasksPanel from '@/components/calendar/DayTasksPanel';
-import { format as formatDate, getDaysInMonth, startOfMonth } from 'date-fns';
 import { smartQuery } from '@/components/utils/smartQuery';
 import RateLimitBanner from '@/components/common/RateLimitBanner';
 import { KanbanBoard } from '@/components/tasks/KanbanBoard';
@@ -41,7 +22,11 @@ const TASK_TYPE_CONFIG = {
   transplant: { icon: Shovel, color: 'bg-yellow-100 text-yellow-700 border-yellow-200', label: 'Transplant' },
   harvest: { icon: CalendarIcon, color: 'bg-orange-100 text-orange-700 border-orange-200', label: 'Harvest' },
   cultivate: { icon: Scissors, color: 'bg-blue-100 text-blue-700 border-blue-200', label: 'Cultivate' },
-  bed_prep: { icon: Shovel, color: 'bg-gray-100 text-gray-700 border-gray-200', label: 'Bed Prep' }
+  bed_prep: { icon: Shovel, color: 'bg-gray-100 text-gray-700 border-gray-200', label: 'Bed Prep' },
+  water: { icon: Droplets, color: 'bg-blue-100 text-blue-700 border-blue-200', label: 'Water' },
+  fertilize: { icon: Sprout, color: 'bg-green-100 text-green-700 border-green-200', label: 'Fertilize' },
+  mist: { icon: Wind, color: 'bg-cyan-100 text-cyan-700 border-cyan-200', label: 'Mist' },
+  rotate: { icon: RotateCw, color: 'bg-purple-100 text-purple-700 border-purple-200', label: 'Rotate' },
 };
 
 export default function CalendarTasks() {
@@ -55,8 +40,9 @@ export default function CalendarTasks() {
   const [loading, setLoading] = useState(true);
   const [taskTypeFilter, setTaskTypeFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
+  const [categoryFilter, setCategoryFilter] = useState('all');
   const [cropFilter, setCropFilter] = useState('all');
-  const [viewMode, setViewMode] = useState('list'); // 'list' or 'calendar'
+  const [viewMode, setViewMode] = useState('list');
   const [rateLimitError, setRateLimitError] = useState(null);
   const [retrying, setRetrying] = useState(false);
 
@@ -139,7 +125,8 @@ export default function CalendarTasks() {
 
     try {
       const currentUser = await base44.auth.me();
-      const [cropsData, tasksData] = await Promise.all([
+      
+      const [cropsData, gardenTasksData, indoorTasksData] = await Promise.all([
         smartQuery(base44, 'CropPlan', { 
           garden_season_id: activeSeason.id,
           created_by: currentUser.email
@@ -147,12 +134,30 @@ export default function CalendarTasks() {
         smartQuery(base44, 'CropTask', { 
           garden_season_id: activeSeason.id,
           created_by: currentUser.email
-        }, 'start_date')
+        }, 'start_date'),
+        base44.entities.IndoorCareTask.filter({
+          is_completed: false
+        }, 'due_date')
       ]);
 
+      const allTasks = [
+        ...gardenTasksData.map(t => ({
+          ...t,
+          source: 'garden',
+          category: 'outdoor',
+          date_field: 'start_date'
+        })),
+        ...indoorTasksData.map(t => ({
+          ...t,
+          source: 'indoor',
+          category: 'indoor',
+          date_field: 'due_date',
+          start_date: t.due_date
+        }))
+      ].sort((a, b) => new Date(a.start_date) - new Date(b.start_date));
+
       setCropPlans(cropsData);
-      setTasks(tasksData);
-      console.log('[Tasks] Loaded', cropsData.length, 'crops and', tasksData.length, 'tasks for season', activeSeason.year, activeSeason.season);
+      setTasks(allTasks);
     } catch (error) {
       console.error('Error loading tasks/crops:', error);
     }
@@ -161,7 +166,6 @@ export default function CalendarTasks() {
   const handleToggleComplete = async (task) => {
     const newCompleted = !task.is_completed;
     
-    // Optimistic UI update
     setTasks(tasks.map(t => t.id === task.id ? { 
       ...t, 
       is_completed: newCompleted,
@@ -169,25 +173,45 @@ export default function CalendarTasks() {
     } : t));
     
     try {
-      await base44.entities.CropTask.update(task.id, { 
-        is_completed: newCompleted,
-        completed_at: newCompleted ? new Date().toISOString() : null,
-        quantity_completed: newCompleted ? task.quantity_target : 0
-      });
+      if (task.source === 'indoor') {
+        await base44.entities.IndoorCareTask.update(task.id, { 
+          is_completed: newCompleted,
+          completed_date: newCompleted ? new Date().toISOString() : null
+        });
+
+        if (newCompleted) {
+          await base44.entities.IndoorPlantLog.create({
+            indoor_plant_id: task.indoor_plant_id,
+            log_type: task.task_type,
+            log_date: new Date().toISOString()
+          });
+
+          const updates = {};
+          if (task.task_type === 'water') updates.last_watered_date = new Date().toISOString();
+          if (task.task_type === 'fertilize') updates.last_fertilized_date = new Date().toISOString();
+          if (task.task_type === 'rotate') updates.last_rotated_date = new Date().toISOString();
+
+          if (Object.keys(updates).length > 0) {
+            await base44.entities.IndoorPlant.update(task.indoor_plant_id, updates);
+          }
+        }
+      } else {
+        await base44.entities.CropTask.update(task.id, { 
+          is_completed: newCompleted,
+          completed_at: newCompleted ? new Date().toISOString() : null,
+          quantity_completed: newCompleted ? task.quantity_target : 0
+        });
+      }
     } catch (error) {
       console.error('Error toggling task:', error);
-      // Revert on error
-      setTasks(tasks.map(t => t.id === task.id ? { 
-        ...t, 
-        is_completed: task.is_completed,
-        quantity_completed: task.quantity_completed
-      } : t));
+      setTasks(tasks.map(t => t.id === task.id ? task : t));
       toast.error('Failed to update task');
     }
   };
 
   const getFilteredTasks = () => {
     return tasks.filter(task => {
+      if (categoryFilter !== 'all' && task.category !== categoryFilter) return false;
       if (taskTypeFilter !== 'all' && task.task_type !== taskTypeFilter) return false;
       if (statusFilter === 'completed' && !task.is_completed) return false;
       if (statusFilter === 'open' && task.is_completed) return false;
@@ -213,7 +237,7 @@ export default function CalendarTasks() {
       const taskDate = parseISO(task.start_date);
       taskDate.setHours(0, 0, 0, 0);
 
-      if (task.is_completed) return; // Skip completed
+      if (task.is_completed) return;
 
       if (isBefore(taskDate, now)) {
         overdue.push(task);
@@ -231,6 +255,10 @@ export default function CalendarTasks() {
 
   const filteredTasks = getFilteredTasks();
   const { overdue, next7, next30, later } = groupTasksByDate(filteredTasks);
+
+  const indoorCount = tasks.filter(t => t.source === 'indoor').length;
+  const outdoorCount = tasks.filter(t => t.source === 'garden').length;
+  const urgentCount = tasks.filter(t => t.priority === 'high' && !t.is_completed).length;
 
   if (loading) {
     return (
@@ -269,32 +297,27 @@ export default function CalendarTasks() {
             const progress = task.quantity_target > 0 ? (task.quantity_completed || 0) / task.quantity_target : 0;
 
             return (
-              <div
-                key={task.id}
-                className="flex items-center gap-3 p-3 bg-white rounded-lg border hover:shadow-sm transition-shadow"
-              >
-                <Checkbox
-                  checked={task.is_completed}
-                  onCheckedChange={() => handleToggleComplete(task)}
-                  className="flex-shrink-0"
-                />
+              <div key={task.id} className="flex items-center gap-3 p-3 bg-white rounded-lg border hover:shadow-sm transition-shadow">
+                <Checkbox checked={task.is_completed} onCheckedChange={() => handleToggleComplete(task)} className="flex-shrink-0" />
                 <div className={cn("p-2 rounded-lg flex-shrink-0", typeInfo.color)}>
                   <Icon className="w-4 h-4" />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className={cn("font-medium text-sm", task.is_completed && "line-through text-gray-500")}>
-                    {task.title}
-                  </p>
+                  <div className="flex items-center gap-2">
+                    <p className={cn("font-medium text-sm", task.is_completed && "line-through text-gray-500")}>
+                      {task.title}
+                    </p>
+                    {task.source === 'indoor' && (
+                      <Badge className="bg-emerald-100 text-emerald-700 text-xs">🪴 Indoor</Badge>
+                    )}
+                  </div>
                   <div className="flex items-center gap-2 mt-1">
                     <p className="text-xs text-gray-500">
                       {format(parseISO(task.start_date), 'MMM d, yyyy')}
                     </p>
                     {crop && (
                       <div className="flex items-center gap-1">
-                        <div 
-                          className="w-2 h-2 rounded-full"
-                          style={{ backgroundColor: crop.color_hex || '#10b981' }}
-                        />
+                        <div className="w-2 h-2 rounded-full" style={{ backgroundColor: crop.color_hex || '#10b981' }} />
                         <span className="text-xs text-gray-500">{crop.label}</span>
                       </div>
                     )}
@@ -304,10 +327,7 @@ export default function CalendarTasks() {
                       <div className="flex items-center gap-2 text-xs text-gray-600">
                         <span>{task.quantity_completed || 0} / {task.quantity_target}</span>
                         <div className="flex-1 h-1.5 bg-gray-200 rounded-full overflow-hidden max-w-[100px]">
-                          <div 
-                            className="h-full bg-emerald-600 transition-all"
-                            style={{ width: `${progress * 100}%` }}
-                          />
+                          <div className="h-full bg-emerald-600 transition-all" style={{ width: `${progress * 100}%` }} />
                         </div>
                       </div>
                     </div>
@@ -335,11 +355,21 @@ export default function CalendarTasks() {
       <div className="flex flex-col gap-4">
         <div>
           <h1 className="text-2xl lg:text-3xl font-bold text-gray-900">Tasks</h1>
-          <p className="text-gray-600 mt-1">Planting schedules and garden maintenance</p>
+          <p className="text-gray-600 mt-1">Planting schedules and plant care</p>
         </div>
 
-        {/* Filters */}
         <div className="flex flex-wrap gap-3 items-center">
+          <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+            <SelectTrigger className="w-36">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Tasks</SelectItem>
+              <SelectItem value="outdoor">🌱 Garden</SelectItem>
+              <SelectItem value="indoor">🪴 Indoor</SelectItem>
+            </SelectContent>
+          </Select>
+
           <Select value={viewMode} onValueChange={setViewMode}>
             <SelectTrigger className="w-36">
               <SelectValue />
@@ -383,21 +413,6 @@ export default function CalendarTasks() {
             </SelectContent>
           </Select>
 
-          <Select value={taskTypeFilter} onValueChange={setTaskTypeFilter}>
-            <SelectTrigger className="w-44">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Task Types</SelectItem>
-              <SelectItem value="seed">Start Seeds</SelectItem>
-              <SelectItem value="direct_seed">Direct Sow</SelectItem>
-              <SelectItem value="transplant">Transplant</SelectItem>
-              <SelectItem value="harvest">Harvest</SelectItem>
-              <SelectItem value="cultivate">Maintenance</SelectItem>
-              <SelectItem value="bed_prep">Bed Prep</SelectItem>
-            </SelectContent>
-          </Select>
-
           <Select value={statusFilter} onValueChange={setStatusFilter}>
             <SelectTrigger className="w-36">
               <SelectValue />
@@ -408,30 +423,31 @@ export default function CalendarTasks() {
               <SelectItem value="completed">Completed</SelectItem>
             </SelectContent>
           </Select>
-
-          {cropPlans.length > 0 && (
-            <Select value={cropFilter} onValueChange={setCropFilter}>
-              <SelectTrigger className="w-44">
-                <SelectValue placeholder="All Crops" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Crops</SelectItem>
-                {cropPlans.map(crop => (
-                  <SelectItem key={crop.id} value={crop.id}>
-                    <div className="flex items-center gap-2">
-                      <div 
-                        className="w-2 h-2 rounded-full"
-                        style={{ backgroundColor: crop.color_hex || '#10b981' }}
-                      />
-                      {crop.label}
-                    </div>
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          )}
         </div>
       </div>
+
+      {viewMode === 'list' && (
+        <div className="grid grid-cols-3 gap-4">
+          <Card>
+            <CardContent className="p-4 text-center bg-blue-50">
+              <div className="text-3xl font-bold text-blue-700">{outdoorCount}</div>
+              <div className="text-sm text-blue-600">🌱 Garden Tasks</div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="p-4 text-center bg-emerald-50">
+              <div className="text-3xl font-bold text-emerald-700">{indoorCount}</div>
+              <div className="text-sm text-emerald-600">🪴 Indoor Tasks</div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="p-4 text-center bg-red-50">
+              <div className="text-3xl font-bold text-red-700">{urgentCount}</div>
+              <div className="text-sm text-red-600">⚠️ Urgent</div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
 
       {!activeSeason ? (
         <Card className="p-8 text-center">
@@ -441,26 +457,13 @@ export default function CalendarTasks() {
       ) : tasks.length === 0 ? (
         <Card className="p-8 text-center">
           <CalendarIcon className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-          <p className="text-gray-600 mb-2">No tasks for this season yet</p>
-          <p className="text-sm text-gray-500">Add crops in Calendar Planner to generate tasks</p>
+          <p className="text-gray-600 mb-2">No tasks yet</p>
+          <p className="text-sm text-gray-500">Add crops in Calendar Planner or plants to generate tasks</p>
         </Card>
       ) : viewMode === 'kanban' ? (
-       <KanbanBoard 
-         tasks={filteredTasks}
-         onTaskUpdate={loadTasksAndCrops}
-       />
-      ) : viewMode === 'calendar' ? (
-       <CalendarView 
-         tasks={filteredTasks}
-         crops={cropPlans}
-         season={activeSeason}
-         onTaskClick={(task) => {
-           handleToggleComplete(task);
-         }}
-       />
+        <KanbanBoard tasks={filteredTasks} onTaskUpdate={loadTasksAndCrops} />
       ) : (
         <div className="space-y-6">
-          {/* Summary */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <Card>
               <CardContent className="p-4 text-center">
@@ -490,136 +493,14 @@ export default function CalendarTasks() {
             </Card>
           </div>
 
-          {/* Task Groups */}
           <div className="space-y-6">
-            <TaskGroup 
-              title="⚠️ Overdue" 
-              tasks={overdue} 
-              colorClass="text-red-600" 
-            />
-            <TaskGroup 
-              title="📅 Next 7 Days" 
-              tasks={next7} 
-              colorClass="text-amber-600" 
-            />
-            <TaskGroup 
-              title="🗓️ Next 30 Days" 
-              tasks={next30} 
-              colorClass="text-emerald-600" 
-            />
-            {later.length > 0 && (
-              <TaskGroup 
-                title="📆 Later" 
-                tasks={later} 
-                colorClass="text-gray-600" 
-              />
-            )}
+            <TaskGroup title="⚠️ Overdue" tasks={overdue} colorClass="text-red-600" />
+            <TaskGroup title="📅 Next 7 Days" tasks={next7} colorClass="text-amber-600" />
+            <TaskGroup title="🗓️ Next 30 Days" tasks={next30} colorClass="text-emerald-600" />
+            {later.length > 0 && <TaskGroup title="📆 Later" tasks={later} colorClass="text-gray-600" />}
           </div>
         </div>
       )}
-    </div>
-  );
-}
-
-// Calendar View for Tasks
-function CalendarView({ tasks, crops, season, onTaskClick }) {
-  if (!season) return <div className="text-center text-gray-500 p-8">Select a season to view calendar</div>;
-
-  const seasonYear = typeof season === 'string' ? parseInt(season.split('-')[0]) : season?.year;
-  if (!seasonYear) return <div className="text-center text-gray-500 p-8">Invalid season</div>;
-
-  const startDate = new Date(seasonYear, 0, 1);
-  const months = Array.from({ length: 12 }, (_, i) => new Date(seasonYear, i, 1));
-
-  return (
-    <div className="space-y-0 border rounded-lg overflow-hidden bg-white">
-      {months.map((month, monthIdx) => {
-        const daysInMonth = getDaysInMonth(month);
-        const monthStart = startOfMonth(month);
-        const startDayOfWeek = monthStart.getDay();
-
-        return (
-          <div key={monthIdx} className="border-b last:border-b-0">
-            {/* Month Header */}
-            <div className="grid grid-cols-[100px_1fr] bg-gray-50 border-b">
-              <div className="px-3 py-2 font-semibold text-sm border-r">
-                {formatDate(month, 'MMMM')}
-              </div>
-              {monthIdx === 0 && (
-                <div className="grid grid-cols-7">
-                  {['Su', 'M', 'T', 'W', 'Th', 'F', 'Sa'].map((day, i) => (
-                    <div key={i} className="text-center text-xs font-medium py-2 border-r last:border-r-0 text-gray-500">
-                      {day}
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            {/* Days Grid */}
-            <div className="grid grid-cols-[100px_1fr]">
-              <div className="border-r" />
-              <div className="grid grid-cols-7">
-                {/* Empty cells before month starts */}
-                {Array.from({ length: startDayOfWeek }).map((_, i) => (
-                  <div key={`empty-${i}`} className="h-20 border-r border-b bg-gray-50/50" />
-                ))}
-
-                {/* Days */}
-                {Array.from({ length: daysInMonth }).map((_, dayIdx) => {
-                  const day = dayIdx + 1;
-                  const currentDate = new Date(seasonYear, monthIdx, day);
-                  currentDate.setHours(0, 0, 0, 0);
-
-                  const dayTasks = tasks.filter(task => {
-                    if (!task.start_date) return false;
-                    const taskStart = new Date(task.start_date);
-                    taskStart.setHours(0, 0, 0, 0);
-                    const taskEnd = task.end_date ? new Date(task.end_date) : taskStart;
-                    taskEnd.setHours(0, 0, 0, 0);
-                    return currentDate >= taskStart && currentDate <= taskEnd;
-                  });
-
-                  return (
-                    <div
-                      key={day}
-                      className="h-20 border-r border-b relative hover:bg-blue-50/30 p-1"
-                    >
-                      <div className="text-xs text-gray-400 font-medium mb-1">{day}</div>
-                      <div className="space-y-0.5">
-                        {dayTasks.slice(0, 3).map((task) => {
-                          const crop = crops.find(c => c.id === task.crop_plan_id);
-                          const typeConfig = TASK_TYPE_CONFIG[task.task_type] || TASK_TYPE_CONFIG.cultivate;
-
-                          return (
-                            <div
-                              key={task.id}
-                              className="text-[10px] px-1 py-0.5 rounded cursor-pointer truncate"
-                              style={{ backgroundColor: task.color_hex || crop?.color_hex || '#10b981', color: 'white' }}
-                              onClick={() => onTaskClick(task)}
-                              title={`${crop?.label || 'Crop'}: ${task.title}`}
-                            >
-                              {crop?.label} - {typeConfig.label}
-                            </div>
-                          );
-                        })}
-                        {dayTasks.length > 3 && (
-                          <div className="text-[9px] text-gray-500">+{dayTasks.length - 3} more</div>
-                        )}
-                      </div>
-                    </div>
-                  );
-                })}
-
-                {/* Fill remaining cells */}
-                {Array.from({ length: (7 - ((startDayOfWeek + daysInMonth) % 7)) % 7 }).map((_, i) => (
-                  <div key={`fill-${i}`} className="h-20 border-r border-b bg-gray-50/50" />
-                ))}
-              </div>
-            </div>
-          </div>
-        );
-      })}
     </div>
   );
 }
