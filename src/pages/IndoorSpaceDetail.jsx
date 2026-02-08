@@ -10,11 +10,13 @@ import {
   Sun,
   Edit,
   Trash2,
-  Loader2
+  Loader2,
+  Sprout
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Label } from '@/components/ui/label';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { toast } from 'sonner';
 
