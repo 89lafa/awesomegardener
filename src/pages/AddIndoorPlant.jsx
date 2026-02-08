@@ -58,13 +58,36 @@ export default function AddIndoorPlant() {
     try {
       const [spacesData, varietiesData, plantTypesData] = await Promise.all([
         base44.entities.IndoorSpace.filter({ is_active: true }),
-        base44.entities.Variety.list('variety_name', 1000),
+        base44.entities.Variety.list('variety_name', 5000),
         base44.entities.PlantType.list('common_name', 500)
       ]);
 
       setSpaces(spacesData);
-      setVarieties(varietiesData);
-      setPlantTypes(plantTypesData);
+      
+      const indoorPlantTypes = plantTypesData.filter(pt => 
+        pt.category === 'flower' || 
+        pt.common_name?.toLowerCase().includes('aloe') ||
+        pt.common_name?.toLowerCase().includes('succulent') ||
+        pt.common_name?.toLowerCase().includes('cactus') ||
+        pt.common_name?.toLowerCase().includes('fern') ||
+        pt.common_name?.toLowerCase().includes('palm') ||
+        pt.common_name?.toLowerCase().includes('orchid') ||
+        pt.common_name?.toLowerCase().includes('philodendron') ||
+        pt.common_name?.toLowerCase().includes('pothos') ||
+        pt.common_name?.toLowerCase().includes('monstera') ||
+        pt.common_name?.toLowerCase().includes('snake plant') ||
+        pt.common_name?.toLowerCase().includes('spider plant') ||
+        pt.common_name?.toLowerCase().includes('jade') ||
+        pt.common_name?.toLowerCase().includes('peace lily') ||
+        pt.common_name?.toLowerCase().includes('rubber') ||
+        pt.common_name?.toLowerCase().includes('ivy')
+      );
+      
+      const indoorTypeIds = indoorPlantTypes.map(pt => pt.id);
+      const indoorVarieties = varietiesData.filter(v => indoorTypeIds.includes(v.plant_type_id));
+      
+      setVarieties(indoorVarieties);
+      setPlantTypes(indoorPlantTypes);
 
       if (spaceId && spacesData.length > 0) {
         const space = spacesData.find(s => s.id === spaceId);
@@ -75,6 +98,10 @@ export default function AddIndoorPlant() {
 
       if (varietyId) {
         setFormData(prev => ({ ...prev, variety_id: varietyId }));
+        const selectedVariety = varietiesData.find(v => v.id === varietyId);
+        if (selectedVariety) {
+          setSearchQuery(selectedVariety.variety_name);
+        }
       }
     } catch (error) {
       console.error('Error loading data:', error);
@@ -128,11 +155,12 @@ export default function AddIndoorPlant() {
     }
   };
 
-  const filteredVarieties = varieties.filter(v => 
-    searchQuery === '' ||
-    v.variety_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    v.plant_type_name?.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const filteredVarieties = searchQuery 
+    ? varieties.filter(v => 
+        v.variety_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        v.plant_type_name?.toLowerCase().includes(searchQuery.toLowerCase())
+      )
+    : varieties;
 
   if (loading) {
     return (
@@ -185,13 +213,24 @@ export default function AddIndoorPlant() {
                   <SelectValue placeholder="Select variety" />
                 </SelectTrigger>
                 <SelectContent className="max-h-64">
-                  {filteredVarieties.slice(0, 100).map(v => (
-                    <SelectItem key={v.id} value={v.id}>
-                      {v.variety_name} {v.plant_type_name && `(${v.plant_type_name})`}
+                  {filteredVarieties.length === 0 ? (
+                    <SelectItem value="no-results" disabled>
+                      No matching plants found
                     </SelectItem>
-                  ))}
+                  ) : (
+                    filteredVarieties.map(v => (
+                      <SelectItem key={v.id} value={v.id}>
+                        {v.variety_name} {v.plant_type_name && `(${v.plant_type_name})`}
+                      </SelectItem>
+                    ))
+                  )}
                 </SelectContent>
               </Select>
+              {filteredVarieties.length === 0 && searchQuery && (
+                <p className="text-xs text-amber-600 mt-1">
+                  No indoor plants match "{searchQuery}". Try searching for: Aloe, Monstera, Pothos, Snake Plant, etc.
+                </p>
+              )}
             </div>
 
             <div>
