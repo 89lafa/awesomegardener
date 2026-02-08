@@ -90,20 +90,21 @@ export default function AddIndoorSpace() {
   };
 
   const createTiersForSpace = async (spaceId, tierCount, spaceData) => {
-    const tierLabels = {
-      1: 'Bottom',
-      2: 'Lower',
-      3: 'Middle-Lower',
-      4: 'Middle',
-      5: 'Upper',
-      6: 'Top'
+    const getTierLabel = (tierNum, total) => {
+      if (total === 1) return 'Shelf';
+      if (total === 2) return tierNum === 1 ? 'Bottom' : 'Top';
+      if (total === 3) return tierNum === 1 ? 'Bottom' : tierNum === 2 ? 'Middle' : 'Top';
+      if (total === 4) return tierNum === 1 ? 'Bottom' : tierNum === 2 ? 'Lower' : tierNum === 3 ? 'Upper' : 'Top';
+      if (total === 5) return tierNum === 1 ? 'Bottom' : tierNum === 2 ? 'Lower' : tierNum === 3 ? 'Middle' : tierNum === 4 ? 'Upper' : 'Top';
+      if (total === 6) return tierNum === 1 ? 'Bottom' : tierNum === 2 ? 'Lower' : tierNum === 3 ? 'Middle-Lower' : tierNum === 4 ? 'Middle-Upper' : tierNum === 5 ? 'Upper' : 'Top';
+      return `Tier ${tierNum}`;
     };
 
     for (let i = 1; i <= tierCount; i++) {
       await base44.entities.IndoorSpaceTier.create({
         indoor_space_id: spaceId,
         tier_number: i,
-        label: tierLabels[i] || `Tier ${i}`,
+        label: getTierLabel(i, tierCount),
         width_inches: spaceData.width_inches,
         depth_inches: spaceData.depth_inches,
         height_clearance_inches: Math.floor(spaceData.height_inches / tierCount),
