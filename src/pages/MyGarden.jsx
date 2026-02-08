@@ -11,8 +11,11 @@ import {
   Trash2,
   Calendar,
   Copy,
-  Eye
+  Eye,
+  Grid3x3,
+  Layers
 } from 'lucide-react';
+import Garden3DView from '@/components/garden/Garden3DView';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import {
@@ -56,6 +59,9 @@ export default function MyGarden() {
     year: new Date().getFullYear() + 1,
     season: 'Spring'
   });
+  const [viewMode, setViewMode] = useState('standard');
+  const [plotItems, setPlotItems] = useState([]);
+  const [plantingCounts, setPlantingCounts] = useState({});
 
   useEffect(() => {
     loadData();
@@ -65,8 +71,32 @@ export default function MyGarden() {
     if (activeGarden) {
       loadPlot();
       loadSeasons();
+      load3DData();
     }
   }, [activeGarden]);
+
+  const load3DData = async () => {
+    if (!activeGarden) return;
+    try {
+      const items = await base44.entities.PlotItem.filter({ garden_id: activeGarden.id });
+      const plantings = await base44.entities.PlantInstance.filter({ garden_id: activeGarden.id });
+      
+      const counts = {};
+      items.forEach(item => {
+        const itemPlantings = plantings.filter(p => p.bed_id === item.id);
+        const capacity = (item.metadata?.grid_rows * item.metadata?.grid_cols) || item.metadata?.capacity || 0;
+        counts[item.id] = {
+          filled: itemPlantings.reduce((sum, p) => sum + ((p.cell_span_cols || 1) * (p.cell_span_rows || 1)), 0),
+          capacity
+        };
+      });
+
+      setPlotItems(items);
+      setPlantingCounts(counts);
+    } catch (error) {
+      console.error('Error loading 3D data:', error);
+    }
+  };
 
   useEffect(() => {
     if (selectedItem && activeSeason) {
@@ -413,6 +443,28 @@ export default function MyGarden() {
               )}
             </div>
             
+            {/* View Mode Toggle */}
+            <div className="flex items-center gap-1 bg-white rounded-lg border border-gray-200 p-1 shadow-sm">
+              <button
+                onClick={() => setViewMode('standard')}
+                className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium text-sm transition-colors ${
+                  viewMode === 'standard' ? 'bg-emerald-600 text-white shadow' : 'text-gray-600 hover:bg-gray-50'
+                }`}
+              >
+                <Grid3x3 size={16} />
+                <span className="hidden sm:inline">Standard</span>
+              </button>
+              <button
+                onClick={() => setViewMode('3d')}
+                className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium text-sm transition-colors ${
+                  viewMode === '3d' ? 'bg-emerald-600 text-white shadow' : 'text-gray-600 hover:bg-gray-50'
+                }`}
+              >
+                <Layers size={16} />
+                <span className="hidden sm:inline">3D View</span>
+              </button>
+            </div>
+
             {/* Desktop Only - Public Toggle + Share Buttons */}
             <div className="hidden lg:flex items-center gap-2">
               <div className="flex items-center gap-2 px-3 py-2 rounded-lg border bg-white">
@@ -539,7 +591,7 @@ export default function MyGarden() {
           </div>
         </div>
 
-        {/* Plot Canvas */}
+        {/* Plot Canvas or 3D View */}
         {activeGarden && plot && activeSeason && (
           <>
             {activeGarden?.chaos_mode && (
@@ -549,15 +601,27 @@ export default function MyGarden() {
                 </p>
               </div>
             )}
-            <PlotCanvas 
-              garden={activeGarden}
-              plot={plot}
-              activeSeason={activeSeason}
-              seasonId={availableSeasons.find(s => s.season_key === activeSeason)?.id}
-              onPlotUpdate={loadPlot}
-              onDeleteGarden={handleDeleteGarden}
-              onItemSelect={setSelectedItem}
-            />
+            
+            {viewMode === 'standard' ? (
+              <PlotCanvas 
+                garden={activeGarden}
+                plot={plot}
+                activeSeason={activeSeason}
+                seasonId={availableSeasons.find(s => s.season_key === activeSeason)?.id}
+                onPlotUpdate={() => {
+                  loadPlot();
+                  load3DData();
+                }}
+                onDeleteGarden={handleDeleteGarden}
+                onItemSelect={setSelectedItem}
+              />
+            ) : (
+              <Garden3DView
+                structures={plotItems}
+                plotLayout={plot}
+                plantingCounts={plantingCounts}
+              />
+            )}
 
             {/* Selected Item Detail View - HIDDEN ON MOBILE */}
             {selectedItem && (
