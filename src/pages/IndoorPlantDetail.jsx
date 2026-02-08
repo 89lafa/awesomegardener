@@ -29,6 +29,7 @@ export default function IndoorPlantDetail() {
   const [loading, setLoading] = useState(true);
   const [showEditModal, setShowEditModal] = useState(false);
   const [editData, setEditData] = useState({});
+  const [varieties, setVarieties] = useState([]);
 
   useEffect(() => {
     if (plantId) {
@@ -49,21 +50,26 @@ export default function IndoorPlantDetail() {
       const p = plantData[0];
       setPlant(p);
 
-      const [varietyData, spaceData, logsData] = await Promise.all([
+      const [varietyData, spaceData, logsData, varietiesData] = await Promise.all([
         p.variety_id ? base44.entities.Variety.filter({ id: p.variety_id }) : Promise.resolve([]),
         p.indoor_space_id ? base44.entities.IndoorSpace.filter({ id: p.indoor_space_id }) : Promise.resolve([]),
-        base44.entities.IndoorPlantLog.filter({ indoor_plant_id: plantId }, '-log_date', 20)
+        base44.entities.IndoorPlantLog.filter({ indoor_plant_id: plantId }, '-log_date', 20),
+        base44.entities.Variety.list('-variety_name', 100)
       ]);
 
       if (varietyData.length > 0) setVariety(varietyData[0]);
       if (spaceData.length > 0) setSpace(spaceData[0]);
       setLogs(logsData);
+      setVarieties(varietiesData);
 
       setEditData({
         nickname: p.nickname || '',
+        variety_id: p.variety_id || '',
         watering_frequency_days: p.watering_frequency_days || '',
         pot_type: p.pot_type || 'plastic',
         pot_size_inches: p.pot_size_inches || '',
+        soil_type: p.soil_type || '',
+        health_status: p.health_status || 'healthy',
         special_notes: p.special_notes || ''
       });
     } catch (error) {
@@ -105,13 +111,17 @@ export default function IndoorPlantDetail() {
 
   const handleSaveEdit = async () => {
     try {
-      await base44.entities.IndoorPlant.update(plantId, {
+      const updates = {
         nickname: editData.nickname || null,
+        variety_id: editData.variety_id || null,
         watering_frequency_days: editData.watering_frequency_days ? parseInt(editData.watering_frequency_days) : null,
         pot_type: editData.pot_type,
         pot_size_inches: editData.pot_size_inches ? parseFloat(editData.pot_size_inches) : null,
+        soil_type: editData.soil_type || null,
+        health_status: editData.health_status || null,
         special_notes: editData.special_notes || null
-      });
+      };
+      await base44.entities.IndoorPlant.update(plantId, updates);
       toast.success('Plant updated!');
       setShowEditModal(false);
       loadData();
@@ -451,7 +461,7 @@ export default function IndoorPlantDetail() {
           <DialogHeader>
             <DialogTitle>Edit {plant.nickname || variety?.variety_name}</DialogTitle>
           </DialogHeader>
-          <div className="space-y-4">
+          <div className="space-y-4 max-h-[60vh] overflow-y-auto">
             <div>
               <Label>Nickname</Label>
               <Input
@@ -460,6 +470,39 @@ export default function IndoorPlantDetail() {
                 placeholder="e.g., Monica, Fred"
                 className="mt-2"
               />
+            </div>
+
+            <div>
+              <Label>Plant Variety</Label>
+              <Select value={editData.variety_id} onValueChange={(v) => setEditData({ ...editData, variety_id: v })}>
+                <SelectTrigger className="mt-2">
+                  <SelectValue placeholder="Select variety" />
+                </SelectTrigger>
+                <SelectContent>
+                  {varieties.map(v => (
+                    <SelectItem key={v.id} value={v.id}>
+                      {v.variety_name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div>
+              <Label>Health Status</Label>
+              <Select value={editData.health_status} onValueChange={(v) => setEditData({ ...editData, health_status: v })}>
+                <SelectTrigger className="mt-2">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="thriving">🌿 Thriving</SelectItem>
+                  <SelectItem value="healthy">🌱 Healthy</SelectItem>
+                  <SelectItem value="stable">✅ Stable</SelectItem>
+                  <SelectItem value="struggling">⚠️ Struggling</SelectItem>
+                  <SelectItem value="sick">🚨 Sick</SelectItem>
+                  <SelectItem value="recovering">📈 Recovering</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
 
             <div className="grid grid-cols-2 gap-4">
@@ -486,6 +529,25 @@ export default function IndoorPlantDetail() {
                   className="mt-2"
                 />
               </div>
+            </div>
+
+            <div>
+              <Label>Soil Type</Label>
+              <Select value={editData.soil_type} onValueChange={(v) => setEditData({ ...editData, soil_type: v })}>
+                <SelectTrigger className="mt-2">
+                  <SelectValue placeholder="Select soil type" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="cactus_mix">Cactus Mix</SelectItem>
+                  <SelectItem value="tropical_mix">Tropical Mix</SelectItem>
+                  <SelectItem value="orchid_bark">Orchid Bark</SelectItem>
+                  <SelectItem value="succulent_mix">Succulent Mix</SelectItem>
+                  <SelectItem value="potting_soil_general">General Potting Soil</SelectItem>
+                  <SelectItem value="peat_based">Peat Based</SelectItem>
+                  <SelectItem value="coco_coir">Coco Coir</SelectItem>
+                  <SelectItem value="custom_mix">Custom Mix</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
 
             <div>

@@ -56,7 +56,19 @@ export default function IndoorSpaceDetail() {
         indoor_space_id: spaceId,
         is_active: true
       }, '-created_date');
-      setPlants(plantsData);
+      
+      // Enrich with variety data
+      const enrichedPlants = await Promise.all(
+        plantsData.map(async (plant) => {
+          if (plant.variety_id) {
+            const varietyData = await base44.entities.Variety.filter({ id: plant.variety_id });
+            return { ...plant, variety_name: varietyData[0]?.variety_name };
+          }
+          return plant;
+        })
+      );
+      
+      setPlants(enrichedPlants);
     } catch (error) {
       console.error('Error loading space:', error);
       toast.error('Failed to load space');
@@ -257,12 +269,15 @@ export default function IndoorSpaceDetail() {
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {plants.map((plant) => (
-                  <Link key={plant.id} to={createPageUrl('IndoorPlantDetail') + `?id=${plant.id}`}>
-                    <Card className="hover:shadow-lg transition-shadow cursor-pointer">
+                  <Link key={plant.id} to={createPageUrl('IndoorPlantDetail') + `?id=${plant.id}`} className="block">
+                    <Card className="hover:shadow-lg transition-shadow cursor-pointer h-full">
                       <CardContent className="p-4">
                         <div className="text-4xl mb-2 text-center">🪴</div>
-                        <h3 className="font-semibold text-center">{plant.nickname || 'Unnamed Plant'}</h3>
-                        <p className="text-xs text-gray-500 text-center capitalize">{plant.health_status || 'healthy'}</p>
+                        <h3 className="font-semibold text-center">{plant.nickname || plant.variety_name || 'Unnamed Plant'}</h3>
+                        {plant.nickname && plant.variety_name && (
+                          <p className="text-xs text-gray-600 text-center italic">{plant.variety_name}</p>
+                        )}
+                        <p className="text-xs text-gray-500 text-center capitalize mt-1">{plant.health_status || 'healthy'}</p>
                       </CardContent>
                     </Card>
                   </Link>
