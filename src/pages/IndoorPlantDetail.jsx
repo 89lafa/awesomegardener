@@ -5,23 +5,17 @@ import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { createPageUrl } from '@/utils';
 import { 
-  ArrowLeft, 
-  Droplets, 
-  Sprout, 
-  Wind,
-  RotateCw,
-  Camera,
-  Edit,
-  MoreVertical,
-  Loader2,
-  Thermometer,
-  Sun
+  ArrowLeft, Droplets, Sprout, Wind, RotateCw, Camera, Edit, MoreVertical,
+  Loader2
 } from 'lucide-react';
-import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
-import { toast } from 'sonner';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 export default function IndoorPlantDetail() {
   const [searchParams] = useSearchParams();
@@ -33,6 +27,8 @@ export default function IndoorPlantDetail() {
   const [space, setSpace] = useState(null);
   const [logs, setLogs] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editData, setEditData] = useState({});
 
   useEffect(() => {
     if (plantId) {
@@ -62,6 +58,14 @@ export default function IndoorPlantDetail() {
       if (varietyData.length > 0) setVariety(varietyData[0]);
       if (spaceData.length > 0) setSpace(spaceData[0]);
       setLogs(logsData);
+
+      setEditData({
+        nickname: p.nickname || '',
+        watering_frequency_days: p.watering_frequency_days || '',
+        pot_type: p.pot_type || 'plastic',
+        pot_size_inches: p.pot_size_inches || '',
+        special_notes: p.special_notes || ''
+      });
     } catch (error) {
       console.error('Error loading plant:', error);
       toast.error('Failed to load plant');
@@ -96,6 +100,24 @@ export default function IndoorPlantDetail() {
     } catch (error) {
       console.error('Error logging care:', error);
       toast.error('Failed to log care');
+    }
+  };
+
+  const handleSaveEdit = async () => {
+    try {
+      await base44.entities.IndoorPlant.update(plantId, {
+        nickname: editData.nickname || null,
+        watering_frequency_days: editData.watering_frequency_days ? parseInt(editData.watering_frequency_days) : null,
+        pot_type: editData.pot_type,
+        pot_size_inches: editData.pot_size_inches ? parseFloat(editData.pot_size_inches) : null,
+        special_notes: editData.special_notes || null
+      });
+      toast.success('Plant updated!');
+      setShowEditModal(false);
+      loadData();
+    } catch (error) {
+      console.error('Error updating plant:', error);
+      toast.error('Failed to update plant');
     }
   };
 
@@ -143,18 +165,13 @@ export default function IndoorPlantDetail() {
 
   return (
     <div className="space-y-6 max-w-5xl mx-auto">
-      {/* Header */}
       <div className="flex items-center justify-between">
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={() => navigate(createPageUrl('MyIndoorPlants'))}
-        >
+        <Button variant="ghost" size="icon" onClick={() => navigate(createPageUrl('MyIndoorPlants'))}>
           <ArrowLeft className="w-5 h-5" />
         </Button>
 
         <div className="flex gap-2">
-          <Button variant="ghost" size="icon">
+          <Button variant="ghost" size="icon" onClick={() => setShowEditModal(true)}>
             <Edit className="w-5 h-5" />
           </Button>
           <Button variant="ghost" size="icon">
@@ -163,7 +180,6 @@ export default function IndoorPlantDetail() {
         </div>
       </div>
 
-      {/* Hero Section */}
       <Card>
         <CardContent className="p-6 bg-gradient-to-br from-emerald-50 to-green-100">
           <div className="flex gap-6">
@@ -239,7 +255,6 @@ export default function IndoorPlantDetail() {
         </CardContent>
       </Card>
 
-      {/* Tabs */}
       <Tabs defaultValue="overview">
         <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="overview">Overview</TabsTrigger>
@@ -249,7 +264,6 @@ export default function IndoorPlantDetail() {
         </TabsList>
 
         <TabsContent value="overview" className="space-y-6">
-          {/* Care Schedule */}
           <Card>
             <CardHeader>
               <CardTitle>Care Schedule</CardTitle>
@@ -287,7 +301,6 @@ export default function IndoorPlantDetail() {
             </CardContent>
           </Card>
 
-          {/* Container Info */}
           <Card>
             <CardHeader>
               <CardTitle>Container</CardTitle>
@@ -315,7 +328,6 @@ export default function IndoorPlantDetail() {
             </CardContent>
           </Card>
 
-          {/* Growth */}
           {(plant.current_height_inches || plant.current_width_inches) && (
             <Card>
               <CardHeader>
@@ -340,7 +352,6 @@ export default function IndoorPlantDetail() {
             </Card>
           )}
 
-          {/* Notes */}
           {plant.special_notes && (
             <Card>
               <CardHeader>
@@ -434,6 +445,77 @@ export default function IndoorPlantDetail() {
           </Card>
         </TabsContent>
       </Tabs>
+
+      <Dialog open={showEditModal} onOpenChange={setShowEditModal}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit {plant.nickname || variety?.variety_name}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label>Nickname</Label>
+              <Input
+                value={editData.nickname}
+                onChange={(e) => setEditData({ ...editData, nickname: e.target.value })}
+                placeholder="e.g., Monica, Fred"
+                className="mt-2"
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label>Pot Type</Label>
+                <Select value={editData.pot_type} onValueChange={(v) => setEditData({ ...editData, pot_type: v })}>
+                  <SelectTrigger className="mt-2">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="ceramic">Ceramic</SelectItem>
+                    <SelectItem value="plastic">Plastic</SelectItem>
+                    <SelectItem value="terracotta">Terracotta</SelectItem>
+                    <SelectItem value="self_watering">Self-Watering</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label>Pot Size (inches)</Label>
+                <Input
+                  type="number"
+                  value={editData.pot_size_inches}
+                  onChange={(e) => setEditData({ ...editData, pot_size_inches: e.target.value })}
+                  className="mt-2"
+                />
+              </div>
+            </div>
+
+            <div>
+              <Label>Watering Frequency (days)</Label>
+              <Input
+                type="number"
+                value={editData.watering_frequency_days}
+                onChange={(e) => setEditData({ ...editData, watering_frequency_days: e.target.value })}
+                className="mt-2"
+              />
+            </div>
+
+            <div>
+              <Label>Notes</Label>
+              <Textarea
+                value={editData.special_notes}
+                onChange={(e) => setEditData({ ...editData, special_notes: e.target.value })}
+                rows={4}
+                className="mt-2"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowEditModal(false)}>Cancel</Button>
+            <Button onClick={handleSaveEdit} className="bg-emerald-600 hover:bg-emerald-700">
+              Save Changes
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
