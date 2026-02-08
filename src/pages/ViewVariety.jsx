@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useSearchParams, Link } from 'react-router-dom';
+import { useSearchParams, Link, useNavigate } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
 import { base44 } from '@/api/base44Client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -22,6 +22,7 @@ import ReviewSection from '@/components/variety/ReviewSection';
 
 export default function ViewVariety() {
   const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
   const varietyId = searchParams.get('id');
 
   const [variety, setVariety] = useState(null);
@@ -192,6 +193,13 @@ export default function ViewVariety() {
           >
             <Package className="w-4 h-4" />
             Add to Stash
+          </Button>
+          <Button
+            onClick={() => navigate(createPageUrl('AddIndoorPlant') + `?varietyId=${varietyId}`)}
+            className="bg-purple-600 hover:bg-purple-700 gap-2"
+          >
+            <Sprout className="w-4 h-4" />
+            Add to My Indoor Plants
           </Button>
           <Button
             variant="outline"

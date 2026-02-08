@@ -15,6 +15,7 @@ export default function AddIndoorPlant() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const spaceId = searchParams.get('spaceId');
+  const varietyId = searchParams.get('varietyId');
 
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(true);
@@ -70,6 +71,10 @@ export default function AddIndoorPlant() {
         if (space) {
           setFormData(prev => ({ ...prev, indoor_space_id: space.id }));
         }
+      }
+
+      if (varietyId) {
+        setFormData(prev => ({ ...prev, variety_id: varietyId }));
       }
     } catch (error) {
       console.error('Error loading data:', error);

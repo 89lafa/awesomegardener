@@ -49,6 +49,8 @@
  */
 import AIAssistants from './pages/AIAssistants';
 import Achievements from './pages/Achievements';
+import AddIndoorPlant from './pages/AddIndoorPlant';
+import AddIndoorSpace from './pages/AddIndoorSpace';
 import AdminAchievements from './pages/AdminAchievements';
 import AdminAuditLog from './pages/AdminAuditLog';
 import AdminBulkEdit from './pages/AdminBulkEdit';
@@ -96,7 +98,10 @@ import GrowLists from './pages/GrowLists';
 import GrowingProfile from './pages/GrowingProfile';
 import HarvestLog from './pages/HarvestLog';
 import ImageSubmissions from './pages/ImageSubmissions';
+import IndoorEnvironment from './pages/IndoorEnvironment';
 import IndoorGrowSpaces from './pages/IndoorGrowSpaces';
+import IndoorPlantDetail from './pages/IndoorPlantDetail';
+import IndoorPlants from './pages/IndoorPlants';
 import IndoorSpaceDetail from './pages/IndoorSpaceDetail';
 import IssuesLog from './pages/IssuesLog';
 import Landing from './pages/Landing';
@@ -106,6 +111,7 @@ import ManageFeatureRequests from './pages/ManageFeatureRequests';
 import ManageForumCategories from './pages/ManageForumCategories';
 import Messages from './pages/Messages';
 import MyGarden from './pages/MyGarden';
+import MyIndoorPlants from './pages/MyIndoorPlants';
 import MyPlants from './pages/MyPlants';
 import NeedToBuy from './pages/NeedToBuy';
 import Notifications from './pages/Notifications';
@@ -141,18 +147,14 @@ import Users from './pages/Users';
 import VarietyReviewQueue from './pages/VarietyReviewQueue';
 import ViewVariety from './pages/ViewVariety';
 import ZoneMap from './pages/ZoneMap';
-import IndoorPlants from './pages/IndoorPlants';
-import AddIndoorSpace from './pages/AddIndoorSpace';
-import MyIndoorPlants from './pages/MyIndoorPlants';
-import IndoorPlantDetail from './pages/IndoorPlantDetail';
-import AddIndoorPlant from './pages/AddIndoorPlant';
-import IndoorEnvironment from './pages/IndoorEnvironment';
 import __Layout from './Layout.jsx';
 
 
 export const PAGES = {
     "AIAssistants": AIAssistants,
     "Achievements": Achievements,
+    "AddIndoorPlant": AddIndoorPlant,
+    "AddIndoorSpace": AddIndoorSpace,
     "AdminAchievements": AdminAchievements,
     "AdminAuditLog": AdminAuditLog,
     "AdminBulkEdit": AdminBulkEdit,
@@ -200,7 +202,10 @@ export const PAGES = {
     "GrowingProfile": GrowingProfile,
     "HarvestLog": HarvestLog,
     "ImageSubmissions": ImageSubmissions,
+    "IndoorEnvironment": IndoorEnvironment,
     "IndoorGrowSpaces": IndoorGrowSpaces,
+    "IndoorPlantDetail": IndoorPlantDetail,
+    "IndoorPlants": IndoorPlants,
     "IndoorSpaceDetail": IndoorSpaceDetail,
     "IssuesLog": IssuesLog,
     "Landing": Landing,
@@ -210,6 +215,7 @@ export const PAGES = {
     "ManageForumCategories": ManageForumCategories,
     "Messages": Messages,
     "MyGarden": MyGarden,
+    "MyIndoorPlants": MyIndoorPlants,
     "MyPlants": MyPlants,
     "NeedToBuy": NeedToBuy,
     "Notifications": Notifications,
@@ -245,12 +251,6 @@ export const PAGES = {
     "VarietyReviewQueue": VarietyReviewQueue,
     "ViewVariety": ViewVariety,
     "ZoneMap": ZoneMap,
-    "IndoorPlants": IndoorPlants,
-    "AddIndoorSpace": AddIndoorSpace,
-    "MyIndoorPlants": MyIndoorPlants,
-    "IndoorPlantDetail": IndoorPlantDetail,
-    "AddIndoorPlant": AddIndoorPlant,
-    "IndoorEnvironment": IndoorEnvironment,
 }
 
 export const pagesConfig = {

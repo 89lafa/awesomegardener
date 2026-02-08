@@ -7,6 +7,8 @@ import {
   List, Box, ChevronLeft, ChevronRight, ChevronUp, ChevronDown, RotateCcw,
   ZoomIn, Maximize2, AlertTriangle, AlertCircle
 } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -24,6 +26,7 @@ export default function IndoorSpaceDetail() {
   const [plants, setPlants] = useState([]);
   const [loading, setLoading] = useState(true);
   const [viewMode, setViewMode] = useState('list');
+  const [showPlaceExistingModal, setShowPlaceExistingModal] = useState(false);
 
   useEffect(() => {
     if (spaceId) {
@@ -207,14 +210,24 @@ export default function IndoorSpaceDetail() {
           <TabsContent value="plants" className="space-y-4">
             <div className="flex justify-between items-center">
               <h2 className="text-lg font-semibold">Plants in this space</h2>
-              <Button
-                className="bg-emerald-600 hover:bg-emerald-700"
-                size="sm"
-                onClick={() => navigate(createPageUrl('AddIndoorPlant') + `?spaceId=${spaceId}`)}
-              >
-                <Plus className="w-4 h-4 mr-2" />
-                Add Plant
-              </Button>
+                <div className="flex gap-2">
+                <Button
+                  className="bg-emerald-600 hover:bg-emerald-700"
+                  size="sm"
+                  onClick={() => navigate(createPageUrl('AddIndoorPlant') + `?spaceId=${spaceId}`)}
+                >
+                  <Plus className="w-4 h-4 mr-2" />
+                  Add New Plant
+                </Button>
+                <Button
+                  className="bg-purple-600 hover:bg-purple-700"
+                  size="sm"
+                  onClick={() => setShowPlaceExistingModal(true)}
+                >
+                  <Sprout className="w-4 h-4 mr-2" />
+                  Place Existing
+                </Button>
+              </div>
             </div>
 
             {plants.length === 0 ? (
@@ -223,13 +236,22 @@ export default function IndoorSpaceDetail() {
                   <div className="text-5xl mb-4">🪴</div>
                   <h3 className="text-lg font-semibold mb-2">No plants yet</h3>
                   <p className="text-gray-600 mb-4">Add your first houseplant to this space</p>
-                  <Button
-                    className="bg-emerald-600 hover:bg-emerald-700"
-                    onClick={() => navigate(createPageUrl('AddIndoorPlant') + `?spaceId=${spaceId}`)}
-                  >
-                    <Plus className="w-4 h-4 mr-2" />
-                    Add Plant
-                  </Button>
+                  <div className="flex gap-2">
+                    <Button
+                      className="bg-emerald-600 hover:bg-emerald-700"
+                      onClick={() => navigate(createPageUrl('AddIndoorPlant') + `?spaceId=${spaceId}`)}
+                    >
+                      <Plus className="w-4 h-4 mr-2" />
+                      Add New Plant
+                    </Button>
+                    <Button
+                      className="bg-purple-600 hover:bg-purple-700"
+                      onClick={() => setShowPlaceExistingModal(true)}
+                    >
+                      <Sprout className="w-4 h-4 mr-2" />
+                      Place Existing
+                    </Button>
+                  </div>
                 </CardContent>
               </Card>
             ) : (
@@ -364,11 +386,136 @@ export default function IndoorSpaceDetail() {
               </CardContent>
             </Card>
           </TabsContent>
-        </Tabs>
-      )}
-    </div>
-  );
-}
+          </Tabs>
+          )}
+
+          <PlaceExistingPlantModal
+          open={showPlaceExistingModal}
+          onClose={() => setShowPlaceExistingModal(false)}
+          spaceId={spaceId}
+          tiers={tiers}
+          onSuccess={() => {
+            setShowPlaceExistingModal(false);
+            loadData();
+            toast.success('Plant placed in space!');
+          }}
+          />
+          </div>
+          );
+          }
+
+          function PlaceExistingPlantModal({ open, onClose, spaceId, tiers, onSuccess }) {
+          const [plants, setPlants] = useState([]);
+          const [selectedPlant, setSelectedPlant] = useState('');
+          const [selectedTier, setSelectedTier] = useState('');
+          const [loading, setLoading] = useState(true);
+          const [saving, setSaving] = useState(false);
+
+          useEffect(() => {
+          if (open) {
+          loadPlants();
+          }
+          }, [open]);
+
+          const loadPlants = async () => {
+          try {
+          const data = await base44.entities.IndoorPlant.filter({ is_active: true });
+          const enriched = await Promise.all(
+          data.map(async p => {
+            const variety = p.variety_id ? await base44.entities.Variety.filter({ id: p.variety_id }).then(r => r[0]) : null;
+            return { ...p, variety_name: variety?.variety_name };
+          })
+          );
+          setPlants(enriched);
+          } catch (error) {
+          console.error('Error loading plants:', error);
+          } finally {
+          setLoading(false);
+          }
+          };
+
+          const handlePlace = async () => {
+          if (!selectedPlant) return;
+
+          setSaving(true);
+          try {
+          await base44.entities.IndoorPlant.update(selectedPlant, {
+          indoor_space_id: spaceId,
+          tier_id: selectedTier || null
+          });
+          onSuccess();
+          } catch (error) {
+          console.error('Error placing plant:', error);
+          toast.error('Failed to place plant');
+          } finally {
+          setSaving(false);
+          }
+          };
+
+          return (
+          <Dialog open={open} onOpenChange={onClose}>
+          <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Place Existing Plant in Space</DialogTitle>
+          </DialogHeader>
+
+          {loading ? (
+            <div className="py-8 text-center">
+              <Loader2 className="w-8 h-8 animate-spin text-emerald-600 mx-auto" />
+            </div>
+          ) : (
+            <div className="space-y-4">
+              <div>
+                <Label>Select Plant</Label>
+                <Select value={selectedPlant} onValueChange={setSelectedPlant}>
+                  <SelectTrigger className="mt-2">
+                    <SelectValue placeholder="Choose a plant" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {plants.map(p => (
+                      <SelectItem key={p.id} value={p.id}>
+                        {p.nickname || p.variety_name || 'Unnamed'}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {tiers.length > 0 && (
+                <div>
+                  <Label>Select Tier (optional)</Label>
+                  <Select value={selectedTier} onValueChange={setSelectedTier}>
+                    <SelectTrigger className="mt-2">
+                      <SelectValue placeholder="Choose tier" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {tiers.map(t => (
+                        <SelectItem key={t.id} value={t.id}>
+                          {t.label || `Tier ${t.tier_number}`}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+
+              <div className="flex gap-2 pt-4">
+                <Button variant="outline" onClick={onClose} className="flex-1">Cancel</Button>
+                <Button 
+                  onClick={handlePlace} 
+                  disabled={!selectedPlant || saving}
+                  className="flex-1 bg-emerald-600 hover:bg-emerald-700"
+                >
+                  {saving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                  Place Plant
+                </Button>
+              </div>
+            </div>
+          )}
+          </DialogContent>
+          </Dialog>
+          );
+          }
 
 function Space3DView({ space, tiers, plants }) {
   const [viewAngle, setViewAngle] = useState(25);
@@ -613,7 +760,7 @@ function RackStructure3D({ tiers, plants, tierCount, showLabels, selectedPlant, 
   const tierDepth = 200;
 
   return (
-    <div className="relative" style={{ transformStyle: 'preserve-3d' }}>
+    <div className="relative" style={{ transformStyle: 'preserve-3d', marginTop: '200px' }}>
       <div className="absolute bg-gradient-to-r from-slate-700 to-slate-600 rounded-lg shadow-2xl"
         style={{ left: '50px', top: '0', width: '16px', height: `${tierCount * tierHeight}px`, transform: 'translateZ(-100px)', boxShadow: '0 20px 40px rgba(0,0,0,0.5)' }} />
       <div className="absolute bg-gradient-to-r from-slate-700 to-slate-600 rounded-lg shadow-2xl"
@@ -624,8 +771,8 @@ function RackStructure3D({ tiers, plants, tierCount, showLabels, selectedPlant, 
         style={{ right: '50px', top: '0', width: '16px', height: `${tierCount * tierHeight}px`, transform: 'translateZ(100px)', boxShadow: '0 20px 40px rgba(0,0,0,0.5)' }} />
 
       {tiers.map((tier, i) => {
-        const tierNum = tierCount - i;
-        const yPos = i * tierHeight;
+        const tierNum = i + 1;
+        const yPos = (tierCount - 1 - i) * tierHeight;
         const tierPlants = plants.filter(p => p.tier_id === tier.id);
 
         return (

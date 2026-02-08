@@ -116,7 +116,6 @@ export default function PlantIDModal({ open, onOpenChange }) {
               id="photo-upload-id"
               type="file"
               accept="image/*"
-              capture="environment"
               onChange={handleFileSelect}
               className="hidden"
             />

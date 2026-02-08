@@ -134,7 +134,6 @@ export default function DiagnosisModal({ open, onOpenChange, varietyId, plantTyp
               id="photo-upload-diagnosis"
               type="file"
               accept="image/*"
-              capture="environment"
               onChange={handleFileSelect}
               className="hidden"
             />
