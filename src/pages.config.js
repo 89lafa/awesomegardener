@@ -143,6 +143,8 @@ import ViewVariety from './pages/ViewVariety';
 import ZoneMap from './pages/ZoneMap';
 import IndoorPlants from './pages/IndoorPlants';
 import AddIndoorSpace from './pages/AddIndoorSpace';
+import MyIndoorPlants from './pages/MyIndoorPlants';
+import IndoorPlantDetail from './pages/IndoorPlantDetail';
 import __Layout from './Layout.jsx';
 
 
@@ -243,6 +245,8 @@ export const PAGES = {
     "ZoneMap": ZoneMap,
     "IndoorPlants": IndoorPlants,
     "AddIndoorSpace": AddIndoorSpace,
+    "MyIndoorPlants": MyIndoorPlants,
+    "IndoorPlantDetail": IndoorPlantDetail,
 }
 
 export const pagesConfig = {

@@ -1,0 +1,335 @@
+import React, { useState, useEffect } from 'react';
+import { base44 } from '@/api/base44Client';
+import { createPageUrl } from '@/utils';
+import { Link } from 'react-router-dom';
+import { Plus, Search, Filter, Grid3X3, List, Table, Loader2 } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Card, CardContent } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { toast } from 'sonner';
+import { motion, AnimatePresence } from 'framer-motion';
+
+export default function MyIndoorPlants() {
+  const [plants, setPlants] = useState([]);
+  const [varieties, setVarieties] = useState({});
+  const [spaces, setSpaces] = useState({});
+  const [viewMode, setViewMode] = useState('grid');
+  const [loading, setLoading] = useState(true);
+  const [filters, setFilters] = useState({
+    search: '',
+    space_id: 'all',
+    health_status: 'all'
+  });
+
+  useEffect(() => {
+    loadData();
+  }, []);
+
+  const loadData = async () => {
+    setLoading(true);
+    try {
+      const [plantsData, varietiesData, spacesData] = await Promise.all([
+        base44.entities.IndoorPlant.filter({ is_active: true }, '-created_date'),
+        base44.entities.Variety.list(),
+        base44.entities.IndoorSpace.filter({ is_active: true })
+      ]);
+
+      const varietiesMap = {};
+      varietiesData.forEach(v => varietiesMap[v.id] = v);
+
+      const spacesMap = {};
+      spacesData.forEach(s => spacesMap[s.id] = s);
+
+      // Enrich plants with calculated data
+      const enrichedPlants = plantsData.map(plant => {
+        const variety = varietiesMap[plant.variety_id];
+        const space = spacesMap[plant.indoor_space_id];
+        
+        const daysSinceWatered = plant.last_watered_date 
+          ? Math.floor((new Date() - new Date(plant.last_watered_date)) / (1000 * 60 * 60 * 24))
+          : null;
+        
+        const needsWater = daysSinceWatered && plant.watering_frequency_days
+          ? daysSinceWatered >= plant.watering_frequency_days
+          : false;
+
+        const ageInDays = Math.floor((new Date() - new Date(plant.acquisition_date)) / (1000 * 60 * 60 * 24));
+        const years = Math.floor(ageInDays / 365);
+        const months = Math.floor((ageInDays % 365) / 30);
+        let ageDisplay = '';
+        if (years > 0) ageDisplay += `${years}y `;
+        if (months > 0 || years === 0) ageDisplay += `${months}m`;
+
+        return {
+          ...plant,
+          variety_name: variety?.variety_name || 'Unknown',
+          space_name: space?.name,
+          days_since_watered: daysSinceWatered,
+          needs_water: needsWater,
+          age_display: ageDisplay.trim()
+        };
+      });
+
+      setPlants(enrichedPlants);
+      setVarieties(varietiesMap);
+      setSpaces(spacesMap);
+    } catch (error) {
+      console.error('Error loading plants:', error);
+      toast.error('Failed to load plants');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const filteredPlants = plants.filter(plant => {
+    const searchLower = filters.search.toLowerCase();
+    const matchesSearch = !filters.search || 
+      plant.nickname?.toLowerCase().includes(searchLower) ||
+      plant.variety_name?.toLowerCase().includes(searchLower);
+    
+    const matchesSpace = filters.space_id === 'all' || plant.indoor_space_id === filters.space_id;
+    const matchesHealth = filters.health_status === 'all' || plant.health_status === filters.health_status;
+
+    return matchesSearch && matchesSpace && matchesHealth;
+  });
+
+  const stats = {
+    thriving: plants.filter(p => p.health_status === 'thriving').length,
+    needs_care: plants.filter(p => p.needs_water || p.has_pests || p.has_disease).length,
+    struggling: plants.filter(p => ['struggling', 'sick'].includes(p.health_status)).length
+  };
+
+  const getStatusBadge = (plant) => {
+    if (plant.health_status === 'thriving') {
+      return <Badge className="bg-emerald-500 text-white">🌿 Thriving</Badge>;
+    }
+    if (['struggling', 'sick'].includes(plant.health_status)) {
+      return <Badge className="bg-amber-500 text-white">⚠️ {plant.health_status}</Badge>;
+    }
+    if (plant.has_pests || plant.has_disease) {
+      return <Badge className="bg-red-500 text-white">🐛 Issues</Badge>;
+    }
+    return <Badge className="bg-gray-200 text-gray-700">🌱 {plant.health_status || 'healthy'}</Badge>;
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <Loader2 className="w-8 h-8 animate-spin text-emerald-600" />
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+        <div>
+          <h1 className="text-2xl lg:text-3xl font-bold text-gray-800">
+            🌿 My Indoor Plants ({filteredPlants.length})
+          </h1>
+          <p className="text-sm text-gray-500 mt-1">
+            Manage your indoor plant collection
+          </p>
+        </div>
+        
+        <Button className="bg-emerald-600 hover:bg-emerald-700">
+          <Plus className="w-4 h-4 mr-2" />
+          Add Plant
+        </Button>
+      </div>
+
+      {/* Filters */}
+      <Card>
+        <CardContent className="p-4">
+          <div className="flex flex-col sm:flex-row gap-3">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+              <Input
+                placeholder="Search plants..."
+                value={filters.search}
+                onChange={(e) => setFilters({ ...filters, search: e.target.value })}
+                className="pl-10"
+              />
+            </div>
+
+            <select
+              value={filters.space_id}
+              onChange={(e) => setFilters({ ...filters, space_id: e.target.value })}
+              className="px-4 py-2 border rounded-lg"
+            >
+              <option value="all">All Spaces</option>
+              {Object.values(spaces).map(space => (
+                <option key={space.id} value={space.id}>{space.name}</option>
+              ))}
+            </select>
+
+            <select
+              value={filters.health_status}
+              onChange={(e) => setFilters({ ...filters, health_status: e.target.value })}
+              className="px-4 py-2 border rounded-lg"
+            >
+              <option value="all">All Status</option>
+              <option value="thriving">🌿 Thriving</option>
+              <option value="healthy">🌱 Healthy</option>
+              <option value="struggling">⚠️ Struggling</option>
+              <option value="sick">🚨 Sick</option>
+            </select>
+
+            <div className="flex gap-1 border rounded-lg p-1">
+              <Button
+                variant={viewMode === 'grid' ? 'secondary' : 'ghost'}
+                size="icon"
+                onClick={() => setViewMode('grid')}
+              >
+                <Grid3X3 className="w-4 h-4" />
+              </Button>
+              <Button
+                variant={viewMode === 'list' ? 'secondary' : 'ghost'}
+                size="icon"
+                onClick={() => setViewMode('list')}
+              >
+                <List className="w-4 h-4" />
+              </Button>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Stats */}
+      <div className="grid grid-cols-3 gap-4">
+        <Card>
+          <CardContent className="p-4 bg-emerald-50">
+            <div className="text-3xl font-bold text-emerald-700">{stats.thriving}</div>
+            <div className="text-sm text-emerald-600">🌿 Thriving</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4 bg-blue-50">
+            <div className="text-3xl font-bold text-blue-700">{stats.needs_care}</div>
+            <div className="text-sm text-blue-600">💧 Needs Care</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4 bg-amber-50">
+            <div className="text-3xl font-bold text-amber-700">{stats.struggling}</div>
+            <div className="text-sm text-amber-600">⚠️ Struggling</div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Plants Grid/List */}
+      {filteredPlants.length === 0 ? (
+        <Card className="py-16">
+          <CardContent className="text-center">
+            <div className="text-6xl mb-4">🪴</div>
+            <h3 className="text-xl font-bold mb-2">
+              {filters.search ? 'No plants found' : 'No Indoor Plants Yet'}
+            </h3>
+            <p className="text-gray-600 mb-6">
+              {filters.search 
+                ? 'Try a different search term'
+                : 'Start building your indoor plant collection!'
+              }
+            </p>
+            {!filters.search && (
+              <Button className="bg-emerald-600 hover:bg-emerald-700">
+                <Plus className="w-4 h-4 mr-2" />
+                Add Your First Plant
+              </Button>
+            )}
+          </CardContent>
+        </Card>
+      ) : viewMode === 'grid' ? (
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+          <AnimatePresence>
+            {filteredPlants.map((plant, index) => (
+              <motion.div
+                key={plant.id}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0 }}
+                transition={{ delay: index * 0.05 }}
+              >
+                <Link to={createPageUrl('IndoorPlantDetail') + `?id=${plant.id}`}>
+                  <Card className="hover:shadow-lg transition-all cursor-pointer border-2 hover:border-emerald-400">
+                    <div className="aspect-square bg-gradient-to-br from-emerald-50 to-green-100 flex items-center justify-center relative overflow-hidden">
+                      {plant.primary_photo_url ? (
+                        <img src={plant.primary_photo_url} className="w-full h-full object-cover" alt={plant.nickname} />
+                      ) : (
+                        <div className="text-6xl">🌿</div>
+                      )}
+                      <div className="absolute top-2 right-2">
+                        {getStatusBadge(plant)}
+                      </div>
+                    </div>
+                    
+                    <CardContent className="p-4">
+                      <h3 className="font-bold text-gray-800 mb-1 truncate">
+                        {plant.nickname || plant.variety_name}
+                      </h3>
+                      {plant.nickname && (
+                        <p className="text-xs text-gray-500 italic mb-2 truncate">
+                          {plant.variety_name}
+                        </p>
+                      )}
+                      
+                      {plant.needs_water && (
+                        <Badge className="bg-blue-100 text-blue-700 mb-2">
+                          💧 Water {plant.days_since_watered > plant.watering_frequency_days ? 'overdue' : 'soon'}
+                        </Badge>
+                      )}
+                      
+                      <div className="text-xs text-gray-500 space-y-1">
+                        <div className="flex items-center gap-1">
+                          <span>📍</span>
+                          <span className="truncate">{plant.space_name || 'No location'}</span>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <span>📅</span>
+                          <span>{plant.age_display}</span>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </Link>
+              </motion.div>
+            ))}
+          </AnimatePresence>
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {filteredPlants.map((plant) => (
+            <Link key={plant.id} to={createPageUrl('IndoorPlantDetail') + `?id=${plant.id}`}>
+              <Card className="hover:shadow-md transition-all cursor-pointer hover:border-emerald-400">
+                <CardContent className="p-4">
+                  <div className="flex items-center gap-4">
+                    <div className="w-16 h-16 bg-gradient-to-br from-emerald-50 to-green-100 rounded-lg flex items-center justify-center text-3xl flex-shrink-0">
+                      🌿
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <h3 className="font-bold text-gray-800">{plant.nickname || plant.variety_name}</h3>
+                      <p className="text-sm text-gray-500 truncate">
+                        {plant.variety_name} • {plant.space_name || 'No location'}
+                      </p>
+                      <div className="flex items-center gap-2 mt-1">
+                        {getStatusBadge(plant)}
+                        {plant.needs_water && (
+                          <Badge className="bg-blue-100 text-blue-700">💧 Water due</Badge>
+                        )}
+                      </div>
+                    </div>
+                    <div className="text-xs text-gray-500 text-right">
+                      {plant.age_display}
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </Link>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
