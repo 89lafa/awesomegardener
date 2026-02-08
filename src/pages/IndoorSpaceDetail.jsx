@@ -799,7 +799,7 @@ function Tier3D({ tier, tierNumber, yPosition, width, depth, plants, showLabels,
     <div className="absolute" style={{ top: `${yPosition}px`, left: '50%', transform: 'translateX(-50%)', transformStyle: 'preserve-3d' }}>
       <div className="absolute -left-24 top-1/2" style={{ transform: 'translateY(-50%) translateZ(150px)' }}>
         <div className="bg-slate-700/90 backdrop-blur text-white px-4 py-2 rounded-lg text-sm font-bold shadow-lg border border-slate-600">
-          {tier.label || `Tier ${tierNumber}`}
+          {tier.label}
         </div>
       </div>
 
