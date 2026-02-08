@@ -105,6 +105,36 @@ export default function PlantCatalog() {
   const loadPlantTypes = async (isRetry = false) => {
     if (isRetry) setRetrying(true);
     
+    const cached = sessionStorage.getItem('plant_catalog_cache');
+    if (cached && !isRetry) {
+      try {
+        const { types, browseCats, timestamp } = JSON.parse(cached);
+        const age = Date.now() - timestamp;
+        if (age < 5 * 60 * 1000) {
+          console.debug('[PlantCatalog] Using cached data');
+          const validTypes = types.filter(type => 
+            type.id && type.common_name && type.is_active !== false && !type.notes?.includes('DEPRECATED')
+          );
+          const browseTypes = browseCats.map(cat => ({
+            id: `browse_${cat.category_code}`,
+            common_name: cat.name,
+            icon: cat.icon,
+            category: 'browse',
+            color: '',
+            _is_browse_only: true,
+            _browse_category: cat,
+            _sort_priority: -1000 + cat.sort_order
+          }));
+          setPlantTypes([...browseTypes, ...validTypes]);
+          setLoading(false);
+          setTimeout(() => loadPlantTypes(true), 500);
+          return;
+        }
+      } catch (e) {
+        console.warn('Cache parse error:', e);
+      }
+    }
+    
     try {
       console.debug('[PlantCatalog] fetch_start PlantType');
       const [types, browseCats] = await Promise.all([
@@ -112,6 +142,10 @@ export default function PlantCatalog() {
         smartQuery(base44, 'BrowseCategory', { is_active: true }, 'sort_order')
       ]);
       console.debug('[PlantCatalog] fetch_success PlantType count=', types.length);
+      
+      sessionStorage.setItem('plant_catalog_cache', JSON.stringify({
+        types, browseCats, timestamp: Date.now()
+      }));
       
       // Filter out inactive, invalid, and deprecated plant types
       const validTypes = types.filter(type => 
@@ -149,11 +183,27 @@ export default function PlantCatalog() {
   };
 
   const loadAllVarieties = async () => {
+    const cached = sessionStorage.getItem('varieties_cache');
+    if (cached) {
+      try {
+        const { vars, timestamp } = JSON.parse(cached);
+        const age = Date.now() - timestamp;
+        if (age < 5 * 60 * 1000) {
+          setAllVarieties(vars);
+          setTimeout(loadAllVarieties, 1000);
+          return;
+        }
+      } catch (e) {}
+    }
+    
     try {
       const vars = await smartQuery(base44, 'Variety', { 
         status: 'active'
       }, 'variety_name', 5000);
       setAllVarieties(vars);
+      sessionStorage.setItem('varieties_cache', JSON.stringify({
+        vars, timestamp: Date.now()
+      }));
     } catch (error) {
       console.error('[PlantCatalog] Error loading varieties:', error);
     }
