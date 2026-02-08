@@ -1,17 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { useSearchParams, useNavigate } from 'react-router-dom';
+import { useSearchParams, useNavigate, Link } from 'react-router-dom';
 import { base44 } from '@/api/base44Client';
 import { createPageUrl } from '@/utils';
 import { 
-  ArrowLeft, 
-  Plus, 
-  Thermometer, 
-  Droplets, 
-  Sun,
-  Edit,
-  Trash2,
-  Loader2,
-  Sprout
+  ArrowLeft, Plus, Thermometer, Droplets, Sun, Edit, Trash2, Loader2, Sprout,
+  List, Box, ChevronLeft, ChevronRight, ChevronUp, ChevronDown, RotateCcw,
+  ZoomIn, Maximize2, AlertTriangle, AlertCircle
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -29,6 +23,7 @@ export default function IndoorSpaceDetail() {
   const [tiers, setTiers] = useState([]);
   const [plants, setPlants] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [viewMode, setViewMode] = useState('list');
 
   useEffect(() => {
     if (spaceId) {
@@ -48,14 +43,12 @@ export default function IndoorSpaceDetail() {
       
       setSpace(spaceData[0]);
 
-      // Load tiers
       const tiersData = await base44.entities.IndoorSpaceTier.filter(
         { indoor_space_id: spaceId },
         'tier_number'
       );
       setTiers(tiersData);
 
-      // Load plants
       const plantsData = await base44.entities.IndoorPlant.filter({
         indoor_space_id: spaceId,
         is_active: true
@@ -98,14 +91,9 @@ export default function IndoorSpaceDetail() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
       <div className="flex items-start justify-between gap-4">
         <div className="flex items-center gap-4">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => navigate(createPageUrl('IndoorPlants'))}
-          >
+          <Button variant="ghost" size="icon" onClick={() => navigate(createPageUrl('IndoorPlants'))}>
             <ArrowLeft className="w-5 h-5" />
           </Button>
           <div>
@@ -115,6 +103,29 @@ export default function IndoorSpaceDetail() {
             </p>
           </div>
         </div>
+
+        {tiers.length > 0 && (
+          <div className="flex items-center gap-1 bg-white rounded-lg border border-gray-200 p-1 shadow">
+            <button
+              onClick={() => setViewMode('list')}
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors ${
+                viewMode === 'list' ? 'bg-emerald-600 text-white shadow' : 'text-gray-600 hover:bg-gray-50'
+              }`}
+            >
+              <List size={18} />
+              <span className="hidden sm:inline">List</span>
+            </button>
+            <button
+              onClick={() => setViewMode('3d')}
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors ${
+                viewMode === '3d' ? 'bg-emerald-600 text-white shadow' : 'text-gray-600 hover:bg-gray-50'
+              }`}
+            >
+              <Box size={18} />
+              <span className="hidden sm:inline">3D View</span>
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Stats Cards */}
@@ -182,171 +193,705 @@ export default function IndoorSpaceDetail() {
         )}
       </div>
 
-      {/* Main Content */}
-      <Tabs defaultValue="plants">
-        <TabsList>
-          <TabsTrigger value="plants">Plants ({plants.length})</TabsTrigger>
-          {tiers.length > 0 && <TabsTrigger value="layout">Layout</TabsTrigger>}
-          <TabsTrigger value="environment">Environment</TabsTrigger>
-          <TabsTrigger value="settings">Settings</TabsTrigger>
-        </TabsList>
+      {viewMode === '3d' && tiers.length > 0 ? (
+        <Space3DView space={space} tiers={tiers} plants={plants} />
+      ) : (
+        <Tabs defaultValue="plants">
+          <TabsList>
+            <TabsTrigger value="plants">Plants ({plants.length})</TabsTrigger>
+            {tiers.length > 0 && <TabsTrigger value="layout">Layout</TabsTrigger>}
+            <TabsTrigger value="environment">Environment</TabsTrigger>
+            <TabsTrigger value="settings">Settings</TabsTrigger>
+          </TabsList>
 
-        <TabsContent value="plants" className="space-y-4">
-          <div className="flex justify-between items-center">
-            <h2 className="text-lg font-semibold">Plants in this space</h2>
-            <Button className="bg-emerald-600 hover:bg-emerald-700" size="sm">
-              <Plus className="w-4 h-4 mr-2" />
-              Add Plant
-            </Button>
-          </div>
+          <TabsContent value="plants" className="space-y-4">
+            <div className="flex justify-between items-center">
+              <h2 className="text-lg font-semibold">Plants in this space</h2>
+              <Button
+                className="bg-emerald-600 hover:bg-emerald-700"
+                size="sm"
+                onClick={() => navigate(createPageUrl('AddIndoorPlant') + `?spaceId=${spaceId}`)}
+              >
+                <Plus className="w-4 h-4 mr-2" />
+                Add Plant
+              </Button>
+            </div>
 
-          {plants.length === 0 ? (
-            <Card className="py-12">
-              <CardContent className="text-center">
-                <div className="text-5xl mb-4">🪴</div>
-                <h3 className="text-lg font-semibold mb-2">No plants yet</h3>
-                <p className="text-gray-600 mb-4">Add your first houseplant to this space</p>
-                <Button className="bg-emerald-600 hover:bg-emerald-700">
-                  <Plus className="w-4 h-4 mr-2" />
-                  Add Plant
-                </Button>
+            {plants.length === 0 ? (
+              <Card className="py-12">
+                <CardContent className="text-center">
+                  <div className="text-5xl mb-4">🪴</div>
+                  <h3 className="text-lg font-semibold mb-2">No plants yet</h3>
+                  <p className="text-gray-600 mb-4">Add your first houseplant to this space</p>
+                  <Button
+                    className="bg-emerald-600 hover:bg-emerald-700"
+                    onClick={() => navigate(createPageUrl('AddIndoorPlant') + `?spaceId=${spaceId}`)}
+                  >
+                    <Plus className="w-4 h-4 mr-2" />
+                    Add Plant
+                  </Button>
+                </CardContent>
+              </Card>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {plants.map((plant) => (
+                  <Link key={plant.id} to={createPageUrl('IndoorPlantDetail') + `?id=${plant.id}`}>
+                    <Card className="hover:shadow-lg transition-shadow cursor-pointer">
+                      <CardContent className="p-4">
+                        <div className="text-4xl mb-2 text-center">🪴</div>
+                        <h3 className="font-semibold text-center">{plant.nickname || 'Unnamed Plant'}</h3>
+                        <p className="text-xs text-gray-500 text-center capitalize">{plant.health_status || 'healthy'}</p>
+                      </CardContent>
+                    </Card>
+                  </Link>
+                ))}
+              </div>
+            )}
+          </TabsContent>
+
+          <TabsContent value="layout">
+            <Card>
+              <CardHeader>
+                <CardTitle>Visual Layout</CardTitle>
+              </CardHeader>
+              <CardContent>
+                {tiers.length > 0 ? (
+                  <div className="space-y-4">
+                    {tiers.map((tier) => (
+                      <div key={tier.id} className="border rounded-lg p-4">
+                        <h4 className="font-semibold mb-2">
+                          {tier.label} (Tier {tier.tier_number})
+                        </h4>
+                        <div className="grid grid-cols-4 gap-2">
+                          {Array.from({ length: tier.grid_columns * tier.grid_rows }).map((_, idx) => (
+                            <div
+                              key={idx}
+                              className="aspect-square border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center text-xs text-gray-400"
+                            >
+                              Empty
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-gray-500 text-center py-8">No tiers configured for this space</p>
+                )}
               </CardContent>
             </Card>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {plants.map((plant) => (
-                <Card key={plant.id}>
-                  <CardContent className="p-4">
-                    <div className="text-4xl mb-2 text-center">🪴</div>
-                    <h3 className="font-semibold text-center">
-                      {plant.nickname || 'Unnamed Plant'}
-                    </h3>
-                    <p className="text-xs text-gray-500 text-center">
-                      {plant.health_status || 'healthy'}
-                    </p>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          )}
-        </TabsContent>
+          </TabsContent>
 
-        <TabsContent value="layout">
-          <Card>
-            <CardHeader>
-              <CardTitle>Visual Layout</CardTitle>
-            </CardHeader>
-            <CardContent>
-              {tiers.length > 0 ? (
-                <div className="space-y-4">
-                  {tiers.map((tier) => (
-                    <div key={tier.id} className="border rounded-lg p-4">
-                      <h4 className="font-semibold mb-2">
-                        {tier.label} (Tier {tier.tier_number})
-                      </h4>
-                      <div className="grid grid-cols-4 gap-2">
-                        {Array.from({ length: tier.grid_columns * tier.grid_rows }).map((_, idx) => (
-                          <div
-                            key={idx}
-                            className="aspect-square border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center text-xs text-gray-400"
-                          >
-                            Empty
-                          </div>
-                        ))}
-                      </div>
+          <TabsContent value="environment">
+            <Card>
+              <CardHeader>
+                <CardTitle>Environmental Conditions</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="flex items-center gap-3">
+                    <Thermometer className="w-8 h-8 text-orange-500" />
+                    <div>
+                      <p className="text-xs text-gray-500">Temperature</p>
+                      <p className="font-semibold">{space.avg_temperature_f || '--'}°F</p>
                     </div>
-                  ))}
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <Droplets className="w-8 h-8 text-blue-500" />
+                    <div>
+                      <p className="text-xs text-gray-500">Humidity</p>
+                      <p className="font-semibold">{space.avg_humidity_percent || '--'}%</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <Sun className="w-8 h-8 text-yellow-500" />
+                    <div>
+                      <p className="text-xs text-gray-500">Light Hours</p>
+                      <p className="font-semibold">{space.light_hours_per_day || '--'}hr/day</p>
+                    </div>
+                  </div>
                 </div>
-              ) : (
-                <p className="text-gray-500 text-center py-8">No tiers configured for this space</p>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
 
-        <TabsContent value="environment">
-          <Card>
-            <CardHeader>
-              <CardTitle>Environmental Conditions</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="flex items-center gap-3">
-                  <Thermometer className="w-8 h-8 text-orange-500" />
-                  <div>
-                    <p className="text-xs text-gray-500">Temperature</p>
-                    <p className="font-semibold">{space.avg_temperature_f || '--'}°F</p>
+                {space.has_grow_lights && (
+                  <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                    <p className="text-sm font-medium text-yellow-900">
+                      💡 Grow Lights: {space.light_type?.replace(/_/g, ' ')}
+                    </p>
                   </div>
-                </div>
-                <div className="flex items-center gap-3">
-                  <Droplets className="w-8 h-8 text-blue-500" />
-                  <div>
-                    <p className="text-xs text-gray-500">Humidity</p>
-                    <p className="font-semibold">{space.avg_humidity_percent || '--'}%</p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-3">
-                  <Sun className="w-8 h-8 text-yellow-500" />
-                  <div>
-                    <p className="text-xs text-gray-500">Light Hours</p>
-                    <p className="font-semibold">{space.light_hours_per_day || '--'}hr/day</p>
-                  </div>
-                </div>
-              </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
 
-              {space.has_grow_lights && (
-                <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-                  <p className="text-sm font-medium text-yellow-900">
-                    💡 Grow Lights: {space.light_type?.replace(/_/g, ' ')}
+          <TabsContent value="settings">
+            <Card>
+              <CardHeader>
+                <CardTitle>Space Settings</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div>
+                  <Label>Dimensions</Label>
+                  <p className="text-sm text-gray-600 mt-1">
+                    {space.width_inches}" W × {space.depth_inches}" D
+                    {space.height_inches && ` × ${space.height_inches}" H`}
                   </p>
                 </div>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
 
-        <TabsContent value="settings">
-          <Card>
-            <CardHeader>
-              <CardTitle>Space Settings</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div>
-                <Label>Dimensions</Label>
-                <p className="text-sm text-gray-600 mt-1">
-                  {space.width_inches}" W × {space.depth_inches}" D
-                  {space.height_inches && ` × ${space.height_inches}" H`}
-                </p>
-              </div>
+                {tiers.length > 0 && (
+                  <div>
+                    <Label>Tiers</Label>
+                    <p className="text-sm text-gray-600 mt-1">{tiers.length} tiers configured</p>
+                  </div>
+                )}
 
-              {tiers.length > 0 && (
-                <div>
-                  <Label>Tiers</Label>
-                  <p className="text-sm text-gray-600 mt-1">{tiers.length} tiers configured</p>
+                {space.description && (
+                  <div>
+                    <Label>Description</Label>
+                    <p className="text-sm text-gray-600 mt-1">{space.description}</p>
+                  </div>
+                )}
+
+                <div className="pt-4 space-y-2">
+                  <Button variant="outline" className="w-full">
+                    <Edit className="w-4 h-4 mr-2" />
+                    Edit Space
+                  </Button>
+                  <Button variant="outline" className="w-full text-red-600 hover:text-red-700">
+                    <Trash2 className="w-4 h-4 mr-2" />
+                    Delete Space
+                  </Button>
                 </div>
-              )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
+      )}
+    </div>
+  );
+}
 
-              {space.description && (
-                <div>
-                  <Label>Description</Label>
-                  <p className="text-sm text-gray-600 mt-1">{space.description}</p>
-                </div>
-              )}
+function Space3DView({ space, tiers, plants }) {
+  const [viewAngle, setViewAngle] = useState(25);
+  const [viewPitch, setViewPitch] = useState(10);
+  const [zoom, setZoom] = useState(1);
+  const [showLabels, setShowLabels] = useState(true);
+  const [selectedPlant, setSelectedPlant] = useState(null);
 
-              <div className="pt-4 space-y-2">
-                <Button variant="outline" className="w-full">
-                  <Edit className="w-4 h-4 mr-2" />
-                  Edit Space
-                </Button>
-                <Button variant="outline" className="w-full text-red-600 hover:text-red-700">
-                  <Trash2 className="w-4 h-4 mr-2" />
-                  Delete Space
-                </Button>
+  const setPresetAngle = (angle) => {
+    setViewAngle(angle);
+    setViewPitch(10);
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="bg-white rounded-lg shadow-md p-4 flex flex-wrap items-center justify-between gap-4">
+        <div className="flex items-center gap-4">
+          <div className="text-sm text-gray-600">
+            {space.width_inches}"W × {space.depth_inches}"D × {tiers.length} tiers
+          </div>
+          {space.has_grow_lights && (
+            <div className="flex items-center gap-1 text-sm text-yellow-600 bg-yellow-50 px-2 py-1 rounded">
+              <Sun size={14} />
+              <span>Grow Lights</span>
+            </div>
+          )}
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="flex gap-1">
+            <button
+              onClick={() => setZoom(Math.min(zoom + 0.1, 1.5))}
+              className="p-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors"
+              title="Zoom In"
+            >
+              <ZoomIn size={20} />
+            </button>
+            <button
+              onClick={() => setZoom(Math.max(zoom - 0.1, 0.7))}
+              className="p-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors"
+              title="Zoom Out"
+            >
+              <Maximize2 size={20} />
+            </button>
+          </div>
+
+          <div className="flex items-center gap-1 bg-gray-100 rounded-lg p-1">
+            <button
+              onClick={() => setPresetAngle(-25)}
+              className={`p-2 rounded transition-colors ${
+                viewAngle === -25 ? 'bg-emerald-600 text-white' : 'hover:bg-gray-200 text-gray-600'
+              }`}
+              title="View from Left"
+            >
+              <ChevronLeft size={18} />
+            </button>
+            <button
+              onClick={() => setPresetAngle(25)}
+              className={`p-2 rounded transition-colors ${
+                viewAngle === 25 ? 'bg-emerald-600 text-white' : 'hover:bg-gray-200 text-gray-600'
+              }`}
+              title="Front-Right View"
+            >
+              <RotateCcw size={18} />
+            </button>
+            <button
+              onClick={() => setPresetAngle(45)}
+              className={`p-2 rounded transition-colors ${
+                viewAngle === 45 ? 'bg-emerald-600 text-white' : 'hover:bg-gray-200 text-gray-600'
+              }`}
+              title="Side View"
+            >
+              <ChevronRight size={18} />
+            </button>
+          </div>
+
+          <div className="flex flex-col gap-1 bg-gray-100 rounded-lg p-1">
+            <button
+              onClick={() => setViewPitch(Math.min(viewPitch + 5, 40))}
+              className="p-1 rounded transition-colors hover:bg-gray-200 text-gray-600"
+              title="Tilt Up"
+            >
+              <ChevronUp size={16} />
+            </button>
+            <button
+              onClick={() => setViewPitch(Math.max(viewPitch - 5, -30))}
+              className="p-1 rounded transition-colors hover:bg-gray-200 text-gray-600"
+              title="Tilt Down"
+            >
+              <ChevronDown size={16} />
+            </button>
+          </div>
+
+          <button
+            onClick={() => setShowLabels(!showLabels)}
+            className={`px-4 py-2 rounded-lg transition-colors font-medium ${
+              showLabels ? 'bg-emerald-600 text-white' : 'bg-gray-100 text-gray-600'
+            }`}
+          >
+            Labels {showLabels ? 'On' : 'Off'}
+          </button>
+        </div>
+      </div>
+
+      <div className="bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 rounded-xl p-12 relative overflow-hidden border-2 border-slate-700 min-h-[700px]">
+        <div className="absolute inset-0 bg-gradient-radial from-emerald-500/5 via-transparent to-transparent pointer-events-none" />
+        
+        <svg className="absolute bottom-0 left-0 right-0 h-32 opacity-10 pointer-events-none">
+          <defs>
+            <pattern id="floor-grid" width="40" height="40" patternUnits="userSpaceOnUse">
+              <path d="M 40 0 L 0 0 0 40" fill="none" stroke="white" strokeWidth="1"/>
+            </pattern>
+          </defs>
+          <rect width="100%" height="100%" fill="url(#floor-grid)" />
+        </svg>
+
+        <Rack3DVisualization
+          space={space}
+          tiers={tiers}
+          plants={plants}
+          viewAngle={viewAngle}
+          viewPitch={viewPitch}
+          zoom={zoom}
+          showLabels={showLabels}
+          selectedPlant={selectedPlant}
+          onSelectPlant={setSelectedPlant}
+        />
+
+        <div className="absolute bottom-6 left-6 bg-slate-800/90 backdrop-blur rounded-xl p-4 border border-slate-700 shadow-2xl">
+          <h4 className="text-sm font-bold text-white mb-3 flex items-center gap-2">
+            <span className="w-2 h-2 bg-emerald-400 rounded-full animate-pulse"></span>
+            Legend
+          </h4>
+          <div className="space-y-2">
+            <div className="flex items-center gap-3 text-sm">
+              <div className="w-4 h-4 rounded-full bg-gradient-to-br from-emerald-400 to-emerald-600 shadow-lg shadow-emerald-500/50"></div>
+              <span className="text-slate-300">Thriving</span>
+            </div>
+            <div className="flex items-center gap-3 text-sm">
+              <div className="w-4 h-4 rounded-full bg-gradient-to-br from-green-400 to-green-600 shadow-lg shadow-green-500/50"></div>
+              <span className="text-slate-300">Healthy</span>
+            </div>
+            <div className="flex items-center gap-3 text-sm">
+              <div className="w-4 h-4 rounded-full bg-gradient-to-br from-amber-400 to-amber-600 shadow-lg shadow-amber-500/50"></div>
+              <span className="text-slate-300">Struggling</span>
+            </div>
+            <div className="flex items-center gap-3 text-sm">
+              <div className="w-4 h-4 rounded-full bg-gradient-to-br from-red-400 to-red-600 shadow-lg shadow-red-500/50"></div>
+              <span className="text-slate-300">Sick</span>
+            </div>
+          </div>
+        </div>
+
+        <div className="absolute top-6 right-6 bg-slate-800/90 backdrop-blur rounded-xl p-4 border border-slate-700 shadow-2xl">
+          <h4 className="text-sm font-bold text-white mb-3">Environment</h4>
+          <div className="space-y-2 text-sm">
+            {space.avg_temperature_f && (
+              <div className="flex items-center gap-2 text-orange-300">
+                <Thermometer size={16} />
+                <span>{Math.round(space.avg_temperature_f)}°F</span>
               </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
+            )}
+            {space.avg_humidity_percent && (
+              <div className="flex items-center gap-2 text-blue-300">
+                <Droplets size={16} />
+                <span>{Math.round(space.avg_humidity_percent)}%</span>
+              </div>
+            )}
+            {space.light_hours_per_day && (
+              <div className="flex items-center gap-2 text-yellow-300">
+                <Sun size={16} />
+                <span>{space.light_hours_per_day}hr/day</span>
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div className="absolute top-6 left-6 bg-slate-800/90 backdrop-blur rounded-xl p-4 border border-slate-700 shadow-2xl">
+          <h4 className="text-sm font-bold text-white mb-3">💡 Controls</h4>
+          <div className="space-y-1 text-xs text-slate-300">
+            <div className="flex items-center gap-2">
+              <ChevronLeft size={14} />
+              <ChevronRight size={14} />
+              <span>Rotate left/right</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <ChevronUp size={14} />
+              <ChevronDown size={14} />
+              <span>Tilt up/down</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <ZoomIn size={14} />
+              <Maximize2 size={14} />
+              <span>Zoom in/out</span>
+            </div>
+            <div>🖱️ Click plant for details</div>
+          </div>
+        </div>
+      </div>
+
+      <CameraAnglePanel viewAngle={viewAngle} viewPitch={viewPitch} zoom={zoom} onReset={() => {
+        setViewAngle(25);
+        setViewPitch(10);
+        setZoom(1);
+      }} />
+    </div>
+  );
+}
+
+function Rack3DVisualization({ space, tiers, plants, viewAngle, viewPitch, zoom, showLabels, selectedPlant, onSelectPlant }) {
+  const getTransform = () => {
+    return `scale(${zoom}) perspective(1200px) rotateX(${viewPitch}deg) rotateY(${viewAngle}deg)`;
+  };
+
+  const tierCount = tiers.length;
+
+  return (
+    <div
+      className="relative mx-auto transition-all duration-500 ease-out"
+      style={{
+        width: '900px',
+        height: '700px',
+        transformStyle: 'preserve-3d',
+        transform: getTransform(),
+      }}
+    >
+      <RackStructure3D
+        tiers={tiers}
+        plants={plants}
+        tierCount={tierCount}
+        showLabels={showLabels}
+        selectedPlant={selectedPlant}
+        onSelectPlant={onSelectPlant}
+      />
+    </div>
+  );
+}
+
+function RackStructure3D({ tiers, plants, tierCount, showLabels, selectedPlant, onSelectPlant }) {
+  const tierHeight = 100;
+  const tierWidth = 500;
+  const tierDepth = 200;
+
+  return (
+    <div className="relative" style={{ transformStyle: 'preserve-3d' }}>
+      <div className="absolute bg-gradient-to-r from-slate-700 to-slate-600 rounded-lg shadow-2xl"
+        style={{ left: '50px', top: '0', width: '16px', height: `${tierCount * tierHeight}px`, transform: 'translateZ(-100px)', boxShadow: '0 20px 40px rgba(0,0,0,0.5)' }} />
+      <div className="absolute bg-gradient-to-r from-slate-700 to-slate-600 rounded-lg shadow-2xl"
+        style={{ right: '50px', top: '0', width: '16px', height: `${tierCount * tierHeight}px`, transform: 'translateZ(-100px)', boxShadow: '0 20px 40px rgba(0,0,0,0.5)' }} />
+      <div className="absolute bg-gradient-to-r from-slate-600 to-slate-500 rounded-lg shadow-2xl"
+        style={{ left: '50px', top: '0', width: '16px', height: `${tierCount * tierHeight}px`, transform: 'translateZ(100px)', boxShadow: '0 20px 40px rgba(0,0,0,0.5)' }} />
+      <div className="absolute bg-gradient-to-r from-slate-600 to-slate-500 rounded-lg shadow-2xl"
+        style={{ right: '50px', top: '0', width: '16px', height: `${tierCount * tierHeight}px`, transform: 'translateZ(100px)', boxShadow: '0 20px 40px rgba(0,0,0,0.5)' }} />
+
+      {tiers.map((tier, i) => {
+        const tierNum = tierCount - i;
+        const yPos = i * tierHeight;
+        const tierPlants = plants.filter(p => p.tier_id === tier.id);
+
+        return (
+          <Tier3D
+            key={tier.id}
+            tier={tier}
+            tierNumber={tierNum}
+            yPosition={yPos}
+            width={tierWidth}
+            depth={tierDepth}
+            plants={tierPlants}
+            showLabels={showLabels}
+            selectedPlant={selectedPlant}
+            onSelectPlant={onSelectPlant}
+          />
+        );
+      })}
+    </div>
+  );
+}
+
+function Tier3D({ tier, tierNumber, yPosition, width, depth, plants, showLabels, selectedPlant, onSelectPlant }) {
+  return (
+    <div className="absolute" style={{ top: `${yPosition}px`, left: '50%', transform: 'translateX(-50%)', transformStyle: 'preserve-3d' }}>
+      <div className="absolute -left-24 top-1/2" style={{ transform: 'translateY(-50%) translateZ(150px)' }}>
+        <div className="bg-slate-700/90 backdrop-blur text-white px-4 py-2 rounded-lg text-sm font-bold shadow-lg border border-slate-600">
+          {tier.label || `Tier ${tierNumber}`}
+        </div>
+      </div>
+
+      <div className="relative" style={{ width: `${width}px`, height: `${depth}px`, transformStyle: 'preserve-3d' }}>
+        <div className="absolute inset-0 rounded-lg shadow-2xl" style={{
+          background: 'linear-gradient(135deg, #92400e 0%, #78350f 50%, #451a03 100%)',
+          transform: 'rotateX(-89deg) translateZ(0px)',
+          transformOrigin: 'top',
+          boxShadow: '0 -10px 30px rgba(0,0,0,0.5), inset 0 0 20px rgba(0,0,0,0.3)',
+        }}>
+          <div className="absolute inset-0 opacity-20">
+            <svg width="100%" height="100%">
+              <defs>
+                <pattern id={`wood-${tierNumber}`} width="100" height="8" patternUnits="userSpaceOnUse" patternTransform="rotate(90)">
+                  <rect width="100" height="4" fill="#000" opacity="0.1"/>
+                  <rect width="100" height="1" y="4" fill="#000" opacity="0.15"/>
+                </pattern>
+              </defs>
+              <rect width="100%" height="100%" fill={`url(#wood-${tierNumber})`} />
+            </svg>
+          </div>
+          <div className="absolute inset-0 opacity-10">
+            {Array.from({ length: tier.grid_columns || 4 }).map((_, i) => (
+              <div key={i} className="absolute h-full border-l border-white" style={{ left: `${((i + 1) / (tier.grid_columns + 1)) * 100}%` }} />
+            ))}
+          </div>
+        </div>
+
+        <div className="absolute bottom-0 left-0 right-0 rounded-b-lg" style={{
+          height: '20px',
+          background: 'linear-gradient(180deg, #78350f 0%, #451a03 100%)',
+          transform: 'translateZ(0px)',
+          boxShadow: '0 10px 20px rgba(0,0,0,0.6)',
+        }} />
+
+        {plants.map((plant, i) => {
+          const x = plant.grid_position_x 
+            ? (plant.grid_position_x / tier.grid_columns) * (width - 100) + 50
+            : 100 + i * 150;
+          const z = plant.grid_position_y 
+            ? (plant.grid_position_y / tier.grid_rows) * (depth - 80) + 40
+            : 60;
+
+          return (
+            <Plant3D
+              key={plant.id}
+              plant={plant}
+              position={{ x, z }}
+              isSelected={selectedPlant === plant.id}
+              onClick={() => onSelectPlant(plant.id)}
+              showLabel={showLabels}
+            />
+          );
+        })}
+
+        {plants.length < (tier.grid_columns || 4) && (
+          <div className="absolute cursor-pointer hover:bg-emerald-500/20 transition-colors rounded-lg border-2 border-dashed border-white/20"
+            style={{ right: '20px', top: '40px', width: '80px', height: '60px', transform: 'translateZ(5px)' }}>
+            <div className="absolute inset-0 flex items-center justify-center text-white/40">
+              <Plus size={24} />
+            </div>
+          </div>
+        )}
+      </div>
+
+      <div className="absolute inset-0 rounded-lg" style={{
+        background: 'radial-gradient(ellipse, rgba(0,0,0,0.5) 0%, transparent 70%)',
+        transform: 'translateY(10px) translateZ(-5px) scaleX(1.1)',
+        filter: 'blur(15px)',
+      }} />
+    </div>
+  );
+}
+
+function Plant3D({ plant, position, isSelected, onClick, showLabel }) {
+  const getHealthColor = () => {
+    switch (plant.health_status) {
+      case 'thriving': 
+        return { from: '#10b981', to: '#059669', shadow: 'rgba(16, 185, 129, 0.6)' };
+      case 'healthy': 
+        return { from: '#22c55e', to: '#16a34a', shadow: 'rgba(34, 197, 94, 0.6)' };
+      case 'struggling': 
+        return { from: '#f59e0b', to: '#d97706', shadow: 'rgba(245, 158, 11, 0.6)' };
+      case 'sick':
+        return { from: '#ef4444', to: '#dc2626', shadow: 'rgba(239, 68, 68, 0.6)' };
+      default: 
+        return { from: '#22c55e', to: '#16a34a', shadow: 'rgba(34, 197, 94, 0.6)' };
+    }
+  };
+
+  const colors = getHealthColor();
+  const heightScale = plant.current_height_inches ? Math.min(plant.current_height_inches / 20, 2.5) : 1.2;
+
+  return (
+    <div
+      onClick={onClick}
+      className={`absolute cursor-pointer transition-all duration-300 group ${
+        isSelected ? 'z-50 scale-110' : 'z-10 hover:z-40 hover:scale-105'
+      }`}
+      style={{ left: `${position.x}px`, top: '30px', transform: `translateZ(${position.z}px)`, transformStyle: 'preserve-3d' }}
+    >
+      <div className="relative" style={{ transformStyle: 'preserve-3d' }}>
+        <div className="relative rounded-lg border-2" style={{
+          width: '80px',
+          height: '60px',
+          background: `linear-gradient(135deg, ${colors.from} 0%, ${colors.to} 100%)`,
+          borderColor: colors.to,
+          boxShadow: `0 10px 30px ${colors.shadow}, inset 0 -5px 10px rgba(0,0,0,0.3)`,
+          transform: 'translateZ(20px)',
+        }}>
+          <div className="absolute top-0 left-0 right-0 h-3 rounded-t-lg" style={{ background: 'linear-gradient(180deg, #78350f 0%, #451a03 100%)' }} />
+        </div>
+
+        <div className="absolute top-0 right-0 rounded-r-lg" style={{
+          width: '30px',
+          height: '60px',
+          background: `linear-gradient(90deg, ${colors.to} 0%, ${colors.from} 100%)`,
+          transform: 'rotateY(90deg) translateX(15px)',
+          transformOrigin: 'left',
+          opacity: 0.7,
+        }} />
+
+        <div className="absolute -top-16 left-1/2" style={{ transform: `translateX(-50%) translateZ(30px) scale(${heightScale})`, transformStyle: 'preserve-3d' }}>
+          <div className="relative">
+            <div className="absolute inset-0 opacity-40 blur-sm" style={{ transform: 'translateZ(-10px)' }}>
+              <div className="text-5xl">🌿</div>
+            </div>
+            <div className="relative" style={{ transform: 'translateZ(10px)' }}>
+              <div className="text-5xl drop-shadow-lg">🌿</div>
+            </div>
+            <div className="absolute inset-0 rounded-full blur-xl opacity-50" style={{ background: colors.from, transform: 'translateZ(0px)' }} />
+          </div>
+        </div>
+
+        <div className="absolute -top-2 -right-2" style={{ transform: 'translateZ(50px)' }}>
+          {plant.needs_water && (
+            <div className="w-8 h-8 bg-blue-500 rounded-full border-3 border-white shadow-lg animate-bounce mb-1" style={{ boxShadow: '0 0 20px rgba(59, 130, 246, 0.8)' }} title="Needs Water">
+              <Droplets size={16} className="text-white absolute inset-0 m-auto" />
+            </div>
+          )}
+          {plant.health_status === 'struggling' && (
+            <div className="w-8 h-8 bg-amber-500 rounded-full border-3 border-white shadow-lg animate-pulse mb-1" style={{ boxShadow: '0 0 20px rgba(245, 158, 11, 0.8)' }} title="Needs Care">
+              <AlertTriangle size={16} className="text-white absolute inset-0 m-auto" />
+            </div>
+          )}
+          {plant.health_status === 'sick' && (
+            <div className="w-8 h-8 bg-red-500 rounded-full border-3 border-white shadow-lg animate-bounce" style={{ boxShadow: '0 0 20px rgba(239, 68, 68, 0.8)' }} title="Sick">
+              <AlertCircle size={16} className="text-white absolute inset-0 m-auto" />
+            </div>
+          )}
+        </div>
+
+        {isSelected && (
+          <div className="absolute -inset-4 rounded-xl border-4 border-emerald-400 animate-pulse" style={{
+            transform: 'translateZ(0px)',
+            boxShadow: '0 0 30px rgba(16, 185, 129, 0.6)',
+          }} />
+        )}
+
+        {showLabel && (
+          <div className="absolute -bottom-8 left-1/2 bg-slate-800/95 backdrop-blur px-2 py-1 rounded text-white text-xs font-medium shadow-lg border border-slate-700"
+            style={{ transform: 'translateX(-50%) translateZ(40px)', whiteSpace: 'nowrap' }}>
+            {plant.nickname || plant.variety_name || 'Plant'}
+          </div>
+        )}
+
+        <div className="absolute -bottom-20 left-1/2 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none"
+          style={{ transform: 'translateX(-50%) translateZ(60px) rotateX(15deg)', minWidth: '160px' }}>
+          <div className="bg-slate-900/95 backdrop-blur text-white px-3 py-2 rounded-lg shadow-2xl text-sm border border-slate-700">
+            <div className="font-bold truncate">{plant.nickname || plant.variety_name || 'Plant'}</div>
+            {plant.nickname && plant.variety_name && (
+              <div className="text-slate-400 text-xs truncate italic">{plant.variety_name}</div>
+            )}
+            <div className="flex items-center gap-2 mt-1">
+              <div className="w-2 h-2 rounded-full" style={{ background: colors.from }} />
+              <span className="text-xs capitalize">{plant.health_status || 'healthy'}</span>
+            </div>
+            {plant.current_height_inches && (
+              <div className="text-xs text-slate-400 mt-1">📏 {plant.current_height_inches}" tall</div>
+            )}
+          </div>
+        </div>
+
+        <div className="absolute top-full left-1/2" style={{
+          width: '100px',
+          height: '40px',
+          background: 'radial-gradient(ellipse, rgba(0,0,0,0.6) 0%, transparent 70%)',
+          transform: 'translateX(-50%) translateY(10px) translateZ(-10px)',
+          filter: 'blur(8px)',
+        }} />
+      </div>
+    </div>
+  );
+}
+
+function CameraAnglePanel({ viewAngle, viewPitch, zoom, onReset }) {
+  return (
+    <div className="bg-white rounded-lg shadow-md p-4 border border-gray-200">
+      <div className="flex items-center justify-between mb-4">
+        <h4 className="text-sm font-bold text-gray-800 flex items-center gap-2">
+          <RotateCcw size={16} className="text-emerald-600" />
+          Camera Controls
+        </h4>
+        <button onClick={onReset} className="text-xs text-gray-500 hover:text-emerald-600 transition-colors">
+          🔄 Reset
+        </button>
+      </div>
+
+      <div className="space-y-3">
+        <div>
+          <div className="flex items-center justify-between text-xs text-gray-600 mb-1">
+            <span>↔️ Rotation</span>
+            <span className="font-mono text-gray-800">{viewAngle}°</span>
+          </div>
+          <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
+            <div className="h-full bg-emerald-500 transition-all" style={{ width: `${((viewAngle + 45) / 90) * 100}%` }} />
+          </div>
+        </div>
+
+        <div>
+          <div className="flex items-center justify-between text-xs text-gray-600 mb-1">
+            <span>↕️ Pitch</span>
+            <span className="font-mono text-gray-800">{viewPitch}°</span>
+          </div>
+          <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
+            <div className="h-full bg-blue-500 transition-all" style={{ width: `${((viewPitch + 30) / 70) * 100}%` }} />
+          </div>
+        </div>
+
+        <div>
+          <div className="flex items-center justify-between text-xs text-gray-600 mb-1">
+            <span>🔍 Zoom</span>
+            <span className="font-mono text-gray-800">{(zoom * 100).toFixed(0)}%</span>
+          </div>
+          <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
+            <div className="h-full bg-purple-500 transition-all" style={{ width: `${((zoom - 0.7) / 0.8) * 100}%` }} />
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

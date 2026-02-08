@@ -145,6 +145,7 @@ import IndoorPlants from './pages/IndoorPlants';
 import AddIndoorSpace from './pages/AddIndoorSpace';
 import MyIndoorPlants from './pages/MyIndoorPlants';
 import IndoorPlantDetail from './pages/IndoorPlantDetail';
+import AddIndoorPlant from './pages/AddIndoorPlant';
 import __Layout from './Layout.jsx';
 
 
@@ -247,6 +248,7 @@ export const PAGES = {
     "AddIndoorSpace": AddIndoorSpace,
     "MyIndoorPlants": MyIndoorPlants,
     "IndoorPlantDetail": IndoorPlantDetail,
+    "AddIndoorPlant": AddIndoorPlant,
 }
 
 export const pagesConfig = {
