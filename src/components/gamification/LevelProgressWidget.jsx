@@ -41,34 +41,32 @@ export default function LevelProgressWidget({ loadDelay = 0 }) {
   const progressPercentage = (currentXP / progress.xp_to_next_level) * 100;
 
   return (
-    <Card className="bg-gradient-to-br from-purple-50 to-indigo-50 border-2 border-purple-200">
-      <CardContent className="pt-6">
-        <div className="flex items-center justify-between mb-3">
-          <div className="flex items-center gap-2">
-            <Star className="w-6 h-6 text-purple-600" />
-            <span className="text-2xl font-bold text-gray-900">Level {progress.level}</span>
-          </div>
-          <div className="text-right">
-            <p className="text-sm text-gray-600">Total XP</p>
-            <p className="text-lg font-bold text-purple-600">{progress.total_xp}</p>
-          </div>
+    <div className="bg-gradient-to-br from-purple-50 to-indigo-50 dark:from-purple-900/20 dark:to-indigo-900/20 border-2 border-purple-200 dark:border-purple-700 rounded-lg p-6">
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center gap-2">
+          <Star className="w-6 h-6 text-purple-600 dark:text-purple-400" />
+          <span className="text-2xl font-bold text-gray-900 dark:text-gray-100">Level {progress.level}</span>
         </div>
+        <div className="text-right">
+          <p className="text-sm text-gray-600 dark:text-gray-300">Total XP</p>
+          <p className="text-lg font-bold text-purple-600 dark:text-purple-400">{progress.total_xp}</p>
+        </div>
+      </div>
 
-        <div className="space-y-2">
-          <Progress value={progressPercentage} className="h-3" />
-          <div className="flex justify-between text-sm">
-            <span className="text-gray-600">{currentXP} / {progress.xp_to_next_level} XP</span>
-            <span className="font-medium text-purple-600">{xpNeeded} XP to Level {progress.level + 1}</span>
-          </div>
+      <div className="space-y-2">
+        <Progress value={progressPercentage} className="h-3" />
+        <div className="flex justify-between text-sm">
+          <span className="text-gray-600 dark:text-gray-300">{currentXP} / {progress.xp_to_next_level} XP</span>
+          <span className="font-medium text-purple-600 dark:text-purple-400">{xpNeeded} XP to Level {progress.level + 1}</span>
         </div>
+      </div>
 
-        <div className="mt-4 p-3 bg-white rounded-lg">
-          <p className="text-sm text-center text-gray-700">
-            <TrendingUp className="w-4 h-4 inline mr-1 text-emerald-600" />
-            Keep earning XP to level up!
-          </p>
-        </div>
-      </CardContent>
-    </Card>
+      <div className="mt-4 p-3 bg-white dark:bg-gray-800 rounded-lg">
+        <p className="text-sm text-center text-gray-700 dark:text-gray-300">
+          <TrendingUp className="w-4 h-4 inline mr-1 text-emerald-600 dark:text-emerald-400" />
+          Keep earning XP to level up!
+        </p>
+      </div>
+    </div>
   );
 }
