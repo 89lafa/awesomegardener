@@ -148,6 +148,10 @@ import VarietyReviewQueue from './pages/VarietyReviewQueue';
 import ViewVariety from './pages/ViewVariety';
 import ZoneMap from './pages/ZoneMap';
 import IndoorPlantDetailV2 from './pages/IndoorPlantDetailV2';
+import AdminBlogManager from './pages/AdminBlogManager';
+import BlogList from './pages/BlogList';
+import BlogPost from './pages/BlogPost';
+import AdminIndoorPlants from './pages/AdminIndoorPlants';
 import __Layout from './Layout.jsx';
 
 
@@ -253,6 +257,10 @@ export const PAGES = {
     "ViewVariety": ViewVariety,
     "ZoneMap": ZoneMap,
     "IndoorPlantDetailV2": IndoorPlantDetailV2,
+    "AdminBlogManager": AdminBlogManager,
+    "BlogList": BlogList,
+    "BlogPost": BlogPost,
+    "AdminIndoorPlants": AdminIndoorPlants,
 }
 
 export const pagesConfig = {
