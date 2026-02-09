@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { createPageUrl } from '@/utils';
 import { Link, useNavigate } from 'react-router-dom';
-import { Plus, Search, Grid3X3, List, Table, Loader2 } from 'lucide-react';
+import { Plus, Search, Grid3X3, List, Table, Loader2, Camera } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
@@ -23,6 +23,8 @@ export default function MyIndoorPlants() {
     space_id: 'all',
     health_status: 'all'
   });
+  const [uploadingFor, setUploadingFor] = useState(null);
+  const fileInputRef = React.useRef(null);
 
   useEffect(() => {
     loadData();
@@ -114,6 +116,52 @@ export default function MyIndoorPlants() {
     return <Badge className="bg-gray-200 text-gray-700">🌱 {plant.health_status || 'healthy'}</Badge>;
   };
 
+  const handlePhotoUpload = async (e, plantId) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+
+    setUploadingFor(plantId);
+    try {
+      const uploadedUrls = [];
+      
+      for (let i = 0; i < Math.min(files.length, 3); i++) {
+        const file = files[i];
+        const result = await base44.integrations.Core.UploadFile({ file });
+        uploadedUrls.push(result.file_url);
+      }
+
+      const targetPlant = plants.find(p => p.id === plantId);
+      
+      // Set first as primary if no primary exists
+      if (!targetPlant.primary_photo_url && uploadedUrls.length > 0) {
+        await base44.entities.IndoorPlant.update(plantId, {
+          primary_photo_url: uploadedUrls[0]
+        });
+      }
+
+      // Log all photos
+      for (const url of uploadedUrls) {
+        await base44.entities.IndoorPlantLog.create({
+          indoor_plant_id: plantId,
+          log_type: 'photo',
+          log_date: new Date().toISOString(),
+          photos: [url]
+        });
+      }
+
+      toast.success(`${uploadedUrls.length} photo(s) uploaded!`);
+      loadData();
+    } catch (error) {
+      console.error('Error uploading photos:', error);
+      toast.error('Failed to upload photos');
+    } finally {
+      setUploadingFor(null);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -124,6 +172,18 @@ export default function MyIndoorPlants() {
 
   return (
     <div className="space-y-6">
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*"
+        multiple
+        onChange={(e) => {
+          const plantId = e.target.dataset.plantId;
+          if (plantId) handlePhotoUpload(e, plantId);
+        }}
+        className="hidden"
+      />
+      
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
           <h1 className="text-2xl lg:text-3xl font-bold text-gray-800">
@@ -240,51 +300,79 @@ export default function MyIndoorPlants() {
                 exit={{ opacity: 0 }}
                 transition={{ delay: index * 0.05 }}
               >
-                <Link to={createPageUrl('IndoorPlantDetail') + `?id=${plant.id}`}>
-                  <Card className="hover:shadow-lg transition-all cursor-pointer border-2 hover:border-emerald-400">
-                    <div className="aspect-square bg-gradient-to-br from-emerald-50 to-green-100 flex items-center justify-center relative overflow-hidden">
-                      {plant.primary_photo_url ? (
-                        <img src={plant.primary_photo_url} className="w-full h-full object-cover" alt={plant.nickname} />
-                      ) : (
-                        <div className="text-6xl">🌿</div>
-                      )}
-                      <div className="absolute top-2 right-2">
-                        {getStatusBadge(plant)}
-                      </div>
+                <Card className="hover:shadow-lg transition-all border-2 hover:border-emerald-400 group">
+                  <div 
+                    className="aspect-square bg-gradient-to-br from-emerald-50 to-green-100 flex items-center justify-center relative overflow-hidden cursor-pointer"
+                    onClick={() => navigate(createPageUrl('IndoorPlantDetail') + `?id=${plant.id}`)}
+                  >
+                    {plant.primary_photo_url ? (
+                      <img src={plant.primary_photo_url} className="w-full h-full object-cover" alt={plant.nickname} />
+                    ) : (
+                      <div className="text-6xl">🌿</div>
+                    )}
+                    <div className="absolute top-2 right-2">
+                      {getStatusBadge(plant)}
                     </div>
                     
-                    <CardContent className="p-4">
-                      <h3 className="font-bold text-gray-800 mb-1 truncate">
-                        {plant.nickname || plant.variety_name || 'Unnamed Plant'}
-                      </h3>
-                      {plant.nickname && plant.variety_name && (
-                        <p className="text-xs text-gray-500 italic mb-2 truncate">
-                          {plant.variety_name}
-                        </p>
+                    {/* Add Photo Button Overlay */}
+                    <button
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        fileInputRef.current.dataset.plantId = plant.id;
+                        fileInputRef.current.click();
+                      }}
+                      disabled={uploadingFor === plant.id}
+                      className="absolute bottom-2 right-2 bg-white/90 backdrop-blur px-3 py-1.5 rounded-lg shadow-lg hover:bg-white transition-all opacity-0 group-hover:opacity-100 flex items-center gap-1.5 text-sm font-medium disabled:opacity-50"
+                    >
+                      {uploadingFor === plant.id ? (
+                        <>
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                          <span>Uploading...</span>
+                        </>
+                      ) : (
+                        <>
+                          <Camera className="w-4 h-4" />
+                          <span>Add Photo</span>
+                        </>
                       )}
-                      {!plant.nickname && !plant.variety_name && (
-                        <p className="text-xs text-gray-500 italic mb-2">No variety set</p>
-                      )}
-                      
-                      {plant.needs_water && (
-                        <Badge className="bg-blue-100 text-blue-700 mb-2">
-                          💧 Water {plant.days_since_watered > plant.watering_frequency_days ? 'overdue' : 'soon'}
-                        </Badge>
-                      )}
-                      
-                      <div className="text-xs text-gray-500 space-y-1">
-                        <div className="flex items-center gap-1">
-                          <span>📍</span>
-                          <span className="truncate">{plant.space_name || 'No location'}</span>
-                        </div>
-                        <div className="flex items-center gap-1">
-                          <span>📅</span>
-                          <span>{plant.age_display}</span>
-                        </div>
+                    </button>
+                  </div>
+                  
+                  <CardContent 
+                    className="p-4 cursor-pointer"
+                    onClick={() => navigate(createPageUrl('IndoorPlantDetail') + `?id=${plant.id}`)}
+                  >
+                    <h3 className="font-bold text-gray-800 mb-1 truncate">
+                      {plant.nickname || plant.variety_name || 'Unnamed Plant'}
+                    </h3>
+                    {plant.nickname && plant.variety_name && (
+                      <p className="text-xs text-gray-500 italic mb-2 truncate">
+                        {plant.variety_name}
+                      </p>
+                    )}
+                    {!plant.nickname && !plant.variety_name && (
+                      <p className="text-xs text-gray-500 italic mb-2">No variety set</p>
+                    )}
+                    
+                    {plant.needs_water && (
+                      <Badge className="bg-blue-100 text-blue-700 mb-2">
+                        💧 Water {plant.days_since_watered > plant.watering_frequency_days ? 'overdue' : 'soon'}
+                      </Badge>
+                    )}
+                    
+                    <div className="text-xs text-gray-500 space-y-1">
+                      <div className="flex items-center gap-1">
+                        <span>📍</span>
+                        <span className="truncate">{plant.space_name || 'No location'}</span>
                       </div>
-                    </CardContent>
-                  </Card>
-                </Link>
+                      <div className="flex items-center gap-1">
+                        <span>📅</span>
+                        <span>{plant.age_display}</span>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
               </motion.div>
             ))}
           </AnimatePresence>
@@ -292,32 +380,60 @@ export default function MyIndoorPlants() {
       ) : (
         <div className="space-y-3">
           {filteredPlants.map((plant) => (
-            <Link key={plant.id} to={createPageUrl('IndoorPlantDetail') + `?id=${plant.id}`}>
-              <Card className="hover:shadow-md transition-all cursor-pointer hover:border-emerald-400">
-                <CardContent className="p-4">
-                  <div className="flex items-center gap-4">
-                    <div className="w-16 h-16 bg-gradient-to-br from-emerald-50 to-green-100 rounded-lg flex items-center justify-center text-3xl flex-shrink-0">
-                      🌿
+            <Card key={plant.id} className="hover:shadow-md transition-all hover:border-emerald-400 group">
+              <CardContent 
+                className="p-4 cursor-pointer"
+                onClick={() => navigate(createPageUrl('IndoorPlantDetail') + `?id=${plant.id}`)}
+              >
+                <div className="flex items-center gap-4">
+                  <div className="w-16 h-16 bg-gradient-to-br from-emerald-50 to-green-100 rounded-lg flex items-center justify-center text-3xl flex-shrink-0 relative">
+                    {plant.primary_photo_url ? (
+                      <img src={plant.primary_photo_url} className="w-full h-full object-cover rounded-lg" alt={plant.nickname} />
+                    ) : (
+                      <span>🌿</span>
+                    )}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <h3 className="font-bold text-gray-800">{plant.nickname || plant.variety_name || 'Unnamed Plant'}</h3>
+                    <p className="text-sm text-gray-500 truncate">
+                      {plant.variety_name || 'No variety'} • {plant.space_name || 'No location'}
+                    </p>
+                    <div className="flex items-center gap-2 mt-1">
+                      {getStatusBadge(plant)}
+                      {plant.needs_water && (
+                        <Badge className="bg-blue-100 text-blue-700">💧 Water due</Badge>
+                      )}
                     </div>
-                    <div className="flex-1 min-w-0">
-                      <h3 className="font-bold text-gray-800">{plant.nickname || plant.variety_name || 'Unnamed Plant'}</h3>
-                      <p className="text-sm text-gray-500 truncate">
-                        {plant.variety_name || 'No variety'} • {plant.space_name || 'No location'}
-                      </p>
-                      <div className="flex items-center gap-2 mt-1">
-                        {getStatusBadge(plant)}
-                        {plant.needs_water && (
-                          <Badge className="bg-blue-100 text-blue-700">💧 Water due</Badge>
-                        )}
-                      </div>
-                    </div>
+                  </div>
+                  <div className="flex items-center gap-3">
                     <div className="text-xs text-gray-500 text-right">
                       {plant.age_display}
                     </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        fileInputRef.current.dataset.plantId = plant.id;
+                        fileInputRef.current.click();
+                      }}
+                      disabled={uploadingFor === plant.id}
+                      className="opacity-0 group-hover:opacity-100 transition-opacity"
+                    >
+                      {uploadingFor === plant.id ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : (
+                        <>
+                          <Camera className="w-4 h-4 mr-1" />
+                          <span className="hidden sm:inline">Photo</span>
+                        </>
+                      )}
+                    </Button>
                   </div>
-                </CardContent>
-              </Card>
-            </Link>
+                </div>
+              </CardContent>
+            </Card>
           ))}
         </div>
       )}

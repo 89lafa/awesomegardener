@@ -272,9 +272,15 @@ export default function IndoorSpaceDetail() {
                   <Card 
                     key={plant.id}
                     className="hover:shadow-lg transition-shadow cursor-pointer h-full"
-                    onClick={() => navigate(createPageUrl('IndoorPlantDetail') + `?id=${plant.id}`)}
                   >
-                    <CardContent className="p-4">
+                    <CardContent 
+                      className="p-4"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        navigate(createPageUrl('IndoorPlantDetail') + `?id=${plant.id}`);
+                      }}
+                    >
                       <div className="text-4xl mb-2 text-center">🪴</div>
                       <h3 className="font-semibold text-center">{plant.nickname || plant.variety_name || 'Unnamed Plant'}</h3>
                       {plant.nickname && plant.variety_name && (
@@ -296,23 +302,76 @@ export default function IndoorSpaceDetail() {
               <CardContent>
                 {tiers.length > 0 ? (
                   <div className="space-y-4">
-                    {tiers.map((tier) => (
-                      <div key={tier.id} className="border rounded-lg p-4">
-                        <h4 className="font-semibold mb-2">
-                          {tier.label} (Tier {tier.tier_number})
-                        </h4>
-                        <div className="grid grid-cols-4 gap-2">
-                          {Array.from({ length: tier.grid_columns * tier.grid_rows }).map((_, idx) => (
-                            <div
-                              key={idx}
-                              className="aspect-square border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center text-xs text-gray-400"
-                            >
-                              Empty
+                    {tiers.map((tier) => {
+                      const tierPlants = plants.filter(p => p.tier_id === tier.id || (!p.tier_id && tier.tier_number === 1));
+                      const gridCols = tier.grid_columns || 4;
+                      const gridRows = tier.grid_rows || 2;
+                      
+                      return (
+                        <div key={tier.id} className="border rounded-lg p-4 bg-gradient-to-br from-emerald-50 to-green-50">
+                          <h4 className="font-semibold mb-3 text-gray-800">
+                            {tier.label} (Tier {tier.tier_number})
+                          </h4>
+                          <div 
+                            className="grid gap-2"
+                            style={{ gridTemplateColumns: `repeat(${gridCols}, minmax(0, 1fr))` }}
+                          >
+                            {Array.from({ length: gridCols * gridRows }).map((_, idx) => {
+                              const x = idx % gridCols;
+                              const y = Math.floor(idx / gridCols);
+                              const plantInCell = tierPlants.find(p => 
+                                p.grid_position_x === x && p.grid_position_y === y
+                              );
+                              
+                              return (
+                                <div
+                                  key={idx}
+                                  className={`aspect-square rounded-lg flex flex-col items-center justify-center text-xs transition-all ${
+                                    plantInCell 
+                                      ? 'bg-emerald-100 border-2 border-emerald-500 cursor-pointer hover:shadow-lg' 
+                                      : 'border-2 border-dashed border-gray-300 text-gray-400'
+                                  }`}
+                                  onClick={() => {
+                                    if (plantInCell) {
+                                      navigate(createPageUrl('IndoorPlantDetail') + `?id=${plantInCell.id}`);
+                                    }
+                                  }}
+                                >
+                                  {plantInCell ? (
+                                    <>
+                                      <div className="text-2xl mb-1">🌿</div>
+                                      <div className="font-medium truncate w-full px-1 text-center">
+                                        {plantInCell.nickname || plantInCell.variety_name}
+                                      </div>
+                                    </>
+                                  ) : (
+                                    'Empty'
+                                  )}
+                                </div>
+                              );
+                            })}
+                          </div>
+                          
+                          {/* Show plants without grid positions */}
+                          {tierPlants.filter(p => p.grid_position_x === null || p.grid_position_x === undefined).length > 0 && (
+                            <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                              <p className="text-xs font-medium text-yellow-800 mb-2">Plants in this tier (not placed on grid):</p>
+                              <div className="flex flex-wrap gap-2">
+                                {tierPlants.filter(p => p.grid_position_x === null || p.grid_position_x === undefined).map(p => (
+                                  <div
+                                    key={p.id}
+                                    onClick={() => navigate(createPageUrl('IndoorPlantDetail') + `?id=${p.id}`)}
+                                    className="cursor-pointer hover:bg-yellow-100 transition-colors px-2 py-1 bg-white rounded border border-yellow-300 text-xs font-medium"
+                                  >
+                                    🌿 {p.nickname || p.variety_name}
+                                  </div>
+                                ))}
+                              </div>
                             </div>
-                          ))}
+                          )}
                         </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 ) : (
                   <p className="text-gray-500 text-center py-8">No tiers configured for this space</p>
@@ -790,7 +849,8 @@ function RackStructure3D({ tiers, plants, tierCount, showLabels, selectedPlant, 
       {tiers.map((tier, i) => {
         const tierNum = i + 1;
         const yPos = (tierCount - 1 - i) * tierHeight;
-        const tierPlants = plants.filter(p => p.tier_id === tier.id);
+        // FIX: Show plants with matching tier_id OR plants without tier_id assigned
+        const tierPlants = plants.filter(p => p.tier_id === tier.id || (!p.tier_id && i === 0));
 
         return (
           <Tier3D

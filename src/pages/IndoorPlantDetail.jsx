@@ -30,6 +30,9 @@ export default function IndoorPlantDetail() {
   const [showEditModal, setShowEditModal] = useState(false);
   const [editData, setEditData] = useState({});
   const [varieties, setVarieties] = useState([]);
+  const [showPhotoUpload, setShowPhotoUpload] = useState(false);
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const fileInputRef = React.useRef(null);
 
   useEffect(() => {
     if (plantId) {
@@ -131,6 +134,50 @@ export default function IndoorPlantDetail() {
     }
   };
 
+  const handlePhotoUpload = async (e) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+
+    setUploadingPhoto(true);
+    try {
+      const uploadedUrls = [];
+      
+      for (let i = 0; i < Math.min(files.length, 3); i++) {
+        const file = files[i];
+        const result = await base44.integrations.Core.UploadFile({ file });
+        uploadedUrls.push(result.file_url);
+      }
+
+      // Set first image as primary if no primary exists
+      if (!plant.primary_photo_url && uploadedUrls.length > 0) {
+        await base44.entities.IndoorPlant.update(plantId, {
+          primary_photo_url: uploadedUrls[0]
+        });
+      }
+
+      // Log all photos
+      for (const url of uploadedUrls) {
+        await base44.entities.IndoorPlantLog.create({
+          indoor_plant_id: plantId,
+          log_type: 'photo',
+          log_date: new Date().toISOString(),
+          photos: [url]
+        });
+      }
+
+      toast.success(`${uploadedUrls.length} photo(s) uploaded!`);
+      loadData();
+    } catch (error) {
+      console.error('Error uploading photos:', error);
+      toast.error('Failed to upload photos');
+    } finally {
+      setUploadingPhoto(false);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
+  };
+
   const formatDate = (dateStr) => {
     if (!dateStr) return 'Never';
     const date = new Date(dateStr);
@@ -201,9 +248,32 @@ export default function IndoorPlantDetail() {
                   <div className="text-7xl">🌿</div>
                 )}
               </div>
-              <Button variant="outline" className="w-full mt-2" size="sm">
-                <Camera className="w-4 h-4 mr-2" />
-                Add Photo
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                multiple
+                onChange={handlePhotoUpload}
+                className="hidden"
+              />
+              <Button 
+                variant="outline" 
+                className="w-full mt-2" 
+                size="sm"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={uploadingPhoto}
+              >
+                {uploadingPhoto ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Uploading...
+                  </>
+                ) : (
+                  <>
+                    <Camera className="w-4 h-4 mr-2" />
+                    Add Photo
+                  </>
+                )}
               </Button>
             </div>
 
