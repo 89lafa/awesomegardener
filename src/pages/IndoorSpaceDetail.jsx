@@ -269,18 +269,20 @@ export default function IndoorSpaceDetail() {
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {plants.map((plant) => (
-                  <Link key={plant.id} to={createPageUrl('IndoorPlantDetail') + `?id=${plant.id}`} className="block">
-                    <Card className="hover:shadow-lg transition-shadow cursor-pointer h-full">
-                      <CardContent className="p-4">
-                        <div className="text-4xl mb-2 text-center">🪴</div>
-                        <h3 className="font-semibold text-center">{plant.nickname || plant.variety_name || 'Unnamed Plant'}</h3>
-                        {plant.nickname && plant.variety_name && (
-                          <p className="text-xs text-gray-600 text-center italic">{plant.variety_name}</p>
-                        )}
-                        <p className="text-xs text-gray-500 text-center capitalize mt-1">{plant.health_status || 'healthy'}</p>
-                      </CardContent>
-                    </Card>
-                  </Link>
+                  <Card 
+                    key={plant.id}
+                    className="hover:shadow-lg transition-shadow cursor-pointer h-full"
+                    onClick={() => navigate(createPageUrl('IndoorPlantDetail') + `?id=${plant.id}`)}
+                  >
+                    <CardContent className="p-4">
+                      <div className="text-4xl mb-2 text-center">🪴</div>
+                      <h3 className="font-semibold text-center">{plant.nickname || plant.variety_name || 'Unnamed Plant'}</h3>
+                      {plant.nickname && plant.variety_name && (
+                        <p className="text-xs text-gray-600 text-center italic">{plant.variety_name}</p>
+                      )}
+                      <p className="text-xs text-gray-500 text-center capitalize mt-1">{plant.health_status || 'healthy'}</p>
+                    </CardContent>
+                  </Card>
                 ))}
               </div>
             )}
