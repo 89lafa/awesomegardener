@@ -123,6 +123,8 @@ export default function Dashboard() {
   const [popularCrops, setPopularCrops] = useState(null);
   const [loading, setLoading] = useState(true);
   const [greeting, setGreeting] = useState('Good morning');
+  const weatherLoadedRef = React.useRef(false);
+  const achievementsCheckedRef = React.useRef(false);
   
   useEffect(() => {
     const hour = new Date().getHours();
@@ -136,31 +138,31 @@ export default function Dashboard() {
     if (cachedState) {
       try {
         const parsed = JSON.parse(cachedState);
-        setStats(parsed.stats || {});
-        setPopularCrops(parsed.popularCrops);
-        setWeather(parsed.weather);
-        setLoading(false);
-        setWeatherLoading(false);
-        setTimeout(loadDashboard, 500);
-        setTimeout(loadWeather, 1000);
-        setTimeout(checkAchievements, 1500);
+        const age = Date.now() - (parsed.timestamp || 0);
+        // Use cache if less than 2 minutes old
+        if (age < 120000) {
+          setStats(parsed.stats || {});
+          setPopularCrops(parsed.popularCrops);
+          setWeather(parsed.weather);
+          setLoading(false);
+          setWeatherLoading(false);
+          return;
+        }
       } catch (err) {
-        loadDashboard();
+        console.warn('Invalid dashboard cache');
       }
-    } else {
-      loadDashboard();
     }
     
-    const weatherTimer = setTimeout(loadWeather, 100);
-    const achievementTimer = setTimeout(checkAchievements, 200);
-    
-    return () => {
-      clearTimeout(weatherTimer);
-      clearTimeout(achievementTimer);
-    };
+    loadDashboard();
+    setTimeout(loadWeather, 1500);
+    setTimeout(checkAchievements, 3000);
   }, []);
 
   const checkAchievements = async () => {
+    // Run once per session only
+    if (achievementsCheckedRef.current) return;
+    achievementsCheckedRef.current = true;
+
     try {
       const response = await base44.functions.invoke('checkAchievements', {});
       if (response?.data?.newlyUnlocked?.length > 0) {
@@ -169,11 +171,16 @@ export default function Dashboard() {
         });
       }
     } catch (error) {
-      console.error('Error checking achievements:', error);
+      // Log but DO NOT retry - if it's broken, retrying won't fix it
+      console.warn('Achievement check failed (non-critical):', error.message);
     }
   };
 
   const loadWeather = async () => {
+    // Load once per page load
+    if (weatherLoadedRef.current) return;
+    weatherLoadedRef.current = true;
+
     try {
       const user = await base44.auth.me();
       const zipCode = user?.location_zip;
@@ -223,14 +230,17 @@ export default function Dashboard() {
 
       setWeather(weatherData);
     } catch (err) {
-      console.error('Weather fetch failed:', err);
+      console.warn('Weather fetch failed (non-critical):', err);
     } finally {
       setWeatherLoading(false);
     }
   };
 
   const loadDashboard = async () => {
+    setLoading(true);
+    
     try {
+      // WAVE 1: Core data only - show dashboard immediately
       const userData = await base44.auth.me();
       setUser(userData);
 
@@ -238,30 +248,6 @@ export default function Dashboard() {
         base44.entities.Garden.filter({ created_by: userData.email, archived: false }),
         base44.entities.SeedLot.filter({ created_by: userData.email })
       ]);
-
-      setTimeout(async () => {
-        try {
-          const [crops, tasks, spaces, indoorSpaces, indoorPlants, trades] = await Promise.all([
-            base44.entities.CropPlan.filter({ created_by: userData.email, status: 'active' }),
-            base44.entities.CropTask.filter({ created_by: userData.email, is_completed: false }),
-            base44.entities.IndoorGrowSpace.filter({ created_by: userData.email }),
-            base44.entities.IndoorSpace.filter({ is_active: true }),
-            base44.entities.IndoorPlant.filter({ is_active: true }),
-            base44.entities.SeedTrade.filter({ recipient_id: userData.id, status: 'pending' })
-          ]);
-
-          setStats(prev => ({
-            ...prev,
-            activeCrops: crops.length,
-            tasks: tasks.length,
-            indoorSpaces: indoorSpaces.length,
-            indoorPlants: indoorPlants.length,
-            tradesPending: trades.length
-          }));
-        } catch (err) {
-          console.error('Error loading secondary stats:', err);
-        }
-      }, 500);
 
       const newStats = {
         gardens: gardens.length,
@@ -273,7 +259,43 @@ export default function Dashboard() {
         tradesPending: 0
       };
       setStats(newStats);
+      setLoading(false);
 
+      // WAVE 2: Secondary stats - 1 second delay, load 2 at a time
+      setTimeout(async () => {
+        try {
+          const [crops, tasks] = await Promise.all([
+            base44.entities.CropPlan.filter({ created_by: userData.email, status: 'active' }),
+            base44.entities.CropTask.filter({ created_by: userData.email, is_completed: false })
+          ]);
+          setStats(prev => ({ ...prev, activeCrops: crops.length, tasks: tasks.length }));
+        } catch (err) {
+          console.warn('Secondary stats (wave 2a) failed:', err);
+        }
+      }, 1000);
+
+      setTimeout(async () => {
+        try {
+          const [indoorSpaces, indoorPlants] = await Promise.all([
+            base44.entities.IndoorSpace.filter({ is_active: true }),
+            base44.entities.IndoorPlant.filter({ is_active: true })
+          ]);
+          setStats(prev => ({ ...prev, indoorSpaces: indoorSpaces.length, indoorPlants: indoorPlants.length }));
+        } catch (err) {
+          console.warn('Secondary stats (wave 2b) failed:', err);
+        }
+      }, 1500);
+
+      setTimeout(async () => {
+        try {
+          const trades = await base44.entities.SeedTrade.filter({ recipient_id: userData.id, status: 'pending' });
+          setStats(prev => ({ ...prev, tradesPending: trades.length }));
+        } catch (err) {
+          console.warn('Secondary stats (wave 2c) failed:', err);
+        }
+      }, 2000);
+
+      // WAVE 3: Popular crops - 2.5 seconds delay
       setTimeout(async () => {
         try {
           const popularResponse = await base44.functions.invoke('getPopularCrops', {});
@@ -286,20 +308,13 @@ export default function Dashboard() {
             timestamp: Date.now()
           }));
         } catch (error) {
-          if (!error.message?.includes('Rate limit')) {
-            console.error('Error loading popular crops:', error);
-          }
+          console.warn('Popular crops failed (non-critical)');
         }
-      }, 1000);
+      }, 2500);
       
     } catch (error) {
       console.error('Error loading dashboard:', error);
-      if (error.message?.includes('Rate limit')) {
-        toast.error('Loading slowly to avoid rate limits - please wait');
-      } else {
-        toast.error('Failed to load dashboard');
-      }
-    } finally {
+      toast.error('Failed to load dashboard');
       setLoading(false);
     }
   };
@@ -341,9 +356,9 @@ export default function Dashboard() {
       </div>
 
       <div className="grid md:grid-cols-3 gap-4">
-        <LevelProgressWidget />
-        <StreakWidget />
-        <LatestBadgeWidget />
+        <LevelProgressWidget loadDelay={0} />
+        <StreakWidget loadDelay={400} />
+        <LatestBadgeWidget loadDelay={800} />
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
@@ -367,8 +382,8 @@ export default function Dashboard() {
       </div>
 
       <div className="grid md:grid-cols-3 gap-4">
-        <LeaderboardRankWidget />
-        <ChallengeProgressWidget />
+        <LeaderboardRankWidget loadDelay={1200} />
+        <ChallengeProgressWidget loadDelay={1600} />
         <div className="glass-card-no-padding">
           <div className="p-6">
             <h3 className="flex items-center gap-2 text-lg font-semibold mb-4" style={{ color: 'var(--text-primary)' }}>
@@ -398,8 +413,8 @@ export default function Dashboard() {
       </div>
 
       <div className="grid md:grid-cols-2 gap-4">
-        <QuickCheckInWidget />
-        <IndoorCareWidget />
+        <QuickCheckInWidget loadDelay={2000} />
+        <IndoorCareWidget loadDelay={2400} />
       </div>
 
       <div className="grid md:grid-cols-2 gap-4">
@@ -427,12 +442,12 @@ export default function Dashboard() {
           </div>
         </div>
 
-        <ActivityFeed limit={5} />
+        <ActivityFeed limit={5} loadDelay={2800} />
       </div>
 
       <div className="grid md:grid-cols-2 gap-6">
-        <TipOfDayWidget />
-        <RecipeSuggestionsWidget />
+        <TipOfDayWidget loadDelay={3200} />
+        <RecipeSuggestionsWidget loadDelay={3600} />
       </div>
 
       {popularCrops && (

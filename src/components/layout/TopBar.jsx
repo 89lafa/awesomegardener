@@ -44,21 +44,22 @@ export default function TopBar({ user, onMobileMenuToggle, onSidebarToggle, side
   useEffect(() => {
     if (user) {
       loadUnreadCount();
+      // Poll every 2 minutes instead of 30 seconds
+      const interval = setInterval(loadUnreadCount, 120000);
+      return () => clearInterval(interval);
     }
   }, [user]);
 
   const loadUnreadCount = async () => {
     try {
-      let count = 0;
-      
-      // Regular notifications
+      // Only query Notifications for regular users
       const notifications = await base44.entities.Notification.filter({ 
         user_email: user.email, 
         is_read: false 
       });
-      count += notifications.length;
+      let count = notifications.length;
       
-      // Admin/Mod notifications
+      // Admin/Mod queries - only if user has permissions
       if (user.role === 'admin' || user.role === 'moderator') {
         const [varietySuggestions, featureRequests, imageSubmissions, changeRequests] = await Promise.all([
           base44.entities.VarietySuggestion.filter({ status: 'pending' }),
@@ -78,17 +79,10 @@ export default function TopBar({ user, onMobileMenuToggle, onSidebarToggle, side
       
       setUnreadCount(count);
     } catch (error) {
-      console.error('Error loading notifications:', error);
+      // Non-critical - badge count is cosmetic
+      console.warn('Badge count failed (non-critical)');
     }
   };
-
-  // Poll for new notifications every 30 seconds
-  useEffect(() => {
-    if (user) {
-      const interval = setInterval(loadUnreadCount, 30000);
-      return () => clearInterval(interval);
-    }
-  }, [user]);
 
   const handleLogout = async () => {
     try {
