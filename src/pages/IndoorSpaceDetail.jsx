@@ -211,7 +211,7 @@ export default function IndoorSpaceDetail() {
       </div>
 
       {viewMode === '3d' && tiers.length > 0 ? (
-        <Space3DView space={space} tiers={tiers} plants={plants} />
+        <Space3DView space={space} tiers={tiers} plants={plants} spaceId={spaceId} navigate={navigate} />
       ) : (
         <Tabs defaultValue="plants">
           <TabsList>
@@ -601,7 +601,7 @@ export default function IndoorSpaceDetail() {
           );
           }
 
-function Space3DView({ space, tiers, plants }) {
+function Space3DView({ space, tiers, plants, spaceId, navigate }) {
   const [viewAngle, setViewAngle] = useState(25);
   const [viewPitch, setViewPitch] = useState(10);
   const [zoom, setZoom] = useState(1);
@@ -726,6 +726,8 @@ function Space3DView({ space, tiers, plants }) {
           showLabels={showLabels}
           selectedPlant={selectedPlant}
           onSelectPlant={setSelectedPlant}
+          spaceId={spaceId}
+          navigate={navigate}
         />
 
         <div className="absolute bottom-6 left-6 bg-slate-800/90 backdrop-blur rounded-xl p-4 border border-slate-700 shadow-2xl">
@@ -809,7 +811,7 @@ function Space3DView({ space, tiers, plants }) {
   );
 }
 
-function Rack3DVisualization({ space, tiers, plants, viewAngle, viewPitch, zoom, showLabels, selectedPlant, onSelectPlant }) {
+function Rack3DVisualization({ space, tiers, plants, viewAngle, viewPitch, zoom, showLabels, selectedPlant, onSelectPlant, spaceId, navigate }) {
   const getTransform = () => {
     return `scale(${zoom}) perspective(1200px) rotateX(${viewPitch}deg) rotateY(${viewAngle}deg)`;
   };
@@ -833,12 +835,14 @@ function Rack3DVisualization({ space, tiers, plants, viewAngle, viewPitch, zoom,
         showLabels={showLabels}
         selectedPlant={selectedPlant}
         onSelectPlant={onSelectPlant}
+        spaceId={spaceId}
+        navigate={navigate}
       />
     </div>
   );
 }
 
-function RackStructure3D({ tiers, plants, tierCount, showLabels, selectedPlant, onSelectPlant }) {
+function RackStructure3D({ tiers, plants, tierCount, showLabels, selectedPlant, onSelectPlant, spaceId, navigate }) {
   const tierHeight = 100;
   const tierWidth = 500;
   const tierDepth = 200;
@@ -872,6 +876,8 @@ function RackStructure3D({ tiers, plants, tierCount, showLabels, selectedPlant, 
             showLabels={showLabels}
             selectedPlant={selectedPlant}
             onSelectPlant={onSelectPlant}
+            spaceId={spaceId}
+            navigate={navigate}
           />
         );
       })}
@@ -879,7 +885,7 @@ function RackStructure3D({ tiers, plants, tierCount, showLabels, selectedPlant, 
   );
 }
 
-function Tier3D({ tier, tierNumber, yPosition, width, depth, plants, showLabels, selectedPlant, onSelectPlant }) {
+function Tier3D({ tier, tierNumber, yPosition, width, depth, plants, showLabels, selectedPlant, onSelectPlant, spaceId, navigate }) {
   return (
     <div className="absolute" style={{ top: `${yPosition}px`, left: '50%', transform: 'translateX(-50%)', transformStyle: 'preserve-3d' }}>
       <div className="absolute -left-24 top-1/2" style={{ transform: 'translateY(-50%) translateZ(150px)' }}>
