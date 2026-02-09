@@ -5,13 +5,16 @@ import { Button } from '@/components/ui/button';
 import { Lightbulb, ThumbsUp, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 
-export default function TipOfDayWidget() {
+export default function TipOfDayWidget({ loadDelay = 0 }) {
   const [tip, setTip] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    loadTip();
-  }, []);
+    const timer = setTimeout(() => {
+      loadTip();
+    }, loadDelay);
+    return () => clearTimeout(timer);
+  }, [loadDelay]);
 
   const loadTip = async () => {
     try {
@@ -42,8 +45,7 @@ export default function TipOfDayWidget() {
         setTip(randomTip);
       }
     } catch (error) {
-      // Silently fail - don't break dashboard
-      console.error('Error loading tip:', error);
+      console.warn('Tip widget failed (non-critical)');
     } finally {
       setLoading(false);
     }

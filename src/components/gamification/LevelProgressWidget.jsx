@@ -4,20 +4,23 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Star, TrendingUp, Loader2 } from 'lucide-react';
 
-export default function LevelProgressWidget() {
+export default function LevelProgressWidget({ loadDelay = 0 }) {
   const [progress, setProgress] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    loadProgress();
-  }, []);
+    const timer = setTimeout(() => {
+      loadProgress();
+    }, loadDelay);
+    return () => clearTimeout(timer);
+  }, [loadDelay]);
 
   const loadProgress = async () => {
     try {
       const progressRecords = await base44.entities.UserProgress.filter({});
       setProgress(progressRecords[0] || { level: 1, total_xp: 0, xp_to_next_level: 100 });
     } catch (error) {
-      console.error('Error loading progress:', error);
+      console.warn('Level progress widget failed (non-critical)');
     } finally {
       setLoading(false);
     }

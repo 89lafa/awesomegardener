@@ -15,20 +15,23 @@ const ACTIVITY_CONFIG = {
   milestone: { icon: '🎉', label: 'Milestone', color: 'bg-purple-100 text-purple-800' }
 };
 
-export default function ActivityFeed({ limit = 10 }) {
+export default function ActivityFeed({ limit = 10, loadDelay = 0 }) {
   const [activities, setActivities] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    loadActivities();
-  }, []);
+    const timer = setTimeout(() => {
+      loadActivities();
+    }, loadDelay);
+    return () => clearTimeout(timer);
+  }, [loadDelay]);
 
   const loadActivities = async () => {
     try {
       const results = await base44.entities.ActivityLog.list('-activity_date', limit);
       setActivities(results);
     } catch (error) {
-      console.error('Error loading activities:', error);
+      console.warn('Activity feed failed (non-critical)');
     } finally {
       setLoading(false);
     }

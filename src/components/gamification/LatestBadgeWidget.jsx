@@ -7,21 +7,23 @@ import { createPageUrl } from '@/utils';
 import { Link } from 'react-router-dom';
 import { formatDistanceToNow } from 'date-fns';
 
-export default function LatestBadgeWidget() {
+export default function LatestBadgeWidget({ loadDelay = 0 }) {
   const [latestBadge, setLatestBadge] = useState(null);
   const [nextBadge, setNextBadge] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    loadBadges();
-  }, []);
+    const timer = setTimeout(() => {
+      loadBadges();
+    }, loadDelay);
+    return () => clearTimeout(timer);
+  }, [loadDelay]);
 
   const loadBadges = async () => {
     try {
-      const [userBadges, allBadges] = await Promise.all([
-        base44.entities.UserBadge.filter({}),
-        base44.entities.Badge.filter({ is_active: true })
-      ]);
+      const userBadges = await base44.entities.UserBadge.filter({});
+      await new Promise(resolve => setTimeout(resolve, 300));
+      const allBadges = await base44.entities.Badge.filter({ is_active: true });
 
       // Get latest unlocked badge
       const unlocked = userBadges.filter(ub => ub.unlocked_date);

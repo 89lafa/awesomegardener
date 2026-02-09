@@ -6,20 +6,23 @@ import { Flame, Calendar, Loader2 } from 'lucide-react';
 import { createPageUrl } from '@/utils';
 import { Link } from 'react-router-dom';
 
-export default function StreakWidget() {
+export default function StreakWidget({ loadDelay = 0 }) {
   const [streak, setStreak] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    loadStreak();
-  }, []);
+    const timer = setTimeout(() => {
+      loadStreak();
+    }, loadDelay);
+    return () => clearTimeout(timer);
+  }, [loadDelay]);
 
   const loadStreak = async () => {
     try {
       const streaks = await base44.entities.UserStreak.filter({});
       setStreak(streaks[0]);
     } catch (error) {
-      console.error('Error loading streak:', error);
+      console.warn('Streak widget failed (non-critical)');
     } finally {
       setLoading(false);
     }

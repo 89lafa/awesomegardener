@@ -7,13 +7,16 @@ import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
 import { ChefHat, Loader2, ArrowRight } from 'lucide-react';
 
-export default function RecipeSuggestionsWidget() {
+export default function RecipeSuggestionsWidget({ loadDelay = 0 }) {
   const [suggestions, setSuggestions] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    loadSuggestions();
-  }, []);
+    const timer = setTimeout(() => {
+      loadSuggestions();
+    }, loadDelay);
+    return () => clearTimeout(timer);
+  }, [loadDelay]);
 
   const loadSuggestions = async () => {
     try {
@@ -35,6 +38,8 @@ export default function RecipeSuggestionsWidget() {
         recentHarvests.map(h => h.plant_type_id).filter(Boolean)
       );
 
+      await new Promise(resolve => setTimeout(resolve, 300));
+      
       // Find recipes
       const allRecipes = await base44.entities.Recipe.filter({});
       
@@ -63,7 +68,7 @@ export default function RecipeSuggestionsWidget() {
 
       setSuggestions(matches.slice(0, 3));
     } catch (error) {
-      console.error('Error loading suggestions:', error);
+      console.warn('Recipe widget failed (non-critical)');
     } finally {
       setLoading(false);
     }

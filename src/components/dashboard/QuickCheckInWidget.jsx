@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { CheckCircle } from 'lucide-react';
 import QuickCheckInModal from '@/components/ai/QuickCheckInModal';
 
-export default function QuickCheckInWidget() {
+export default function QuickCheckInWidget({ loadDelay = 0 }) {
   const [checkInOpen, setCheckInOpen] = useState(false);
 
   return (

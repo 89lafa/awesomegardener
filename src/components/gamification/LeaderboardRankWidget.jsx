@@ -6,25 +6,29 @@ import { Trophy, ArrowRight, Loader2, TrendingUp } from 'lucide-react';
 import { createPageUrl } from '@/utils';
 import { Link } from 'react-router-dom';
 
-export default function LeaderboardRankWidget() {
+export default function LeaderboardRankWidget({ loadDelay = 0 }) {
   const [ranks, setRanks] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    loadRanks();
-  }, []);
+    const timer = setTimeout(() => {
+      loadRanks();
+    }, loadDelay);
+    return () => clearTimeout(timer);
+  }, [loadDelay]);
 
   const loadRanks = async () => {
     try {
       const user = await base44.auth.me();
       
-      // Get all users' data for ranking
-      const [allUserBadges, allCropPlans, allHarvests, allStreaks] = await Promise.all([
-        base44.entities.UserBadge.filter({}),
-        base44.entities.CropPlan.filter({}),
-        base44.entities.HarvestLog.filter({}),
-        base44.entities.UserStreak.filter({})
-      ]);
+      // Load sequentially to avoid rate limits
+      const allUserBadges = await base44.entities.UserBadge.filter({});
+      await new Promise(resolve => setTimeout(resolve, 300));
+      const allCropPlans = await base44.entities.CropPlan.filter({});
+      await new Promise(resolve => setTimeout(resolve, 300));
+      const allHarvests = await base44.entities.HarvestLog.filter({});
+      await new Promise(resolve => setTimeout(resolve, 300));
+      const allStreaks = await base44.entities.UserStreak.filter({});
 
       // Calculate user scores
       const userScores = {};
@@ -70,7 +74,7 @@ export default function LeaderboardRankWidget() {
         streak: { rank: streakRank || '-', count: myScores.streak }
       });
     } catch (error) {
-      console.error('Error loading ranks:', error);
+      console.warn('Leaderboard widget failed (non-critical)');
     } finally {
       setLoading(false);
     }

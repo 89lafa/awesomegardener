@@ -9,20 +9,22 @@ import { createPageUrl } from '@/utils';
 import { Link } from 'react-router-dom';
 import { formatDistanceToNow } from 'date-fns';
 
-export default function ChallengeProgressWidget() {
+export default function ChallengeProgressWidget({ loadDelay = 0 }) {
   const [activeChallenges, setActiveChallenges] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    loadChallenges();
-  }, []);
+    const timer = setTimeout(() => {
+      loadChallenges();
+    }, loadDelay);
+    return () => clearTimeout(timer);
+  }, [loadDelay]);
 
   const loadChallenges = async () => {
     try {
-      const [userChallenges, allChallenges] = await Promise.all([
-        base44.entities.UserChallenge.filter({}),
-        base44.entities.Challenge.filter({ is_active: true })
-      ]);
+      const userChallenges = await base44.entities.UserChallenge.filter({});
+      await new Promise(resolve => setTimeout(resolve, 300));
+      const allChallenges = await base44.entities.Challenge.filter({ is_active: true });
 
       const active = userChallenges
         .filter(uc => !uc.completed)
@@ -35,7 +37,7 @@ export default function ChallengeProgressWidget() {
 
       setActiveChallenges(active);
     } catch (error) {
-      console.error('Error loading challenges:', error);
+      console.warn('Challenge widget failed (non-critical)');
     } finally {
       setLoading(false);
     }

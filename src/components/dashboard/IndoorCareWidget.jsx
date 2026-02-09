@@ -15,13 +15,16 @@ const TASK_ICONS = {
   rotate: RotateCw,
 };
 
-export default function IndoorCareWidget() {
+export default function IndoorCareWidget({ loadDelay = 0 }) {
   const [tasks, setTasks] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    loadTodaysTasks();
-  }, []);
+    const timer = setTimeout(() => {
+      loadTodaysTasks();
+    }, loadDelay);
+    return () => clearTimeout(timer);
+  }, [loadDelay]);
 
   const loadTodaysTasks = async () => {
     try {
@@ -35,21 +38,23 @@ export default function IndoorCareWidget() {
         is_completed: false
       });
 
-      const enriched = await Promise.all(
-        data.map(async task => {
-          const plant = await base44.entities.IndoorPlant.filter({ id: task.indoor_plant_id }).then(r => r[0]);
-          const variety = plant?.variety_id ? await base44.entities.Variety.filter({ id: plant.variety_id }).then(r => r[0]) : null;
-          return {
-            ...task,
-            plant_nickname: plant?.nickname,
-            variety_name: variety?.variety_name
-          };
-        })
-      );
+      // Enrich sequentially to avoid rate limits
+      const enriched = [];
+      for (const task of data) {
+        const plant = await base44.entities.IndoorPlant.filter({ id: task.indoor_plant_id }).then(r => r[0]);
+        await new Promise(resolve => setTimeout(resolve, 150));
+        const variety = plant?.variety_id ? await base44.entities.Variety.filter({ id: plant.variety_id }).then(r => r[0]) : null;
+        enriched.push({
+          ...task,
+          plant_nickname: plant?.nickname,
+          variety_name: variety?.variety_name
+        });
+        await new Promise(resolve => setTimeout(resolve, 150));
+      }
 
       setTasks(enriched);
     } catch (error) {
-      console.error('Error loading tasks:', error);
+      console.warn('Indoor care widget failed (non-critical)');
     } finally {
       setLoading(false);
     }
