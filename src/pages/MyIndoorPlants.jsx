@@ -64,7 +64,7 @@ export default function MyIndoorPlants() {
 
         return {
           ...plant,
-          variety_name: variety?.variety_name || 'Unknown',
+          variety_name: variety?.variety_name,
           space_name: space?.name,
           days_since_watered: daysSinceWatered,
           needs_water: needsWater,
@@ -255,12 +255,15 @@ export default function MyIndoorPlants() {
                     
                     <CardContent className="p-4">
                       <h3 className="font-bold text-gray-800 mb-1 truncate">
-                        {plant.nickname || plant.variety_name}
+                        {plant.nickname || plant.variety_name || 'Unnamed Plant'}
                       </h3>
-                      {plant.nickname && (
+                      {plant.nickname && plant.variety_name && (
                         <p className="text-xs text-gray-500 italic mb-2 truncate">
                           {plant.variety_name}
                         </p>
+                      )}
+                      {!plant.nickname && !plant.variety_name && (
+                        <p className="text-xs text-gray-500 italic mb-2">No variety set</p>
                       )}
                       
                       {plant.needs_water && (
@@ -297,9 +300,9 @@ export default function MyIndoorPlants() {
                       🌿
                     </div>
                     <div className="flex-1 min-w-0">
-                      <h3 className="font-bold text-gray-800">{plant.nickname || plant.variety_name}</h3>
+                      <h3 className="font-bold text-gray-800">{plant.nickname || plant.variety_name || 'Unnamed Plant'}</h3>
                       <p className="text-sm text-gray-500 truncate">
-                        {plant.variety_name} • {plant.space_name || 'No location'}
+                        {plant.variety_name || 'No variety'} • {plant.space_name || 'No location'}
                       </p>
                       <div className="flex items-center gap-2 mt-1">
                         {getStatusBadge(plant)}

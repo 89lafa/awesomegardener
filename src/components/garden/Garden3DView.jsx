@@ -100,7 +100,6 @@ export default function Garden3DView({ structures, plotLayout, plantingCounts })
           minHeight: 680, padding: 40,
           perspective: 1600
         }}
-        onClick={() => setSelectedStructure(null)}
       >
         <div style={{
           width: groundSize.width, height: groundSize.height,
@@ -109,13 +108,18 @@ export default function Garden3DView({ structures, plotLayout, plantingCounts })
           transition: 'transform 0.45s cubic-bezier(0.4, 0, 0.2, 1)'
         }}>
           <div style={{ position: 'absolute', inset: 0, transformStyle: 'preserve-3d' }}>
-            <Ground3D width={groundSize.width} height={groundSize.height} />
+            <Ground3D 
+              width={groundSize.width} 
+              height={groundSize.height} 
+              onDeselectClick={() => setSelectedStructure(null)}
+            />
             {structures.map(structure => (
               <Structure3D
                 key={structure.id}
                 item={structure}
                 plantingCount={plantingCounts?.[structure.id]}
                 isHovered={hovered === structure.id}
+                isSelected={selectedStructure?.id === structure.id}
                 onEnter={() => setHovered(structure.id)}
                 onLeave={() => setHovered(null)}
                 showLabels={showLabels}
@@ -150,26 +154,30 @@ export default function Garden3DView({ structures, plotLayout, plantingCounts })
   );
 }
 
-function Ground3D({ width, height }) {
+function Ground3D({ width, height, onDeselectClick }) {
   return (
-    <div style={{
-      position: 'absolute', 
-      left: 0, top: 0,
-      width, height,
-      background: 'linear-gradient(135deg, #86efac 0%, #4ade80 20%, #22c55e 50%, #16a34a 80%, #15803d 100%)',
-      borderRadius: 12,
-      boxShadow: '0 30px 80px rgba(0,0,0,0.25)'
-    }}>
+    <div 
+      onClick={onDeselectClick}
+      style={{
+        position: 'absolute', 
+        left: 0, top: 0,
+        width, height,
+        background: 'linear-gradient(135deg, #86efac 0%, #4ade80 20%, #22c55e 50%, #16a34a 80%, #15803d 100%)',
+        borderRadius: 12,
+        boxShadow: '0 30px 80px rgba(0,0,0,0.25)',
+        transform: 'translateZ(-1px)'
+      }}>
       <div style={{
         position: 'absolute', inset: 0, opacity: 0.08, borderRadius: 12,
-        background: 'repeating-linear-gradient(0deg, transparent, transparent 39px, #064e3b 39px, #064e3b 40px), repeating-linear-gradient(90deg, transparent, transparent 39px, #064e3b 39px, #064e3b 40px)'
+        background: 'repeating-linear-gradient(0deg, transparent, transparent 39px, #064e3b 39px, #064e3b 40px), repeating-linear-gradient(90deg, transparent, transparent 39px, #064e3b 39px, #064e3b 40px)',
+        pointerEvents: 'none'
       }} />
     </div>
   );
 }
 
-function Structure3D({ item, plantingCount, isHovered, onEnter, onLeave, showLabels, onClick }) {
-  const props = { item, plantingCount, isHovered, onEnter, onLeave, showLabels, onClick };
+function Structure3D({ item, plantingCount, isHovered, isSelected, onEnter, onLeave, showLabels, onClick }) {
+  const props = { item, plantingCount, isHovered, isSelected, onEnter, onLeave, showLabels, onClick };
 
   switch (item.item_type) {
     case 'RAISED_BED':
@@ -208,7 +216,7 @@ function getStructureStatus(item, plantingCount) {
   return 'partial';
 }
 
-function Cuboid3D({ item, plantingCount, height, palette, isHovered, onEnter, onLeave, showLabels, onClick }) {
+function Cuboid3D({ item, plantingCount, height, palette, isHovered, isSelected, onEnter, onLeave, showLabels, onClick }) {
   const w = item.width;
   const d = item.height;
   const x = item.x;
@@ -226,7 +234,7 @@ function Cuboid3D({ item, plantingCount, height, palette, isHovered, onEnter, on
     <div
       onMouseEnter={onEnter}
       onMouseLeave={onLeave}
-      onClick={(e) => onClick && onClick(e, item)}
+      onClick={(e) => { e.stopPropagation(); if (onClick) onClick(e, item); }}
       style={{
         position: 'absolute',
         left: x, top: y, width: w, height: d,
@@ -238,7 +246,10 @@ function Cuboid3D({ item, plantingCount, height, palette, isHovered, onEnter, on
         position: 'absolute', inset: 0, borderRadius: 3,
         background: isPlanted ? pal.soil : pal.top,
         transform: `translateZ(${h}px)`,
-        boxShadow: `inset 0 0 10px rgba(0,0,0,0.35), 0 0 0 1.5px ${sc.border}`
+        boxShadow: isSelected 
+          ? `inset 0 0 10px rgba(0,0,0,0.35), 0 0 0 3px #10b981, 0 0 12px rgba(16,185,129,0.4)`
+          : `inset 0 0 10px rgba(0,0,0,0.35), 0 0 0 1.5px ${sc.border}`,
+        transition: 'box-shadow 0.2s ease'
       }}>
         {isPlantable && isPlanted && (
           <div style={{ position: 'absolute', inset: 0, borderRadius: 3, opacity: 0.2,
@@ -265,7 +276,8 @@ function Cuboid3D({ item, plantingCount, height, palette, isHovered, onEnter, on
       <div style={{
         position: 'absolute', left: 0, right: 0, bottom: 0, height: h,
         background: pal.front,
-        transform: 'rotateX(90deg)', transformOrigin: 'bottom'
+        transform: 'rotateX(90deg)', transformOrigin: 'bottom',
+        pointerEvents: 'none'
       }}>
         <WoodGrain count={Math.max(2, Math.floor(h / 10))} />
         <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 3, background: sc.border }} />
@@ -274,7 +286,8 @@ function Cuboid3D({ item, plantingCount, height, palette, isHovered, onEnter, on
       <div style={{
         position: 'absolute', left: 0, right: 0, top: 0, height: h,
         background: pal.back,
-        transform: 'rotateX(-90deg)', transformOrigin: 'top'
+        transform: 'rotateX(-90deg)', transformOrigin: 'top',
+        pointerEvents: 'none'
       }}>
         <WoodGrain count={Math.max(2, Math.floor(h / 10))} />
       </div>
@@ -282,7 +295,8 @@ function Cuboid3D({ item, plantingCount, height, palette, isHovered, onEnter, on
       <div style={{
         position: 'absolute', left: 0, top: 0, bottom: 0, width: h,
         background: pal.left,
-        transform: 'rotateY(-90deg)', transformOrigin: 'left'
+        transform: 'rotateY(-90deg)', transformOrigin: 'left',
+        pointerEvents: 'none'
       }}>
         <WoodGrain count={Math.max(2, Math.floor(h / 10))} />
       </div>
@@ -290,7 +304,8 @@ function Cuboid3D({ item, plantingCount, height, palette, isHovered, onEnter, on
       <div style={{
         position: 'absolute', right: 0, top: 0, bottom: 0, width: h,
         background: pal.right,
-        transform: 'rotateY(90deg)', transformOrigin: 'right'
+        transform: 'rotateY(90deg)', transformOrigin: 'right',
+        pointerEvents: 'none'
       }}>
         <WoodGrain count={Math.max(2, Math.floor(h / 10))} />
       </div>
@@ -311,31 +326,36 @@ function WoodGrain({ count }) {
   </>);
 }
 
-function Cylinder3D({ item, plantingCount, onEnter, onLeave, showLabels, onClick }) {
+function Cylinder3D({ item, plantingCount, isSelected, onEnter, onLeave, showLabels, onClick }) {
   const size = item.width;
   const r = size / 2;
   const h = 20;
   const x = item.x;
   const y = item.y;
   const N = 16;
+  const status = getStructureStatus(item, plantingCount);
+  const sc = STATUS_COLORS[status];
 
   return (
     <div 
       onMouseEnter={onEnter} 
       onMouseLeave={onLeave}
-      onClick={(e) => onClick && onClick(e, item)}
+      onClick={(e) => { e.stopPropagation(); if (onClick) onClick(e, item); }}
       style={{ position: 'absolute', left: x, top: y, width: size, height: size, transformStyle: 'preserve-3d', cursor: 'pointer' }}
     >
       <div style={{
         position: 'absolute', inset: 0, borderRadius: '50%',
         background: 'radial-gradient(circle at 40% 35%, #5b3a1a, #2d1a0d)',
         transform: `translateZ(${h}px)`,
-        boxShadow: 'inset 0 0 5px rgba(0,0,0,0.5)',
-        display: 'flex', alignItems: 'center', justifyContent: 'center'
+        boxShadow: isSelected
+          ? `inset 0 0 5px rgba(0,0,0,0.5), 0 0 0 3px #10b981, 0 0 12px rgba(16,185,129,0.4)`
+          : `inset 0 0 5px rgba(0,0,0,0.5), 0 0 0 1.5px ${sc.border}`,
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        transition: 'box-shadow 0.2s ease'
       }}>
         <span style={{ fontSize: 10 }}>🌱</span>
         {showLabels && (
-          <div style={{ position: 'absolute', top: 2, left: 4, fontSize: 7, fontWeight: 700, color: 'rgba(255,255,255,0.85)', textShadow: '0 1px 2px rgba(0,0,0,0.5)' }}>
+          <div style={{ position: 'absolute', top: 2, left: 4, fontSize: 7, fontWeight: 700, color: 'rgba(255,255,255,0.85)', textShadow: '0 1px 2px rgba(0,0,0,0.5)', pointerEvents: 'none' }}>
             {item.label}
           </div>
         )}
@@ -344,7 +364,8 @@ function Cylinder3D({ item, plantingCount, onEnter, onLeave, showLabels, onClick
       <div style={{
         position: 'absolute', inset: 0, borderRadius: '50%',
         background: '#111',
-        transform: 'translateZ(0px)'
+        transform: 'translateZ(0px)',
+        pointerEvents: 'none'
       }} />
 
       {Array.from({ length: N }).map((_, i) => {
@@ -359,7 +380,8 @@ function Cylinder3D({ item, plantingCount, onEnter, onLeave, showLabels, onClick
             background: `linear-gradient(180deg, hsl(0,0%,${lightness + 4}%), hsl(0,0%,${lightness}%), hsl(0,0%,${lightness - 3}%))`,
             transform: `rotateY(${angle}deg) translateZ(${r}px) rotateX(90deg)`,
             transformOrigin: 'center top',
-            backfaceVisibility: 'hidden'
+            backfaceVisibility: 'hidden',
+            pointerEvents: 'none'
           }} />
         );
       })}
@@ -367,7 +389,7 @@ function Cylinder3D({ item, plantingCount, onEnter, onLeave, showLabels, onClick
   );
 }
 
-function GlassCube3D({ item, plantingCount, onEnter, onLeave, showLabels, onClick }) {
+function GlassCube3D({ item, plantingCount, isSelected, onEnter, onLeave, showLabels, onClick }) {
   const x = item.x;
   const y = item.y;
   const w = item.width;
@@ -392,31 +414,39 @@ function GlassCube3D({ item, plantingCount, onEnter, onLeave, showLabels, onClic
     <div 
       onMouseEnter={onEnter} 
       onMouseLeave={onLeave}
-      onClick={(e) => onClick && onClick(e, item)}
+      onClick={(e) => { e.stopPropagation(); if (onClick) onClick(e, item); }}
       style={{ position: 'absolute', left: x, top: y, width: w, height: d, transformStyle: 'preserve-3d', cursor: 'pointer' }}
     >
-      <div style={{ position: 'absolute', inset: 0, borderRadius: 4, background: 'rgba(52,211,153,0.2)', border: glassBorder, transform: `translateZ(${h}px)`, boxShadow: `inset 0 0 25px rgba(16,185,129,0.12), 0 0 0 1.5px ${sc.border}` }}>
+      <div style={{ 
+        position: 'absolute', inset: 0, borderRadius: 4, 
+        background: 'rgba(52,211,153,0.2)', border: glassBorder, 
+        transform: `translateZ(${h}px)`, 
+        boxShadow: isSelected
+          ? `inset 0 0 25px rgba(16,185,129,0.12), 0 0 0 3px #10b981, 0 0 12px rgba(16,185,129,0.4)`
+          : `inset 0 0 25px rgba(16,185,129,0.12), 0 0 0 1.5px ${sc.border}`,
+        transition: 'box-shadow 0.2s ease'
+      }}>
         <PaneGrid cols={5} rows={4} />
-        <div style={{ position: 'absolute', inset: 8, display: 'flex', flexWrap: 'wrap', gap: 4, alignItems: 'center', justifyContent: 'center', opacity: 0.7 }}>
+        <div style={{ position: 'absolute', inset: 8, display: 'flex', flexWrap: 'wrap', gap: 4, alignItems: 'center', justifyContent: 'center', opacity: 0.7, pointerEvents: 'none' }}>
           {Array.from({ length: 12 }).map((_, i) => <span key={i} style={{ fontSize: 10 }}>{['🌱','🍅','🫑','🌿','🥒','🌶'][i % 6]}</span>)}
         </div>
         {showLabels && (
-          <div style={{ position: 'absolute', top: 3, left: 5, fontSize: 8, fontWeight: 700, color: '#065f46' }}>{item.label}</div>
+          <div style={{ position: 'absolute', top: 3, left: 5, fontSize: 8, fontWeight: 700, color: '#065f46', pointerEvents: 'none' }}>{item.label}</div>
         )}
       </div>
 
-      <div style={{ position: 'absolute', inset: 0, borderRadius: 4, background: 'rgba(16,185,129,0.06)', transform: 'translateZ(1px)' }} />
-      <div style={{ position: 'absolute', left: 0, right: 0, bottom: 0, height: h, background: 'linear-gradient(180deg, rgba(52,211,153,0.15), rgba(16,185,129,0.25))', border: glassBorder, transform: 'rotateX(90deg)', transformOrigin: 'bottom' }}>
+      <div style={{ position: 'absolute', inset: 0, borderRadius: 4, background: 'rgba(16,185,129,0.06)', transform: 'translateZ(1px)', pointerEvents: 'none' }} />
+      <div style={{ position: 'absolute', left: 0, right: 0, bottom: 0, height: h, background: 'linear-gradient(180deg, rgba(52,211,153,0.15), rgba(16,185,129,0.25))', border: glassBorder, transform: 'rotateX(90deg)', transformOrigin: 'bottom', pointerEvents: 'none' }}>
         <PaneGrid cols={5} rows={3} />
         <div style={{ position: 'absolute', bottom: 0, left: '50%', transform: 'translateX(-50%)', width: '18%', height: '55%', border: '1.5px solid rgba(16,185,129,0.45)', borderBottom: 'none', borderRadius: '3px 3px 0 0' }} />
       </div>
-      <div style={{ position: 'absolute', left: 0, right: 0, top: 0, height: h, background: 'linear-gradient(180deg, rgba(5,150,105,0.12), rgba(4,120,87,0.2))', border: glassBorder, transform: 'rotateX(-90deg)', transformOrigin: 'top' }}>
+      <div style={{ position: 'absolute', left: 0, right: 0, top: 0, height: h, background: 'linear-gradient(180deg, rgba(5,150,105,0.12), rgba(4,120,87,0.2))', border: glassBorder, transform: 'rotateX(-90deg)', transformOrigin: 'top', pointerEvents: 'none' }}>
         <PaneGrid cols={5} rows={3} />
       </div>
-      <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: h, background: 'linear-gradient(180deg, rgba(5,150,105,0.1), rgba(4,120,87,0.18))', border: glassBorder, transform: 'rotateY(-90deg)', transformOrigin: 'left' }}>
+      <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: h, background: 'linear-gradient(180deg, rgba(5,150,105,0.1), rgba(4,120,87,0.18))', border: glassBorder, transform: 'rotateY(-90deg)', transformOrigin: 'left', pointerEvents: 'none' }}>
         <PaneGrid cols={3} rows={3} />
       </div>
-      <div style={{ position: 'absolute', right: 0, top: 0, bottom: 0, width: h, background: 'linear-gradient(180deg, rgba(5,150,105,0.08), rgba(4,120,87,0.15))', border: glassBorder, transform: 'rotateY(90deg)', transformOrigin: 'right' }}>
+      <div style={{ position: 'absolute', right: 0, top: 0, bottom: 0, width: h, background: 'linear-gradient(180deg, rgba(5,150,105,0.08), rgba(4,120,87,0.15))', border: glassBorder, transform: 'rotateY(90deg)', transformOrigin: 'right', pointerEvents: 'none' }}>
         <PaneGrid cols={3} rows={3} />
       </div>
     </div>
@@ -435,7 +465,7 @@ function Tree3D({ item, onEnter, onLeave, onClick }) {
     <div 
       onMouseEnter={onEnter} 
       onMouseLeave={onLeave}
-      onClick={(e) => onClick && onClick(e, item)}
+      onClick={(e) => { e.stopPropagation(); if (onClick) onClick(e, item); }}
       style={{ position: 'absolute', left: x, top: y, width: size, height: size, transformStyle: 'preserve-3d', cursor: 'pointer' }}
     >
       <div style={{
@@ -468,7 +498,7 @@ function Tree3D({ item, onEnter, onLeave, onClick }) {
   );
 }
 
-function Path3D({ item }) {
+function Path3D({ item, onEnter, onLeave, onClick }) {
   const x = item.x;
   const y = item.y;
   const w = item.width;
@@ -476,13 +506,19 @@ function Path3D({ item }) {
   const stoneCount = Math.floor(d / 22);
 
   return (
-    <div style={{ position: 'absolute', left: x, top: y, width: w, height: d, transform: 'translateZ(2px)' }}>
+    <div 
+      onMouseEnter={onEnter}
+      onMouseLeave={onLeave}
+      onClick={(e) => { e.stopPropagation(); if (onClick) onClick(e, item); }}
+      style={{ position: 'absolute', left: x, top: y, width: w, height: d, transform: 'translateZ(2px)', cursor: 'pointer' }}
+    >
       {Array.from({ length: stoneCount }).map((_, i) => (
         <div key={i} style={{
           position: 'absolute', left: 1, right: 1,
           top: i * 22 + 4, height: 16,
           background: 'linear-gradient(135deg, #d6d3d1, #a8a29e)',
-          borderRadius: 3, opacity: 0.5
+          borderRadius: 3, opacity: 0.5,
+          pointerEvents: 'none'
         }} />
       ))}
     </div>
