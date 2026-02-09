@@ -1,22 +1,29 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Html5Qrcode } from 'html5-qrcode';
-import { X, Loader2, Camera, Upload, CheckCircle, AlertCircle } from 'lucide-react';
+import { X, Loader2, Camera, Upload, CheckCircle, AlertCircle, Package, Edit } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 
 export default function UnifiedSeedScanner({ onScanComplete, onClose }) {
-  const [step, setStep] = useState('choice'); // choice, barcode_scan, not_found_transition, packet_capture, ai_processing, review, success
+  const [step, setStep] = useState('choice');
   const [scannedBarcode, setScannedBarcode] = useState(null);
   const [matchedProduct, setMatchedProduct] = useState(null);
   const [packetImage, setPacketImage] = useState(null);
   const [extractedData, setExtractedData] = useState(null);
   const [processing, setProcessing] = useState(false);
   const [progress, setProgress] = useState(0);
+  const [progressMessage, setProgressMessage] = useState('');
   const [error, setError] = useState(null);
+  const [stashData, setStashData] = useState({
+    quantity: '',
+    year_acquired: new Date().getFullYear(),
+    storage_location: ''
+  });
   
   const scannerRef = useRef(null);
   const videoRef = useRef(null);
@@ -24,7 +31,6 @@ export default function UnifiedSeedScanner({ onScanComplete, onClose }) {
   const streamRef = useRef(null);
   const fileInputRef = useRef(null);
 
-  // Cleanup on unmount
   useEffect(() => {
     return () => {
       stopBarcodeScanner();
@@ -32,17 +38,28 @@ export default function UnifiedSeedScanner({ onScanComplete, onClose }) {
     };
   }, []);
 
-  // Auto-transition from not_found to packet_capture
   useEffect(() => {
     if (step === 'not_found_transition') {
       const timer = setTimeout(() => {
         setStep('packet_capture');
-      }, 2000);
+      }, 2500);
       return () => clearTimeout(timer);
     }
   }, [step]);
 
-  // ========== BARCODE SCANNING ==========
+  useEffect(() => {
+    if (step === 'barcode_scan') {
+      setTimeout(() => startBarcodeScanner(), 300);
+    } else if (step === 'packet_capture') {
+      setTimeout(() => startCamera(), 300);
+    }
+
+    return () => {
+      if (step === 'barcode_scan') stopBarcodeScanner();
+      if (step === 'packet_capture') stopCamera();
+    };
+  }, [step]);
+
   const startBarcodeScanner = async () => {
     try {
       setError(null);
@@ -78,6 +95,7 @@ export default function UnifiedSeedScanner({ onScanComplete, onClose }) {
 
   const handleBarcode = async (barcode) => {
     setScannedBarcode(barcode);
+    setProcessing(true);
 
     try {
       const results = await base44.entities.SeedVendorBarcode.filter({ barcode });
@@ -86,17 +104,37 @@ export default function UnifiedSeedScanner({ onScanComplete, onClose }) {
         setMatchedProduct(results[0]);
         setStep('found');
         
-        // Increment scan count
         await base44.entities.SeedVendorBarcode.update(results[0].id, {
           scan_count: (results[0].scan_count || 0) + 1,
           last_scanned_date: new Date().toISOString()
         });
+
+        const user = await base44.auth.me();
+        await base44.entities.ScanHistory.create({
+          user_id: user.id,
+          barcode: barcode,
+          scan_date: new Date().toISOString(),
+          product_found: true,
+          product_id: results[0].id,
+          added_to_stash: false
+        });
       } else {
+        const user = await base44.auth.me();
+        await base44.entities.ScanHistory.create({
+          user_id: user.id,
+          barcode: barcode,
+          scan_date: new Date().toISOString(),
+          product_found: false,
+          added_to_stash: false
+        });
+        
         setStep('not_found_transition');
       }
     } catch (error) {
       console.error('Barcode lookup error:', error);
       toast.error('Error looking up barcode');
+    } finally {
+      setProcessing(false);
     }
   };
 
@@ -109,7 +147,6 @@ export default function UnifiedSeedScanner({ onScanComplete, onClose }) {
     setTimeout(() => startBarcodeScanner(), 300);
   };
 
-  // ========== PACKET PHOTO CAPTURE ==========
   const startCamera = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
@@ -121,7 +158,7 @@ export default function UnifiedSeedScanner({ onScanComplete, onClose }) {
       }
     } catch (error) {
       console.error('Camera error:', error);
-      setError('Could not access camera');
+      setError('Could not access camera. Try uploading a photo instead.');
     }
   };
 
@@ -137,10 +174,15 @@ export default function UnifiedSeedScanner({ onScanComplete, onClose }) {
     const canvas = canvasRef.current;
     if (!video || !canvas) return;
 
-    canvas.width = video.videoWidth;
-    canvas.height = video.videoHeight;
+    const guideWidth = video.videoWidth * 0.75;
+    const guideHeight = guideWidth * 1.5;
+    const guideX = (video.videoWidth - guideWidth) / 2;
+    const guideY = (video.videoHeight - guideHeight) / 2;
+
+    canvas.width = guideWidth;
+    canvas.height = guideHeight;
     const ctx = canvas.getContext('2d');
-    ctx.drawImage(video, 0, 0);
+    ctx.drawImage(video, guideX, guideY, guideWidth, guideHeight, 0, 0, guideWidth, guideHeight);
 
     const dataUrl = canvas.toDataURL('image/jpeg', 0.9);
     setPacketImage(dataUrl);
@@ -162,48 +204,61 @@ export default function UnifiedSeedScanner({ onScanComplete, onClose }) {
     reader.readAsDataURL(file);
   };
 
-  // ========== AI PROCESSING ==========
   const processPacketImage = async (imageDataUrl) => {
     setStep('ai_processing');
     setProcessing(true);
     setProgress(0);
+    setProgressMessage('Uploading image...');
 
     try {
-      // Upload image first
       setProgress(10);
       const blob = await (await fetch(imageDataUrl)).blob();
       const file = new File([blob], 'packet.jpg', { type: 'image/jpeg' });
       const { file_url } = await base44.integrations.Core.UploadFile({ file });
+      
       setProgress(30);
+      setProgressMessage('Reading packet text...');
 
-      // AI enrichment
       const enrichResult = await base44.functions.invoke('enrichSeedFromPacketScan', {
         packet_image_base64: file_url,
         barcode: scannedBarcode
       });
+      
       setProgress(60);
+      setProgressMessage('Identifying variety & vendor...');
 
       if (!enrichResult.data.success) {
         throw new Error(enrichResult.data.error || 'AI processing failed');
       }
 
       const extracted = enrichResult.data.extracted_data;
+      
       setProgress(80);
+      setProgressMessage('Checking Plant Catalog...');
 
-      // Find existing variety
       const matchResult = await base44.functions.invoke('findExistingVariety', {
         variety_name: extracted.variety_name,
         plant_type_name: extracted.plant_type_name
       });
+      
       setProgress(95);
+      setProgressMessage('Preparing results...');
 
       setExtractedData({
         ...extracted,
         packetImageUrl: file_url,
         matchResult: matchResult.data
       });
+
+      if (extracted.packet_size) {
+        const seedCount = parseInt(extracted.packet_size);
+        if (!isNaN(seedCount)) {
+          setStashData(prev => ({ ...prev, quantity: seedCount }));
+        }
+      }
+
       setProgress(100);
-      setStep('review');
+      setTimeout(() => setStep('review'), 300);
 
     } catch (error) {
       console.error('Processing error:', error);
@@ -215,7 +270,6 @@ export default function UnifiedSeedScanner({ onScanComplete, onClose }) {
     }
   };
 
-  // ========== SAVE TO STASH ==========
   const confirmAndSave = async () => {
     setProcessing(true);
     try {
@@ -229,49 +283,32 @@ export default function UnifiedSeedScanner({ onScanComplete, onClose }) {
 
       if (result.data.success) {
         setStep('success');
-        setTimeout(() => {
-          onScanComplete(result.data);
-        }, 2000);
       } else {
         throw new Error(result.data.error);
       }
     } catch (error) {
       console.error('Save error:', error);
-      toast.error('Failed to save');
+      toast.error('Failed to save: ' + error.message);
     } finally {
       setProcessing(false);
     }
   };
 
-  // ========== UI HELPERS ==========
-  useEffect(() => {
-    if (step === 'barcode_scan') {
-      setTimeout(() => startBarcodeScanner(), 300);
-    } else if (step === 'packet_capture') {
-      setTimeout(() => startCamera(), 300);
-    }
+  const handleClose = () => {
+    stopBarcodeScanner();
+    stopCamera();
+    onClose();
+  };
 
-    return () => {
-      if (step === 'barcode_scan') stopBarcodeScanner();
-      if (step === 'packet_capture') stopCamera();
-    };
-  }, [step]);
-
-  // ========== RENDER ==========
   return (
     <div className="fixed inset-0 bg-black/90 z-50 flex items-center justify-center p-4">
       <button
-        onClick={() => {
-          stopBarcodeScanner();
-          stopCamera();
-          onClose();
-        }}
+        onClick={handleClose}
         className="absolute top-4 right-4 text-white p-2 hover:bg-white/20 rounded-full z-10"
       >
         <X size={24} />
       </button>
 
-      {/* CHOICE SCREEN */}
       {step === 'choice' && (
         <div className="bg-white rounded-2xl w-full max-w-lg p-6">
           <h2 className="text-2xl font-bold mb-2">Scan Seed Packet</h2>
@@ -296,25 +333,29 @@ export default function UnifiedSeedScanner({ onScanComplete, onClose }) {
               <p className="text-sm text-gray-600">AI reads & fills data</p>
             </button>
           </div>
+
+          <p className="text-center text-gray-500 text-sm mt-4">
+            Either way, we'll help you add it to your stash!
+          </p>
         </div>
       )}
 
-      {/* BARCODE SCAN */}
       {step === 'barcode_scan' && (
         <div className="w-full max-w-lg">
           <div className="bg-white rounded-2xl overflow-hidden">
             <div className="p-4 border-b">
               <h2 className="text-xl font-bold">📱 Scanning Barcode</h2>
-              <p className="text-gray-600 text-sm">Point camera at barcode</p>
+              <p className="text-gray-600 text-sm">Point camera at barcode on seed packet</p>
             </div>
-            <div id="barcode-scanner-container" className="w-full min-h-[300px]" />
+            <div id="barcode-scanner-container" className="w-full min-h-[300px] bg-gray-900" />
             {error && (
               <div className="p-4 bg-red-50 text-red-700 text-sm flex items-center gap-2">
                 <AlertCircle className="w-4 h-4" />
                 {error}
               </div>
             )}
-            <div className="p-4">
+            <div className="p-4 space-y-2">
+              <p className="text-center text-gray-500 text-sm">Position barcode within frame</p>
               <Button variant="outline" onClick={() => setStep('packet_capture')} className="w-full">
                 📸 Switch to Photo Instead
               </Button>
@@ -323,13 +364,12 @@ export default function UnifiedSeedScanner({ onScanComplete, onClose }) {
         </div>
       )}
 
-      {/* BARCODE FOUND */}
       {step === 'found' && matchedProduct && (
         <div className="bg-white rounded-2xl w-full max-w-lg">
           <div className="p-4 border-b bg-emerald-50">
             <div className="flex items-center gap-2 text-emerald-700">
               <CheckCircle size={24} />
-              <h3 className="text-xl font-bold">Found!</h3>
+              <h3 className="text-xl font-bold">Barcode Match!</h3>
             </div>
           </div>
           
@@ -342,8 +382,43 @@ export default function UnifiedSeedScanner({ onScanComplete, onClose }) {
               />
             )}
             <h3 className="text-2xl font-bold mb-1">{matchedProduct.product_name}</h3>
-            <p className="text-emerald-600 font-medium mb-3">{matchedProduct.vendor_name}</p>
-            <p className="text-sm text-gray-500">Barcode: {matchedProduct.barcode}</p>
+            <p className="text-emerald-600 font-medium mb-2">{matchedProduct.vendor_name}</p>
+            <div className="text-sm text-gray-600 space-y-1 mb-4">
+              <p>Type: {matchedProduct.plant_type_name}</p>
+              {matchedProduct.packet_size && <p>Size: {matchedProduct.packet_size}</p>}
+              <p className="text-xs text-gray-400">Barcode: {matchedProduct.barcode}</p>
+            </div>
+
+            <div className="space-y-3 bg-gray-50 rounded-lg p-4">
+              <h4 className="font-semibold">Add to Your Stash</h4>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label className="text-xs">Quantity</Label>
+                  <Input
+                    type="number"
+                    value={stashData.quantity}
+                    onChange={(e) => setStashData({...stashData, quantity: e.target.value})}
+                    placeholder="50"
+                  />
+                </div>
+                <div>
+                  <Label className="text-xs">Year</Label>
+                  <Input
+                    type="number"
+                    value={stashData.year_acquired}
+                    onChange={(e) => setStashData({...stashData, year_acquired: parseInt(e.target.value)})}
+                  />
+                </div>
+              </div>
+              <div>
+                <Label className="text-xs">Storage Location</Label>
+                <Input
+                  value={stashData.storage_location}
+                  onChange={(e) => setStashData({...stashData, storage_location: e.target.value})}
+                  placeholder="Seed Box A"
+                />
+              </div>
+            </div>
           </div>
           
           <div className="p-4 border-t flex gap-3">
@@ -358,26 +433,32 @@ export default function UnifiedSeedScanner({ onScanComplete, onClose }) {
         </div>
       )}
 
-      {/* NOT FOUND TRANSITION */}
       {step === 'not_found_transition' && (
         <div className="bg-white rounded-2xl w-full max-w-lg p-6">
           <div className="text-center">
             <AlertCircle className="w-16 h-16 text-amber-500 mx-auto mb-4" />
-            <h3 className="text-xl font-bold mb-2">Barcode: {scannedBarcode}</h3>
-            <p className="text-gray-600 mb-4">This barcode isn't in our database yet.</p>
+            <h3 className="text-xl font-bold mb-2">New Barcode!</h3>
+            <p className="font-mono text-lg text-gray-700 mb-3">{scannedBarcode}</p>
+            <p className="text-gray-600 mb-2">This barcode isn't in our database yet.</p>
             <p className="text-gray-500 mb-4">Let's scan the packet to identify it!</p>
-            <div className="w-full bg-gray-200 rounded-full h-2 mb-4">
-              <div className="bg-emerald-500 h-2 rounded-full animate-pulse" style={{ width: '70%' }} />
+            
+            <div className="w-full bg-gray-200 rounded-full h-2 mb-3">
+              <div className="bg-emerald-500 h-2 rounded-full animate-pulse transition-all" style={{ width: '70%' }} />
             </div>
-            <p className="text-sm text-gray-500">Opening packet scanner...</p>
-            <Button onClick={() => setStep('packet_capture')} className="mt-4 w-full">
-              📸 Scan Packet Now
-            </Button>
+            <p className="text-sm text-gray-500 mb-4">Opening packet scanner...</p>
+            
+            <div className="flex gap-2">
+              <Button onClick={() => setStep('packet_capture')} className="flex-1 bg-emerald-600 hover:bg-emerald-700">
+                📸 Scan Packet Now
+              </Button>
+              <Button variant="outline" onClick={handleClose} className="flex-1">
+                ✋ Add Manually
+              </Button>
+            </div>
           </div>
         </div>
       )}
 
-      {/* PACKET CAPTURE */}
       {step === 'packet_capture' && (
         <div className="w-full max-w-lg">
           <div className="bg-white rounded-2xl overflow-hidden">
@@ -385,7 +466,10 @@ export default function UnifiedSeedScanner({ onScanComplete, onClose }) {
               <h2 className="text-xl font-bold">📷 Scan Seed Packet</h2>
               <p className="text-gray-600 text-sm">Center packet in frame with good lighting</p>
               {scannedBarcode && (
-                <p className="text-xs text-emerald-600 mt-1">✓ Barcode saved: {scannedBarcode}</p>
+                <p className="text-xs text-emerald-600 mt-1 flex items-center gap-1">
+                  <CheckCircle className="w-3 h-3" />
+                  Barcode saved: {scannedBarcode}
+                </p>
               )}
             </div>
 
@@ -398,15 +482,34 @@ export default function UnifiedSeedScanner({ onScanComplete, onClose }) {
                 className="w-full h-full object-cover"
               />
               
-              {/* Guide overlay */}
               <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
                 <div className="absolute inset-0 bg-black/50" />
-                <div className="relative w-[75%] aspect-[2/3] border-2 border-white rounded-lg" style={{ boxShadow: '0 0 0 9999px rgba(0,0,0,0.5)' }}>
-                  <span className="absolute -top-8 left-1/2 -translate-x-1/2 text-white text-sm font-medium">
-                    Center packet in frame
+                <div 
+                  className="relative border-4 border-white rounded-lg" 
+                  style={{ 
+                    width: '75%', 
+                    aspectRatio: '2/3',
+                    boxShadow: '0 0 0 9999px rgba(0,0,0,0.5)'
+                  }}
+                >
+                  <span className="absolute -top-10 left-1/2 -translate-x-1/2 text-white text-sm font-medium bg-black/50 px-3 py-1 rounded">
+                    Center packet here
                   </span>
+                  <div className="absolute top-2 left-2 w-8 h-8 border-t-4 border-l-4 border-emerald-400"></div>
+                  <div className="absolute top-2 right-2 w-8 h-8 border-t-4 border-r-4 border-emerald-400"></div>
+                  <div className="absolute bottom-2 left-2 w-8 h-8 border-b-4 border-l-4 border-emerald-400"></div>
+                  <div className="absolute bottom-2 right-2 w-8 h-8 border-b-4 border-r-4 border-emerald-400"></div>
                 </div>
               </div>
+
+              {error && (
+                <div className="absolute inset-0 flex items-center justify-center bg-black/70">
+                  <div className="text-white text-center p-4">
+                    <AlertCircle className="w-12 h-12 mx-auto mb-2" />
+                    <p>{error}</p>
+                  </div>
+                </div>
+              )}
             </div>
 
             <div className="p-4 space-y-2">
@@ -416,7 +519,7 @@ export default function UnifiedSeedScanner({ onScanComplete, onClose }) {
               </Button>
               <Button onClick={() => fileInputRef.current?.click()} variant="outline" className="w-full">
                 <Upload className="w-4 h-4 mr-2" />
-                Upload Photo
+                Upload from Gallery
               </Button>
               <input
                 ref={fileInputRef}
@@ -430,109 +533,173 @@ export default function UnifiedSeedScanner({ onScanComplete, onClose }) {
         </div>
       )}
 
-      {/* AI PROCESSING */}
       {step === 'ai_processing' && (
         <div className="bg-white rounded-2xl p-8 max-w-md w-full">
           <div className="text-center">
             {packetImage && (
-              <img src={packetImage} alt="Packet" className="w-32 h-32 object-cover rounded-lg mx-auto mb-4" />
+              <img src={packetImage} alt="Packet" className="w-32 h-32 object-cover rounded-lg mx-auto mb-4 border-2 border-gray-200" />
             )}
             <Loader2 className="w-12 h-12 mx-auto text-emerald-500 animate-spin mb-4" />
-            <h3 className="text-xl font-bold mb-2">Analyzing packet...</h3>
+            <h3 className="text-xl font-bold mb-2">Analyzing Packet...</h3>
             
             <div className="space-y-2 text-sm text-left mb-4">
               <div className="flex items-center gap-2">
-                {progress > 20 ? <CheckCircle className="w-4 h-4 text-emerald-600" /> : <Loader2 className="w-4 h-4 animate-spin" />}
-                <span>Reading packet text...</span>
+                {progress > 25 ? <CheckCircle className="w-4 h-4 text-emerald-600" /> : <Loader2 className="w-4 h-4 animate-spin text-gray-400" />}
+                <span className={progress > 25 ? 'text-emerald-600' : 'text-gray-500'}>Reading packet text...</span>
               </div>
               <div className="flex items-center gap-2">
-                {progress > 50 ? <CheckCircle className="w-4 h-4 text-emerald-600" /> : <Loader2 className="w-4 h-4 animate-spin" />}
-                <span>Identifying variety & vendor...</span>
+                {progress > 55 ? <CheckCircle className="w-4 h-4 text-emerald-600" /> : <Loader2 className="w-4 h-4 animate-spin text-gray-400" />}
+                <span className={progress > 55 ? 'text-emerald-600' : 'text-gray-500'}>Identifying variety & vendor...</span>
               </div>
               <div className="flex items-center gap-2">
-                {progress > 80 ? <CheckCircle className="w-4 h-4 text-emerald-600" /> : <Loader2 className="w-4 h-4 animate-spin" />}
-                <span>Checking Plant Catalog...</span>
+                {progress > 75 ? <CheckCircle className="w-4 h-4 text-emerald-600" /> : <Loader2 className="w-4 h-4 animate-spin text-gray-400" />}
+                <span className={progress > 75 ? 'text-emerald-600' : 'text-gray-500'}>Searching growing information...</span>
+              </div>
+              <div className="flex items-center gap-2">
+                {progress > 85 ? <CheckCircle className="w-4 h-4 text-emerald-600" /> : <Loader2 className="w-4 h-4 animate-spin text-gray-400" />}
+                <span className={progress > 85 ? 'text-emerald-600' : 'text-gray-500'}>Checking Plant Catalog...</span>
+              </div>
+              <div className="flex items-center gap-2">
+                {progress > 95 ? <CheckCircle className="w-4 h-4 text-emerald-600" /> : <Loader2 className="w-4 h-4 animate-spin text-gray-400" />}
+                <span className={progress > 95 ? 'text-emerald-600' : 'text-gray-500'}>Preparing record...</span>
               </div>
             </div>
 
-            <div className="w-full bg-gray-200 rounded-full h-3">
-              <div className="bg-emerald-500 h-3 rounded-full transition-all" style={{ width: `${progress}%` }} />
+            <div className="w-full bg-gray-200 rounded-full h-3 mb-2">
+              <div className="bg-emerald-500 h-3 rounded-full transition-all duration-500" style={{ width: `${progress}%` }} />
             </div>
-            <p className="text-sm text-gray-500 mt-2">{progress}%</p>
+            <p className="text-sm text-gray-500">{progress}%</p>
+            <p className="text-xs text-gray-400 mt-2">This usually takes 5-10 seconds</p>
           </div>
         </div>
       )}
 
-      {/* REVIEW SCREEN */}
       {step === 'review' && extractedData && (
         <div className="bg-white rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-          <div className="p-6 border-b">
+          <div className="p-6 border-b sticky top-0 bg-white z-10">
             <h2 className="text-2xl font-bold mb-2">Review Scanned Seed</h2>
             {extractedData.matchResult?.action === 'link_barcode' && (
               <p className="text-emerald-600 flex items-center gap-2">
-                <CheckCircle className="w-4 h-4" />
-                Matched to existing catalog entry
+                <CheckCircle className="w-5 h-5" />
+                <span className="font-medium">Matched to existing catalog entry</span>
               </p>
             )}
             {extractedData.matchResult?.action === 'create_new' && (
-              <p className="text-blue-600">🆕 New variety - will be added to catalog</p>
+              <p className="text-blue-600 flex items-center gap-2 font-medium">
+                <span className="text-xl">🆕</span>
+                New variety - will be added to catalog
+              </p>
+            )}
+            {scannedBarcode && (
+              <p className="text-xs text-gray-500 mt-1">Barcode: {scannedBarcode}</p>
             )}
           </div>
 
-          <div className="p-6">
+          <div className="p-6 space-y-4">
             {packetImage && (
-              <img src={packetImage} alt="Packet" className="w-full h-48 object-contain rounded-lg bg-gray-100 mb-6" />
-            )}
-
-            <div className="grid grid-cols-2 gap-4 text-sm">
-              <div><strong>Variety:</strong> {extractedData.variety_name}</div>
-              <div><strong>Type:</strong> {extractedData.plant_type_name}</div>
-              <div><strong>Vendor:</strong> {extractedData.vendor_name}</div>
-              {extractedData.days_to_maturity && <div><strong>DTM:</strong> {extractedData.days_to_maturity} days</div>}
-              {extractedData.spacing_recommended && <div><strong>Spacing:</strong> {extractedData.spacing_recommended}"</div>}
-              {extractedData.sun_requirement && <div><strong>Sun:</strong> {extractedData.sun_requirement?.replace(/_/g, ' ')}</div>}
-              {extractedData.seed_line_type && <div><strong>Type:</strong> {extractedData.seed_line_type}</div>}
-              {extractedData.packet_size && <div><strong>Packet:</strong> {extractedData.packet_size}</div>}
-            </div>
-
-            {extractedData.confidence_score && (
-              <div className="mt-4 p-3 bg-gray-50 rounded-lg">
-                <span className="text-sm text-gray-600">AI Confidence: </span>
-                <span className="font-bold">{extractedData.confidence_score}%</span>
+              <div className="flex justify-center">
+                <img src={packetImage} alt="Packet" className="max-w-xs h-48 object-contain rounded-lg border-2 border-gray-200" />
               </div>
             )}
+
+            <div className="bg-gray-50 rounded-lg p-4">
+              <h4 className="font-semibold mb-3 flex items-center gap-2">
+                <Package className="w-4 h-4" />
+                Extracted Data
+              </h4>
+              <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
+                <div><strong>Variety:</strong> {extractedData.variety_name || 'Unknown'}</div>
+                <div><strong>Type:</strong> {extractedData.plant_type_name || 'Unknown'}</div>
+                <div><strong>Vendor:</strong> {extractedData.vendor_name || 'Unknown'}</div>
+                {extractedData.days_to_maturity && <div><strong>DTM:</strong> {extractedData.days_to_maturity} days</div>}
+                {extractedData.spacing_recommended && <div><strong>Spacing:</strong> {extractedData.spacing_recommended}"</div>}
+                {extractedData.sun_requirement && <div><strong>Sun:</strong> {extractedData.sun_requirement?.replace(/_/g, ' ')}</div>}
+                {extractedData.water_requirement && <div><strong>Water:</strong> {extractedData.water_requirement}</div>}
+                {extractedData.seed_line_type && <div><strong>Seed Type:</strong> {extractedData.seed_line_type}</div>}
+                {extractedData.packet_size && <div><strong>Packet Size:</strong> {extractedData.packet_size}</div>}
+                {extractedData.retail_price && <div><strong>Price:</strong> ${extractedData.retail_price}</div>}
+              </div>
+              {extractedData.confidence_score && (
+                <div className="mt-3 pt-3 border-t border-gray-200 flex items-center justify-between">
+                  <span className="text-sm text-gray-600">AI Confidence:</span>
+                  <span className="font-bold text-emerald-600">{extractedData.confidence_score}%</span>
+                </div>
+              )}
+            </div>
+
+            <div className="bg-blue-50 rounded-lg p-4 space-y-3">
+              <h4 className="font-semibold">Add to Your Stash</h4>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label className="text-xs">Quantity</Label>
+                  <Input
+                    type="number"
+                    value={stashData.quantity}
+                    onChange={(e) => setStashData({...stashData, quantity: e.target.value})}
+                    placeholder={extractedData.packet_size || '50'}
+                  />
+                </div>
+                <div>
+                  <Label className="text-xs">Year</Label>
+                  <Input
+                    type="number"
+                    value={stashData.year_acquired}
+                    onChange={(e) => setStashData({...stashData, year_acquired: parseInt(e.target.value)})}
+                  />
+                </div>
+              </div>
+              <div>
+                <Label className="text-xs">Storage Location</Label>
+                <Input
+                  value={stashData.storage_location}
+                  onChange={(e) => setStashData({...stashData, storage_location: e.target.value})}
+                  placeholder="Seed Box A"
+                />
+              </div>
+            </div>
           </div>
 
-          <div className="p-6 border-t flex gap-3">
+          <div className="p-4 border-t sticky bottom-0 bg-white flex gap-3">
             <Button variant="outline" onClick={() => setStep('packet_capture')} className="flex-1">
               🔄 Rescan
             </Button>
             <Button onClick={confirmAndSave} disabled={processing} className="flex-1 bg-emerald-600 hover:bg-emerald-700">
               {processing && <Loader2 className="w-4 h-4 animate-spin mr-2" />}
-              ✅ Confirm & Add to Stash
+              ✅ Confirm & Add
             </Button>
           </div>
         </div>
       )}
 
-      {/* SUCCESS SCREEN */}
       {step === 'success' && (
         <div className="bg-white rounded-2xl w-full max-w-md p-8 text-center">
-          <CheckCircle className="w-20 h-20 text-emerald-500 mx-auto mb-4" />
+          <div className="w-20 h-20 rounded-full bg-emerald-100 flex items-center justify-center mx-auto mb-4">
+            <CheckCircle className="w-12 h-12 text-emerald-600" />
+          </div>
           <h2 className="text-2xl font-bold mb-2">Added to Stash!</h2>
           <p className="text-gray-600 mb-4">{extractedData?.variety_name} added successfully</p>
           
-          <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-4 mb-6">
+          <div className="bg-emerald-50 border-2 border-emerald-200 rounded-lg p-4 mb-6">
             <p className="text-sm text-emerald-800">
-              🌱 This barcode is now in our database. Next time anyone scans it, they'll get an instant match. Thanks for contributing!
+              <span className="text-xl mr-2">🌱</span>
+              This barcode is now in our database. Next time anyone scans it, they'll get an instant match. Thanks for contributing!
             </p>
           </div>
 
           <div className="flex gap-3">
-            <Button variant="outline" onClick={() => { setStep('choice'); setScannedBarcode(null); setExtractedData(null); }} className="flex-1">
+            <Button 
+              variant="outline" 
+              onClick={() => { 
+                setStep('choice'); 
+                setScannedBarcode(null); 
+                setExtractedData(null);
+                setPacketImage(null);
+              }} 
+              className="flex-1"
+            >
               📷 Scan Another
             </Button>
-            <Button onClick={() => onClose()} className="flex-1 bg-emerald-600 hover:bg-emerald-700">
+            <Button onClick={() => onScanComplete()} className="flex-1 bg-emerald-600 hover:bg-emerald-700">
               ← Back to Stash
             </Button>
           </div>
