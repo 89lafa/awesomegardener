@@ -101,6 +101,7 @@ import ImageSubmissions from './pages/ImageSubmissions';
 import IndoorEnvironment from './pages/IndoorEnvironment';
 import IndoorGrowSpaces from './pages/IndoorGrowSpaces';
 import IndoorPlantDetail from './pages/IndoorPlantDetail';
+import IndoorPlantDetailV2 from './pages/IndoorPlantDetailV2';
 import IndoorPlants from './pages/IndoorPlants';
 import IndoorSpaceDetail from './pages/IndoorSpaceDetail';
 import IssuesLog from './pages/IssuesLog';
@@ -147,7 +148,6 @@ import Users from './pages/Users';
 import VarietyReviewQueue from './pages/VarietyReviewQueue';
 import ViewVariety from './pages/ViewVariety';
 import ZoneMap from './pages/ZoneMap';
-import IndoorPlantDetailV2 from './pages/IndoorPlantDetailV2';
 import AdminBlogManager from './pages/AdminBlogManager';
 import BlogList from './pages/BlogList';
 import BlogPost from './pages/BlogPost';
@@ -210,6 +210,7 @@ export const PAGES = {
     "IndoorEnvironment": IndoorEnvironment,
     "IndoorGrowSpaces": IndoorGrowSpaces,
     "IndoorPlantDetail": IndoorPlantDetail,
+    "IndoorPlantDetailV2": IndoorPlantDetailV2,
     "IndoorPlants": IndoorPlants,
     "IndoorSpaceDetail": IndoorSpaceDetail,
     "IssuesLog": IssuesLog,
@@ -256,7 +257,6 @@ export const PAGES = {
     "VarietyReviewQueue": VarietyReviewQueue,
     "ViewVariety": ViewVariety,
     "ZoneMap": ZoneMap,
-    "IndoorPlantDetailV2": IndoorPlantDetailV2,
     "AdminBlogManager": AdminBlogManager,
     "BlogList": BlogList,
     "BlogPost": BlogPost,

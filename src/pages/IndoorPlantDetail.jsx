@@ -53,17 +53,28 @@ export default function IndoorPlantDetail() {
       const p = plantData[0];
       setPlant(p);
 
-      const [varietyData, spaceData, logsData, plantTypesData] = await Promise.all([
+      const [varietyData, spaceData, logsData] = await Promise.all([
         p.variety_id ? base44.entities.Variety.filter({ id: p.variety_id }) : Promise.resolve([]),
         p.indoor_space_id ? base44.entities.IndoorSpace.filter({ id: p.indoor_space_id }) : Promise.resolve([]),
-        base44.entities.IndoorPlantLog.filter({ indoor_plant_id: plantId }, '-log_date', 20),
-        base44.entities.Variety.list('-variety_name', 500)
+        base44.entities.IndoorPlantLog.filter({ indoor_plant_id: plantId }, '-log_date', 20)
       ]);
 
       if (varietyData.length > 0) setVariety(varietyData[0]);
       if (spaceData.length > 0) setSpace(spaceData[0]);
       setLogs(logsData);
-      setVarieties(plantTypesData);
+      
+      // Load indoor plant varieties separately
+      const indoorVarieties = await base44.entities.Variety.filter(
+        { 
+          $or: [
+            { care_difficulty: { $in: ['beginner', 'easy', 'moderate'] } },
+            { light_requirement_indoor: { $exists: true } }
+          ]
+        },
+        'variety_name',
+        300
+      );
+      setVarieties(indoorVarieties);
 
       setEditData({
         nickname: p.nickname || '',
@@ -549,45 +560,15 @@ export default function IndoorPlantDetail() {
                   <SelectValue placeholder="Select plant type" />
                 </SelectTrigger>
                 <SelectContent className="max-h-[300px]">
-                  {varieties
-                    .filter(v => {
-                      const name = v.variety_name?.toLowerCase() || '';
-                      // Filter for common houseplants
-                      return name.includes('monstera') || 
-                             name.includes('pothos') || 
-                             name.includes('philodendron') || 
-                             name.includes('snake plant') ||
-                             name.includes('spider plant') ||
-                             name.includes('peace lily') ||
-                             name.includes('rubber') ||
-                             name.includes('ficus') ||
-                             name.includes('dracaena') ||
-                             name.includes('calathea') ||
-                             name.includes('fern') ||
-                             name.includes('succulent') ||
-                             name.includes('cactus') ||
-                             name.includes('palm') ||
-                             name.includes('ivy') ||
-                             name.includes('aloe') ||
-                             name.includes('jade') ||
-                             name.includes('orchid') ||
-                             name.includes('begonia') ||
-                             name.includes('peperomia') ||
-                             name.includes('hoya') ||
-                             !v.plant_type_id || // Include varieties without specific type
-                             v.variety_name.length > 0; // Fallback to show all if needed
-                    })
-                    .slice(0, 200)
-                    .map(v => (
-                      <SelectItem key={v.id} value={v.id}>
-                        {v.variety_name}
-                      </SelectItem>
-                    ))
-                  }
+                  {varieties.map(v => (
+                    <SelectItem key={v.id} value={v.id}>
+                      {v.variety_name}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
               <p className="text-xs text-gray-500 mt-1">
-                Search for common houseplants like Monstera, Pothos, Philodendron, etc.
+                Indoor plant varieties optimized for home growing
               </p>
             </div>
 

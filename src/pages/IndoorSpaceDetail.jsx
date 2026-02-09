@@ -57,18 +57,21 @@ export default function IndoorSpaceDetail() {
         is_active: true
       }, '-created_date');
       
-      // Enrich with variety data
-      // Enrich with variety data sequentially to respect rate limits
-      const enrichedPlants = [];
-      for (const plant of plantsData) {
-        if (plant.variety_id) {
-          const varietyData = await base44.entities.Variety.filter({ id: plant.variety_id });
-          enrichedPlants.push({ ...plant, variety_name: varietyData[0]?.variety_name });
-          await new Promise(resolve => setTimeout(resolve, 150));
-        } else {
-          enrichedPlants.push(plant);
-        }
-      }
+      // Enrich with variety data in batches
+      const enrichedPlants = await Promise.all(
+        plantsData.map(async (plant) => {
+          if (plant.variety_id) {
+            try {
+              const varietyData = await base44.entities.Variety.filter({ id: plant.variety_id });
+              return { ...plant, variety_name: varietyData[0]?.variety_name };
+            } catch (error) {
+              console.error('Error loading variety:', error);
+              return plant;
+            }
+          }
+          return plant;
+        })
+      );
       
       setPlants(enrichedPlants);
     } catch (error) {
@@ -502,20 +505,28 @@ export default function IndoorSpaceDetail() {
           }, [open]);
 
           const loadPlants = async () => {
-          try {
-          const data = await base44.entities.IndoorPlant.filter({ is_active: true });
-          const enriched = await Promise.all(
-          data.map(async p => {
-            const variety = p.variety_id ? await base44.entities.Variety.filter({ id: p.variety_id }).then(r => r[0]) : null;
-            return { ...p, variety_name: variety?.variety_name };
-          })
-          );
-          setPlants(enriched);
-          } catch (error) {
-          console.error('Error loading plants:', error);
-          } finally {
-          setLoading(false);
-          }
+            try {
+              const data = await base44.entities.IndoorPlant.filter({ is_active: true });
+              const enriched = await Promise.all(
+                data.map(async p => {
+                  if (p.variety_id) {
+                    try {
+                      const variety = await base44.entities.Variety.filter({ id: p.variety_id }).then(r => r[0]);
+                      return { ...p, variety_name: variety?.variety_name };
+                    } catch (error) {
+                      console.error('Error loading variety:', error);
+                      return p;
+                    }
+                  }
+                  return p;
+                })
+              );
+              setPlants(enriched);
+            } catch (error) {
+              console.error('Error loading plants:', error);
+            } finally {
+              setLoading(false);
+            }
           };
 
           const handlePlace = async () => {
