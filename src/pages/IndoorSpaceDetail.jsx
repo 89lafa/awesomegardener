@@ -308,12 +308,12 @@ export default function IndoorSpaceDetail() {
                       const gridRows = tier.grid_rows || 2;
                       
                       return (
-                        <div key={tier.id} className="border rounded-lg p-4 bg-gradient-to-br from-emerald-50 to-green-50">
-                          <h4 className="font-semibold mb-3 text-gray-800">
+                        <div key={tier.id} className="border rounded-lg p-3 bg-gradient-to-br from-emerald-50 to-green-50">
+                          <h4 className="font-semibold mb-2 text-sm text-gray-800">
                             {tier.label} (Tier {tier.tier_number})
                           </h4>
                           <div 
-                            className="grid gap-2"
+                            className="grid gap-1.5"
                             style={{ gridTemplateColumns: `repeat(${gridCols}, minmax(0, 1fr))` }}
                           >
                             {Array.from({ length: gridCols * gridRows }).map((_, idx) => {
@@ -326,26 +326,28 @@ export default function IndoorSpaceDetail() {
                               return (
                                 <div
                                   key={idx}
-                                  className={`aspect-square rounded-lg flex flex-col items-center justify-center text-xs transition-all ${
+                                  className={`aspect-square rounded-md flex flex-col items-center justify-center text-[10px] transition-all ${
                                     plantInCell 
-                                      ? 'bg-emerald-100 border-2 border-emerald-500 cursor-pointer hover:shadow-lg' 
-                                      : 'border-2 border-dashed border-gray-300 text-gray-400'
+                                      ? 'bg-emerald-100 border-2 border-emerald-500 cursor-pointer hover:shadow-md hover:scale-105' 
+                                      : 'border border-dashed border-gray-300 text-gray-400'
                                   }`}
-                                  onClick={() => {
+                                  onClick={(e) => {
                                     if (plantInCell) {
+                                      e.preventDefault();
+                                      e.stopPropagation();
                                       navigate(createPageUrl('IndoorPlantDetail') + `?id=${plantInCell.id}`);
                                     }
                                   }}
                                 >
                                   {plantInCell ? (
                                     <>
-                                      <div className="text-2xl mb-1">🌿</div>
-                                      <div className="font-medium truncate w-full px-1 text-center">
+                                      <div className="text-xl">🌿</div>
+                                      <div className="font-medium truncate w-full px-0.5 text-center text-[9px] leading-tight">
                                         {plantInCell.nickname || plantInCell.variety_name}
                                       </div>
                                     </>
                                   ) : (
-                                    'Empty'
+                                    <span className="text-[9px]">Empty</span>
                                   )}
                                 </div>
                               );
@@ -354,14 +356,18 @@ export default function IndoorSpaceDetail() {
                           
                           {/* Show plants without grid positions */}
                           {tierPlants.filter(p => p.grid_position_x === null || p.grid_position_x === undefined).length > 0 && (
-                            <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
-                              <p className="text-xs font-medium text-yellow-800 mb-2">Plants in this tier (not placed on grid):</p>
-                              <div className="flex flex-wrap gap-2">
+                            <div className="mt-3 p-2 bg-yellow-50 border border-yellow-200 rounded-lg">
+                              <p className="text-[10px] font-medium text-yellow-800 mb-1.5">Plants in this tier (not placed on grid):</p>
+                              <div className="flex flex-wrap gap-1.5">
                                 {tierPlants.filter(p => p.grid_position_x === null || p.grid_position_x === undefined).map(p => (
                                   <div
                                     key={p.id}
-                                    onClick={() => navigate(createPageUrl('IndoorPlantDetail') + `?id=${p.id}`)}
-                                    className="cursor-pointer hover:bg-yellow-100 transition-colors px-2 py-1 bg-white rounded border border-yellow-300 text-xs font-medium"
+                                    onClick={(e) => {
+                                      e.preventDefault();
+                                      e.stopPropagation();
+                                      navigate(createPageUrl('IndoorPlantDetail') + `?id=${p.id}`);
+                                    }}
+                                    className="cursor-pointer hover:bg-yellow-100 transition-colors px-2 py-1 bg-white rounded border border-yellow-300 text-[10px] font-medium"
                                   >
                                     🌿 {p.nickname || p.variety_name}
                                   </div>
@@ -933,9 +939,16 @@ function Tier3D({ tier, tierNumber, yPosition, width, depth, plants, showLabels,
         })}
 
         {plants.length < (tier.grid_columns || 4) && (
-          <div className="absolute cursor-pointer hover:bg-emerald-500/20 transition-colors rounded-lg border-2 border-dashed border-white/20"
-            style={{ right: '20px', top: '40px', width: '80px', height: '60px', transform: 'translateZ(5px)' }}>
-            <div className="absolute inset-0 flex items-center justify-center text-white/40">
+          <div 
+            className="absolute cursor-pointer hover:bg-emerald-500/30 transition-colors rounded-lg border-2 border-dashed border-white/30"
+            style={{ right: '20px', top: '40px', width: '80px', height: '60px', transform: 'translateZ(5px)' }}
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              navigate(createPageUrl('AddIndoorPlant') + `?spaceId=${spaceId}&tierId=${tier.id}`);
+            }}
+          >
+            <div className="absolute inset-0 flex items-center justify-center text-white/60">
               <Plus size={24} />
             </div>
           </div>
