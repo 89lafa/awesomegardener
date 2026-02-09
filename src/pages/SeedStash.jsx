@@ -76,6 +76,7 @@ import { usePullToRefresh } from '@/components/utils/usePullToRefresh';
 import PullToRefreshIndicator from '@/components/common/PullToRefreshIndicator';
 import SeedPacketScanner from '@/components/seedstash/SeedPacketScanner';
 import BarcodeScanner from '@/components/seedstash/BarcodeScanner';
+import UnifiedSeedScanner from '@/components/seedstash/UnifiedSeedScanner';
 
 const TAGS = [
   { value: 'favorite', label: 'Favorite', icon: Star, color: 'text-yellow-500' },
@@ -97,6 +98,7 @@ export default function SeedStash() {
   const [editingSeed, setEditingSeed] = useState(null);
   const [showPacketScanner, setShowPacketScanner] = useState(false);
   const [showBarcodeScanner, setShowBarcodeScanner] = useState(false);
+  const [showUnifiedScanner, setShowUnifiedScanner] = useState(false);
   const [scannedData, setScannedData] = useState(null);
   const [viewMode, setViewMode] = useState('grid');
   const [filterTab, setFilterTab] = useState('stash');
@@ -600,22 +602,12 @@ export default function SeedStash() {
         {/* Compact Mobile Action Row */}
         <div className="flex gap-1.5 lg:gap-2 flex-wrap">
            <Button 
-             onClick={() => setShowBarcodeScanner(true)}
+             onClick={() => setShowUnifiedScanner(true)}
              size="sm"
-             variant="outline"
-             className="gap-1 lg:gap-2 text-xs lg:text-sm h-8 lg:h-9"
+             className="bg-blue-600 hover:bg-blue-700 gap-1 lg:gap-2 text-xs lg:text-sm h-8 lg:h-9"
            >
-             <span className="hidden sm:inline">📷 Barcode Scanner</span>
-             <span className="sm:hidden">📷</span>
-           </Button>
-           <Button 
-             onClick={() => setShowPacketScanner(true)}
-             size="sm"
-             variant="outline"
-             className="gap-1 lg:gap-2 text-xs lg:text-sm h-8 lg:h-9"
-           >
-             <span className="hidden sm:inline">📸 Packet Scanner</span>
-             <span className="sm:hidden">📸</span>
+             <span className="hidden sm:inline">📷 Scan Seed Packet</span>
+             <span className="sm:hidden">📷 Scan</span>
            </Button>
 
            <Button 
@@ -1499,6 +1491,18 @@ export default function SeedStash() {
             setShowPacketScanner(false);
             setScannedData(null);
           }}
+        />
+      )}
+
+      {/* Unified Scanner */}
+      {showUnifiedScanner && (
+        <UnifiedSeedScanner
+          onScanComplete={(result) => {
+            console.log('[SeedStash] Scan complete:', result);
+            setShowUnifiedScanner(false);
+            loadData();
+          }}
+          onClose={() => setShowUnifiedScanner(false)}
         />
       )}
 

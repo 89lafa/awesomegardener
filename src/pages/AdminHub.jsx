@@ -34,11 +34,13 @@ const ADMIN_TOOLS = {
     { name: 'Deduplicate Varieties', route: 'AdminDeduplicateVarieties', icon: RefreshCw, description: 'Find and merge duplicate varieties' },
     { name: 'Subcategory Mapping', route: 'SubcategoryMapping', icon: Map, description: 'Manage plant subcategory mappings' },
     { name: 'Browse Categories', route: 'BrowseCategoryConfig', icon: Database, description: 'Configure browse category groupings' },
+    { name: 'Indoor Plants Manager', route: 'AdminIndoorPlants', icon: Database, description: 'Assign plant types to Indoor or Garden sections' },
     { name: 'Data Cleanup', route: 'AdminDataCleanup', icon: Trash2, description: 'Remove invalid records and orphaned data' },
   ],
   'Content Management': [
     { name: 'Manage Resources', route: 'AdminResources', icon: FileText, description: 'Add and edit learning guides and articles' },
     { name: 'Manage Pest Library', route: 'AdminPestLibrary', icon: Bug, description: 'Add and edit pest/disease entries' },
+    { name: 'Blog Manager', route: 'AdminBlogManager', icon: FileText, description: 'Create and manage blog posts and news' },
     { name: 'Feature Requests', route: 'ManageFeatureRequests', icon: MessageSquare, description: 'Manage user feature requests, reply to users, and archive' },
   ],
   'Community Moderation': [
