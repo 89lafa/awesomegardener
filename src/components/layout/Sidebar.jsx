@@ -79,6 +79,7 @@ const getNavItems = (userRole, isEditor, user) => {
     // Resources
     { category: true, label: 'LEARN & EXPLORE' },
     { name: 'Resources', icon: Link2, page: 'Resources' },
+    { name: 'Blog & News', icon: BookText, page: 'BlogList' },
     { name: 'Community Board', icon: MessageSquare, page: 'CommunityBoard' },
     { name: 'Feature Requests', icon: Lightbulb, page: 'FeatureRequests' },
     
