@@ -137,9 +137,10 @@ export default function PlantCatalog() {
     
     try {
       console.debug('[PlantCatalog] fetch_start PlantType');
-      const [types, browseCats] = await Promise.all([
+      const [types, browseCats, plantGroups] = await Promise.all([
         smartQuery(base44, 'PlantType', {}, 'common_name', 5000),
-        smartQuery(base44, 'BrowseCategory', { is_active: true }, 'sort_order')
+        smartQuery(base44, 'BrowseCategory', { is_active: true }, 'sort_order'),
+        smartQuery(base44, 'PlantGroup', {}, 'sort_order')
       ]);
       console.debug('[PlantCatalog] fetch_success PlantType count=', types.length);
       
@@ -153,7 +154,14 @@ export default function PlantCatalog() {
         type.common_name && 
         type.is_active !== false &&
         !type.notes?.includes('DEPRECATED')
-      );
+      ).map(type => {
+        // Add plant group sort order to each type for sorting
+        const group = plantGroups.find(g => g.id === type.plant_group_id);
+        return {
+          ...type,
+          plant_group_sort_order: group?.sort_order ?? 99
+        };
+      });
       
       // Add browse categories as virtual plant types AT THE TOP
       const browseTypes = browseCats.map(cat => ({
@@ -325,6 +333,16 @@ export default function PlantCatalog() {
     if (a._sort_priority !== undefined) return -1;
     if (b._sort_priority !== undefined) return 1;
     
+    // Get plant group sort order for both
+    const groupOrderA = a.plant_group_sort_order ?? 99;
+    const groupOrderB = b.plant_group_sort_order ?? 99;
+    
+    // Sort by group first (garden groups 1-6, indoor group 50)
+    if (groupOrderA !== groupOrderB) {
+      return groupOrderA - groupOrderB;
+    }
+    
+    // Within same group, apply user's selected sort
     if (sortBy === 'name') {
       return (a.common_name || '').localeCompare(b.common_name || '');
     } else if (sortBy === 'category') {
@@ -842,46 +860,68 @@ export default function PlantCatalog() {
       {viewMode === 'grid' ? (
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
           <AnimatePresence>
-            {filteredTypes.map((type, index) => (
-              <Link key={type.id} to={createPageUrl('PlantCatalogDetail') + `?id=${type.id}`}>
-                <motion.div
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0 }}
-                  transition={{ delay: index * 0.03 }}
-                >
-                  <Card 
-                    className="cursor-pointer hover:shadow-lg transition-all duration-300 group"
-                    style={{ 
-                      background: 'var(--glass-bg)',
-                      backdropFilter: 'blur(12px)',
-                      WebkitBackdropFilter: 'blur(12px)',
-                      border: '1px solid var(--glass-border)'
-                    }}
-                  >
-                   <CardContent className="p-4 text-center">
-                     <div className="w-16 h-16 rounded-2xl mx-auto mb-3 flex items-center justify-center text-3xl bg-white group-hover:scale-110 transition-transform">
-                       {type.icon || '🌱'}
-                     </div>
-                      <h3 className="font-semibold" style={{ color: 'var(--text-primary)' }}>{type.common_name || type.name}</h3>
-                      {type.scientific_name && (
-                        <p className="text-xs italic truncate" style={{ color: 'var(--text-muted)' }}>{type.scientific_name}</p>
-                      )}
-                      <div className="flex items-center justify-center gap-1 flex-wrap mt-1">
-                        <p className="text-xs capitalize" style={{ color: 'var(--text-muted)' }}>{type.category}</p>
-                        {type.is_perennial && (
-                          <Badge variant="outline" className="text-[10px] px-1 py-0.5">Perennial</Badge>
-                        )}
+            {filteredTypes.map((type, index) => {
+              // Check if this is the first indoor plant (transition from garden to indoor)
+              const prevType = filteredTypes[index - 1];
+              const isFirstIndoorPlant = prevType && 
+                (prevType.plant_group_sort_order ?? 0) < 50 && 
+                (type.plant_group_sort_order ?? 0) >= 50;
+
+              return (
+                <React.Fragment key={type.id}>
+                  {isFirstIndoorPlant && (
+                    <div className="col-span-full my-4">
+                      <div className="border-t-2 border-emerald-200 dark:border-emerald-700 relative">
+                        <div className="absolute left-1/2 top-0 -translate-x-1/2 -translate-y-1/2 bg-white dark:bg-gray-900 px-6 py-2">
+                          <h3 className="text-lg font-bold text-emerald-700 dark:text-emerald-400 flex items-center gap-2">
+                            🏠 Indoor & Houseplants
+                          </h3>
+                          <p className="text-sm text-gray-600 dark:text-gray-400 text-center">Tropical foliage, succulents, ferns, and more</p>
+                        </div>
                       </div>
-                      <div className="flex items-center justify-center gap-1 mt-2 text-sm opacity-0 group-hover:opacity-100 transition-opacity" style={{ color: 'var(--primary)' }}>
-                        <span>Browse</span>
-                        <ChevronRight className="w-4 h-4" />
-                      </div>
-                    </CardContent>
-                  </Card>
-                </motion.div>
-              </Link>
-            ))}
+                    </div>
+                  )}
+                  <Link to={createPageUrl('PlantCatalogDetail') + `?id=${type.id}`}>
+                    <motion.div
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0 }}
+                      transition={{ delay: index * 0.03 }}
+                    >
+                      <Card 
+                        className="cursor-pointer hover:shadow-lg transition-all duration-300 group"
+                        style={{ 
+                          background: 'var(--glass-bg)',
+                          backdropFilter: 'blur(12px)',
+                          WebkitBackdropFilter: 'blur(12px)',
+                          border: '1px solid var(--glass-border)'
+                        }}
+                      >
+                       <CardContent className="p-4 text-center">
+                         <div className="w-16 h-16 rounded-2xl mx-auto mb-3 flex items-center justify-center text-3xl bg-white group-hover:scale-110 transition-transform">
+                           {type.icon || '🌱'}
+                         </div>
+                          <h3 className="font-semibold" style={{ color: 'var(--text-primary)' }}>{type.common_name || type.name}</h3>
+                          {type.scientific_name && (
+                            <p className="text-xs italic truncate" style={{ color: 'var(--text-muted)' }}>{type.scientific_name}</p>
+                          )}
+                          <div className="flex items-center justify-center gap-1 flex-wrap mt-1">
+                            <p className="text-xs capitalize" style={{ color: 'var(--text-muted)' }}>{type.category}</p>
+                            {type.is_perennial && (
+                              <Badge variant="outline" className="text-[10px] px-1 py-0.5">Perennial</Badge>
+                            )}
+                          </div>
+                          <div className="flex items-center justify-center gap-1 mt-2 text-sm opacity-0 group-hover:opacity-100 transition-opacity" style={{ color: 'var(--primary)' }}>
+                            <span>Browse</span>
+                            <ChevronRight className="w-4 h-4" />
+                          </div>
+                        </CardContent>
+                      </Card>
+                    </motion.div>
+                  </Link>
+                </React.Fragment>
+              );
+            })}
           </AnimatePresence>
         </div>
       ) : (
