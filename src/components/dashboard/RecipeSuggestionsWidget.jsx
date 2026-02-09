@@ -104,7 +104,7 @@ export default function RecipeSuggestionsWidget({ loadDelay = 0 }) {
         <CardContent>
           <div className="text-center py-8">
             <ChefHat className="w-8 h-8 text-gray-400 mx-auto mb-2" />
-            <p className="text-sm text-gray-600">Log some harvests to see recipe suggestions!</p>
+            <p className="text-sm text-gray-600 dark:text-gray-400">Log some harvests to see recipe suggestions!</p>
             <Button
               variant="outline"
               size="sm"
@@ -124,7 +124,7 @@ export default function RecipeSuggestionsWidget({ loadDelay = 0 }) {
       <CardHeader>
         <div className="flex items-center justify-between">
           <CardTitle className="flex items-center gap-2 text-lg">
-            <ChefHat className="w-5 h-5 text-emerald-600" />
+            <ChefHat className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
             You Can Make
           </CardTitle>
           <Button
@@ -141,11 +141,11 @@ export default function RecipeSuggestionsWidget({ loadDelay = 0 }) {
           {suggestions.map(({ recipe, matchPercentage }) => (
             <div
               key={recipe.id}
-              className="p-3 border rounded-lg hover:bg-gray-50 cursor-pointer transition"
+              className="p-3 border rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer transition"
               onClick={() => window.location.href = createPageUrl('RecipeDetail') + '?id=' + recipe.id}
             >
               <div className="flex items-start justify-between gap-2 mb-2">
-                <h4 className="font-medium text-sm">{recipe.title}</h4>
+                <h4 className="font-medium text-sm text-gray-900 dark:text-gray-100">{recipe.title}</h4>
                 <Badge className={
                   matchPercentage === 100 ? 'bg-green-100 text-green-800' :
                   matchPercentage >= 80 ? 'bg-emerald-100 text-emerald-800' :
@@ -155,7 +155,7 @@ export default function RecipeSuggestionsWidget({ loadDelay = 0 }) {
                 </Badge>
               </div>
               <Progress value={matchPercentage} className="h-2" />
-              <p className="text-xs text-gray-500 mt-2">
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
                 {matchPercentage === 100 ? 'You have all ingredients!' : 'Using your garden harvest'}
               </p>
             </div>
