@@ -39,49 +39,47 @@ export default function StreakWidget({ loadDelay = 0 }) {
   }
 
   return (
-    <Card className="bg-gradient-to-br from-orange-50 to-red-50 border-2 border-orange-200">
-      <CardContent className="pt-6">
-        <div className="flex items-center gap-4 mb-4">
-          {/* Fire icon */}
-          <div className="text-6xl">
-            🔥
-          </div>
-
-          {/* Streak info */}
-          <div className="flex-1">
-            <h3 className="text-sm font-medium text-gray-600 uppercase tracking-wide">
-              Current Streak
-            </h3>
-            <div className="text-4xl font-bold text-gray-900">
-              {streak?.current_streak || 0}
-              <span className="text-xl text-gray-500 ml-2">days</span>
-            </div>
-            <p className="text-sm text-gray-600 mt-1">
-              Best: {streak?.longest_streak || 0} days
-            </p>
-          </div>
+    <div className="bg-gradient-to-br from-orange-50 to-red-50 dark:from-orange-900/20 dark:to-red-900/20 border-2 border-orange-200 dark:border-orange-700 rounded-lg p-6">
+      <div className="flex items-center gap-4 mb-4">
+        {/* Fire icon */}
+        <div className="text-6xl">
+          🔥
         </div>
 
-        {/* Motivational message */}
-        <div className="p-3 bg-white rounded-lg mb-3">
-          <p className="text-sm text-center text-gray-700 font-medium">
-            {(streak?.current_streak || 0) > 0
-              ? "Don't break the chain! 🔗"
-              : "Start your streak today! 🌱"}
+        {/* Streak info */}
+        <div className="flex-1">
+          <h3 className="text-sm font-medium text-gray-600 dark:text-gray-300 uppercase tracking-wide">
+            Current Streak
+          </h3>
+          <div className="text-4xl font-bold text-gray-900 dark:text-gray-100">
+            {streak?.current_streak || 0}
+            <span className="text-xl text-gray-500 dark:text-gray-400 ml-2">days</span>
+          </div>
+          <p className="text-sm text-gray-600 dark:text-gray-300 mt-1">
+            Best: {streak?.longest_streak || 0} days
           </p>
         </div>
+      </div>
 
-        {/* View details */}
-        <Link to={createPageUrl('StreakCalendar')}>
-          <Button
-            variant="outline"
-            className="w-full border-orange-300 hover:bg-orange-100"
-          >
-            <Calendar className="w-4 h-4 mr-2" />
-            View Calendar
-          </Button>
-        </Link>
-      </CardContent>
-    </Card>
+      {/* Motivational message */}
+      <div className="p-3 bg-white dark:bg-gray-800 rounded-lg mb-3">
+        <p className="text-sm text-center text-gray-700 dark:text-gray-300 font-medium">
+          {(streak?.current_streak || 0) > 0
+            ? "Don't break the chain! 🔗"
+            : "Start your streak today! 🌱"}
+        </p>
+      </div>
+
+      {/* View details */}
+      <Link to={createPageUrl('StreakCalendar')}>
+        <Button
+          variant="outline"
+          className="w-full border-orange-300 hover:bg-orange-100 dark:border-orange-600 dark:hover:bg-orange-900/30"
+        >
+          <Calendar className="w-4 h-4 mr-2" />
+          View Calendar
+        </Button>
+      </Link>
+    </div>
   );
 }

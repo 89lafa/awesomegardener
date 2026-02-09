@@ -61,58 +61,52 @@ export default function LatestBadgeWidget({ loadDelay = 0 }) {
 
   if (!latestBadge && !nextBadge) {
     return (
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-lg">
-            <Award className="w-5 h-5 text-yellow-500" />
-            Latest Badge
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p className="text-sm text-gray-500 text-center py-4">Start earning badges by completing milestones</p>
-        </CardContent>
-      </Card>
+      <div className="rounded-lg p-6">
+        <div className="flex items-center gap-2 text-lg font-semibold mb-4">
+          <Award className="w-5 h-5 text-yellow-500" />
+          <span>Latest Badge</span>
+        </div>
+        <p className="text-sm text-gray-600 dark:text-gray-400 text-center py-4">Start earning badges by completing milestones</p>
+      </div>
     );
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2 text-lg">
-          <Award className="w-5 h-5 text-yellow-500" />
-          Latest Badge
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-4">
+    <div className="rounded-lg p-6">
+      <div className="flex items-center gap-2 text-lg font-semibold mb-4">
+        <Award className="w-5 h-5 text-yellow-500" />
+        <span>Latest Badge</span>
+      </div>
+      <div className="space-y-4">
         {latestBadge ? (
-          <div className="text-center p-4 bg-gradient-to-br from-yellow-50 to-amber-50 rounded-lg">
+          <div className="text-center p-4 bg-gradient-to-br from-yellow-50 to-amber-50 dark:from-yellow-900/20 dark:to-amber-900/20 rounded-lg">
             <div className="text-5xl mb-2">{latestBadge.icon}</div>
-            <h4 className="font-bold text-lg">{latestBadge.title}</h4>
-            <p className="text-sm text-gray-600 mt-1">
+            <h4 className="font-bold text-lg text-gray-900 dark:text-gray-100">{latestBadge.title}</h4>
+            <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
               Unlocked {formatDistanceToNow(new Date(latestBadge.unlocked_date), { addSuffix: true })}
             </p>
           </div>
         ) : (
-          <div className="text-center p-4 bg-gray-50 rounded-lg">
+          <div className="text-center p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
             <Lock className="w-8 h-8 text-gray-400 mx-auto mb-2" />
-            <p className="text-sm text-gray-600">No badges unlocked yet</p>
+            <p className="text-sm text-gray-600 dark:text-gray-400">No badges unlocked yet</p>
           </div>
         )}
 
         {nextBadge && (
           <div className="space-y-2">
-            <p className="text-sm font-medium text-gray-700">Next Badge:</p>
-            <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
+            <p className="text-sm font-medium text-gray-700 dark:text-gray-300">Next Badge:</p>
+            <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
               <div className="text-3xl">{nextBadge.icon}</div>
               <div className="flex-1">
-                <p className="font-medium text-sm">{nextBadge.title}</p>
-                <div className="w-full bg-gray-200 rounded-full h-2 mt-1">
+                <p className="font-medium text-sm text-gray-900 dark:text-gray-100">{nextBadge.title}</p>
+                <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2 mt-1">
                   <div
                     className="bg-gradient-to-r from-emerald-500 to-green-600 h-2 rounded-full transition-all duration-500"
                     style={{ width: `${nextBadge.progress}%` }}
                   />
                 </div>
-                <p className="text-xs text-gray-500 mt-1">{nextBadge.progress}% complete</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{nextBadge.progress}% complete</p>
               </div>
             </div>
           </div>
@@ -124,7 +118,7 @@ export default function LatestBadgeWidget({ loadDelay = 0 }) {
             <ArrowRight className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" />
           </Button>
         </Link>
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   );
 }
