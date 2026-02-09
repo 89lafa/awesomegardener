@@ -6,7 +6,7 @@ import { toast } from 'sonner';
 import { createPageUrl } from '@/utils';
 import { 
   ArrowLeft, Droplets, Sprout, Wind, RotateCw, Camera, Edit, MoreVertical,
-  Loader2
+  Loader2, Scissors, AlertTriangle, FileText, TrendingUp, ChevronDown, ChevronUp
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -28,11 +28,14 @@ export default function IndoorPlantDetail() {
   const [logs, setLogs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showEditModal, setShowEditModal] = useState(false);
+  const [showEnvironmentModal, setShowEnvironmentModal] = useState(false);
   const [editData, setEditData] = useState({});
+  const [envData, setEnvData] = useState({});
   const [varieties, setVarieties] = useState([]);
   const [showPhotoUpload, setShowPhotoUpload] = useState(false);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const fileInputRef = React.useRef(null);
+  const [expandedSections, setExpandedSections] = useState({});
 
   useEffect(() => {
     if (plantId) {
@@ -53,28 +56,22 @@ export default function IndoorPlantDetail() {
       const p = plantData[0];
       setPlant(p);
 
-      const [varietyData, spaceData, logsData] = await Promise.all([
+      const [varietyData, spaceData, logsData, varietiesData] = await Promise.all([
         p.variety_id ? base44.entities.Variety.filter({ id: p.variety_id }) : Promise.resolve([]),
         p.indoor_space_id ? base44.entities.IndoorSpace.filter({ id: p.indoor_space_id }) : Promise.resolve([]),
-        base44.entities.IndoorPlantLog.filter({ indoor_plant_id: plantId }, '-log_date', 20)
+        base44.entities.IndoorPlantLog.filter({ indoor_plant_id: plantId }, '-log_date', 50),
+        base44.entities.Variety.filter({ 
+          $or: [
+            { care_difficulty: { $in: ['beginner', 'easy', 'moderate'] } },
+            { light_requirement_indoor: { $exists: true } }
+          ]
+        }, 'variety_name', 300)
       ]);
 
       if (varietyData.length > 0) setVariety(varietyData[0]);
       if (spaceData.length > 0) setSpace(spaceData[0]);
       setLogs(logsData);
-      
-      // Load indoor plant varieties separately
-      const indoorVarieties = await base44.entities.Variety.filter(
-        { 
-          $or: [
-            { care_difficulty: { $in: ['beginner', 'easy', 'moderate'] } },
-            { light_requirement_indoor: { $exists: true } }
-          ]
-        },
-        'variety_name',
-        300
-      );
-      setVarieties(indoorVarieties);
+      setVarieties(varietiesData);
 
       setEditData({
         nickname: p.nickname || '',
@@ -86,6 +83,23 @@ export default function IndoorPlantDetail() {
         health_status: p.health_status || 'healthy',
         special_notes: p.special_notes || ''
       });
+
+      setEnvData({
+        window_direction: p.window_direction || 'none',
+        distance_from_window: p.distance_from_window || 'no_window',
+        daily_light_hours: p.daily_light_hours || '',
+        has_grow_light: p.has_grow_light || false,
+        grow_light_hours: p.grow_light_hours || '',
+        grow_light_type: p.grow_light_type || 'led_full_spectrum',
+        watering_method: p.watering_method || 'top',
+        soil_dryness_preference: p.soil_dryness_preference || 'top_inch_dry',
+        draft_exposure: p.draft_exposure || false,
+        humidity_support_method: p.humidity_support_method || 'none',
+        fertilizer_type_used: p.fertilizer_type_used || '',
+        fertilizer_brand: p.fertilizer_brand || '',
+        current_pot_material: p.current_pot_material || 'plastic',
+        pot_has_drainage: p.pot_has_drainage !== false
+      });
     } catch (error) {
       console.error('Error loading plant:', error);
       toast.error('Failed to load plant');
@@ -94,12 +108,13 @@ export default function IndoorPlantDetail() {
     }
   };
 
-  const logCare = async (type) => {
+  const logCare = async (type, notes = '') => {
     try {
       await base44.entities.IndoorPlantLog.create({
         indoor_plant_id: plantId,
         log_type: type,
-        log_date: new Date().toISOString()
+        log_date: new Date().toISOString(),
+        notes: notes
       });
 
       const updates = {};
@@ -109,6 +124,8 @@ export default function IndoorPlantDetail() {
         updates.last_fertilized_date = new Date().toISOString();
       } else if (type === 'rotated') {
         updates.last_rotated_date = new Date().toISOString();
+      } else if (type === 'pruned') {
+        updates.last_pruned_date = new Date().toISOString();
       }
 
       if (Object.keys(updates).length > 0) {
@@ -145,6 +162,18 @@ export default function IndoorPlantDetail() {
     }
   };
 
+  const handleSaveEnvironment = async () => {
+    try {
+      await base44.entities.IndoorPlant.update(plantId, envData);
+      toast.success('Environment settings saved!');
+      setShowEnvironmentModal(false);
+      loadData();
+    } catch (error) {
+      console.error('Error saving environment:', error);
+      toast.error('Failed to save environment');
+    }
+  };
+
   const handlePhotoUpload = async (e) => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
@@ -159,14 +188,12 @@ export default function IndoorPlantDetail() {
         uploadedUrls.push(result.file_url);
       }
 
-      // Set first image as primary if no primary exists
       if (!plant.primary_photo_url && uploadedUrls.length > 0) {
         await base44.entities.IndoorPlant.update(plantId, {
           primary_photo_url: uploadedUrls[0]
         });
       }
 
-      // Log all photos
       for (const url of uploadedUrls) {
         await base44.entities.IndoorPlantLog.create({
           indoor_plant_id: plantId,
@@ -205,9 +232,14 @@ export default function IndoorPlantDetail() {
       stable: '✅ Stable',
       struggling: '⚠️ Struggling',
       sick: '🚨 Sick',
-      recovering: '📈 Recovering'
+      recovering: '📈 Recovering',
+      dormant: '😴 Dormant'
     };
     return displays[status] || status;
+  };
+
+  const toggleSection = (key) => {
+    setExpandedSections(prev => ({ ...prev, [key]: !prev[key] }));
   };
 
   if (loading) {
@@ -231,6 +263,8 @@ export default function IndoorPlantDetail() {
   if (years > 0) ageDisplay += `${years}y `;
   if (months > 0 || years === 0) ageDisplay += `${months}m`;
 
+  const showToxicityWarning = variety && (variety.toxic_to_cats || variety.toxic_to_dogs || variety.toxic_to_humans);
+
   return (
     <div className="space-y-6 max-w-5xl mx-auto">
       <div className="flex items-center justify-between">
@@ -248,6 +282,7 @@ export default function IndoorPlantDetail() {
         </div>
       </div>
 
+      {/* Header with Photo and Quick Info */}
       <Card>
         <CardContent className="p-6 bg-gradient-to-br from-emerald-50 to-green-100">
           <div className="flex gap-6">
@@ -293,10 +328,25 @@ export default function IndoorPlantDetail() {
                 {plant.nickname || variety?.variety_name || 'Unnamed Plant'}
               </h1>
               {plant.nickname && variety && (
-                <p className="text-lg text-gray-600 italic mb-3">{variety.variety_name}</p>
+                <p className="text-lg text-gray-600 italic mb-1">{variety.variety_name}</p>
+              )}
+              {variety?.scientific_name && (
+                <p className="text-sm text-gray-500 italic mb-3">{variety.scientific_name}</p>
               )}
 
               <div className="space-y-2 text-sm">
+                {space && (
+                  <div className="flex items-center gap-2">
+                    <span>📍</span>
+                    <span>{space.name} {space.room_name && `· ${space.room_name}`}</span>
+                  </div>
+                )}
+
+                <div className="flex items-center gap-2">
+                  <span>💚</span>
+                  <span>Health: {getHealthStatusDisplay(plant.health_status || 'healthy')}</span>
+                </div>
+
                 <div className="flex items-center gap-2">
                   <span>📅</span>
                   <span>Acquired: {new Date(plant.acquisition_date).toLocaleDateString()} ({ageDisplay.trim()})</span>
@@ -310,22 +360,10 @@ export default function IndoorPlantDetail() {
                   </div>
                 )}
 
-                <div className="flex items-center gap-2">
-                  <span>💚</span>
-                  <span>Health: {getHealthStatusDisplay(plant.health_status || 'healthy')}</span>
-                </div>
-
-                {space && (
-                  <div className="flex items-center gap-2">
-                    <span>📍</span>
-                    <span>{space.name}</span>
-                  </div>
-                )}
-
                 {daysSinceWatered !== null && (
                   <div className="flex items-center gap-2">
                     <span>💧</span>
-                    <span>Last Watered: {daysSinceWatered} days ago</span>
+                    <span>Last Watered: {formatDate(plant.last_watered_date)}</span>
                     {plant.watering_frequency_days && daysSinceWatered >= plant.watering_frequency_days && (
                       <Badge className="bg-blue-600">⏰ Due!</Badge>
                     )}
@@ -341,51 +379,163 @@ export default function IndoorPlantDetail() {
                   </div>
                 )}
               </div>
+
+              {showToxicityWarning && (
+                <div className="mt-4 bg-red-50 border border-red-200 rounded-lg p-3">
+                  <div className="flex items-start gap-2">
+                    <AlertTriangle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+                    <div className="text-sm">
+                      <div className="font-semibold text-red-900">⚠️ Toxic Plant</div>
+                      <div className="text-red-700">
+                        {variety.toxic_to_cats && 'Cats '}
+                        {variety.toxic_to_dogs && 'Dogs '}
+                        {variety.toxic_to_humans && 'Humans'}
+                        {variety.toxicity_notes && ` · ${variety.toxicity_notes}`}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
+          </div>
+
+          {/* Quick Action Buttons */}
+          <div className="grid grid-cols-5 gap-2 mt-6">
+            <Button
+              onClick={() => logCare('watered')}
+              className="bg-blue-500 hover:bg-blue-600 text-white flex flex-col gap-1 h-auto py-3"
+              size="sm"
+            >
+              <Droplets size={20} />
+              <span className="text-xs">Water</span>
+            </Button>
+
+            <Button
+              onClick={() => logCare('fertilized')}
+              className="bg-green-500 hover:bg-green-600 text-white flex flex-col gap-1 h-auto py-3"
+              size="sm"
+            >
+              <Sprout size={20} />
+              <span className="text-xs">Fertilize</span>
+            </Button>
+
+            <Button
+              onClick={() => logCare('pruned')}
+              className="bg-purple-500 hover:bg-purple-600 text-white flex flex-col gap-1 h-auto py-3"
+              size="sm"
+            >
+              <Scissors size={20} />
+              <span className="text-xs">Prune</span>
+            </Button>
+
+            <Button
+              onClick={() => logCare('note')}
+              className="bg-amber-500 hover:bg-amber-600 text-white flex flex-col gap-1 h-auto py-3"
+              size="sm"
+            >
+              <FileText size={20} />
+              <span className="text-xs">Log</span>
+            </Button>
+
+            <Button
+              onClick={() => fileInputRef.current?.click()}
+              disabled={uploadingPhoto}
+              className="bg-pink-500 hover:bg-pink-600 text-white flex flex-col gap-1 h-auto py-3"
+              size="sm"
+            >
+              <Camera size={20} />
+              <span className="text-xs">Photo</span>
+            </Button>
           </div>
         </CardContent>
       </Card>
 
       <Tabs defaultValue="overview">
-        <TabsList className="grid w-full grid-cols-4">
+        <TabsList className="grid w-full grid-cols-5">
           <TabsTrigger value="overview">Overview</TabsTrigger>
-          <TabsTrigger value="care">Care</TabsTrigger>
-          <TabsTrigger value="journal">Journal</TabsTrigger>
+          <TabsTrigger value="care-guide">Care Guide</TabsTrigger>
+          <TabsTrigger value="environment">Environment</TabsTrigger>
+          <TabsTrigger value="history">History</TabsTrigger>
           <TabsTrigger value="stats">Stats</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="overview" className="space-y-6">
+        {/* OVERVIEW TAB */}
+        <TabsContent value="overview" className="space-y-4">
           <Card>
             <CardHeader>
-              <CardTitle>Care Schedule</CardTitle>
+              <CardTitle>Care Status</CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
-              {plant.watering_frequency_days && (
+              {plant.last_watered_date && (
                 <div className="flex items-center justify-between bg-blue-50 rounded-lg p-3">
                   <div className="flex items-center gap-3">
                     <span className="text-2xl">💧</span>
                     <div>
-                      <div className="font-medium">Water</div>
-                      <div className="text-xs text-gray-500">Every {plant.watering_frequency_days} days</div>
+                      <div className="font-medium">Last watered</div>
+                      <div className="text-xs text-gray-500">{formatDate(plant.last_watered_date)}</div>
                     </div>
                   </div>
-                  <div className="text-sm text-gray-600">
-                    {formatDate(plant.last_watered_date)}
-                  </div>
+                  {plant.watering_frequency_days && (
+                    <div className="text-sm text-gray-600">
+                      Next: in ~{Math.max(0, plant.watering_frequency_days - daysSinceWatered)} days
+                    </div>
+                  )}
                 </div>
               )}
 
-              {plant.fertilizing_frequency_weeks && (
+              {plant.last_fertilized_date && (
                 <div className="flex items-center justify-between bg-green-50 rounded-lg p-3">
                   <div className="flex items-center gap-3">
                     <span className="text-2xl">🌱</span>
                     <div>
-                      <div className="font-medium">Fertilize</div>
-                      <div className="text-xs text-gray-500">Every {plant.fertilizing_frequency_weeks} weeks</div>
+                      <div className="font-medium">Last fertilized</div>
+                      <div className="text-xs text-gray-500">{formatDate(plant.last_fertilized_date)}</div>
                     </div>
                   </div>
-                  <div className="text-sm text-gray-600">
-                    {formatDate(plant.last_fertilized_date)}
+                  {plant.fertilizing_frequency_weeks && (
+                    <div className="text-sm text-gray-600">
+                      Next: ~{plant.fertilizing_frequency_weeks} weeks
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {plant.last_repotted_date && (
+                <div className="flex items-center justify-between bg-amber-50 rounded-lg p-3">
+                  <div className="flex items-center gap-3">
+                    <span className="text-2xl">🪴</span>
+                    <div>
+                      <div className="font-medium">Last repotted</div>
+                      <div className="text-xs text-gray-500">{formatDate(plant.last_repotted_date)}</div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {plant.last_pruned_date && (
+                <div className="flex items-center justify-between bg-purple-50 rounded-lg p-3">
+                  <div className="flex items-center gap-3">
+                    <span className="text-2xl">✂️</span>
+                    <div>
+                      <div className="font-medium">Last pruned</div>
+                      <div className="text-xs text-gray-500">{formatDate(plant.last_pruned_date)}</div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {(plant.current_height_inches || plant.current_width_inches) && (
+                <div className="bg-emerald-50 rounded-lg p-3">
+                  <div className="flex items-center gap-3">
+                    <span className="text-2xl">📏</span>
+                    <div>
+                      <div className="font-medium">Size</div>
+                      <div className="text-xs text-gray-500">
+                        {plant.current_height_inches && `Height: ${plant.current_height_inches}"`}
+                        {plant.current_height_inches && plant.current_width_inches && ' · '}
+                        {plant.current_width_inches && `Width: ${plant.current_width_inches}"`}
+                      </div>
+                    </div>
                   </div>
                 </div>
               )}
@@ -394,54 +544,55 @@ export default function IndoorPlantDetail() {
 
           <Card>
             <CardHeader>
-              <CardTitle>Container</CardTitle>
+              <CardTitle>Quick Info</CardTitle>
             </CardHeader>
             <CardContent className="space-y-2 text-sm">
-              {plant.pot_size_inches && (
+              {plant.window_direction && plant.window_direction !== 'none' && (
+                <div className="flex items-center gap-2">
+                  <span>🪟</span>
+                  <span>{plant.window_direction} window · {plant.distance_from_window?.replace(/_/g, ' ')}</span>
+                  {plant.daily_light_hours && <span>· ~{plant.daily_light_hours}hr light</span>}
+                </div>
+              )}
+
+              {plant.has_grow_light && (
+                <div className="flex items-center gap-2">
+                  <span>💡</span>
+                  <span>Grow light: {plant.grow_light_type?.replace(/_/g, ' ')} · {plant.grow_light_hours}hr/day</span>
+                </div>
+              )}
+
+              {plant.watering_method && (
+                <div className="flex items-center gap-2">
+                  <span>💧</span>
+                  <span>{plant.watering_method} water · {plant.soil_dryness_preference?.replace(/_/g, ' ')}</span>
+                </div>
+              )}
+
+              {plant.humidity_support_method && plant.humidity_support_method !== 'none' && (
+                <div className="flex items-center gap-2">
+                  <span>💨</span>
+                  <span>Humidity: {plant.humidity_support_method?.replace(/_/g, ' ')}</span>
+                </div>
+              )}
+
+              {plant.current_pot_material && (
                 <div className="flex items-center gap-2">
                   <span>🪴</span>
-                  <span>{plant.pot_size_inches}" {plant.pot_type || 'pot'}</span>
-                  {plant.has_drainage && <span className="text-green-600">✓ Drainage</span>}
+                  <span>{plant.soil_type?.replace(/_/g, ' ')} · {plant.pot_size_inches}" {plant.current_pot_material}</span>
+                  {plant.pot_has_drainage && <span className="text-green-600">✓ Drainage</span>}
                 </div>
               )}
-              {plant.soil_type && (
+
+              {plant.fertilizer_brand && (
                 <div className="flex items-center gap-2">
                   <span>🌱</span>
-                  <span>{plant.soil_type}</span>
-                </div>
-              )}
-              {plant.last_repotted_date && (
-                <div className="flex items-center gap-2">
-                  <span>📅</span>
-                  <span>Last Repotted: {formatDate(plant.last_repotted_date)}</span>
+                  <span>{plant.fertilizer_brand}</span>
+                  {plant.fertilizing_frequency_weeks && <span>· Every {plant.fertilizing_frequency_weeks} weeks</span>}
                 </div>
               )}
             </CardContent>
           </Card>
-
-          {(plant.current_height_inches || plant.current_width_inches) && (
-            <Card>
-              <CardHeader>
-                <CardTitle>Growth</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-2 gap-4 text-center">
-                  {plant.current_height_inches && (
-                    <div className="bg-emerald-50 rounded-lg p-4">
-                      <div className="text-2xl font-bold text-emerald-700">{plant.current_height_inches}"</div>
-                      <div className="text-sm text-emerald-600">Height</div>
-                    </div>
-                  )}
-                  {plant.current_width_inches && (
-                    <div className="bg-green-50 rounded-lg p-4">
-                      <div className="text-2xl font-bold text-green-700">{plant.current_width_inches}"</div>
-                      <div className="text-sm text-green-600">Width</div>
-                    </div>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          )}
 
           {plant.special_notes && (
             <Card>
@@ -455,88 +606,505 @@ export default function IndoorPlantDetail() {
           )}
         </TabsContent>
 
-        <TabsContent value="care">
+        {/* CARE GUIDE TAB */}
+        <TabsContent value="care-guide" className="space-y-3">
+          {variety ? (
+            <>
+              <CareSection 
+                icon="☀️" 
+                title="Light Requirements" 
+                expanded={expandedSections.light}
+                onToggle={() => toggleSection('light')}
+                summary={variety.light_requirement_indoor || 'Not specified'}
+              >
+                <div className="space-y-2 text-sm">
+                  {variety.light_requirement_indoor && (
+                    <div><strong>Requirement:</strong> {variety.light_requirement_indoor.replace(/_/g, ' ')}</div>
+                  )}
+                  {variety.light_tolerance_range && (
+                    <div><strong>Tolerance:</strong> {variety.light_tolerance_range.replace(/_/g, ' ')}</div>
+                  )}
+                  {variety.min_light_hours && (
+                    <div><strong>Light Hours:</strong> {variety.min_light_hours}-{variety.max_light_hours || '12'}hr/day</div>
+                  )}
+                  {variety.grow_light_compatible && (
+                    <div className="text-emerald-600">✓ Grow light compatible</div>
+                  )}
+                </div>
+              </CareSection>
+
+              <CareSection 
+                icon="💧" 
+                title="Watering" 
+                expanded={expandedSections.water}
+                onToggle={() => toggleSection('water')}
+                summary={variety.watering_frequency_range || 'Moderate'}
+              >
+                <div className="space-y-2 text-sm">
+                  {variety.watering_frequency_range && (
+                    <div><strong>Frequency:</strong> Every {variety.watering_frequency_range.replace(/_/g, ' ')}</div>
+                  )}
+                  {variety.soil_dryness_rule && (
+                    <div><strong>When to water:</strong> {variety.soil_dryness_rule.replace(/_/g, ' ')}</div>
+                  )}
+                  {variety.watering_method_preferred && (
+                    <div><strong>Method:</strong> {variety.watering_method_preferred} water</div>
+                  )}
+                  {variety.drought_tolerant && (
+                    <div className="text-emerald-600">✓ Drought tolerant</div>
+                  )}
+                  {variety.overwater_sensitivity && (
+                    <div><strong>Overwater sensitivity:</strong> {variety.overwater_sensitivity}</div>
+                  )}
+                </div>
+              </CareSection>
+
+              <CareSection 
+                icon="🌡️" 
+                title="Temperature" 
+                expanded={expandedSections.temp}
+                onToggle={() => toggleSection('temp')}
+                summary={variety.temp_ideal_min_f && variety.temp_ideal_max_f ? `${variety.temp_ideal_min_f}-${variety.temp_ideal_max_f}°F ideal` : 'Standard room temp'}
+              >
+                <div className="space-y-2 text-sm">
+                  {variety.temp_ideal_min_f && variety.temp_ideal_max_f && (
+                    <div><strong>Ideal range:</strong> {variety.temp_ideal_min_f}-{variety.temp_ideal_max_f}°F</div>
+                  )}
+                  {variety.temp_min_f && (
+                    <div><strong>Min safe temp:</strong> {variety.temp_min_f}°F (damage below)</div>
+                  )}
+                  {variety.temp_max_f && (
+                    <div><strong>Max safe temp:</strong> {variety.temp_max_f}°F (stress above)</div>
+                  )}
+                  {variety.cold_draft_sensitive && (
+                    <div className="text-amber-600">⚠️ Sensitive to cold drafts</div>
+                  )}
+                </div>
+              </CareSection>
+
+              <CareSection 
+                icon="💨" 
+                title="Humidity" 
+                expanded={expandedSections.humidity}
+                onToggle={() => toggleSection('humidity')}
+                summary={variety.humidity_preference || 'Moderate'}
+              >
+                <div className="space-y-2 text-sm">
+                  {variety.humidity_preference && (
+                    <div><strong>Preference:</strong> {variety.humidity_preference} humidity</div>
+                  )}
+                  {variety.humidity_support_method && (
+                    <div><strong>Support method:</strong> {variety.humidity_support_method.replace(/_/g, ' ')}</div>
+                  )}
+                  {variety.misting_beneficial && (
+                    <div className="text-emerald-600">✓ Benefits from misting</div>
+                  )}
+                </div>
+              </CareSection>
+
+              <CareSection 
+                icon="🪴" 
+                title="Soil & Potting" 
+                expanded={expandedSections.soil}
+                onToggle={() => toggleSection('soil')}
+                summary={variety.soil_type_recommended?.replace(/_/g, ' ') || 'All-purpose mix'}
+              >
+                <div className="space-y-2 text-sm">
+                  {variety.soil_type_recommended && (
+                    <div><strong>Soil:</strong> {variety.soil_type_recommended.replace(/_/g, ' ')}</div>
+                  )}
+                  {variety.soil_drainage_speed && (
+                    <div><strong>Drainage:</strong> {variety.soil_drainage_speed} draining</div>
+                  )}
+                  {variety.recommended_pot_type && (
+                    <div><strong>Pot type:</strong> {variety.recommended_pot_type.replace(/_/g, ' ')}</div>
+                  )}
+                  {variety.drainage_holes_required && (
+                    <div className="text-red-600">⚠️ Drainage holes required</div>
+                  )}
+                </div>
+              </CareSection>
+
+              <CareSection 
+                icon="🌱" 
+                title="Fertilization" 
+                expanded={expandedSections.fert}
+                onToggle={() => toggleSection('fert')}
+                summary={variety.fertilizer_frequency?.replace(/_/g, ' ') || 'Monthly'}
+              >
+                <div className="space-y-2 text-sm">
+                  {variety.fertilizer_type && (
+                    <div><strong>Type:</strong> {variety.fertilizer_type.replace(/_/g, ' ')}</div>
+                  )}
+                  {variety.fertilizer_frequency && (
+                    <div><strong>Frequency:</strong> {variety.fertilizer_frequency.replace(/_/g, ' ')}</div>
+                  )}
+                  {variety.fertilizer_strength && (
+                    <div><strong>Strength:</strong> {variety.fertilizer_strength} strength</div>
+                  )}
+                  {variety.dormant_season_feeding === false && (
+                    <div className="text-amber-600">⚠️ Stop feeding during winter dormancy</div>
+                  )}
+                </div>
+              </CareSection>
+
+              <CareSection 
+                icon="📏" 
+                title="Growth & Size" 
+                expanded={expandedSections.growth}
+                onToggle={() => toggleSection('growth')}
+                summary={variety.mature_indoor_height || 'Varies'}
+              >
+                <div className="space-y-2 text-sm">
+                  {variety.growth_pattern && (
+                    <div><strong>Pattern:</strong> {variety.growth_pattern}</div>
+                  )}
+                  {variety.mature_indoor_height && (
+                    <div><strong>Mature height:</strong> {variety.mature_indoor_height}</div>
+                  )}
+                  {variety.mature_indoor_width && (
+                    <div><strong>Mature width:</strong> {variety.mature_indoor_width}</div>
+                  )}
+                  {variety.growth_speed && (
+                    <div><strong>Growth speed:</strong> {variety.growth_speed}</div>
+                  )}
+                  {variety.needs_support && (
+                    <div className="text-blue-600">📍 Needs moss pole or trellis</div>
+                  )}
+                  {variety.pruning_needs && (
+                    <div><strong>Pruning:</strong> {variety.pruning_needs}</div>
+                  )}
+                </div>
+              </CareSection>
+
+              <CareSection 
+                icon="🔄" 
+                title="Repotting" 
+                expanded={expandedSections.repot}
+                onToggle={() => toggleSection('repot')}
+                summary={variety.repot_frequency_years ? `Every ${variety.repot_frequency_years} years` : 'As needed'}
+              >
+                <div className="space-y-2 text-sm">
+                  {variety.repot_frequency_years && (
+                    <div><strong>Frequency:</strong> Every {variety.repot_frequency_years} years</div>
+                  )}
+                  {variety.rootbound_tolerance && (
+                    <div><strong>Rootbound tolerance:</strong> {variety.rootbound_tolerance}</div>
+                  )}
+                  {variety.best_repot_season && (
+                    <div><strong>Best season:</strong> {variety.best_repot_season.replace(/_/g, ' ')}</div>
+                  )}
+                </div>
+              </CareSection>
+
+              <CareSection 
+                icon="⚠️" 
+                title="Toxicity" 
+                expanded={expandedSections.toxic}
+                onToggle={() => toggleSection('toxic')}
+                summary={variety.pet_safe ? 'Pet safe' : showToxicityWarning ? 'Toxic' : 'Unknown'}
+              >
+                <div className="space-y-2 text-sm">
+                  <div className={variety.toxic_to_cats ? 'text-red-600' : 'text-green-600'}>
+                    {variety.toxic_to_cats ? '⚠️' : '✓'} Cats: {variety.toxic_to_cats ? 'Toxic' : 'Safe'}
+                  </div>
+                  <div className={variety.toxic_to_dogs ? 'text-red-600' : 'text-green-600'}>
+                    {variety.toxic_to_dogs ? '⚠️' : '✓'} Dogs: {variety.toxic_to_dogs ? 'Toxic' : 'Safe'}
+                  </div>
+                  <div className={variety.toxic_to_humans ? 'text-red-600' : 'text-green-600'}>
+                    {variety.toxic_to_humans ? '⚠️' : '✓'} Humans: {variety.toxic_to_humans ? 'Toxic' : 'Safe'}
+                  </div>
+                  {variety.sap_irritant && (
+                    <div className="text-amber-600">⚠️ Sap causes skin irritation</div>
+                  )}
+                  {variety.toxicity_notes && (
+                    <div className="mt-2 text-gray-600">{variety.toxicity_notes}</div>
+                  )}
+                </div>
+              </CareSection>
+
+              <CareSection 
+                icon="🐛" 
+                title="Pests & Diseases" 
+                expanded={expandedSections.pests}
+                onToggle={() => toggleSection('pests')}
+                summary={variety.pest_susceptibility || 'Monitor regularly'}
+              >
+                <div className="space-y-2 text-sm">
+                  {variety.pest_susceptibility && (
+                    <div><strong>Susceptibility:</strong> {variety.pest_susceptibility}</div>
+                  )}
+                  {variety.common_pests && (
+                    <div><strong>Common pests:</strong> {JSON.parse(variety.common_pests || '[]').join(', ')}</div>
+                  )}
+                  {variety.common_diseases && (
+                    <div><strong>Common diseases:</strong> {JSON.parse(variety.common_diseases || '[]').join(', ')}</div>
+                  )}
+                  {variety.preventive_care_tips && (
+                    <div className="mt-2 text-gray-600">{variety.preventive_care_tips}</div>
+                  )}
+                </div>
+              </CareSection>
+
+              <CareSection 
+                icon="❄️" 
+                title="Seasonal Care" 
+                expanded={expandedSections.seasonal}
+                onToggle={() => toggleSection('seasonal')}
+                summary={variety.winter_dormancy ? 'Winter dormancy' : 'Year-round care'}
+              >
+                <div className="space-y-2 text-sm">
+                  {variety.winter_dormancy && (
+                    <div className="text-blue-600">❄️ Goes dormant in winter</div>
+                  )}
+                  {variety.reduced_winter_watering && (
+                    <div>💧 Reduce watering in winter</div>
+                  )}
+                  {variety.winter_leaf_drop_normal && (
+                    <div>🍂 Some leaf drop is normal in winter</div>
+                  )}
+                  {variety.seasonal_notes && (
+                    <div className="mt-2 text-gray-600">{variety.seasonal_notes}</div>
+                  )}
+                </div>
+              </CareSection>
+
+              <CareSection 
+                icon="🌿" 
+                title="Propagation" 
+                expanded={expandedSections.prop}
+                onToggle={() => toggleSection('prop')}
+                summary={variety.propagation_difficulty || 'Info available'}
+              >
+                <div className="space-y-2 text-sm">
+                  {variety.propagation_methods && (
+                    <div><strong>Methods:</strong> {JSON.parse(variety.propagation_methods || '[]').join(', ')}</div>
+                  )}
+                  {variety.propagation_difficulty && (
+                    <div><strong>Difficulty:</strong> {variety.propagation_difficulty}</div>
+                  )}
+                  {variety.propagation_best_season && (
+                    <div><strong>Best season:</strong> {variety.propagation_best_season.replace(/_/g, ' ')}</div>
+                  )}
+                  {variety.propagation_notes && (
+                    <div className="mt-2 text-gray-600">{variety.propagation_notes}</div>
+                  )}
+                </div>
+              </CareSection>
+
+              {variety.care_difficulty && (
+                <div className="bg-gradient-to-r from-emerald-50 to-green-50 rounded-lg p-4 border border-emerald-200">
+                  <div className="flex items-center gap-3">
+                    <TrendingUp className="w-6 h-6 text-emerald-600" />
+                    <div>
+                      <div className="font-semibold text-gray-800">Overall Care Difficulty</div>
+                      <div className="text-sm text-gray-600 capitalize">{variety.care_difficulty}</div>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </>
+          ) : (
+            <Card>
+              <CardContent className="py-8 text-center text-gray-500">
+                No variety selected. Edit plant to add variety for care information.
+              </CardContent>
+            </Card>
+          )}
+        </TabsContent>
+
+        {/* ENVIRONMENT TAB */}
+        <TabsContent value="environment">
           <Card>
-            <CardHeader>
-              <CardTitle>Quick Care Actions</CardTitle>
+            <CardHeader className="flex flex-row items-center justify-between">
+              <CardTitle>My Plant's Environment</CardTitle>
+              <Button size="sm" onClick={() => setShowEnvironmentModal(true)}>
+                <Edit className="w-4 h-4 mr-2" />
+                Edit
+              </Button>
             </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-2 gap-4">
-                <Button
-                  onClick={() => logCare('watered')}
-                  className="bg-blue-500 hover:bg-blue-600 text-white h-24 flex flex-col gap-2"
-                >
-                  <Droplets size={32} />
-                  Log Watering
-                </Button>
+            <CardContent className="space-y-4">
+              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                <h4 className="font-semibold mb-3">☀️ Light Setup</h4>
+                <div className="space-y-2 text-sm">
+                  <div>Window: {plant.window_direction?.replace(/_/g, ' ') || 'Not set'}</div>
+                  <div>Distance: {plant.distance_from_window?.replace(/_/g, ' ') || 'Not set'}</div>
+                  <div>Light hours/day: {plant.daily_light_hours || 'Not set'}</div>
+                  {plant.has_grow_light && (
+                    <>
+                      <div>Grow light: {plant.grow_light_type?.replace(/_/g, ' ')}</div>
+                      <div>Grow light hours: {plant.grow_light_hours}/day</div>
+                    </>
+                  )}
+                </div>
+              </div>
 
-                <Button
-                  onClick={() => logCare('fertilized')}
-                  className="bg-green-500 hover:bg-green-600 text-white h-24 flex flex-col gap-2"
-                >
-                  <Sprout size={32} />
-                  Log Fertilizing
-                </Button>
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <h4 className="font-semibold mb-3">💧 Watering Setup</h4>
+                <div className="space-y-2 text-sm">
+                  <div>Method: {plant.watering_method || 'Not set'}</div>
+                  <div>Frequency: Every {plant.watering_frequency_days || '?'} days</div>
+                  <div>Dryness rule: {plant.soil_dryness_preference?.replace(/_/g, ' ') || 'Not set'}</div>
+                </div>
+              </div>
 
-                <Button
-                  onClick={() => logCare('misted')}
-                  className="bg-cyan-500 hover:bg-cyan-600 text-white h-24 flex flex-col gap-2"
-                >
-                  <Wind size={32} />
-                  Log Misting
-                </Button>
+              <div className="bg-cyan-50 border border-cyan-200 rounded-lg p-4">
+                <h4 className="font-semibold mb-3">💨 Humidity</h4>
+                <div className="space-y-2 text-sm">
+                  <div>Support: {plant.humidity_support_method?.replace(/_/g, ' ') || 'None'}</div>
+                  <div>Draft exposure: {plant.draft_exposure ? 'Yes' : 'No'}</div>
+                </div>
+              </div>
 
-                <Button
-                  onClick={() => logCare('rotated')}
-                  className="bg-purple-500 hover:bg-purple-600 text-white h-24 flex flex-col gap-2"
-                >
-                  <RotateCw size={32} />
-                  Log Rotation
-                </Button>
+              <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                <h4 className="font-semibold mb-3">🌱 Fertilizer</h4>
+                <div className="space-y-2 text-sm">
+                  <div>Type: {plant.fertilizer_type_used || 'Not set'}</div>
+                  <div>Brand: {plant.fertilizer_brand || 'Not set'}</div>
+                  <div>Frequency: Every {plant.fertilizing_frequency_weeks || '?'} weeks</div>
+                </div>
+              </div>
+
+              <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
+                <h4 className="font-semibold mb-3">🪴 Pot & Soil</h4>
+                <div className="space-y-2 text-sm">
+                  <div>Material: {plant.current_pot_material || plant.pot_type || 'Not set'}</div>
+                  <div>Size: {plant.pot_size_inches}"</div>
+                  <div>Drainage: {plant.pot_has_drainage ? 'Yes ✓' : 'No'}</div>
+                  <div>Soil: {plant.soil_type?.replace(/_/g, ' ') || 'Not set'}</div>
+                </div>
               </div>
             </CardContent>
           </Card>
         </TabsContent>
 
-        <TabsContent value="journal">
+        {/* HISTORY TAB */}
+        <TabsContent value="history">
           <Card>
             <CardHeader>
-              <CardTitle>Care History</CardTitle>
+              <CardTitle>Care History ({logs.length})</CardTitle>
             </CardHeader>
             <CardContent>
               {logs.length === 0 ? (
-                <p className="text-gray-500 text-center py-8">No logs yet</p>
+                <p className="text-gray-500 text-center py-8">No care logs yet</p>
               ) : (
                 <div className="space-y-3">
-                  {logs.map(log => (
-                    <div key={log.id} className="border-l-4 border-emerald-500 pl-4 py-2">
-                      <div className="flex items-center gap-2 mb-1">
-                        <span className="font-medium capitalize">{log.log_type}</span>
-                        <span className="text-xs text-gray-500">
-                          {new Date(log.log_date).toLocaleDateString()}
-                        </span>
+                  {logs.map(log => {
+                    const logIcons = {
+                      watered: '💧',
+                      fertilized: '🌱',
+                      misted: '💨',
+                      rotated: '🔄',
+                      pruned: '✂️',
+                      repotted: '🪴',
+                      photo: '📸',
+                      note: '📝',
+                      milestone: '🏆',
+                      problem: '⚠️',
+                      moved: '📍',
+                      clean_leaves: '🧽'
+                    };
+
+                    return (
+                      <div key={log.id} className="border-l-4 border-emerald-500 pl-4 py-2 bg-gray-50 rounded-r-lg">
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="text-xl">{logIcons[log.log_type] || '📋'}</span>
+                          <span className="font-medium capitalize">{log.log_type.replace(/_/g, ' ')}</span>
+                          <span className="text-xs text-gray-500 ml-auto">
+                            {new Date(log.log_date).toLocaleDateString()}
+                          </span>
+                        </div>
+                        {log.notes && <p className="text-sm text-gray-600 mt-1">{log.notes}</p>}
+                        {log.photos && log.photos.length > 0 && (
+                          <div className="flex gap-2 mt-2">
+                            {log.photos.map((url, i) => (
+                              <img key={i} src={url} className="w-20 h-20 object-cover rounded-lg" alt="log photo" />
+                            ))}
+                          </div>
+                        )}
                       </div>
-                      {log.notes && <p className="text-sm text-gray-600">{log.notes}</p>}
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </CardContent>
           </Card>
         </TabsContent>
 
+        {/* STATS TAB */}
         <TabsContent value="stats">
           <Card>
             <CardHeader>
-              <CardTitle>Statistics</CardTitle>
+              <CardTitle>Statistics & Milestones</CardTitle>
             </CardHeader>
-            <CardContent>
-              <p className="text-gray-500">Coming soon: Growth charts and statistics</p>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="bg-blue-50 rounded-lg p-4">
+                  <div className="text-3xl font-bold text-blue-700">
+                    {logs.filter(l => l.log_type === 'watered').length}
+                  </div>
+                  <div className="text-sm text-blue-600">Total Waterings</div>
+                </div>
+
+                <div className="bg-green-50 rounded-lg p-4">
+                  <div className="text-3xl font-bold text-green-700">
+                    {logs.filter(l => l.log_type === 'fertilized').length}
+                  </div>
+                  <div className="text-sm text-green-600">Times Fertilized</div>
+                </div>
+
+                <div className="bg-purple-50 rounded-lg p-4">
+                  <div className="text-3xl font-bold text-purple-700">
+                    {logs.filter(l => l.log_type === 'pruned').length}
+                  </div>
+                  <div className="text-sm text-purple-600">Times Pruned</div>
+                </div>
+
+                <div className="bg-pink-50 rounded-lg p-4">
+                  <div className="text-3xl font-bold text-pink-700">
+                    {logs.filter(l => l.log_type === 'photo').length}
+                  </div>
+                  <div className="text-sm text-pink-600">Photos Logged</div>
+                </div>
+              </div>
+
+              <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-4">
+                <h4 className="font-semibold mb-3">🏅 Milestones</h4>
+                <div className="space-y-2 text-sm">
+                  <div className="flex items-center gap-2">
+                    <span>🎂</span>
+                    <span>{ageDisplay.trim()} old (since {new Date(plant.acquisition_date).toLocaleDateString()})</span>
+                  </div>
+                  {plant.propagation_children_count > 0 && (
+                    <div className="flex items-center gap-2">
+                      <span>🌿</span>
+                      <span>{plant.propagation_children_count} successful propagations</span>
+                    </div>
+                  )}
+                  {logs.filter(l => l.log_type === 'watered').length >= 50 && (
+                    <div className="flex items-center gap-2">
+                      <span>💧</span>
+                      <span>{logs.filter(l => l.log_type === 'watered').length}+ waterings milestone!</span>
+                    </div>
+                  )}
+                  {plant.current_height_inches && (
+                    <div className="flex items-center gap-2">
+                      <span>📏</span>
+                      <span>Current size: {plant.current_height_inches}" tall</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div className="text-center text-gray-500 text-sm py-4">
+                📊 Growth charts and detailed analytics coming soon
+              </div>
             </CardContent>
           </Card>
         </TabsContent>
       </Tabs>
 
+      {/* Edit Modal */}
       <Dialog open={showEditModal} onOpenChange={setShowEditModal}>
         <DialogContent>
           <DialogHeader>
@@ -567,9 +1135,6 @@ export default function IndoorPlantDetail() {
                   ))}
                 </SelectContent>
               </Select>
-              <p className="text-xs text-gray-500 mt-1">
-                Indoor plant varieties optimized for home growing
-              </p>
             </div>
 
             <div>
@@ -585,6 +1150,7 @@ export default function IndoorPlantDetail() {
                   <SelectItem value="struggling">⚠️ Struggling</SelectItem>
                   <SelectItem value="sick">🚨 Sick</SelectItem>
                   <SelectItem value="recovering">📈 Recovering</SelectItem>
+                  <SelectItem value="dormant">😴 Dormant</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -627,9 +1193,8 @@ export default function IndoorPlantDetail() {
                   <SelectItem value="orchid_bark">Orchid Bark</SelectItem>
                   <SelectItem value="succulent_mix">Succulent Mix</SelectItem>
                   <SelectItem value="potting_soil_general">General Potting Soil</SelectItem>
-                  <SelectItem value="peat_based">Peat Based</SelectItem>
-                  <SelectItem value="coco_coir">Coco Coir</SelectItem>
-                  <SelectItem value="custom_mix">Custom Mix</SelectItem>
+                  <SelectItem value="chunky_aroid">Chunky Aroid</SelectItem>
+                  <SelectItem value="carnivorous_mix">Carnivorous Mix</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -662,6 +1227,248 @@ export default function IndoorPlantDetail() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Environment Edit Modal */}
+      <Dialog open={showEnvironmentModal} onOpenChange={setShowEnvironmentModal}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Edit Environment Settings</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-6 max-h-[70vh] overflow-y-auto">
+            <div className="space-y-4">
+              <h4 className="font-semibold">☀️ Light Setup</h4>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label>Window Direction</Label>
+                  <Select value={envData.window_direction} onValueChange={(v) => setEnvData({ ...envData, window_direction: v })}>
+                    <SelectTrigger className="mt-2">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="north">North</SelectItem>
+                      <SelectItem value="east">East</SelectItem>
+                      <SelectItem value="south">South</SelectItem>
+                      <SelectItem value="west">West</SelectItem>
+                      <SelectItem value="none">No window</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label>Distance from Window</Label>
+                  <Select value={envData.distance_from_window} onValueChange={(v) => setEnvData({ ...envData, distance_from_window: v })}>
+                    <SelectTrigger className="mt-2">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="on_sill">On windowsill</SelectItem>
+                      <SelectItem value="1-3ft">1-3 feet</SelectItem>
+                      <SelectItem value="3-6ft">3-6 feet</SelectItem>
+                      <SelectItem value="6ft_plus">6+ feet</SelectItem>
+                      <SelectItem value="no_window">No window</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              <div>
+                <Label>Daily Light Hours</Label>
+                <Input
+                  type="number"
+                  value={envData.daily_light_hours}
+                  onChange={(e) => setEnvData({ ...envData, daily_light_hours: parseFloat(e.target.value) })}
+                  className="mt-2"
+                  placeholder="8"
+                />
+              </div>
+
+              <div className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  checked={envData.has_grow_light}
+                  onChange={(e) => setEnvData({ ...envData, has_grow_light: e.target.checked })}
+                  className="w-4 h-4"
+                />
+                <Label>Using grow light</Label>
+              </div>
+
+              {envData.has_grow_light && (
+                <div className="grid grid-cols-2 gap-4 ml-6">
+                  <div>
+                    <Label>Grow Light Hours/Day</Label>
+                    <Input
+                      type="number"
+                      value={envData.grow_light_hours}
+                      onChange={(e) => setEnvData({ ...envData, grow_light_hours: parseFloat(e.target.value) })}
+                      className="mt-2"
+                    />
+                  </div>
+                  <div>
+                    <Label>Grow Light Type</Label>
+                    <Select value={envData.grow_light_type} onValueChange={(v) => setEnvData({ ...envData, grow_light_type: v })}>
+                      <SelectTrigger className="mt-2">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="led_full_spectrum">LED Full Spectrum</SelectItem>
+                        <SelectItem value="led_red_blue">LED Red/Blue</SelectItem>
+                        <SelectItem value="fluorescent">Fluorescent</SelectItem>
+                        <SelectItem value="t5">T5</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="space-y-4">
+              <h4 className="font-semibold">💧 Watering</h4>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label>Method</Label>
+                  <Select value={envData.watering_method} onValueChange={(v) => setEnvData({ ...envData, watering_method: v })}>
+                    <SelectTrigger className="mt-2">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="top">Top water</SelectItem>
+                      <SelectItem value="bottom">Bottom water</SelectItem>
+                      <SelectItem value="ice_cube">Ice cube</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label>Soil Dryness Preference</Label>
+                  <Select value={envData.soil_dryness_preference} onValueChange={(v) => setEnvData({ ...envData, soil_dryness_preference: v })}>
+                    <SelectTrigger className="mt-2">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="keep_moist">Keep moist</SelectItem>
+                      <SelectItem value="top_inch_dry">Top 1" dry</SelectItem>
+                      <SelectItem value="top_half_dry">Top half dry</SelectItem>
+                      <SelectItem value="fully_dry">Fully dry</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              <h4 className="font-semibold">💨 Humidity & Airflow</h4>
+              <div>
+                <Label>Humidity Support Method</Label>
+                <Select value={envData.humidity_support_method} onValueChange={(v) => setEnvData({ ...envData, humidity_support_method: v })}>
+                  <SelectTrigger className="mt-2">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">None</SelectItem>
+                    <SelectItem value="pebble_tray">Pebble tray</SelectItem>
+                    <SelectItem value="grouping">Plant grouping</SelectItem>
+                    <SelectItem value="misting">Regular misting</SelectItem>
+                    <SelectItem value="humidifier">Humidifier</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  checked={envData.draft_exposure}
+                  onChange={(e) => setEnvData({ ...envData, draft_exposure: e.target.checked })}
+                  className="w-4 h-4"
+                />
+                <Label>Near vent, door, or drafty window</Label>
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              <h4 className="font-semibold">🌱 Fertilizer</h4>
+              <div>
+                <Label>Fertilizer Type Used</Label>
+                <Input
+                  value={envData.fertilizer_type_used}
+                  onChange={(e) => setEnvData({ ...envData, fertilizer_type_used: e.target.value })}
+                  placeholder="e.g., Balanced 10-10-10"
+                  className="mt-2"
+                />
+              </div>
+              <div>
+                <Label>Brand</Label>
+                <Input
+                  value={envData.fertilizer_brand}
+                  onChange={(e) => setEnvData({ ...envData, fertilizer_brand: e.target.value })}
+                  placeholder="e.g., Schultz, Miracle-Gro"
+                  className="mt-2"
+                />
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              <h4 className="font-semibold">🪴 Pot & Soil</h4>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label>Pot Material</Label>
+                  <Select value={envData.current_pot_material} onValueChange={(v) => setEnvData({ ...envData, current_pot_material: v })}>
+                    <SelectTrigger className="mt-2">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="plastic">Plastic</SelectItem>
+                      <SelectItem value="ceramic">Ceramic</SelectItem>
+                      <SelectItem value="terracotta">Terracotta</SelectItem>
+                      <SelectItem value="fabric">Fabric</SelectItem>
+                      <SelectItem value="self_watering">Self-watering</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="flex items-center gap-2 pt-8">
+                  <input
+                    type="checkbox"
+                    checked={envData.pot_has_drainage}
+                    onChange={(e) => setEnvData({ ...envData, pot_has_drainage: e.target.checked })}
+                    className="w-4 h-4"
+                  />
+                  <Label>Has drainage holes</Label>
+                </div>
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowEnvironmentModal(false)}>Cancel</Button>
+            <Button onClick={handleSaveEnvironment} className="bg-emerald-600 hover:bg-emerald-700">
+              Save Environment
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
+  );
+}
+
+function CareSection({ icon, title, expanded, onToggle, summary, children }) {
+  return (
+    <Card className="overflow-hidden">
+      <CardHeader 
+        className="cursor-pointer hover:bg-gray-50 transition-colors py-3"
+        onClick={onToggle}
+      >
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <span className="text-xl">{icon}</span>
+            <span className="font-semibold">{title}</span>
+          </div>
+          <div className="flex items-center gap-3">
+            <span className="text-sm text-gray-500">{summary}</span>
+            {expanded ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
+          </div>
+        </div>
+      </CardHeader>
+      {expanded && (
+        <CardContent className="pt-0 pb-4">
+          {children}
+        </CardContent>
+      )}
+    </Card>
   );
 }

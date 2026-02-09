@@ -53,6 +53,7 @@ import AddIndoorPlant from './pages/AddIndoorPlant';
 import AddIndoorSpace from './pages/AddIndoorSpace';
 import AdminAchievements from './pages/AdminAchievements';
 import AdminAuditLog from './pages/AdminAuditLog';
+import AdminBlogManager from './pages/AdminBlogManager';
 import AdminBulkEdit from './pages/AdminBulkEdit';
 import AdminChallenges from './pages/AdminChallenges';
 import AdminDataCleanup from './pages/AdminDataCleanup';
@@ -60,10 +61,13 @@ import AdminDataImport from './pages/AdminDataImport';
 import AdminDataMaintenance from './pages/AdminDataMaintenance';
 import AdminDeduplicateVarieties from './pages/AdminDeduplicateVarieties';
 import AdminHub from './pages/AdminHub';
+import AdminIndoorPlants from './pages/AdminIndoorPlants';
 import AdminLog from './pages/AdminLog';
 import AdminPestLibrary from './pages/AdminPestLibrary';
 import AdminRecipes from './pages/AdminRecipes';
 import AdminResources from './pages/AdminResources';
+import BlogList from './pages/BlogList';
+import BlogPost from './pages/BlogPost';
 import BrowseCategoryConfig from './pages/BrowseCategoryConfig';
 import BrowseGardens from './pages/BrowseGardens';
 import Calendar from './pages/Calendar';
@@ -148,10 +152,6 @@ import Users from './pages/Users';
 import VarietyReviewQueue from './pages/VarietyReviewQueue';
 import ViewVariety from './pages/ViewVariety';
 import ZoneMap from './pages/ZoneMap';
-import AdminBlogManager from './pages/AdminBlogManager';
-import BlogList from './pages/BlogList';
-import BlogPost from './pages/BlogPost';
-import AdminIndoorPlants from './pages/AdminIndoorPlants';
 import __Layout from './Layout.jsx';
 
 
@@ -162,6 +162,7 @@ export const PAGES = {
     "AddIndoorSpace": AddIndoorSpace,
     "AdminAchievements": AdminAchievements,
     "AdminAuditLog": AdminAuditLog,
+    "AdminBlogManager": AdminBlogManager,
     "AdminBulkEdit": AdminBulkEdit,
     "AdminChallenges": AdminChallenges,
     "AdminDataCleanup": AdminDataCleanup,
@@ -169,10 +170,13 @@ export const PAGES = {
     "AdminDataMaintenance": AdminDataMaintenance,
     "AdminDeduplicateVarieties": AdminDeduplicateVarieties,
     "AdminHub": AdminHub,
+    "AdminIndoorPlants": AdminIndoorPlants,
     "AdminLog": AdminLog,
     "AdminPestLibrary": AdminPestLibrary,
     "AdminRecipes": AdminRecipes,
     "AdminResources": AdminResources,
+    "BlogList": BlogList,
+    "BlogPost": BlogPost,
     "BrowseCategoryConfig": BrowseCategoryConfig,
     "BrowseGardens": BrowseGardens,
     "Calendar": Calendar,
@@ -257,10 +261,6 @@ export const PAGES = {
     "VarietyReviewQueue": VarietyReviewQueue,
     "ViewVariety": ViewVariety,
     "ZoneMap": ZoneMap,
-    "AdminBlogManager": AdminBlogManager,
-    "BlogList": BlogList,
-    "BlogPost": BlogPost,
-    "AdminIndoorPlants": AdminIndoorPlants,
 }
 
 export const pagesConfig = {
