@@ -20,6 +20,7 @@ import LevelProgressWidget from '@/components/gamification/LevelProgressWidget';
 import LeaderboardRankWidget from '@/components/gamification/LeaderboardRankWidget';
 import ChallengeProgressWidget from '@/components/gamification/ChallengeProgressWidget';
 import IndoorCareWidget from '@/components/dashboard/IndoorCareWidget';
+import { smartQuery } from '@/components/utils/smartQuery';
 
 const QuickAccessCard = ({ icon: Icon, title, count, color, page }) => {
   const navigate = useNavigate();
@@ -240,13 +241,13 @@ export default function Dashboard() {
     setLoading(true);
     
     try {
-      // WAVE 1: Core data only - show dashboard immediately
+      // WAVE 1: Core data only - show dashboard immediately - USE SMARTQUERY
       const userData = await base44.auth.me();
       setUser(userData);
 
       const [gardens, seedLots] = await Promise.all([
-        base44.entities.Garden.filter({ created_by: userData.email, archived: false }),
-        base44.entities.SeedLot.filter({ created_by: userData.email })
+        smartQuery(base44, 'Garden', { created_by: userData.email, archived: false }),
+        smartQuery(base44, 'SeedLot', { created_by: userData.email })
       ]);
 
       const newStats = {
@@ -261,41 +262,53 @@ export default function Dashboard() {
       setStats(newStats);
       setLoading(false);
 
-      // WAVE 2: Secondary stats - 1 second delay, load 2 at a time
+      // WAVE 2: Secondary stats - 1 second delay, ONE at a time with smartQuery
       setTimeout(async () => {
         try {
-          const [crops, tasks] = await Promise.all([
-            base44.entities.CropPlan.filter({ created_by: userData.email, status: 'active' }),
-            base44.entities.CropTask.filter({ created_by: userData.email, is_completed: false })
-          ]);
-          setStats(prev => ({ ...prev, activeCrops: crops.length, tasks: tasks.length }));
+          const crops = await smartQuery(base44, 'CropPlan', { created_by: userData.email, status: 'active' });
+          setStats(prev => ({ ...prev, activeCrops: crops.length }));
         } catch (err) {
-          console.warn('Secondary stats (wave 2a) failed:', err);
+          console.warn('Secondary stats (crops) failed (non-critical)');
         }
       }, 1000);
 
       setTimeout(async () => {
         try {
-          const [indoorSpaces, indoorPlants] = await Promise.all([
-            base44.entities.IndoorSpace.filter({ is_active: true }),
-            base44.entities.IndoorPlant.filter({ is_active: true })
-          ]);
-          setStats(prev => ({ ...prev, indoorSpaces: indoorSpaces.length, indoorPlants: indoorPlants.length }));
+          const tasks = await smartQuery(base44, 'CropTask', { created_by: userData.email, is_completed: false });
+          setStats(prev => ({ ...prev, tasks: tasks.length }));
         } catch (err) {
-          console.warn('Secondary stats (wave 2b) failed:', err);
+          console.warn('Secondary stats (tasks) failed (non-critical)');
         }
-      }, 1500);
+      }, 1400);
 
       setTimeout(async () => {
         try {
-          const trades = await base44.entities.SeedTrade.filter({ recipient_id: userData.id, status: 'pending' });
+          const indoorSpaces = await smartQuery(base44, 'IndoorSpace', { is_active: true });
+          setStats(prev => ({ ...prev, indoorSpaces: indoorSpaces.length }));
+        } catch (err) {
+          console.warn('Secondary stats (spaces) failed (non-critical)');
+        }
+      }, 1800);
+
+      setTimeout(async () => {
+        try {
+          const indoorPlants = await smartQuery(base44, 'IndoorPlant', { is_active: true });
+          setStats(prev => ({ ...prev, indoorPlants: indoorPlants.length }));
+        } catch (err) {
+          console.warn('Secondary stats (plants) failed (non-critical)');
+        }
+      }, 2200);
+
+      setTimeout(async () => {
+        try {
+          const trades = await smartQuery(base44, 'SeedTrade', { recipient_id: userData.id, status: 'pending' });
           setStats(prev => ({ ...prev, tradesPending: trades.length }));
         } catch (err) {
-          console.warn('Secondary stats (wave 2c) failed:', err);
+          console.warn('Secondary stats (trades) failed (non-critical)');
         }
-      }, 2000);
+      }, 2600);
 
-      // WAVE 3: Popular crops - 2.5 seconds delay
+      // WAVE 3: Popular crops - 3 seconds delay
       setTimeout(async () => {
         try {
           const popularResponse = await base44.functions.invoke('getPopularCrops', {});
@@ -310,7 +323,7 @@ export default function Dashboard() {
         } catch (error) {
           console.warn('Popular crops failed (non-critical)');
         }
-      }, 2500);
+      }, 3000);
       
     } catch (error) {
       console.error('Error loading dashboard:', error);
