@@ -167,9 +167,25 @@ export default function BarcodeScanner({ onScanComplete, onClose }) {
   }
 
   function rescan() {
+    // Stop existing scanner if running
+    if (scannerRef.current) {
+      try {
+        scannerRef.current.stop().catch(() => {});
+      } catch (e) {
+        // Already stopped
+      }
+      scannerRef.current = null;
+    }
+    
+    // Clear results - this re-renders the scanner container
     setResult(null);
     setError(null);
-    startScanner();
+    setScanning(false);
+    
+    // Wait for DOM to re-render, then start scanner
+    setTimeout(() => {
+      startScanner();
+    }, 300);
   }
 
   return (

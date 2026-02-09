@@ -911,10 +911,12 @@ export default function PlantCatalog() {
                               <Badge variant="outline" className="text-[10px] px-1 py-0.5">Perennial</Badge>
                             )}
                           </div>
-                          <div className="flex items-center justify-center gap-1 mt-2 text-sm opacity-0 group-hover:opacity-100 transition-opacity" style={{ color: 'var(--primary)' }}>
-                            <span>Browse</span>
-                            <ChevronRight className="w-4 h-4" />
-                          </div>
+                          {!type._is_browse_only && (
+                            <div className="flex items-center justify-center gap-1 mt-2 text-sm opacity-0 group-hover:opacity-100 transition-opacity" style={{ color: 'var(--primary)' }}>
+                              <span>Browse</span>
+                              <ChevronRight className="w-4 h-4" />
+                            </div>
+                          )}
                         </CardContent>
                       </Card>
                     </motion.div>
