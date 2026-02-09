@@ -71,15 +71,15 @@ const SelectContent = React.forwardRef(({ className, children, position = "poppe
         <SelectPrimitive.Content
           ref={ref}
           className={cn(
-            "fixed left-0 right-0 bottom-0 z-[9999] flex flex-col rounded-t-2xl border-t-4 border-emerald-500 bg-white shadow-2xl max-h-[80vh] w-full",
+            "fixed left-0 right-0 bottom-0 z-[9999] flex flex-col rounded-t-2xl border-t-4 border-emerald-500 bg-white dark:bg-gray-900 shadow-2xl max-h-[80vh] w-full",
             className
           )}
           sideOffset={0}
           {...props}
         >
-          <div className="mx-auto mt-3 mb-2 h-1.5 w-20 rounded-full bg-gray-300" />
-          <div className="px-4 pb-2 border-b">
-            <p className="text-sm font-semibold text-gray-700">Select an option</p>
+          <div className="mx-auto mt-3 mb-2 h-1.5 w-20 rounded-full bg-gray-300 dark:bg-gray-600" />
+          <div className="px-4 pb-2 border-b dark:border-gray-700">
+            <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">Select an option</p>
           </div>
           <SelectPrimitive.Viewport className="p-2 overflow-y-auto flex-1 w-full">
             {children}
@@ -131,7 +131,7 @@ const SelectItem = React.forwardRef(({ className, children, ...props }, ref) => 
       className={cn(
         "relative flex w-full cursor-pointer select-none items-center rounded-lg py-3.5 pl-4 pr-12 text-base outline-none data-[disabled]:pointer-events-none data-[disabled]:opacity-50 transition-all active:scale-[0.98]",
         isMobile 
-          ? "min-h-[52px] text-base font-medium bg-white hover:bg-emerald-50 active:bg-emerald-100 border-b border-gray-200 last:border-0 rounded-none first:rounded-t-lg last:rounded-b-lg" 
+          ? "min-h-[52px] text-base font-medium text-gray-900 dark:text-gray-100 bg-white dark:bg-gray-900 hover:bg-emerald-50 dark:hover:bg-emerald-900/30 active:bg-emerald-100 dark:active:bg-emerald-800/40 border-b border-gray-200 dark:border-gray-700 last:border-0 rounded-none first:rounded-t-lg last:rounded-b-lg" 
           : "focus:bg-accent focus:text-accent-foreground py-1.5 pl-2 pr-8 text-sm rounded-sm",
         className
       )}

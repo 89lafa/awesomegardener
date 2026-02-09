@@ -157,7 +157,7 @@ export default function BottomNav() {
   
   return (
     <>
-      <nav className="fixed bottom-0 left-0 right-0 border-t lg:hidden z-50 backdrop-blur-md" style={{ background: 'rgba(255, 255, 255, 0.95)', borderColor: 'var(--border-default)', paddingBottom: 'env(safe-area-inset-bottom)' }}>
+      <nav className="fixed bottom-0 left-0 right-0 border-t lg:hidden z-50 backdrop-blur-md bg-white dark:bg-gray-900" style={{ borderColor: 'var(--border-default)', paddingBottom: 'env(safe-area-inset-bottom)' }}>
         <div className="flex justify-around h-16">
           {items.map(item => {
             const isActive = location.pathname.startsWith(item.path);
@@ -165,9 +165,9 @@ export default function BottomNav() {
               <button
                 key={item.path}
                 onClick={() => handleTabClick(item.path)}
-                className="flex flex-col items-center justify-center min-w-[64px] touch-manipulation"
+                className="flex flex-col items-center justify-center min-w-[64px] touch-manipulation text-gray-700 dark:text-gray-300"
                 style={{ 
-                  color: isActive ? 'var(--primary)' : 'var(--text-muted)' 
+                  color: isActive ? '#10b981' : undefined
                 }}
               >
                 <item.icon className="w-6 h-6" />
@@ -177,8 +177,7 @@ export default function BottomNav() {
           })}
           <button
             onClick={() => setShowMoreDrawer(true)}
-            className="flex flex-col items-center justify-center min-w-[64px] touch-manipulation"
-            style={{ color: 'var(--text-muted)' }}
+            className="flex flex-col items-center justify-center min-w-[64px] touch-manipulation text-gray-700 dark:text-gray-300"
           >
             <MoreHorizontal className="w-6 h-6" />
             <span className="text-xs">More</span>
