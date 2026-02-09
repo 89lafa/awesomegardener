@@ -58,15 +58,17 @@ export default function IndoorSpaceDetail() {
       }, '-created_date');
       
       // Enrich with variety data
-      const enrichedPlants = await Promise.all(
-        plantsData.map(async (plant) => {
-          if (plant.variety_id) {
-            const varietyData = await base44.entities.Variety.filter({ id: plant.variety_id });
-            return { ...plant, variety_name: varietyData[0]?.variety_name };
-          }
-          return plant;
-        })
-      );
+      // Enrich with variety data sequentially to respect rate limits
+      const enrichedPlants = [];
+      for (const plant of plantsData) {
+        if (plant.variety_id) {
+          const varietyData = await base44.entities.Variety.filter({ id: plant.variety_id });
+          enrichedPlants.push({ ...plant, variety_name: varietyData[0]?.variety_name });
+          await new Promise(resolve => setTimeout(resolve, 150));
+        } else {
+          enrichedPlants.push(plant);
+        }
+      }
       
       setPlants(enrichedPlants);
     } catch (error) {
