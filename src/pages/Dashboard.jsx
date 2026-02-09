@@ -369,15 +369,9 @@ export default function Dashboard() {
       </div>
 
       <div className="grid md:grid-cols-3 gap-4">
-        <div className="glass-card">
-          <LevelProgressWidget loadDelay={0} />
-        </div>
-        <div className="glass-card">
-          <StreakWidget loadDelay={400} />
-        </div>
-        <div className="glass-card">
-          <LatestBadgeWidget loadDelay={800} />
-        </div>
+        <LevelProgressWidget loadDelay={0} />
+        <StreakWidget loadDelay={400} />
+        <LatestBadgeWidget loadDelay={800} />
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">

@@ -74,7 +74,7 @@ export default function StreakWidget({ loadDelay = 0 }) {
       <Link to={createPageUrl('StreakCalendar')}>
         <Button
           variant="outline"
-          className="w-full border-orange-300 hover:bg-orange-100 dark:border-orange-600 dark:hover:bg-orange-900/30"
+          className="w-full border-orange-300 dark:border-orange-600 hover:bg-orange-100 dark:hover:bg-orange-900/30"
         >
           <Calendar className="w-4 h-4 mr-2" />
           View Calendar
