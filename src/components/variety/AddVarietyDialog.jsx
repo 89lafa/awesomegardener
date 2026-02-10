@@ -552,7 +552,9 @@ export default function AddVarietyDialog({ plantType, open, onOpenChange, onSucc
               />
             </div>
           )}
+          </div>
         )}
+        
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
           <Button 
