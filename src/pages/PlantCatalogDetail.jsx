@@ -145,10 +145,13 @@ export default function PlantCatalogDetail() {
       }
       
       // Load subcategory mappings
-      const varietyIds = vars.map(v => v.id);
-      if (varietyIds.length > 0) {
-        const allMaps = await base44.entities.VarietySubCategoryMap.list();
-        const mapsForThese = allMaps.filter(m => varietyIds.includes(m.variety_id));
+        const varietyIds = vars.map(v => v.id);
+        if (varietyIds.length > 0 && vars.some(v => !v.plant_subcategory_id)) {
+          await new Promise(resolve => setTimeout(resolve, 400));
+          const allMaps = await base44.entities.VarietySubCategoryMap.filter({ 
+            variety_id: { $in: varietyIds } 
+          });
+          const mapsForThese = allMaps;
         
         vars = vars.map(v => {
           if (!v.plant_subcategory_id) {
@@ -287,6 +290,7 @@ export default function PlantCatalogDetail() {
 
       // Load active subcategories (only for non-browse categories since browse already loaded)
       if (!isBrowseCategory) {
+        await new Promise(resolve => setTimeout(resolve, 400));
         let subcats;
         if (isSquashUmbrella) {
           const allSubcats = await base44.entities.PlantSubCategory.filter({ is_active: true });
@@ -314,18 +318,19 @@ export default function PlantCatalogDetail() {
       // Load varieties - ONLY for non-browse categories (browse already handled above)
       console.log('[VARIETY DEBUG] Attempting to load varieties for plant_type_id:', plantTypeId);
 
+      await new Promise(resolve => setTimeout(resolve, 400));
       let vars = [];
       
       if (isSquashUmbrella) {
         vars = await base44.entities.Variety.filter({ 
           plant_type_id: { $in: SQUASH_CANONICAL_IDS },
           status: 'active'
-        }, 'variety_name', 1000);
+        }, 'variety_name', 200);
       } else if (!isBrowseCategory) {
         vars = await base44.entities.Variety.filter({ 
           plant_type_id: plantTypeId,
           status: 'active'
-        }, 'variety_name');
+        }, 'variety_name', 200);
       }
       
       console.log('[VARIETY DEBUG] Found Variety records:', vars.length);
@@ -340,9 +345,12 @@ export default function PlantCatalogDetail() {
       
       // Load subcategory mappings for varieties that don't have direct subcategory_id
       const varietyIds = vars.map(v => v.id);
-      if (varietyIds.length > 0) {
-        const allMaps = await base44.entities.VarietySubCategoryMap.list();
-        const mapsForThese = allMaps.filter(m => varietyIds.includes(m.variety_id));
+      if (varietyIds.length > 0 && vars.some(v => !v.plant_subcategory_id)) {
+        await new Promise(resolve => setTimeout(resolve, 400));
+        const allMaps = await base44.entities.VarietySubCategoryMap.filter({ 
+          variety_id: { $in: varietyIds } 
+        });
+        const mapsForThese = allMaps;
         
         // Merge subcategory IDs from mappings into varieties
         vars = vars.map(v => {
