@@ -23,11 +23,14 @@ import {
 } from "@/components/ui/popover"
 import { useIsMobile } from "@/components/ui/use-mobile"
 
-export function Combobox({ options, value, onChange, placeholder = "Select...", searchPlaceholder = "Search...", className }) {
+export function Combobox({ options, value, onChange, placeholder = "Select...", searchPlaceholder = "Search...", className, items }) {
   const [open, setOpen] = React.useState(false)
   const isMobile = useIsMobile()
 
-  const selectedOption = options.find((option) => option.value === value)
+  // Support both 'options' and 'items' props for compatibility
+  const actualOptions = items || options || [];
+  
+  const selectedOption = actualOptions.find((option) => option.value === value)
 
   const CommandContent = (
     <Command>
@@ -35,7 +38,7 @@ export function Combobox({ options, value, onChange, placeholder = "Select...", 
       <CommandList>
         <CommandEmpty>No results found.</CommandEmpty>
         <CommandGroup className="max-h-64 overflow-auto">
-          {options.map((option) => (
+          {actualOptions.map((option) => (
             <CommandItem
               key={option.value}
               value={option.searchValue || option.label}
