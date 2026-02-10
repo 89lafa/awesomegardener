@@ -155,7 +155,7 @@ export default function ForumTopic() {
       return;
     }
     
-    if (submitting) return; // V1B-11: Prevent double-submit
+    if (submitting) return;
     setSubmitting(true);
     try {
       await base44.entities.ForumPost.create({
@@ -164,16 +164,18 @@ export default function ForumTopic() {
         author_email: user.email
       });
 
-      // Update counts
+      const currentPosts = await base44.entities.ForumPost.filter({ topic_id: topicId });
+      
       await base44.entities.ForumTopic.update(topicId, {
-        post_count: (topic.post_count || 0) + 1,
+        post_count: currentPosts.length + 1,
         last_activity_at: new Date().toISOString(),
         last_post_by: user.email
       });
 
       if (category) {
+        const allTopicPosts = await base44.entities.ForumPost.filter({ category_id: category.id });
         await base44.entities.ForumCategory.update(category.id, {
-          post_count: (category.post_count || 0) + 1,
+          post_count: allTopicPosts.length + 1,
           last_activity_at: new Date().toISOString()
         });
       }
@@ -194,6 +196,21 @@ export default function ForumTopic() {
 
     try {
       await base44.entities.ForumPost.delete(post.id);
+      
+      const remainingPosts = await base44.entities.ForumPost.filter({ topic_id: topicId });
+      await base44.entities.ForumTopic.update(topicId, {
+        post_count: remainingPosts.length
+      });
+
+      if (category) {
+        const allCategoryPosts = await base44.entities.ForumPost.filter({ 
+          topic_id: { $in: (await base44.entities.ForumTopic.filter({ category_id: category.id })).map(t => t.id) }
+        });
+        await base44.entities.ForumCategory.update(category.id, {
+          post_count: allCategoryPosts.length
+        });
+      }
+
       toast.success('Post deleted');
       loadData();
     } catch (error) {
