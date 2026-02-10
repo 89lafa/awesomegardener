@@ -327,7 +327,7 @@ export default function AdminBlogManager() {
 
             <div>
               <Label>Content * (Markdown supported)</Label>
-              <div className="mt-2 bg-white rounded-lg border">
+              <div className="mt-2 bg-white rounded-lg border min-h-[320px]">
                 <ReactQuill
                   value={formData.content}
                   onChange={(content) => setFormData({ ...formData, content })}
@@ -340,7 +340,7 @@ export default function AdminBlogManager() {
                       ['clean']
                     ]
                   }}
-                  className="h-64"
+                  style={{ height: '280px' }}
                 />
               </div>
             </div>
@@ -351,6 +351,7 @@ export default function AdminBlogManager() {
                 <Select value={formData.category} onValueChange={(v) => setFormData({ ...formData, category: v })}>
                   <SelectTrigger className="mt-2"><SelectValue /></SelectTrigger>
                   <SelectContent>
+                    <SelectItem value="blog">Blog</SelectItem>
                     <SelectItem value="news">News</SelectItem>
                     <SelectItem value="update">Update</SelectItem>
                     <SelectItem value="guide">Guide</SelectItem>
@@ -371,6 +372,19 @@ export default function AdminBlogManager() {
                   </SelectContent>
                 </Select>
               </div>
+            </div>
+
+            <div>
+              <Label>Tags (comma-separated keywords)</Label>
+              <Input
+                value={formData.tags?.join(', ') || ''}
+                onChange={(e) => {
+                  const tags = e.target.value.split(',').map(t => t.trim()).filter(Boolean);
+                  setFormData({ ...formData, tags });
+                }}
+                placeholder="gardening, tips, tomatoes"
+                className="mt-2"
+              />
             </div>
 
             <div className="flex items-center gap-2">

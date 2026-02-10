@@ -167,25 +167,11 @@ export default function BarcodeScanner({ onScanComplete, onClose }) {
   }
 
   function rescan() {
-    // Stop existing scanner if running
-    if (scannerRef.current) {
-      try {
-        scannerRef.current.stop().catch(() => {});
-      } catch (e) {
-        // Already stopped
-      }
-      scannerRef.current = null;
-    }
-    
-    // Clear results - this re-renders the scanner container
+    stopScanner();
     setResult(null);
     setError(null);
-    setScanning(false);
-    
-    // Wait for DOM to re-render, then start scanner
-    setTimeout(() => {
-      startScanner();
-    }, 300);
+    setLoading(false);
+    setTimeout(() => startScanner(), 300);
   }
 
   return (
@@ -293,14 +279,14 @@ export default function BarcodeScanner({ onScanComplete, onClose }) {
             <Button
               onClick={addToStash}
               disabled={addingToStash}
-              className="flex-1 bg-emerald-500 hover:bg-emerald-600"
+              className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white"
             >
               {addingToStash ? (
                 <Loader size={18} className="animate-spin mr-2" />
               ) : (
                 <Plus size={18} className="mr-2" />
               )}
-              Add to Seed Stash
+              Add to Stash
             </Button>
           </div>
         </div>

@@ -584,27 +584,27 @@ export default function IndoorPlantDetail() {
             </Card>
           ) : (
             <>
-              <CareGuideSection icon="☀️" title="Light Requirements" summary={variety.light_requirement_indoor || 'Not specified'}>
+              <CareGuideSection icon="☀️" title="Light Requirements">
                 <CareGuideRow label="Light Level" value={variety.light_requirement_indoor?.replace(/_/g, ' ')} />
                 <CareGuideRow label="Tolerance Range" value={variety.light_tolerance_range?.replace(/_/g, ' ')} />
                 <CareGuideRow label="Min Light Hours" value={variety.min_light_hours && `${variety.min_light_hours} hrs/day`} />
                 <CareGuideRow label="Max Light Hours" value={variety.max_light_hours && `${variety.max_light_hours} hrs/day`} />
-                <CareGuideRow label="Grow Light Compatible" value={variety.grow_light_compatible ? 'Yes' : variety.grow_light_compatible === false ? 'No' : null} badge />
+                <CareGuideRow label="Grow Light Compatible" value={variety.grow_light_compatible ? 'Yes' : variety.grow_light_compatible === false ? 'No' : null} />
               </CareGuideSection>
 
-              <CareGuideSection icon="💧" title="Watering" summary={variety.watering_frequency_range?.replace(/_/g, ' ') || 'Moderate'}>
+              <CareGuideSection icon="💧" title="Watering">
                 <CareGuideRow label="Frequency Range" value={variety.watering_frequency_range?.replace(/_/g, ' ')} />
                 <CareGuideRow label="Preferred Method" value={variety.watering_method_preferred?.replace(/_/g, ' ')} />
                 <CareGuideRow label="Soil Dryness Rule" value={variety.soil_dryness_rule?.replace(/_/g, ' ')} />
-                <CareGuideRow label="Drought Tolerant" value={variety.drought_tolerant ? 'Yes' : variety.drought_tolerant === false ? 'No' : null} badge />
-                <CareGuideRow label="Overwater Sensitivity" value={variety.overwater_sensitivity} badge={variety.overwater_sensitivity === 'high' || variety.overwater_sensitivity === 'extreme'} />
+                <CareGuideRow label="Drought Tolerant" value={variety.drought_tolerant ? 'Yes' : variety.drought_tolerant === false ? 'No' : null} />
+                <CareGuideRow label="Overwater Sensitivity" value={variety.overwater_sensitivity} />
               </CareGuideSection>
 
-              <CareGuideSection icon="🌡️" title="Temperature" summary={variety.temp_ideal_min_f && variety.temp_ideal_max_f ? `${variety.temp_ideal_min_f}-${variety.temp_ideal_max_f}°F ideal` : 'Standard indoor temps'}>
+              <CareGuideSection icon="🌡️" title="Temperature">
                 <CareGuideRow label="Ideal Range" value={variety.temp_ideal_min_f && variety.temp_ideal_max_f && `${variety.temp_ideal_min_f}-${variety.temp_ideal_max_f}°F`} />
                 <CareGuideRow label="Min Temperature" value={variety.temp_min_f && `${variety.temp_min_f}°F (damage below)`} />
                 <CareGuideRow label="Max Temperature" value={variety.temp_max_f && `${variety.temp_max_f}°F (stress above)`} />
-                <CareGuideRow label="Draft Sensitive" value={variety.cold_draft_sensitive ? 'Yes - keep away from vents/doors' : variety.cold_draft_sensitive === false ? 'No' : null} badge={variety.cold_draft_sensitive} />
+                <CareGuideRow label="Draft Sensitive" value={variety.cold_draft_sensitive ? 'Yes - keep away from vents/doors' : variety.cold_draft_sensitive === false ? 'No' : null} />
               </CareGuideSection>
 
               <CareGuideSection icon="💨" title="Humidity" summary={variety.humidity_preference || 'Medium'}>

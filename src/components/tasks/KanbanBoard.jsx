@@ -19,11 +19,19 @@ export function KanbanBoard({ tasks, onTaskUpdate }) {
     if (col.id === 'today') {
       const today = new Date().toISOString().split('T')[0];
       acc[col.id] = tasks.filter(t =>
-        t.status === 'pending' &&
+        !t.is_completed &&
         t.start_date?.split('T')[0] === today
       );
-    } else {
-      acc[col.id] = tasks.filter(t => t.status === col.id);
+    } else if (col.id === 'pending') {
+      acc[col.id] = tasks.filter(t => !t.is_completed && !t.status);
+    } else if (col.id === 'in_progress') {
+      const today = new Date().toISOString().split('T')[0];
+      acc[col.id] = tasks.filter(t => 
+        !t.is_completed && 
+        t.start_date?.split('T')[0] < today
+      );
+    } else if (col.id === 'completed') {
+      acc[col.id] = tasks.filter(t => t.is_completed);
     }
     return acc;
   }, {});

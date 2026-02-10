@@ -142,9 +142,10 @@ export default function UnifiedSeedScanner({ onScanComplete, onClose }) {
     stopBarcodeScanner();
     setScannedBarcode(null);
     setMatchedProduct(null);
+    setExtractedData(null);
+    setPacketImage(null);
     setError(null);
-    setStep('barcode_scan');
-    setTimeout(() => startBarcodeScanner(), 300);
+    setStep('choice');
   };
 
   const startCamera = async () => {
@@ -425,7 +426,46 @@ export default function UnifiedSeedScanner({ onScanComplete, onClose }) {
             <Button variant="outline" onClick={rescanBarcode} className="flex-1">
               📷 Scan Another
             </Button>
-            <Button onClick={confirmAndSave} disabled={processing} className="flex-1 bg-emerald-600 hover:bg-emerald-700">
+            <Button onClick={async () => {
+              setProcessing(true);
+              try {
+                if (!matchedProduct?.variety_id) {
+                  toast.error('Missing variety data');
+                  return;
+                }
+                
+                const variety = await base44.entities.Variety.filter({ id: matchedProduct.variety_id });
+                if (variety.length === 0) {
+                  toast.error('Variety not found');
+                  return;
+                }
+                
+                const profiles = await base44.entities.PlantProfile.filter({ variety_name: variety[0].variety_name });
+                let profileId = null;
+                if (profiles.length > 0) {
+                  profileId = profiles[0].id;
+                }
+                
+                await base44.entities.SeedLot.create({
+                  plant_profile_id: profileId,
+                  custom_label: variety[0].variety_name,
+                  source_vendor_name: matchedProduct.vendor_name,
+                  quantity: parseInt(stashData.quantity) || 1,
+                  year_acquired: parseInt(stashData.year_acquired) || new Date().getFullYear(),
+                  storage_location: stashData.storage_location || null,
+                  lot_notes: `Added via barcode scan: ${matchedProduct.barcode}`,
+                  from_catalog: true
+                });
+                
+                toast.success('Added to stash!');
+                setStep('success');
+              } catch (error) {
+                console.error('Error adding to stash:', error);
+                toast.error('Failed to add to stash');
+              } finally {
+                setProcessing(false);
+              }
+            }} disabled={processing} className="flex-1 bg-emerald-600 hover:bg-emerald-700">
               {processing && <Loader2 className="w-4 h-4 animate-spin mr-2" />}
               Add to Stash
             </Button>
@@ -474,46 +514,53 @@ export default function UnifiedSeedScanner({ onScanComplete, onClose }) {
             </div>
 
             <div className="relative bg-black" style={{ aspectRatio: '3/4' }}>
-              <video
-                ref={videoRef}
-                autoPlay
-                playsInline
-                muted
-                className="w-full h-full object-cover"
-              />
-              
-              <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                <div className="absolute inset-0 bg-black/50" />
-                <div 
-                  className="relative border-4 border-white rounded-lg" 
-                  style={{ 
-                    width: '75%', 
-                    aspectRatio: '2/3',
-                    boxShadow: '0 0 0 9999px rgba(0,0,0,0.5)'
-                  }}
-                >
-                  <span className="absolute -top-10 left-1/2 -translate-x-1/2 text-white text-sm font-medium bg-black/50 px-3 py-1 rounded">
-                    Center packet here
-                  </span>
-                  <div className="absolute top-2 left-2 w-8 h-8 border-t-4 border-l-4 border-emerald-400"></div>
-                  <div className="absolute top-2 right-2 w-8 h-8 border-t-4 border-r-4 border-emerald-400"></div>
-                  <div className="absolute bottom-2 left-2 w-8 h-8 border-b-4 border-l-4 border-emerald-400"></div>
-                  <div className="absolute bottom-2 right-2 w-8 h-8 border-b-4 border-r-4 border-emerald-400"></div>
-                </div>
-              </div>
+              {!error && (
+                <>
+                  <video
+                    ref={videoRef}
+                    autoPlay
+                    playsInline
+                    muted
+                    className="w-full h-full object-cover"
+                  />
+                  
+                  <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                    <div className="absolute inset-0 bg-black/50" />
+                    <div 
+                      className="relative border-4 border-white rounded-lg" 
+                      style={{ 
+                        width: '75%', 
+                        aspectRatio: '2/3',
+                        boxShadow: '0 0 0 9999px rgba(0,0,0,0.5)'
+                      }}
+                    >
+                      <span className="absolute -top-10 left-1/2 -translate-x-1/2 text-white text-sm font-medium bg-black/50 px-3 py-1 rounded">
+                        Center packet here
+                      </span>
+                      <div className="absolute top-2 left-2 w-8 h-8 border-t-4 border-l-4 border-emerald-400"></div>
+                      <div className="absolute top-2 right-2 w-8 h-8 border-t-4 border-r-4 border-emerald-400"></div>
+                      <div className="absolute bottom-2 left-2 w-8 h-8 border-b-4 border-l-4 border-emerald-400"></div>
+                      <div className="absolute bottom-2 right-2 w-8 h-8 border-b-4 border-r-4 border-emerald-400"></div>
+                    </div>
+                  </div>
+                </>
+              )}
 
               {error && (
-                <div className="absolute inset-0 flex items-center justify-center bg-black/70">
+                <div className="flex items-center justify-center h-full bg-gray-800">
                   <div className="text-white text-center p-4">
                     <AlertCircle className="w-12 h-12 mx-auto mb-2" />
-                    <p>{error}</p>
+                    <p className="mb-4">{error}</p>
+                    <Button onClick={() => setError(null)} variant="outline" className="text-white border-white">
+                      Try Again
+                    </Button>
                   </div>
                 </div>
               )}
             </div>
 
-            <div className="p-4 space-y-2">
-              <Button onClick={capturePhoto} className="w-full bg-emerald-600 hover:bg-emerald-700 py-6 text-lg">
+            <div className="p-4 space-y-2 bg-white">
+              <Button onClick={capturePhoto} disabled={!!error} className="w-full bg-emerald-600 hover:bg-emerald-700 py-6 text-lg">
                 <Camera className="w-5 h-5 mr-2" />
                 Capture Front
               </Button>
@@ -575,7 +622,7 @@ export default function UnifiedSeedScanner({ onScanComplete, onClose }) {
       )}
 
       {step === 'review' && extractedData && (
-        <div className="bg-white rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+        <div className="bg-white rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto pb-24 md:pb-0">
           <div className="p-6 border-b sticky top-0 bg-white z-10">
             <h2 className="text-2xl font-bold mb-2">Review Scanned Seed</h2>
             {extractedData.matchResult?.action === 'link_barcode' && (
@@ -659,7 +706,7 @@ export default function UnifiedSeedScanner({ onScanComplete, onClose }) {
             </div>
           </div>
 
-          <div className="p-4 border-t sticky bottom-0 bg-white flex gap-3">
+          <div className="p-4 border-t sticky bottom-0 bg-white flex gap-3 mb-16 md:mb-0">
             <Button variant="outline" onClick={() => setStep('packet_capture')} className="flex-1">
               🔄 Rescan
             </Button>

@@ -425,43 +425,44 @@ export default function Dashboard() {
         </div>
       </div>
 
-      <div className="grid md:grid-cols-2 gap-4">
-        <QuickCheckInWidget loadDelay={2000} />
-        <IndoorCareWidget loadDelay={2400} />
+      <div className="grid md:grid-cols-3 gap-4">
+        <QuickCheckInWidget loadDelay={2000} compact />
+        <IndoorCareWidget loadDelay={2400} compact />
+        <ActivityFeed limit={3} loadDelay={2800} compact />
       </div>
 
       <div className="grid md:grid-cols-2 gap-4">
         <div className="glass-card-no-padding">
-          <div className="p-6">
-            <h3 className="flex items-center gap-2 text-lg font-semibold mb-4" style={{ color: 'var(--text-primary)' }}>
+          <div className="p-4">
+            <h3 className="flex items-center gap-2 font-semibold mb-3" style={{ color: 'var(--text-primary)' }}>
               ✨ AI Tools
             </h3>
-            <div className="space-y-3 text-sm">
-              <div>
-                <p className="font-medium" style={{ color: 'var(--text-primary)' }}>🤖 AI Assistants</p>
-                <p className="text-xs mt-1" style={{ color: 'var(--text-secondary)' }}>Photo diagnosis, plant ID, smart suggestions</p>
-                <Button onClick={() => navigate(createPageUrl('AIAssistants'))} size="sm" variant="outline" className="mt-2 w-full">
-                  Explore AI Tools
-                </Button>
-              </div>
-              <div className="border-t pt-3" style={{ borderColor: 'rgba(148, 163, 184, 0.2)' }}>
-                <p className="font-medium" style={{ color: 'var(--text-primary)' }}>🌾 Seed Trading</p>
-                <p className="text-xs mt-1" style={{ color: 'var(--text-secondary)' }}>Trade with other gardeners</p>
-                <Button onClick={() => navigate(createPageUrl('SeedTrading'))} size="sm" variant="outline" className="mt-2 w-full">
-                  Browse Trades
-                </Button>
-              </div>
-            </div>
+            <Button onClick={() => navigate(createPageUrl('AIAssistants'))} variant="outline" className="w-full">
+              Explore AI Tools
+            </Button>
           </div>
         </div>
 
-        <ActivityFeed limit={5} loadDelay={2800} />
+        <div className="glass-card-no-padding">
+          <div className="p-4">
+            <h3 className="flex items-center gap-2 font-semibold mb-3" style={{ color: 'var(--text-primary)' }}>
+              💬 Community
+            </h3>
+            <div className="space-y-2">
+              <Button onClick={() => navigate(createPageUrl('SeedTrading'))} variant="outline" className="w-full justify-between">
+                <span>🌾 Seed Trading</span>
+                <ArrowRight className="w-4 h-4" />
+              </Button>
+              <Button onClick={() => navigate(createPageUrl('Community'))} variant="outline" className="w-full justify-between">
+                <span>🏡 Community Board</span>
+                <ArrowRight className="w-4 h-4" />
+              </Button>
+            </div>
+          </div>
+        </div>
       </div>
 
-      <div className="grid md:grid-cols-2 gap-6">
-        <TipOfDayWidget loadDelay={3200} />
-        <RecipeSuggestionsWidget loadDelay={3600} />
-      </div>
+      <TipOfDayWidget loadDelay={3200} />
 
       {popularCrops && (
         <div className="space-y-4">

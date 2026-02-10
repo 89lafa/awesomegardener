@@ -4,32 +4,18 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 
 export default function CareGuideSection({ icon, title, summary, children, defaultOpen = false }) {
-  const [open, setOpen] = useState(defaultOpen);
-
   return (
     <Card className="mb-3">
-      <CardContent className="p-0">
-        <button
-          onClick={() => setOpen(!open)}
-          className="w-full px-4 py-3 flex items-center justify-between hover:bg-gray-50 transition-colors"
-        >
-          <div className="flex items-center gap-3">
-            <span className="text-2xl">{icon}</span>
-            <div className="text-left">
-              <h3 className="font-semibold text-gray-800">{title}</h3>
-              {!open && summary && (
-                <p className="text-xs text-gray-500 mt-0.5">{summary}</p>
-              )}
+      <CardContent className="p-4">
+        <div className="flex items-start gap-3">
+          <span className="text-2xl flex-shrink-0">{icon}</span>
+          <div className="flex-1 min-w-0">
+            <h3 className="font-semibold text-gray-800 mb-2">{title}</h3>
+            <div className="text-sm text-gray-700 space-y-1">
+              {children}
             </div>
           </div>
-          {open ? <ChevronDown className="w-5 h-5 text-gray-400" /> : <ChevronRight className="w-5 h-5 text-gray-400" />}
-        </button>
-        
-        {open && (
-          <div className="px-4 pb-4 pt-2 border-t bg-gray-50/50">
-            {children}
-          </div>
-        )}
+        </div>
       </CardContent>
     </Card>
   );
@@ -39,13 +25,9 @@ export function CareGuideRow({ label, value, badge = false }) {
   if (!value) return null;
   
   return (
-    <div className="flex items-start justify-between py-2 border-b border-gray-100 last:border-0">
-      <span className="text-sm text-gray-600">{label}</span>
-      {badge ? (
-        <Badge variant="outline" className="ml-2">{value}</Badge>
-      ) : (
-        <span className="text-sm font-medium text-gray-800 text-right ml-2">{value}</span>
-      )}
+    <div className="text-sm">
+      <span className="text-gray-600">{label}: </span>
+      <span className="font-medium text-gray-800">{value}</span>
     </div>
   );
 }
