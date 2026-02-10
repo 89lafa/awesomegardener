@@ -36,15 +36,49 @@ export function KanbanBoard({ tasks, onTaskUpdate }) {
     return acc;
   }, {});
 
-  const handleDrop = async (taskId, newStatus) => {
-    const updates = { status: newStatus };
-    if (newStatus === 'today') {
-      updates.start_date = new Date().toISOString().split('T')[0];
-      updates.status = 'pending';
-    }
+  const handleDragOver = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+  };
 
-    await base44.entities.CropTask.update(taskId, updates);
-    onTaskUpdate?.();
+  const handleDrop = async (e, newStatus) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    if (!draggedTask) return;
+
+    const taskId = draggedTask.id;
+    const task = draggedTask;
+
+    try {
+      if (newStatus === 'completed') {
+        if (task.source === 'indoor') {
+          await base44.entities.IndoorCareTask.update(taskId, {
+            is_completed: true,
+            completed_date: new Date().toISOString()
+          });
+        } else {
+          await base44.entities.CropTask.update(taskId, {
+            is_completed: true,
+            completed_at: new Date().toISOString()
+          });
+        }
+      } else {
+        if (task.source !== 'indoor') {
+          const updates = { status: newStatus };
+          if (newStatus === 'today') {
+            updates.start_date = new Date().toISOString();
+            updates.status = 'pending';
+          }
+          await base44.entities.CropTask.update(taskId, updates);
+        }
+      }
+      onTaskUpdate?.();
+    } catch (err) {
+      console.error('Drop error:', err);
+    } finally {
+      setDraggedTask(null);
+    }
   };
 
   return (
@@ -53,6 +87,8 @@ export function KanbanBoard({ tasks, onTaskUpdate }) {
         <div
           key={column.id}
           className={`${column.color} rounded-lg p-4 min-h-[500px] flex flex-col`}
+          onDragOver={handleDragOver}
+          onDrop={(e) => handleDrop(e, column.id)}
         >
           <div className="flex items-center justify-between mb-4">
             <h3 className={`font-semibold ${column.textColor}`}>{column.title}</h3>
@@ -67,13 +103,6 @@ export function KanbanBoard({ tasks, onTaskUpdate }) {
                 key={task.id}
                 draggable
                 onDragStart={() => setDraggedTask(task)}
-                onDragOver={(e) => e.preventDefault()}
-                onDrop={() => {
-                  if (draggedTask) {
-                    handleDrop(draggedTask.id, column.id === 'today' ? 'pending' : column.id);
-                    setDraggedTask(null);
-                  }
-                }}
                 className="bg-white rounded-lg p-3 shadow-sm hover:shadow-md transition-all cursor-move"
               >
                 <div className="flex items-start gap-2">
@@ -92,15 +121,10 @@ export function KanbanBoard({ tasks, onTaskUpdate }) {
 
             {(groupedTasks[column.id] || []).length === 0 && (
               <div className="text-center py-8 text-gray-500 text-sm">
-                No tasks
+                Drop tasks here
               </div>
             )}
           </div>
-
-          <Button variant="outline" className="w-full mt-auto gap-2" size="sm">
-            <Plus className="w-4 h-4" />
-            Add
-          </Button>
         </div>
       ))}
     </div>

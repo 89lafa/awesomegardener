@@ -584,7 +584,11 @@ export default function IndoorPlantDetail() {
             </Card>
           ) : (
             <>
-              <CareGuideSection icon="☀️" title="Light Requirements">
+              <CareGuideSection 
+                icon="☀️" 
+                title="Light Requirements" 
+                summary={variety.light_requirement_indoor?.replace(/_/g, ' ') || 'Not specified'}
+              >
                 <CareGuideRow label="Light Level" value={variety.light_requirement_indoor?.replace(/_/g, ' ')} />
                 <CareGuideRow label="Tolerance Range" value={variety.light_tolerance_range?.replace(/_/g, ' ')} />
                 <CareGuideRow label="Min Light Hours" value={variety.min_light_hours && `${variety.min_light_hours} hrs/day`} />
@@ -592,7 +596,11 @@ export default function IndoorPlantDetail() {
                 <CareGuideRow label="Grow Light Compatible" value={variety.grow_light_compatible ? 'Yes' : variety.grow_light_compatible === false ? 'No' : null} />
               </CareGuideSection>
 
-              <CareGuideSection icon="💧" title="Watering">
+              <CareGuideSection 
+                icon="💧" 
+                title="Watering" 
+                summary={variety.watering_frequency_range?.replace(/_/g, ' ') || variety.water_requirement || 'Moderate'}
+              >
                 <CareGuideRow label="Frequency Range" value={variety.watering_frequency_range?.replace(/_/g, ' ')} />
                 <CareGuideRow label="Preferred Method" value={variety.watering_method_preferred?.replace(/_/g, ' ')} />
                 <CareGuideRow label="Soil Dryness Rule" value={variety.soil_dryness_rule?.replace(/_/g, ' ')} />
@@ -600,54 +608,83 @@ export default function IndoorPlantDetail() {
                 <CareGuideRow label="Overwater Sensitivity" value={variety.overwater_sensitivity} />
               </CareGuideSection>
 
-              <CareGuideSection icon="🌡️" title="Temperature">
+              <CareGuideSection 
+                icon="🌡️" 
+                title="Temperature" 
+                summary={variety.temp_ideal_min_f && variety.temp_ideal_max_f ? `${variety.temp_ideal_min_f}-${variety.temp_ideal_max_f}°F ideal` : 'Standard indoor temps'}
+              >
                 <CareGuideRow label="Ideal Range" value={variety.temp_ideal_min_f && variety.temp_ideal_max_f && `${variety.temp_ideal_min_f}-${variety.temp_ideal_max_f}°F`} />
                 <CareGuideRow label="Min Temperature" value={variety.temp_min_f && `${variety.temp_min_f}°F (damage below)`} />
                 <CareGuideRow label="Max Temperature" value={variety.temp_max_f && `${variety.temp_max_f}°F (stress above)`} />
                 <CareGuideRow label="Draft Sensitive" value={variety.cold_draft_sensitive ? 'Yes - keep away from vents/doors' : variety.cold_draft_sensitive === false ? 'No' : null} />
               </CareGuideSection>
 
-              <CareGuideSection icon="💨" title="Humidity" summary={variety.humidity_preference || 'Medium'}>
-                <CareGuideRow label="Preference" value={variety.humidity_preference} badge />
+              <CareGuideSection 
+                icon="💨" 
+                title="Humidity" 
+                summary={variety.humidity_preference || 'Medium'}
+              >
+                <CareGuideRow label="Preference" value={variety.humidity_preference} />
                 <CareGuideRow label="Support Method" value={variety.humidity_support_method?.replace(/_/g, ' ')} />
                 <CareGuideRow label="Misting Beneficial" value={variety.misting_beneficial ? 'Yes' : variety.misting_beneficial === false ? 'No' : null} />
               </CareGuideSection>
 
-              <CareGuideSection icon="🪴" title="Soil & Potting" summary={variety.soil_type_recommended?.replace(/_/g, ' ') || 'All-purpose'}>
+              <CareGuideSection 
+                icon="🪴" 
+                title="Soil & Potting" 
+                summary={variety.soil_type_recommended?.replace(/_/g, ' ') || 'All-purpose'}
+              >
                 <CareGuideRow label="Recommended Soil" value={variety.soil_type_recommended?.replace(/_/g, ' ')} />
                 <CareGuideRow label="Drainage Speed" value={variety.soil_drainage_speed} />
-                <CareGuideRow label="Drainage Holes Required" value={variety.drainage_holes_required ? 'Yes' : variety.drainage_holes_required === false ? 'No' : null} badge={variety.drainage_holes_required} />
+                <CareGuideRow label="Drainage Holes Required" value={variety.drainage_holes_required ? 'Yes' : variety.drainage_holes_required === false ? 'No' : null} />
                 <CareGuideRow label="Recommended Pot Type" value={variety.recommended_pot_type?.replace(/_/g, ' ')} />
               </CareGuideSection>
 
-              <CareGuideSection icon="🌱" title="Fertilization" summary={variety.fertilizer_frequency?.replace(/_/g, ' ') || 'Monthly'}>
+              <CareGuideSection 
+                icon="🌱" 
+                title="Fertilization" 
+                summary={variety.fertilizer_frequency?.replace(/_/g, ' ') || 'Monthly'}
+              >
                 <CareGuideRow label="Type" value={variety.fertilizer_type?.replace(/_/g, ' ')} />
                 <CareGuideRow label="Frequency" value={variety.fertilizer_frequency?.replace(/_/g, ' ')} />
-                <CareGuideRow label="Strength" value={variety.fertilizer_strength} badge />
+                <CareGuideRow label="Strength" value={variety.fertilizer_strength} />
                 <CareGuideRow label="Feed During Dormancy" value={variety.dormant_season_feeding ? 'Yes' : variety.dormant_season_feeding === false ? 'No - skip winter' : null} />
               </CareGuideSection>
 
-              <CareGuideSection icon="📏" title="Growth & Size" summary={variety.mature_indoor_height || 'Varies'}>
-                <CareGuideRow label="Growth Pattern" value={variety.growth_pattern} badge />
+              <CareGuideSection 
+                icon="📏" 
+                title="Growth & Size" 
+                summary={variety.mature_indoor_height || 'Varies'}
+              >
+                <CareGuideRow label="Growth Pattern" value={variety.growth_pattern} />
                 <CareGuideRow label="Mature Height" value={variety.mature_indoor_height} />
                 <CareGuideRow label="Mature Width" value={variety.mature_indoor_width} />
-                <CareGuideRow label="Growth Speed" value={variety.growth_speed} badge />
+                <CareGuideRow label="Growth Speed" value={variety.growth_speed} />
                 <CareGuideRow label="Needs Support" value={variety.needs_support ? 'Yes (moss pole/trellis)' : variety.needs_support === false ? 'No' : null} />
                 <CareGuideRow label="Pruning Needs" value={variety.pruning_needs} />
               </CareGuideSection>
 
-              <CareGuideSection icon="🔄" title="Repotting" summary={variety.repot_frequency_years || '1-2 years'}>
+              <CareGuideSection 
+                icon="🔄" 
+                title="Repotting" 
+                summary={variety.repot_frequency_years ? `Every ${variety.repot_frequency_years} years` : '1-2 years'}
+              >
                 <CareGuideRow label="Frequency" value={variety.repot_frequency_years && `Every ${variety.repot_frequency_years} years`} />
-                <CareGuideRow label="Rootbound Tolerance" value={variety.rootbound_tolerance} badge />
+                <CareGuideRow label="Rootbound Tolerance" value={variety.rootbound_tolerance} />
                 <CareGuideRow label="Best Season" value={variety.best_repot_season?.replace(/_/g, ' ')} />
               </CareGuideSection>
 
               {isToxic && (
-                <CareGuideSection icon="⚠️" title="Toxicity Warning" summary="Toxic to pets or humans" defaultOpen>
-                  <CareGuideRow label="Toxic to Cats" value={variety.toxic_to_cats ? 'Yes' : 'No'} badge={variety.toxic_to_cats} />
-                  <CareGuideRow label="Toxic to Dogs" value={variety.toxic_to_dogs ? 'Yes' : 'No'} badge={variety.toxic_to_dogs} />
-                  <CareGuideRow label="Toxic to Humans" value={variety.toxic_to_humans ? 'Yes' : 'No'} badge={variety.toxic_to_humans} />
-                  <CareGuideRow label="Sap Irritant" value={variety.sap_irritant ? 'Yes - wear gloves' : variety.sap_irritant === false ? 'No' : null} badge={variety.sap_irritant} />
+                <CareGuideSection 
+                  icon="⚠️" 
+                  title="Toxicity Warning" 
+                  summary="Toxic to pets or humans" 
+                  defaultOpen
+                >
+                  <CareGuideRow label="Toxic to Cats" value={variety.toxic_to_cats ? 'Yes' : 'No'} />
+                  <CareGuideRow label="Toxic to Dogs" value={variety.toxic_to_dogs ? 'Yes' : 'No'} />
+                  <CareGuideRow label="Toxic to Humans" value={variety.toxic_to_humans ? 'Yes' : 'No'} />
+                  <CareGuideRow label="Sap Irritant" value={variety.sap_irritant ? 'Yes - wear gloves' : variety.sap_irritant === false ? 'No' : null} />
                   {variety.toxicity_notes && (
                     <div className="pt-2 text-sm text-gray-700 bg-red-50 p-3 rounded-lg mt-2">
                       {variety.toxicity_notes}
@@ -657,7 +694,11 @@ export default function IndoorPlantDetail() {
               )}
 
               {(variety.common_pests || variety.pest_susceptibility) && (
-                <CareGuideSection icon="🐛" title="Pests & Diseases" summary={`${variety.pest_susceptibility || 'moderate'} susceptibility`}>
+                <CareGuideSection 
+                  icon="🐛" 
+                  title="Pests & Diseases" 
+                  summary={`${variety.pest_susceptibility || 'moderate'} susceptibility`}
+                >
                   <CareGuideRow label="Pest Susceptibility" value={variety.pest_susceptibility} badge />
                   {variety.common_pests && (
                     <div className="py-2">
@@ -679,8 +720,12 @@ export default function IndoorPlantDetail() {
               )}
 
               {(variety.winter_dormancy || variety.reduced_winter_watering || variety.seasonal_notes) && (
-                <CareGuideSection icon="❄️" title="Seasonal Care" summary="Winter adjustments needed">
-                  <CareGuideRow label="Winter Dormancy" value={variety.winter_dormancy ? 'Yes' : variety.winter_dormancy === false ? 'No' : null} badge={variety.winter_dormancy} />
+                <CareGuideSection 
+                  icon="❄️" 
+                  title="Seasonal Care" 
+                  summary={variety.winter_dormancy ? 'Winter dormancy' : 'Year-round care'}
+                >
+                  <CareGuideRow label="Winter Dormancy" value={variety.winter_dormancy ? 'Yes' : variety.winter_dormancy === false ? 'No' : null} />
                   <CareGuideRow label="Reduced Winter Watering" value={variety.reduced_winter_watering ? 'Yes' : variety.reduced_winter_watering === false ? 'No' : null} />
                   <CareGuideRow label="Winter Leaf Drop" value={variety.winter_leaf_drop_normal ? 'Normal' : variety.winter_leaf_drop_normal === false ? 'Not normal' : null} />
                   {variety.seasonal_notes && (
@@ -692,7 +737,11 @@ export default function IndoorPlantDetail() {
               )}
 
               {variety.propagation_methods && (
-                <CareGuideSection icon="🌿" title="Propagation" summary={`${variety.propagation_difficulty || 'moderate'} difficulty`}>
+                <CareGuideSection 
+                  icon="🌿" 
+                  title="Propagation" 
+                  summary={`${variety.propagation_difficulty || 'moderate'} difficulty`}
+                >
                   <CareGuideRow label="Difficulty" value={variety.propagation_difficulty} badge />
                   <CareGuideRow label="Best Season" value={variety.propagation_best_season?.replace(/_/g, ' ')} />
                   {variety.propagation_methods && (
@@ -763,7 +812,13 @@ export default function IndoorPlantDetail() {
                         {log.photos && log.photos.length > 0 && (
                           <div className="flex gap-2 mt-2">
                             {log.photos.map((url, i) => (
-                              <img key={i} src={url} alt="Log photo" className="w-16 h-16 object-cover rounded border" />
+                              <img 
+                                key={i} 
+                                src={url} 
+                                alt="Log photo" 
+                                className="w-20 h-20 object-cover rounded border cursor-pointer hover:opacity-80 transition-opacity" 
+                                onClick={() => window.open(url, '_blank')}
+                              />
                             ))}
                           </div>
                         )}

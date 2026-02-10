@@ -13,7 +13,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
-import ReactQuill from 'react-quill';
+
 
 export default function AdminBlogManager() {
   const navigate = useNavigate();
@@ -326,23 +326,17 @@ export default function AdminBlogManager() {
             </div>
 
             <div>
-              <Label>Content * (Markdown supported)</Label>
-              <div className="mt-2 bg-white rounded-lg border min-h-[320px]">
-                <ReactQuill
-                  value={formData.content}
-                  onChange={(content) => setFormData({ ...formData, content })}
-                  modules={{
-                    toolbar: [
-                      [{ header: [1, 2, 3, false] }],
-                      ['bold', 'italic', 'underline', 'strike'],
-                      [{ list: 'ordered' }, { list: 'bullet' }],
-                      ['link', 'image'],
-                      ['clean']
-                    ]
-                  }}
-                  style={{ height: '280px' }}
-                />
-              </div>
+              <Label>Content *</Label>
+              <Textarea
+                value={formData.content}
+                onChange={(e) => setFormData({ ...formData, content: e.target.value })}
+                placeholder="Write your blog post content here..."
+                rows={16}
+                className="mt-2 font-mono text-sm"
+              />
+              <p className="text-xs text-gray-500 mt-1">
+                Use **bold** for bold text, # for headers
+              </p>
             </div>
 
             <div className="grid grid-cols-2 gap-4">
