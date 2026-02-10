@@ -3,7 +3,7 @@ import { base44 } from '@/api/base44Client';
 import { createPageUrl } from '@/utils';
 import Sidebar from '@/components/layout/Sidebar';
 import TopBar from '@/components/layout/TopBar';
-import BottomNav from '@/components/layout/BottomNav';
+import CollapsibleBottomNav from '@/components/layout/CollapsibleBottomNav';
 import QuickHelpWidget from '@/components/ai/QuickHelpWidget';
 import { cn } from '@/lib/utils';
 import { Loader2 } from 'lucide-react';
@@ -278,7 +278,7 @@ export default function Layout({ children, currentPageName }) {
           </AnimatePresence>
         </main>
       </div>
-      {user && <BottomNav />}
+      {user && <CollapsibleBottomNav />}
       {user && <QuickHelpWidget />}
     </div>
     </ErrorBoundary>

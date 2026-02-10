@@ -921,6 +921,56 @@ export default function AdminDataImport() {
                 <Download className="w-4 h-4" />
                 Subcategory Template
               </Button>
+              
+              <Button
+                onClick={async () => {
+                  try {
+                    const response = await base44.functions.invoke('generateSeedBarcodeTemplate');
+                    const blob = new Blob([response.data], { type: 'text/csv' });
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = 'seed_barcode_template.csv';
+                    document.body.appendChild(a);
+                    a.click();
+                    window.URL.revokeObjectURL(url);
+                    a.remove();
+                    toast.success('Template downloaded');
+                  } catch (error) {
+                    toast.error('Failed to download template');
+                  }
+                }}
+                variant="outline"
+                className="gap-2"
+              >
+                <Download className="w-4 h-4" />
+                Seed Barcode Template
+              </Button>
+
+              <Button
+                onClick={async () => {
+                  try {
+                    const response = await base44.functions.invoke('generateIndoorPlantTemplate');
+                    const blob = new Blob([response.data], { type: 'text/csv' });
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = 'indoor_plant_template.csv';
+                    document.body.appendChild(a);
+                    a.click();
+                    window.URL.revokeObjectURL(url);
+                    a.remove();
+                    toast.success('Template downloaded');
+                  } catch (error) {
+                    toast.error('Failed to download template');
+                  }
+                }}
+                variant="outline"
+                className="gap-2"
+              >
+                <Download className="w-4 h-4" />
+                Indoor Plant Template
+              </Button>
             </div>
           </div>
         </CardContent>

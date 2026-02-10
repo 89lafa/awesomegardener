@@ -253,7 +253,14 @@ export default function BlogPost() {
 
       <Card>
         <CardContent className="p-8 prose prose-emerald max-w-none">
-          <ReactMarkdown>{post.content}</ReactMarkdown>
+          <ReactMarkdown
+            components={{
+              p: ({ children }) => <p className="mb-4">{children}</p>,
+              br: () => <br />,
+            }}
+          >
+            {post.content}
+          </ReactMarkdown>
         </CardContent>
       </Card>
 

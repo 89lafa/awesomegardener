@@ -14,6 +14,7 @@ const COLUMNS = [
 
 export function KanbanBoard({ tasks, onTaskUpdate }) {
   const [draggedTask, setDraggedTask] = useState(null);
+  const [dragOverColumn, setDragOverColumn] = useState(null);
 
   const groupedTasks = COLUMNS.reduce((acc, col) => {
     if (col.id === 'today') {
@@ -36,19 +37,22 @@ export function KanbanBoard({ tasks, onTaskUpdate }) {
     return acc;
   }, {});
 
-  const handleDragOver = (e) => {
+  const handleDragOver = (e, columnId) => {
     e.preventDefault();
     e.stopPropagation();
     e.dataTransfer.dropEffect = 'move';
+    setDragOverColumn(columnId);
   };
 
   const handleDragEnd = () => {
     setDraggedTask(null);
+    setDragOverColumn(null);
   };
 
   const handleDrop = async (e, newStatus) => {
     e.preventDefault();
     e.stopPropagation();
+    setDragOverColumn(null);
     
     if (!draggedTask) return;
 
@@ -91,8 +95,11 @@ export function KanbanBoard({ tasks, onTaskUpdate }) {
       {COLUMNS.map(column => (
         <div
           key={column.id}
-          className={`${column.color} rounded-lg p-4 min-h-[500px] flex flex-col`}
-          onDragOver={handleDragOver}
+          className={`${column.color} rounded-lg p-4 min-h-[500px] flex flex-col transition-all ${
+            dragOverColumn === column.id ? 'ring-4 ring-emerald-500 ring-opacity-50 scale-[1.02]' : ''
+          }`}
+          onDragOver={(e) => handleDragOver(e, column.id)}
+          onDragLeave={() => setDragOverColumn(null)}
           onDrop={(e) => handleDrop(e, column.id)}
         >
           <div className="flex items-center justify-between mb-4">

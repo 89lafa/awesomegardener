@@ -136,9 +136,33 @@ export default function CalendarTasks() {
           created_by: currentUser.email
         }, 'start_date'),
         base44.entities.IndoorCareTask.filter({
-          is_completed: false
+          created_by: currentUser.email
         }, 'due_date')
       ]);
+
+      // Enrich indoor tasks with plant names
+      const enrichedIndoorTasks = await Promise.all(
+        indoorTasksData.map(async (t) => {
+          if (t.indoor_plant_id) {
+            try {
+              const plants = await base44.entities.IndoorPlant.filter({ id: t.indoor_plant_id });
+              const plant = plants[0];
+              if (plant && plant.variety_id) {
+                const varieties = await base44.entities.Variety.filter({ id: plant.variety_id });
+                const variety = varieties[0];
+                return {
+                  ...t,
+                  title: `${t.task_type === 'water' ? '💧 Water' : t.task_type === 'fertilize' ? '🌱 Fertilize' : t.task_type === 'rotate' ? '🔄 Rotate' : t.task_type === 'mist' ? '💨 Mist' : '📝'} ${plant.nickname || variety?.variety_name || 'Plant'}`,
+                  plant_name: plant.nickname || variety?.variety_name
+                };
+              }
+            } catch (error) {
+              console.error('Error enriching indoor task:', error);
+            }
+          }
+          return { ...t, title: t.title || `${t.task_type} task` };
+        })
+      );
 
       const allTasks = [
         ...gardenTasksData.map(t => ({
@@ -147,7 +171,7 @@ export default function CalendarTasks() {
           category: 'outdoor',
           date_field: 'start_date'
         })),
-        ...indoorTasksData.map(t => ({
+        ...enrichedIndoorTasks.map(t => ({
           ...t,
           source: 'indoor',
           category: 'indoor',

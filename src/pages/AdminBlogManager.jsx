@@ -282,13 +282,14 @@ export default function AdminBlogManager() {
             </div>
 
             <div>
-              <Label>URL Slug</Label>
+              <Label>URL Slug (not used in URL - just for SEO)</Label>
               <Input
                 value={formData.slug}
                 onChange={(e) => setFormData({ ...formData, slug: e.target.value })}
                 placeholder="url-friendly-slug"
                 className="mt-2"
               />
+              <p className="text-xs text-gray-500 mt-1">Note: URLs use ID, not slug (e.g., /BlogPost?id=123)</p>
             </div>
 
             <div>
@@ -344,7 +345,7 @@ export default function AdminBlogManager() {
                 <p><strong>[Link text](https://url.com)</strong> → Clickable link</p>
                 <p><strong>- List item</strong> → Bullet point</p>
                 <p><strong>1. Numbered item</strong> → Numbered list</p>
-                <p><strong>Two line breaks = New paragraph</strong></p>
+                <p className="text-red-700 font-bold">🔥 LEAVE A BLANK LINE between paragraphs!</p>
               </div>
             </div>
 
@@ -378,14 +379,14 @@ export default function AdminBlogManager() {
             </div>
 
             <div>
-              <Label>Tags (comma-separated keywords)</Label>
+              <Label>Tags (space-separated keywords)</Label>
               <Input
-                value={formData.tags?.join(', ') || ''}
+                value={formData.tags?.join(' ') || ''}
                 onChange={(e) => {
-                  const tags = e.target.value.split(',').map(t => t.trim()).filter(Boolean);
+                  const tags = e.target.value.split(/\s+/).map(t => t.trim()).filter(Boolean);
                   setFormData({ ...formData, tags });
                 }}
-                placeholder="gardening, tips, tomatoes"
+                placeholder="gardening tips tomatoes indoor"
                 className="mt-2"
               />
             </div>
