@@ -110,8 +110,8 @@ export default function PlantCatalog() {
       try {
         const { types, browseCats, timestamp } = JSON.parse(cached);
         const age = Date.now() - timestamp;
-        if (age < 5 * 60 * 1000) {
-          console.debug('[PlantCatalog] Using cached data');
+        if (age < 30 * 60 * 1000) {
+          console.debug('[PlantCatalog] Using cached data, age:', Math.round(age/1000), 's');
           const validTypes = types.filter(type => 
             type.id && type.common_name && type.is_active !== false && !type.notes?.includes('DEPRECATED')
           );
@@ -127,7 +127,6 @@ export default function PlantCatalog() {
           }));
           setPlantTypes([...browseTypes, ...validTypes]);
           setLoading(false);
-          setTimeout(() => loadPlantTypes(true), 500);
           return;
         }
       } catch (e) {
@@ -137,25 +136,28 @@ export default function PlantCatalog() {
     
     try {
       console.debug('[PlantCatalog] fetch_start PlantType');
-      const [types, browseCats, plantGroups] = await Promise.all([
-        smartQuery(base44, 'PlantType', {}, 'common_name', 5000),
-        smartQuery(base44, 'BrowseCategory', { is_active: true }, 'sort_order'),
-        smartQuery(base44, 'PlantGroup', {}, 'sort_order')
-      ]);
+      
+      // Load sequentially with delays to prevent rate limiting
+      const types = await smartQuery(base44, 'PlantType', {}, 'common_name', 5000);
+      await new Promise(r => setTimeout(r, 300));
+      
+      const browseCats = await smartQuery(base44, 'BrowseCategory', { is_active: true }, 'sort_order');
+      await new Promise(r => setTimeout(r, 300));
+      
+      const plantGroups = await smartQuery(base44, 'PlantGroup', {}, 'sort_order');
+      
       console.debug('[PlantCatalog] fetch_success PlantType count=', types.length);
       
       sessionStorage.setItem('plant_catalog_cache', JSON.stringify({
         types, browseCats, timestamp: Date.now()
       }));
       
-      // Filter out inactive, invalid, and deprecated plant types
       const validTypes = types.filter(type => 
         type.id && 
         type.common_name && 
         type.is_active !== false &&
         !type.notes?.includes('DEPRECATED')
       ).map(type => {
-        // Add plant group sort order to each type for sorting
         const group = plantGroups.find(g => g.id === type.plant_group_id);
         return {
           ...type,
@@ -163,7 +165,6 @@ export default function PlantCatalog() {
         };
       });
       
-      // Add browse categories as virtual plant types AT THE TOP
       const browseTypes = browseCats.map(cat => ({
         id: `browse_${cat.category_code}`,
         common_name: cat.name,
@@ -180,9 +181,7 @@ export default function PlantCatalog() {
     } catch (error) {
       console.error('[PlantCatalog] Error loading plant types:', error);
       if (error.code === 'RATE_LIMIT') {
-        console.debug('[PlantCatalog] 429 retryInMs=', error.retryInMs);
         setRateLimitError(error);
-        setTimeout(() => loadPlantTypes(true), error.retryInMs || 5000);
       }
     } finally {
       setLoading(false);
@@ -192,9 +191,10 @@ export default function PlantCatalog() {
 
   const loadAllVarieties = async () => {
     try {
+      // Load first 500 varieties for search - don't load all 4000
       const vars = await smartQuery(base44, 'Variety', { 
         status: 'active'
-      }, 'variety_name', 5000);
+      }, 'variety_name', 500);
       setAllVarieties(vars);
     } catch (error) {
       console.error('[PlantCatalog] Error loading varieties:', error);
