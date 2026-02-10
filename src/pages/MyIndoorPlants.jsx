@@ -362,10 +362,21 @@ export default function MyIndoorPlants() {
                     )}
                     
                     <div className="text-xs text-gray-500 space-y-1">
-                      <div className="flex items-center gap-1">
-                        <span>📍</span>
-                        <span className="truncate">{plant.space_name || 'No location'}</span>
-                      </div>
+                      {plant.indoor_space_id && plant.space_name ? (
+                        <div className="bg-emerald-50 border border-emerald-200 rounded px-2 py-1.5 mb-2">
+                          <div className="flex items-center gap-1 font-medium text-emerald-700">
+                            <span>📍</span>
+                            <span className="truncate">{plant.space_name}</span>
+                          </div>
+                          {plant.tier_id && spaces[plant.indoor_space_id]?.location_type === 'tiered_rack' && (
+                            <div className="text-[10px] text-emerald-600 mt-0.5">Tier assigned</div>
+                          )}
+                        </div>
+                      ) : (
+                        <div className="bg-gray-50 border border-gray-200 rounded px-2 py-1 mb-2 text-gray-500">
+                          📍 Not placed yet
+                        </div>
+                      )}
                       <div className="flex items-center gap-1">
                         <span>📅</span>
                         <span>{plant.age_display}</span>
@@ -396,8 +407,15 @@ export default function MyIndoorPlants() {
                   <div className="flex-1 min-w-0">
                     <h3 className="font-bold text-gray-800">{plant.nickname || plant.variety_name || 'Unnamed Plant'}</h3>
                     <p className="text-sm text-gray-500 truncate">
-                      {plant.variety_name || 'No variety'} • {plant.space_name || 'No location'}
+                      {plant.variety_name || 'No variety'}
                     </p>
+                    {plant.indoor_space_id && plant.space_name ? (
+                      <p className="text-xs text-emerald-600 font-medium truncate mt-1">
+                        📍 {plant.space_name}
+                      </p>
+                    ) : (
+                      <p className="text-xs text-gray-400 truncate mt-1">📍 Not placed</p>
+                    )}
                     <div className="flex items-center gap-2 mt-1">
                       {getStatusBadge(plant)}
                       {plant.needs_water && (

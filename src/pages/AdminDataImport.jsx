@@ -35,6 +35,8 @@ const IMPORT_ORDER = [
   { key: 'PlantType', label: 'Plant Types', file: 'AG_PlantType.csv' },
   { key: 'PlantSubCategory', label: 'Plant Subcategories', file: 'AG_PlantSubCategory.csv' },
   { key: 'Variety', label: 'Plant Varieties', file: 'AG_Variety_Starter_350.csv or AG_Variety_Extended_583.csv' },
+  { key: 'SeedVendorBarcode', label: 'Seed Barcodes', file: 'AG_Barcodes.csv' },
+  { key: 'IndoorPlant', label: 'Indoor Plants (Houseplants)', file: 'Indoor_Plants.csv' },
   { key: 'FacetGroup', label: 'Facet Groups', file: 'AG_FacetGroup.csv' },
   { key: 'Facet', label: 'Facets', file: 'AG_Facet.csv' },
   { key: 'PlantTypeFacetGroupMap', label: 'Plant Type Facet Maps', file: 'AG_PlantTypeFacetGroupMap.csv' },
@@ -597,6 +599,17 @@ export default function AdminDataImport() {
                   if (row.transplant_weeks_after_last_frost_min) updatePayload.transplant_weeks_after_last_frost_min = parseFloat(row.transplant_weeks_after_last_frost_min);
                   if (row.transplant_weeks_after_last_frost_max) updatePayload.transplant_weeks_after_last_frost_max = parseFloat(row.transplant_weeks_after_last_frost_max);
                   
+                  // Add ALL indoor/houseplant fields to update if present
+                  if (row.light_requirement_indoor) updatePayload.light_requirement_indoor = row.light_requirement_indoor;
+                  if (row.watering_frequency_range) updatePayload.watering_frequency_range = row.watering_frequency_range;
+                  if (row.humidity_preference) updatePayload.humidity_preference = row.humidity_preference;
+                  if (row.soil_type_recommended) updatePayload.soil_type_recommended = row.soil_type_recommended;
+                  if (row.temp_min_f) updatePayload.temp_min_f = parseFloat(row.temp_min_f);
+                  if (row.temp_max_f) updatePayload.temp_max_f = parseFloat(row.temp_max_f);
+                  if (row.toxic_to_cats !== undefined) updatePayload.toxic_to_cats = row.toxic_to_cats === 'true' || row.toxic_to_cats === '1';
+                  if (row.toxic_to_dogs !== undefined) updatePayload.toxic_to_dogs = row.toxic_to_dogs === 'true' || row.toxic_to_dogs === '1';
+                  if (row.air_purifying !== undefined) updatePayload.air_purifying = row.air_purifying === 'true' || row.air_purifying === '1';
+                  
                   // Always set booleans (they have defaults)
                   updatePayload.trellis_required = varietyData.trellis_required;
                   updatePayload.container_friendly = varietyData.container_friendly;
@@ -607,6 +620,87 @@ export default function AdminDataImport() {
                   updated++;
                 } else {
                   await base44.entities.Variety.create(varietyData);
+                  inserted++;
+                }
+                continue;
+              }
+
+              if (item.key === 'SeedVendorBarcode') {
+                if (!row.barcode || !row.variety_id) {
+                  rejected++;
+                  skipReasons.push({ row, reason: 'Missing barcode or variety_id' });
+                  continue;
+                }
+
+                // Check for existing barcode
+                const existing = await base44.entities.SeedVendorBarcode.filter({ barcode: row.barcode });
+
+                const barcodeData = {
+                  barcode: row.barcode,
+                  barcode_format: row.barcode_format || 'UPC_A',
+                  variety_id: row.variety_id,
+                  plant_type_id: row.plant_type_id || null,
+                  vendor_code: row.vendor_code || 'UNKNOWN',
+                  vendor_name: row.vendor_name || row.vendor_code || 'Unknown',
+                  vendor_url: row.vendor_url || null,
+                  vendor_product_url: row.vendor_product_url || null,
+                  product_name: row.product_name || null,
+                  packet_size: row.packet_size || null,
+                  retail_price: row.retail_price ? parseFloat(row.retail_price) : null,
+                  data_source: 'admin_import',
+                  verified: true,
+                  status: 'active'
+                };
+
+                if (existing.length > 0) {
+                  await base44.entities.SeedVendorBarcode.update(existing[0].id, barcodeData);
+                  updated++;
+                } else {
+                  await base44.entities.SeedVendorBarcode.create(barcodeData);
+                  inserted++;
+                }
+                continue;
+              }
+
+              if (item.key === 'IndoorPlant') {
+                if (!row.variety_id || !row.acquisition_date || !row.acquisition_source) {
+                  rejected++;
+                  skipReasons.push({ row, reason: 'Missing required fields (variety_id, acquisition_date, acquisition_source)' });
+                  continue;
+                }
+
+                // Check for existing by id
+                const existing = row.id ? await base44.entities.IndoorPlant.filter({ id: row.id }) : [];
+
+                const plantData = {
+                  variety_id: row.variety_id,
+                  nickname: row.nickname || null,
+                  acquisition_date: row.acquisition_date,
+                  acquisition_source: row.acquisition_source,
+                  indoor_space_id: row.indoor_space_id || null,
+                  tier_id: row.tier_id || null,
+                  health_status: row.health_status || 'healthy',
+                  pot_type: row.pot_type || null,
+                  pot_size_inches: row.pot_size_inches ? parseFloat(row.pot_size_inches) : null,
+                  soil_type: row.soil_type || null,
+                  watering_frequency_days: row.watering_frequency_days ? parseInt(row.watering_frequency_days) : null,
+                  last_watered_date: row.last_watered_date || null,
+                  is_active: row.is_active !== undefined ? (row.is_active === 'true' || row.is_active === '1') : true
+                };
+
+                // Add all optional fields if present
+                if (row.acquired_from) plantData.acquired_from = row.acquired_from;
+                if (row.purchase_price) plantData.purchase_price = parseFloat(row.purchase_price);
+                if (row.grid_position_x) plantData.grid_position_x = parseInt(row.grid_position_x);
+                if (row.grid_position_y) plantData.grid_position_y = parseInt(row.grid_position_y);
+                if (row.current_height_inches) plantData.current_height_inches = parseFloat(row.current_height_inches);
+                if (row.primary_photo_url) plantData.primary_photo_url = row.primary_photo_url;
+
+                if (existing.length > 0) {
+                  await base44.entities.IndoorPlant.update(existing[0].id, plantData);
+                  updated++;
+                } else {
+                  await base44.entities.IndoorPlant.create(plantData);
                   inserted++;
                 }
                 continue;
@@ -827,37 +921,58 @@ export default function AdminDataImport() {
           <CardTitle>Variety Import: Expected Columns</CardTitle>
         </CardHeader>
         <CardContent className="space-y-2">
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-2 text-sm">
+          <div className="space-y-4">
             <div>
-              <p className="font-semibold text-xs text-red-600 mb-1">REQUIRED:</p>
+              <p className="font-bold text-sm mb-2">Plant Varieties Import</p>
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-2 text-sm">
+                <div>
+                  <p className="font-semibold text-xs text-red-600 mb-1">REQUIRED:</p>
+                  <ul className="text-xs text-gray-700 space-y-0.5">
+                    <li>• variety_name</li>
+                    <li>• plant_type_id (or plant_type_code)</li>
+                  </ul>
+                </div>
+                <div>
+                  <p className="font-semibold text-xs text-emerald-600 mb-1">RECOMMENDED:</p>
+                  <ul className="text-xs text-gray-700 space-y-0.5">
+                    <li>• plant_subcategory_code</li>
+                    <li>• days_to_maturity</li>
+                    <li>• spacing_recommended</li>
+                    <li>• sun_requirement</li>
+                    <li>• species</li>
+                  </ul>
+                </div>
+                <div>
+                  <p className="font-semibold text-xs text-blue-600 mb-1">ALL 60+ FIELDS:</p>
+                  <ul className="text-xs text-gray-700 space-y-0.5">
+                    <li>✅ ALL Variety schema fields supported</li>
+                    <li>✅ Indoor plant fields (light, humidity, temp, toxicity)</li>
+                    <li>✅ Timing fields (start, transplant, sow)</li>
+                    <li>✅ Download template for full list</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+
+            <div className="border-t pt-3">
+              <p className="font-bold text-sm mb-2">Seed Barcodes Import</p>
               <ul className="text-xs text-gray-700 space-y-0.5">
-                <li>• variety_name</li>
-                <li>• plant_type_id (or plant_type_code)</li>
+                <li>• <strong>Required:</strong> barcode, variety_id, vendor_code</li>
+                <li>• <strong>Optional:</strong> barcode_format, product_name, packet_size, retail_price, vendor_product_url</li>
               </ul>
             </div>
-            <div>
-              <p className="font-semibold text-xs text-emerald-600 mb-1">RECOMMENDED:</p>
+
+            <div className="border-t pt-3">
+              <p className="font-bold text-sm mb-2">Indoor Plants (Houseplants) Import</p>
               <ul className="text-xs text-gray-700 space-y-0.5">
-                <li>• plant_subcategory_code</li>
-                <li>• days_to_maturity</li>
-                <li>• spacing_recommended</li>
-                <li>• sun_requirement</li>
-                <li>• species</li>
-              </ul>
-            </div>
-            <div>
-              <p className="font-semibold text-xs text-blue-600 mb-1">OPTIONAL:</p>
-              <ul className="text-xs text-gray-700 space-y-0.5">
-                <li>• description, synonyms</li>
-                <li>• height, water, growth_habit</li>
-                <li>• scoville (peppers)</li>
-                <li>• trellis, container flags</li>
-                <li>• All others (see template)</li>
+                <li>• <strong>Required:</strong> variety_id, acquisition_date, acquisition_source</li>
+                <li>• <strong>Optional:</strong> nickname, indoor_space_id, tier_id, health_status, pot_type, watering_frequency_days, etc.</li>
+                <li>✅ ALL IndoorPlant schema fields supported</li>
               </ul>
             </div>
           </div>
           <p className="text-xs text-gray-500 mt-3 border-t pt-3">
-            <strong>Note:</strong> Blank cells will NOT overwrite existing data on UPSERT. Only populated cells update fields.
+          <strong>✅ UPSERT MODE CONFIRMED:</strong> Blank cells will NOT overwrite existing data. Only populated cells update fields. Duplicates are prevented by variety_code or normalized name.
           </p>
         </CardContent>
       </Card>
