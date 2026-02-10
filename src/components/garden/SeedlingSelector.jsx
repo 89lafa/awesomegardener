@@ -26,17 +26,18 @@ export default function SeedlingSelector({ isOpen, onClose, onSeedlingSelected }
       setLoading(true);
       const user = await base44.auth.me();
 
-      // Get all ready-to-transplant seedlings (containers + tray cells + MyPlants)
+      // Get all ready-to-transplant seedlings with quantity tracking
       const [containers, trayCells, myPlants] = await Promise.all([
         base44.entities.IndoorContainer.filter({ created_by: user.email, status: 'ready_to_transplant' }),
         base44.entities.TrayCell.filter({ created_by: user.email, status: 'ready_to_transplant' }),
         base44.entities.MyPlant.filter({ created_by: user.email, status: 'ready_to_transplant' })
       ]);
 
+      // Add quantity field (1 per tray cell, quantity field for containers)
       const allSeedlings = [
-        ...containers.map(c => ({ ...c, source_type: 'container', source_id: c.id })),
-        ...trayCells.map(c => ({ ...c, source_type: 'tray_cell', source_id: c.id })),
-        ...myPlants.map(c => ({ ...c, source_type: 'my_plant', source_id: c.id }))
+        ...containers.map(c => ({ ...c, source_type: 'container', source_id: c.id, quantity: c.quantity || 1 })),
+        ...trayCells.map(c => ({ ...c, source_type: 'tray_cell', source_id: c.id, quantity: 1 })),
+        ...myPlants.map(c => ({ ...c, source_type: 'my_plant', source_id: c.id, quantity: c.quantity || 1 }))
       ];
 
       setSeedlings(allSeedlings);
@@ -146,7 +147,8 @@ export default function SeedlingSelector({ isOpen, onClose, onSeedlingSelected }
       plant_type_name: seedling.plant_type_name,
       display_name: displayNames[seedling.source_id] || seedling.name,
       spacing_cols: 2,
-      spacing_rows: 2
+      spacing_rows: 2,
+      max_quantity: seedling.quantity || 1
     });
     onClose();
   };
@@ -194,10 +196,17 @@ export default function SeedlingSelector({ isOpen, onClose, onSeedlingSelected }
                         </Badge>
                       </div>
                       <div className="text-right text-sm text-gray-600">
-                        <p className="flex items-center gap-1 justify-end">
-                          <Calendar className="w-3 h-3" />
-                          {getDaysInGrow(seedling)}d
-                        </p>
+                        <div className="flex flex-col items-end gap-1">
+                          <p className="flex items-center gap-1">
+                            <Calendar className="w-3 h-3" />
+                            {getDaysInGrow(seedling)}d old
+                          </p>
+                          {seedling.quantity && (
+                            <Badge variant="outline" className="text-xs">
+                              Qty: {seedling.quantity}
+                            </Badge>
+                          )}
+                        </div>
                       </div>
                     </div>
                     <p className="text-xs text-gray-600 flex items-center gap-1">

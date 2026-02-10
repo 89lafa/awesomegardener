@@ -231,7 +231,7 @@ export default function IndoorGrowSpaces() {
             <Card 
               key={space.id}
               className="hover:shadow-md transition-shadow cursor-pointer"
-              onClick={() => navigate(createPageUrl('IndoorSpaceDetail') + `?id=${space.id}`)}
+              onClick={() => navigate(createPageUrl('IndoorGrowSpaceDetail') + `?id=${space.id}`)}
             >
               <div className="p-6">
                 <div className="flex items-start justify-between mb-4">
@@ -271,7 +271,7 @@ export default function IndoorGrowSpaces() {
                     className="flex-1"
                     onClick={(e) => {
                       e.stopPropagation();
-                      navigate(createPageUrl('IndoorSpaceDetail') + `?id=${space.id}`);
+                      navigate(createPageUrl('IndoorGrowSpaceDetail') + `?id=${space.id}`);
                     }}
                   >
                     Open
