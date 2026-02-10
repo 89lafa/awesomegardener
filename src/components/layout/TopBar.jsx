@@ -52,35 +52,15 @@ export default function TopBar({ user, onMobileMenuToggle, onSidebarToggle, side
 
   const loadUnreadCount = async () => {
     try {
-      // Only query Notifications for regular users
+      // Only query Notifications - nothing else
       const notifications = await base44.entities.Notification.filter({ 
         user_email: user.email, 
         is_read: false 
       });
-      let count = notifications.length;
-      
-      // Admin/Mod queries - only if user has permissions
-      if (user.role === 'admin' || user.role === 'moderator') {
-        const [varietySuggestions, featureRequests, imageSubmissions, changeRequests] = await Promise.all([
-          base44.entities.VarietySuggestion.filter({ status: 'pending' }),
-          base44.entities.FeatureRequest.filter({ status: 'submitted' }),
-          base44.entities.VarietyImageSubmission.filter({ status: 'pending' }),
-          base44.entities.VarietyChangeRequest.filter({ status: 'pending' }),
-        ]);
-        
-        count += varietySuggestions.length + featureRequests.length + imageSubmissions.length + changeRequests.length;
-        
-        // Admin-only: User reports
-        if (user.role === 'admin') {
-          const userReports = await base44.entities.ContentReport.filter({ status: 'open' });
-          count += userReports.length;
-        }
-      }
-      
-      setUnreadCount(count);
+      setUnreadCount(notifications.length);
     } catch (error) {
       // Non-critical - badge count is cosmetic
-      console.warn('Badge count failed (non-critical)');
+      console.warn('[TopBar] Badge count failed (non-critical)');
     }
   };
 

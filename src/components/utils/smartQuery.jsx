@@ -178,10 +178,10 @@ export async function smartQuery(base44, entityName, query = {}, sort = '', limi
   }
 }
 
-async function executeWithRetry(base44, entityName, query, sort, limit, key, attempt = 1) {
+async function executeWithRetry(base44, entityName, query, sort, limit, key) {
   const startTime = Date.now();
   
-  if (isDev) console.debug('[API] request_start', { entity: entityName, attempt, cached: false, deduped: false });
+  if (isDev) console.debug('[API] request_start', { entity: entityName, cached: false, deduped: false });
   
   try {
     let result;
@@ -198,9 +198,9 @@ async function executeWithRetry(base44, entityName, query, sort, limit, key, att
     return result || [];
     
   } catch (error) {
-    // Handle 429 Rate Limit - NO RETRY
+    // Handle 429 Rate Limit - NO RETRY, return stale cache or throw
     if (error.response?.status === 429 || error.status === 429) {
-      if (isDev) console.warn('[API] request_429 - NO RETRY', { entity: entityName });
+      if (isDev) console.warn('[API] 429 - returning stale cache or throwing', { entity: entityName });
       throw { code: 'RATE_LIMIT', status: 429, message: 'Rate limit exceeded' };
     }
     
