@@ -10,7 +10,7 @@ import { toast } from 'sonner';
 import { Search, Loader2, Plus } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
-export default function PlantSeedsDialog({ isOpen, onClose, trayId, trayName, onSeedPlanted }) {
+export function PlantSeedsDialog({ isOpen, onClose, trayId, trayName, onSeedPlanted }) {
   const [seedLots, setSeedLots] = useState([]);
   const [growListItems, setGrowListItems] = useState([]);
   const [seedlings, setSeedlings] = useState([]);
