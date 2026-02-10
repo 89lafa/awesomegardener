@@ -17,7 +17,10 @@ const calculateTrayCapacity = (widthFt) => {
   return Math.floor(widthFt); // 4ft = 4 trays, 6ft = 6 trays, etc
 };
 
-export function AddRackDialog({ isOpen, onClose, spaceId, onRackAdded }) {
+export default function AddRackDialog({ open, onOpenChange, spaceId, onSuccess }) {
+  const isOpen = open;
+  const onClose = () => onOpenChange(false);
+  const onRackAdded = onSuccess;
   const [rackName, setRackName] = useState('');
   const [width, setWidth] = useState(6);
   const [depth, setDepth] = useState(3);
