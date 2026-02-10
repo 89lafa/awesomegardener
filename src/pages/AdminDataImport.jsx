@@ -616,6 +616,17 @@ export default function AdminDataImport() {
                   updatePayload.is_ornamental = varietyData.is_ornamental;
                   updatePayload.is_organic = varietyData.is_organic;
                   
+                  // Add indoor fields to update payload if present
+                  if (row.light_requirement_indoor) updatePayload.light_requirement_indoor = row.light_requirement_indoor;
+                  if (row.watering_frequency_range) updatePayload.watering_frequency_range = row.watering_frequency_range;
+                  if (row.humidity_preference) updatePayload.humidity_preference = row.humidity_preference;
+                  if (row.soil_type_recommended) updatePayload.soil_type_recommended = row.soil_type_recommended;
+                  if (row.temp_min_f) updatePayload.temp_min_f = parseFloat(row.temp_min_f);
+                  if (row.temp_max_f) updatePayload.temp_max_f = parseFloat(row.temp_max_f);
+                  if (row.toxic_to_cats !== undefined) updatePayload.toxic_to_cats = row.toxic_to_cats === 'true' || row.toxic_to_cats === '1';
+                  if (row.toxic_to_dogs !== undefined) updatePayload.toxic_to_dogs = row.toxic_to_dogs === 'true' || row.toxic_to_dogs === '1';
+                  if (row.air_purifying !== undefined) updatePayload.air_purifying = row.air_purifying === 'true' || row.air_purifying === '1';
+                  
                   await base44.entities.Variety.update(existing[0].id, updatePayload);
                   updated++;
                 } else {
