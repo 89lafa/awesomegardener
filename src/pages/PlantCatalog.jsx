@@ -191,27 +191,11 @@ export default function PlantCatalog() {
   };
 
   const loadAllVarieties = async () => {
-    const cached = sessionStorage.getItem('varieties_cache');
-    if (cached) {
-      try {
-        const { vars, timestamp } = JSON.parse(cached);
-        const age = Date.now() - timestamp;
-        if (age < 5 * 60 * 1000) {
-          setAllVarieties(vars);
-          setTimeout(loadAllVarieties, 1000);
-          return;
-        }
-      } catch (e) {}
-    }
-    
     try {
       const vars = await smartQuery(base44, 'Variety', { 
         status: 'active'
       }, 'variety_name', 5000);
       setAllVarieties(vars);
-      sessionStorage.setItem('varieties_cache', JSON.stringify({
-        vars, timestamp: Date.now()
-      }));
     } catch (error) {
       console.error('[PlantCatalog] Error loading varieties:', error);
     }

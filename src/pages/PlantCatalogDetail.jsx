@@ -226,11 +226,13 @@ export default function PlantCatalogDetail() {
         console.log('[BROWSE] Found', validSubcats.length, 'subcategories');
         setSubCategories(validSubcats);
         
-        // Load varieties for these plant types
+        // Load varieties for these plant types using $in query
         console.log('[BROWSE] Loading varieties for plant_type_ids:', cleanIds);
-        const allVars = await base44.entities.Variety.filter({ status: 'active' }, 'variety_name', 2000);
-        const filteredVars = allVars.filter(v => cleanIds.includes(v.plant_type_id));
-        console.log('[BROWSE] Filtered to', filteredVars.length, 'varieties from', allVars.length, 'total active varieties');
+        const filteredVars = await base44.entities.Variety.filter({ 
+          plant_type_id: { $in: cleanIds },
+          status: 'active'
+        }, 'variety_name', 1000);
+        console.log('[BROWSE] Found', filteredVars.length, 'varieties for plant types');
         
         // Load subcategory mappings
         const varietyIds = filteredVars.map(v => v.id);
@@ -315,9 +317,11 @@ export default function PlantCatalogDetail() {
       let vars = [];
       
       if (isSquashUmbrella) {
-        const allVars = await base44.entities.Variety.filter({ status: 'active' }, 'variety_name', 1000);
-        vars = allVars.filter(v => SQUASH_CANONICAL_IDS.includes(v.plant_type_id));
-      } else {
+        vars = await base44.entities.Variety.filter({ 
+          plant_type_id: { $in: SQUASH_CANONICAL_IDS },
+          status: 'active'
+        }, 'variety_name', 1000);
+      } else if (!isBrowseCategory) {
         vars = await base44.entities.Variety.filter({ 
           plant_type_id: plantTypeId,
           status: 'active'
