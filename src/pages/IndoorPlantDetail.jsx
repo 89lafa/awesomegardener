@@ -242,7 +242,14 @@ export default function IndoorPlantDetail() {
   return (
     <div className="space-y-6 max-w-5xl mx-auto">
       <div className="flex items-center justify-between">
-        <Button variant="ghost" size="icon" onClick={() => navigate(createPageUrl('MyIndoorPlants'))}>
+        <Button variant="ghost" size="icon" onClick={() => {
+          // Go back to the space if we came from it, otherwise go to MyIndoorPlants
+          if (plant?.indoor_space_id) {
+            window.location.href = createPageUrl('IndoorSpaceDetail') + `?id=${plant.indoor_space_id}`;
+          } else {
+            window.location.href = createPageUrl('MyIndoorPlants');
+          }
+        }}>
           <ArrowLeft className="w-5 h-5" />
         </Button>
 
