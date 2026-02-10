@@ -103,10 +103,6 @@ export default function CommunityBoard() {
                           <MessageSquare className="w-4 h-4" />
                           <span>{category.topic_count || 0} topics</span>
                         </div>
-                        <div className="flex items-center gap-1">
-                          <Users className="w-4 h-4" />
-                          <span>{category.post_count || 0} posts</span>
-                        </div>
                         {category.last_activity_at && (
                           <div className="flex items-center gap-1">
                             <Clock className="w-4 h-4" />

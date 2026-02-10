@@ -15,7 +15,7 @@ const TASK_ICONS = {
   rotate: RotateCw,
 };
 
-export default function IndoorCareWidget({ loadDelay = 0 }) {
+export default function IndoorCareWidget({ loadDelay = 0, compact = false }) {
   const [tasks, setTasks] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -102,9 +102,9 @@ export default function IndoorCareWidget({ loadDelay = 0 }) {
 
   return (
     <Card>
-      <CardHeader>
+      <CardHeader className={compact ? "pb-2" : ""}>
         <div className="flex items-center justify-between">
-          <CardTitle className="text-lg flex items-center gap-2">
+          <CardTitle className={compact ? "text-base flex items-center gap-2" : "text-lg flex items-center gap-2"}>
             🪴 Indoor Care Today ({tasks.length})
           </CardTitle>
           <Link to={createPageUrl('CalendarTasks')} className="text-sm text-emerald-600 hover:text-emerald-700">
@@ -112,29 +112,29 @@ export default function IndoorCareWidget({ loadDelay = 0 }) {
           </Link>
         </div>
       </CardHeader>
-      <CardContent>
+      <CardContent className={compact ? "py-2" : ""}>
         {tasks.length === 0 ? (
           <div className="text-center py-8 text-gray-500">
             <div className="text-4xl mb-2">✅</div>
             <div className="text-sm">All caught up!</div>
           </div>
         ) : (
-          <div className="space-y-3">
-            {tasks.slice(0, 5).map(task => {
+          <div className={compact ? "space-y-2" : "space-y-3"}>
+            {tasks.slice(0, compact ? 3 : 5).map(task => {
               const Icon = TASK_ICONS[task.task_type] || Droplets;
               return (
-                <div key={task.id} className="flex items-center gap-3 p-3 bg-gradient-to-r from-emerald-50 to-green-50 rounded-lg">
+                <div key={task.id} className={compact ? "flex items-center gap-2 p-2 bg-gradient-to-r from-emerald-50 to-green-50 rounded-lg" : "flex items-center gap-3 p-3 bg-gradient-to-r from-emerald-50 to-green-50 rounded-lg"}>
                   <Checkbox
                     onCheckedChange={() => completeQuick(task.id, task.indoor_plant_id, task.task_type)}
                   />
                   <Icon className="w-4 h-4 text-emerald-600" />
                   <div className="flex-1">
-                    <div className="font-medium text-sm">
+                    <div className={compact ? "font-medium text-xs" : "font-medium text-sm"}>
                       {task.plant_nickname || task.variety_name}
                     </div>
                     <div className="text-xs text-gray-600 capitalize">
                       {task.task_type}
-                      {task.priority === 'high' && (
+                      {task.priority === 'high' && !compact && (
                         <span className="text-red-600 ml-2">⚠️ Urgent</span>
                       )}
                     </div>

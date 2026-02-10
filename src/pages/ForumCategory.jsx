@@ -210,7 +210,7 @@ export default function ForumCategory() {
                         <div className="flex items-center gap-4 mt-2 text-sm text-gray-500">
                           <div className="flex items-center gap-1">
                             <User className="w-4 h-4" />
-                            <span>{author?.nickname || author?.full_name || (topic.author_email ? topic.author_email.split('@')[0] : 'Unknown')}</span>
+                            <span>{author?.nickname || (author?.full_name ? author.full_name.split('@')[0] : null) || (topic.author_email ? topic.author_email.split('@')[0] : 'Unknown')}</span>
                           </div>
                           <div className="flex items-center gap-1">
                             <Clock className="w-4 h-4" />

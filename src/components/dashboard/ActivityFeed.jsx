@@ -15,7 +15,7 @@ const ACTIVITY_CONFIG = {
   milestone: { icon: '🎉', label: 'Milestone', color: 'bg-purple-100 text-purple-800' }
 };
 
-export default function ActivityFeed({ limit = 10, loadDelay = 0 }) {
+export default function ActivityFeed({ limit = 10, loadDelay = 0, compact = false }) {
   const [activities, setActivities] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -51,32 +51,32 @@ export default function ActivityFeed({ limit = 10, loadDelay = 0 }) {
 
   return (
     <Card>
-      <CardHeader>
-        <CardTitle className="text-lg">Recent Activity</CardTitle>
+      <CardHeader className={compact ? "pb-2" : ""}>
+        <CardTitle className={compact ? "text-base" : "text-lg"}>Recent Activity</CardTitle>
       </CardHeader>
-      <CardContent>
+      <CardContent className={compact ? "py-2" : ""}>
         {activities.length === 0 ? (
           <p className="text-sm text-gray-500 text-center py-8">
             No activities yet. Check in to track your garden!
           </p>
         ) : (
-          <div className="space-y-3">
-            {activities.map((activity) => {
+          <div className={compact ? "space-y-2" : "space-y-3"}>
+            {activities.slice(0, compact ? limit : activities.length).map((activity) => {
               const config = ACTIVITY_CONFIG[activity.activity_type] || ACTIVITY_CONFIG.note;
               return (
-                <div key={activity.id} className="flex items-start gap-3 pb-3 border-b last:border-0">
-                  <div className="text-2xl flex-shrink-0">{config.icon}</div>
+                <div key={activity.id} className={compact ? "flex items-start gap-2 pb-2 border-b last:border-0" : "flex items-start gap-3 pb-3 border-b last:border-0"}>
+                  <div className={compact ? "text-lg flex-shrink-0" : "text-2xl flex-shrink-0"}>{config.icon}</div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1">
-                      <Badge className={config.color}>{config.label}</Badge>
+                      <Badge className={config.color + (compact ? " text-xs" : "")}>{config.label}</Badge>
                       <span className="text-xs text-gray-500">
                         {formatDistanceToNow(new Date(activity.activity_date), { addSuffix: true })}
                       </span>
                     </div>
-                    {activity.notes && (
+                    {activity.notes && !compact && (
                       <p className="text-sm text-gray-700">{activity.notes}</p>
                     )}
-                    {activity.photo_url && (
+                    {activity.photo_url && !compact && (
                       <div className="mt-2 h-24 w-24 rounded-lg overflow-hidden">
                         <img
                           src={activity.photo_url}
