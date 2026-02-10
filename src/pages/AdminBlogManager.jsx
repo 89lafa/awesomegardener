@@ -334,9 +334,18 @@ export default function AdminBlogManager() {
                 rows={16}
                 className="mt-2 font-mono text-sm"
               />
-              <p className="text-xs text-gray-500 mt-1">
-                Use **bold** for bold text, # for headers
-              </p>
+              <div className="bg-blue-50 border border-blue-200 rounded p-3 mt-2 text-xs space-y-1">
+                <p className="font-bold text-blue-900">Markdown Formatting Guide:</p>
+                <p><strong>**Bold text**</strong> → <strong>Bold text</strong></p>
+                <p><strong>*Italic text*</strong> → <em>Italic text</em></p>
+                <p><strong># Heading 1</strong> → Large heading</p>
+                <p><strong>## Heading 2</strong> → Medium heading</p>
+                <p><strong>### Heading 3</strong> → Small heading</p>
+                <p><strong>[Link text](https://url.com)</strong> → Clickable link</p>
+                <p><strong>- List item</strong> → Bullet point</p>
+                <p><strong>1. Numbered item</strong> → Numbered list</p>
+                <p><strong>Two line breaks = New paragraph</strong></p>
+              </div>
             </div>
 
             <div className="grid grid-cols-2 gap-4">

@@ -23,6 +23,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { AlertCircle, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Combobox } from '@/components/ui/combobox';
+import ComprehensiveVarietyForm from './ComprehensiveVarietyForm';
 
 export default function AddVarietyDialog({ plantType, open, onOpenChange, onSuccess, userRole }) {
   const [formData, setFormData] = useState({
@@ -227,13 +228,21 @@ export default function AddVarietyDialog({ plantType, open, onOpenChange, onSucc
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>
             {isAdminOrEditor ? 'Add Variety' : 'Suggest Variety'} - {plantType.common_name}
           </DialogTitle>
         </DialogHeader>
-        <div className="space-y-4">
+        
+        {isAdminOrEditor ? (
+          <ComprehensiveVarietyForm 
+            formData={formData} 
+            setFormData={setFormData}
+            subCategories={subCategories}
+          />
+        ) : (
+          <div className="space-y-4">
           <div>
             <Label htmlFor="varietyName">Variety Name *</Label>
             <Input
@@ -543,7 +552,7 @@ export default function AddVarietyDialog({ plantType, open, onOpenChange, onSucc
               />
             </div>
           )}
-        </div>
+        )}
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
           <Button 
