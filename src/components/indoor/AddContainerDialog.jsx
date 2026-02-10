@@ -14,7 +14,10 @@ const CONTAINER_TYPES = [
   { type: 'grow_bag_10gal', label: '10 Gallon Grow Bag', gallons: 10 },
 ];
 
-export function AddContainerDialog({ isOpen, onClose, spaceId, onContainerAdded }) {
+export default function AddContainerDialog({ open, onOpenChange, spaceId, onSuccess }) {
+  const isOpen = open;
+  const onClose = () => onOpenChange(false);
+  const onContainerAdded = onSuccess;
   const [containerName, setContainerName] = useState('');
   const [containerType, setContainerType] = useState('cup_3.5in');
   const [quantity, setQuantity] = useState(1);
