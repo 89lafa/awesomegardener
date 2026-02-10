@@ -1018,8 +1018,10 @@ export default function AdminDataImport() {
             <div className="border-t pt-3">
               <p className="font-bold text-sm mb-2">Seed Barcodes Import</p>
               <ul className="text-xs text-gray-700 space-y-0.5">
-                <li>• <strong>Required:</strong> barcode, variety_id, vendor_code</li>
-                <li>• <strong>Optional:</strong> barcode_format, product_name, packet_size, retail_price, vendor_product_url</li>
+                <li>• <strong>Required:</strong> barcode, variety_id, vendor_name</li>
+                <li>• <strong>Recommended:</strong> vendor_code, product_name, packet_size</li>
+                <li>• <strong>Optional:</strong> barcode_format, retail_price, vendor_product_url, plant_type_id</li>
+                <li>• <strong>Barcode formats:</strong> UPC_A, UPC_E, EAN_13, EAN_8, CODE_128, QR_CODE, OTHER</li>
               </ul>
             </div>
 
@@ -1027,8 +1029,10 @@ export default function AdminDataImport() {
               <p className="font-bold text-sm mb-2">Indoor Plants (Houseplants) Import</p>
               <ul className="text-xs text-gray-700 space-y-0.5">
                 <li>• <strong>Required:</strong> variety_id, acquisition_date, acquisition_source</li>
-                <li>• <strong>Optional:</strong> nickname, indoor_space_id, tier_id, health_status, pot_type, watering_frequency_days, etc.</li>
-                <li>✅ ALL IndoorPlant schema fields supported</li>
+                <li>• <strong>Location:</strong> indoor_space_id, tier_id, grid_position_x, grid_position_y</li>
+                <li>• <strong>Container:</strong> pot_type, pot_size_inches, soil_type, has_drainage</li>
+                <li>• <strong>Care:</strong> watering_frequency_days, health_status, nickname</li>
+                <li>✅ ALL IndoorPlant schema fields supported - download template for full list</li>
               </ul>
             </div>
           </div>
