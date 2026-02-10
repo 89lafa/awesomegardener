@@ -242,8 +242,7 @@ export default function EditVariety() {
               subCategories={subCategories}
             />
             
-            <div className="space-y-4 mt-6 pt-6 border-t">
-            <div className="flex gap-3">
+            <div className="flex gap-3 mt-6 pt-6 border-t">
               <Button type="button" variant="outline" onClick={() => navigate(-1)} className="flex-1">
                 Cancel
               </Button>
