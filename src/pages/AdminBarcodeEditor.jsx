@@ -198,7 +198,7 @@ export default function AdminBarcodeEditor() {
             <Label>Plant Type</Label>
             <Combobox
               placeholder="Search plant types..."
-              items={plantTypes.map(pt => ({
+              items={(plantTypes || []).map(pt => ({
                 value: pt.id,
                 label: `${pt.icon || ''} ${pt.common_name}`
               }))}
