@@ -152,6 +152,7 @@ import Users from './pages/Users';
 import VarietyReviewQueue from './pages/VarietyReviewQueue';
 import ViewVariety from './pages/ViewVariety';
 import ZoneMap from './pages/ZoneMap';
+import IndoorGrowSpaceDetail from './pages/IndoorGrowSpaceDetail';
 import __Layout from './Layout.jsx';
 
 
@@ -261,6 +262,7 @@ export const PAGES = {
     "VarietyReviewQueue": VarietyReviewQueue,
     "ViewVariety": ViewVariety,
     "ZoneMap": ZoneMap,
+    "IndoorGrowSpaceDetail": IndoorGrowSpaceDetail,
 }
 
 export const pagesConfig = {
