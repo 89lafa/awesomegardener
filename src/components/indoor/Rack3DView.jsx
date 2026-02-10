@@ -212,29 +212,51 @@ function RackStructure3D({ rack, shelves, trays, allCells, showLabels }) {
   const tierDepth = 200;
 
   return (
-    <div className="relative" style={{ transformStyle: 'preserve-3d', transform: 'translateY(-50px)' }}>
-      {/* Left side support poles */}
+    <div className="relative" style={{ transformStyle: 'preserve-3d' }}>
+      {/* Back support poles */}
       <div
         className="absolute bg-gradient-to-r from-slate-700 to-slate-600 rounded-lg shadow-2xl"
         style={{
-          left: '-100px',
+          left: '50px',
           top: '0',
           width: '16px',
           height: `${shelfCount * tierHeight}px`,
-          transform: 'translateZ(0px)',
+          transform: 'translateZ(-100px)',
           boxShadow: '0 20px 40px rgba(0,0,0,0.5)',
         }}
       />
-      
-      {/* Right side support poles */}
       <div
         className="absolute bg-gradient-to-r from-slate-700 to-slate-600 rounded-lg shadow-2xl"
         style={{
-          right: '-100px',
+          right: '50px',
           top: '0',
           width: '16px',
           height: `${shelfCount * tierHeight}px`,
-          transform: 'translateZ(0px)',
+          transform: 'translateZ(-100px)',
+          boxShadow: '0 20px 40px rgba(0,0,0,0.5)',
+        }}
+      />
+
+      {/* Front support poles */}
+      <div
+        className="absolute bg-gradient-to-r from-slate-600 to-slate-500 rounded-lg shadow-2xl"
+        style={{
+          left: '50px',
+          top: '0',
+          width: '16px',
+          height: `${shelfCount * tierHeight}px`,
+          transform: 'translateZ(100px)',
+          boxShadow: '0 20px 40px rgba(0,0,0,0.5)',
+        }}
+      />
+      <div
+        className="absolute bg-gradient-to-r from-slate-600 to-slate-500 rounded-lg shadow-2xl"
+        style={{
+          right: '50px',
+          top: '0',
+          width: '16px',
+          height: `${shelfCount * tierHeight}px`,
+          transform: 'translateZ(100px)',
           boxShadow: '0 20px 40px rgba(0,0,0,0.5)',
         }}
       />
@@ -286,9 +308,6 @@ function Rack3DVisualization({ rack, shelves, trays, allCells, viewAngle, viewPi
         height: '700px',
         transformStyle: 'preserve-3d',
         transform: getTransform(),
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
       }}
     >
       <RackStructure3D

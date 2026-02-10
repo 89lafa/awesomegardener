@@ -274,14 +274,18 @@ export default function IndoorSpaceDetail() {
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {plants.map((plant) => (
-                 <Link 
-                   key={plant.id}
-                   to={createPageUrl('IndoorPlantDetail') + `?id=${plant.id}`}
-                 >
-                 <Card 
-                   className="hover:shadow-lg transition-shadow cursor-pointer h-full"
-                 >
-                   <CardContent className="p-4">
+                  <Card 
+                    key={plant.id}
+                    className="hover:shadow-lg transition-shadow cursor-pointer h-full"
+                  >
+                    <CardContent 
+                      className="p-4"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        navigate(createPageUrl('IndoorPlantDetail') + `?id=${plant.id}`);
+                      }}
+                    >
                       <div className="text-4xl mb-2 text-center">🪴</div>
                       <h3 className="font-semibold text-center">{plant.nickname || plant.variety_name || 'Unnamed Plant'}</h3>
                       {plant.nickname && plant.variety_name && (
@@ -290,7 +294,6 @@ export default function IndoorSpaceDetail() {
                       <p className="text-xs text-gray-500 text-center capitalize mt-1">{plant.health_status || 'healthy'}</p>
                     </CardContent>
                   </Card>
-                  </Link>
                 ))}
               </div>
             )}
@@ -828,7 +831,7 @@ function Rack3DVisualization({ space, tiers, plants, viewAngle, viewPitch, zoom,
 
   return (
     <div
-      className="relative mx-auto transition-all duration-500 ease-out flex items-center justify-center"
+      className="relative mx-auto transition-all duration-500 ease-out"
       style={{
         width: '900px',
         height: '700px',
@@ -856,11 +859,15 @@ function RackStructure3D({ tiers, plants, tierCount, showLabels, selectedPlant, 
   const tierDepth = 200;
 
   return (
-    <div className="relative" style={{ transformStyle: 'preserve-3d', transform: 'translateY(-50px)' }}>
+    <div className="relative" style={{ transformStyle: 'preserve-3d', marginTop: '200px' }}>
       <div className="absolute bg-gradient-to-r from-slate-700 to-slate-600 rounded-lg shadow-2xl"
-        style={{ left: '-100px', top: '0', width: '16px', height: `${tierCount * tierHeight}px`, transform: 'translateZ(0px)', boxShadow: '0 20px 40px rgba(0,0,0,0.5)' }} />
+        style={{ left: '50px', top: '0', width: '16px', height: `${tierCount * tierHeight}px`, transform: 'translateZ(-100px)', boxShadow: '0 20px 40px rgba(0,0,0,0.5)' }} />
       <div className="absolute bg-gradient-to-r from-slate-700 to-slate-600 rounded-lg shadow-2xl"
-        style={{ right: '-100px', top: '0', width: '16px', height: `${tierCount * tierHeight}px`, transform: 'translateZ(0px)', boxShadow: '0 20px 40px rgba(0,0,0,0.5)' }} />
+        style={{ right: '50px', top: '0', width: '16px', height: `${tierCount * tierHeight}px`, transform: 'translateZ(-100px)', boxShadow: '0 20px 40px rgba(0,0,0,0.5)' }} />
+      <div className="absolute bg-gradient-to-r from-slate-600 to-slate-500 rounded-lg shadow-2xl"
+        style={{ left: '50px', top: '0', width: '16px', height: `${tierCount * tierHeight}px`, transform: 'translateZ(100px)', boxShadow: '0 20px 40px rgba(0,0,0,0.5)' }} />
+      <div className="absolute bg-gradient-to-r from-slate-600 to-slate-500 rounded-lg shadow-2xl"
+        style={{ right: '50px', top: '0', width: '16px', height: `${tierCount * tierHeight}px`, transform: 'translateZ(100px)', boxShadow: '0 20px 40px rgba(0,0,0,0.5)' }} />
 
       {tiers.map((tier, i) => {
         const tierNum = i + 1;
@@ -1076,7 +1083,7 @@ function Plant3D({ plant, position, isSelected, onClick, showLabel }) {
               <div className="text-slate-400 text-xs truncate italic">{plant.variety_name}</div>
             )}
             <div className="flex items-center gap-2 mt-1">
-              <div className="w-2 h-2 rounded-full" style={{ background: colors.from }} />
+              <div className="w-2 h-2 rounded-full" style={{ background: getHealthColor().from }} />
               <span className="text-xs capitalize">{plant.health_status || 'healthy'}</span>
             </div>
             {plant.current_height_inches && (
