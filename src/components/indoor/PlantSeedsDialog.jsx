@@ -9,9 +9,8 @@ import { base44 } from '@/api/base44Client';
 import { toast } from 'sonner';
 import { Search, Loader2, Plus } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { getVarietyDisplayName } from '@/components/utils/varietyHelpers';
 
-export function PlantSeedsDialog({ isOpen, onClose, trayId, trayName, onSeedPlanted }) {
+export default function PlantSeedsDialog({ isOpen, onClose, trayId, trayName, onSeedPlanted }) {
   const [seedLots, setSeedLots] = useState([]);
   const [growListItems, setGrowListItems] = useState([]);
   const [seedlings, setSeedlings] = useState([]);
@@ -112,7 +111,7 @@ export function PlantSeedsDialog({ isOpen, onClose, trayId, trayName, onSeedPlan
     const plantTypes = plantTypeIds.size > 0 ? await base44.entities.PlantType.list() : [];
     const plantTypeMap = new Map(plantTypes.map(pt => [pt.id, pt]));
     
-    // Build display names from cached data WITHOUT calling getVarietyDisplayName
+    // Build display names from cached data
     for (const item of items) {
       try {
         let varietyName = null;
@@ -126,11 +125,8 @@ export function PlantSeedsDialog({ isOpen, onClose, trayId, trayName, onSeedPlan
           }
         } else if (item.plant_profile_id && profileMap.has(item.plant_profile_id)) {
           const profile = profileMap.get(item.plant_profile_id);
-          // PlantProfile has variety_name, not custom_label
           varietyName = profile.variety_name || profile.custom_label;
-          // PlantProfile also has common_name directly
           plantTypeName = profile.common_name;
-          // Fallback to PlantType lookup if common_name not in profile
           if (!plantTypeName && profile.plant_type_id && plantTypeMap.has(profile.plant_type_id)) {
             plantTypeName = plantTypeMap.get(profile.plant_type_id).common_name;
           }
@@ -146,7 +142,6 @@ export function PlantSeedsDialog({ isOpen, onClose, trayId, trayName, onSeedPlan
         
         // ALWAYS show both variety and type when possible
         if (!varietyName && plantTypeName) {
-          // No variety name - use lot number or "Unknown" with type
           const fallbackName = item.lot_number || item.custom_label || 'Unknown';
           names[item.id] = `${fallbackName} - ${plantTypeName}`;
         } else if (varietyName && plantTypeName) {
@@ -432,7 +427,7 @@ export function PlantSeedsDialog({ isOpen, onClose, trayId, trayName, onSeedPlan
                   )}
                 </div>
               </TabsContent>
-              </Tabs>
+            </Tabs>
 
             {/* Planted Summary */}
             {plantedSummary.length > 0 && (
