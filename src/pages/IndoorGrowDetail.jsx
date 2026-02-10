@@ -48,7 +48,7 @@ import EditRackDialog from '@/components/indoor/EditRackDialog';
 import EditShelfDialog from '@/components/indoor/EditShelfDialog';
 import AddTrayDialog from '@/components/indoor/AddTrayDialog';
 import AddContainerDialog from '@/components/indoor/AddContainerDialog';
-import PlantSeedsDialog from '@/components/indoor/PlantSeedsDialog';
+import { PlantSeedsDialog } from '@/components/indoor/PlantSeedsDialog';
 import MoveTrayDialog from '@/components/indoor/MoveTrayDialog';
 import { createPageUrl } from '@/utils';
 import Rack3DView from '@/components/indoor/Rack3DView';
