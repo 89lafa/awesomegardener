@@ -111,10 +111,16 @@ export default function BlogPost() {
     }
   };
 
-  const handleShare = () => {
+  const handleShare = async () => {
     const url = window.location.href;
     if (navigator.share) {
-      navigator.share({ title: post.title, url });
+      try {
+        await navigator.share({ title: post.title, url });
+      } catch (error) {
+        // Fallback to clipboard if share fails
+        navigator.clipboard.writeText(url);
+        toast.success('Link copied to clipboard!');
+      }
     } else {
       navigator.clipboard.writeText(url);
       toast.success('Link copied to clipboard!');
