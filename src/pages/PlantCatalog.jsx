@@ -852,19 +852,20 @@ export default function PlantCatalog() {
                 (type.plant_group_sort_order ?? 0) >= 50;
 
               return (
-                {isFirstIndoorPlant && (
-                  <div key={`divider-${index}`} className="col-span-full my-4">
-                    <div className="border-t-2 border-emerald-200 dark:border-emerald-700 relative">
-                      <div className="absolute left-1/2 top-0 -translate-x-1/2 -translate-y-1/2 bg-white dark:bg-gray-900 px-6 py-2">
-                        <h3 className="text-lg font-bold text-emerald-700 dark:text-emerald-400 flex items-center gap-2">
-                          🏠 Indoor & Houseplants
-                        </h3>
-                        <p className="text-sm text-gray-600 dark:text-gray-400 text-center">Tropical foliage, succulents, ferns, and more</p>
+                  <React.Fragment key={type.id}>
+                  {isFirstIndoorPlant && (
+                    <div className="col-span-full my-4">
+                      <div className="border-t-2 border-emerald-200 dark:border-emerald-700 relative">
+                        <div className="absolute left-1/2 top-0 -translate-x-1/2 -translate-y-1/2 bg-white dark:bg-gray-900 px-6 py-2">
+                          <h3 className="text-lg font-bold text-emerald-700 dark:text-emerald-400 flex items-center gap-2">
+                            🏠 Indoor & Houseplants
+                          </h3>
+                          <p className="text-sm text-gray-600 dark:text-gray-400 text-center">Tropical foliage, succulents, ferns, and more</p>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                )}
-                <Link key={type.id} to={createPageUrl('PlantCatalogDetail') + `?id=${type.id}`}>
+                  )}
+                  <Link to={createPageUrl('PlantCatalogDetail') + `?id=${type.id}`}>
                   <motion.div
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
@@ -904,6 +905,7 @@ export default function PlantCatalog() {
                       </Card>
                     </motion.div>
                   </Link>
+                  </React.Fragment>
               );
             })}
           </AnimatePresence>
