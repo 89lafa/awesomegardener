@@ -35,6 +35,8 @@ export default function AddIndoorPlant() {
     purchase_price: '',
     indoor_space_id: spaceId || '',
     tier_id: '',
+    grid_position_x: '',
+    grid_position_y: '',
     pot_type: 'plastic',
     pot_size_inches: '',
     soil_type: 'potting_soil_general',
@@ -137,15 +139,18 @@ export default function AddIndoorPlant() {
         purchase_price: formData.purchase_price ? parseFloat(formData.purchase_price) : null,
         pot_size_inches: formData.pot_size_inches ? parseFloat(formData.pot_size_inches) : null,
         watering_frequency_days: formData.watering_frequency_days ? parseInt(formData.watering_frequency_days) : null,
+        grid_position_x: formData.grid_position_x !== '' ? parseInt(formData.grid_position_x) : null,
+        grid_position_y: formData.grid_position_y !== '' ? parseInt(formData.grid_position_y) : null,
       };
 
-      await base44.entities.IndoorPlant.create(plantData);
+      const newPlant = await base44.entities.IndoorPlant.create(plantData);
       toast.success('Plant added successfully!');
       
+      // Navigate IMMEDIATELY without delay
       if (spaceId) {
-        navigate(createPageUrl('IndoorSpaceDetail') + `?id=${spaceId}`);
+        window.location.href = createPageUrl('IndoorSpaceDetail') + `?id=${spaceId}`;
       } else {
-        navigate(createPageUrl('MyIndoorPlants'));
+        window.location.href = createPageUrl('MyIndoorPlants');
       }
     } catch (error) {
       console.error('Error adding plant:', error);
@@ -335,6 +340,37 @@ export default function AddIndoorPlant() {
                     ))}
                   </SelectContent>
                 </Select>
+              </div>
+            )}
+
+            {formData.tier_id && (
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label>Grid Position X (column)</Label>
+                  <Input
+                    type="number"
+                    min="0"
+                    max={(tiers.find(t => t.id === formData.tier_id)?.grid_columns || 4) - 1}
+                    placeholder="0"
+                    value={formData.grid_position_x}
+                    onChange={(e) => setFormData({ ...formData, grid_position_x: e.target.value })}
+                    className="mt-2"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">0 = leftmost, {(tiers.find(t => t.id === formData.tier_id)?.grid_columns || 4) - 1} = rightmost</p>
+                </div>
+                <div>
+                  <Label>Grid Position Y (row)</Label>
+                  <Input
+                    type="number"
+                    min="0"
+                    max={(tiers.find(t => t.id === formData.tier_id)?.grid_rows || 2) - 1}
+                    placeholder="0"
+                    value={formData.grid_position_y}
+                    onChange={(e) => setFormData({ ...formData, grid_position_y: e.target.value })}
+                    className="mt-2"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">0 = front, {(tiers.find(t => t.id === formData.tier_id)?.grid_rows || 2) - 1} = back</p>
+                </div>
               </div>
             )}
           </CardContent>

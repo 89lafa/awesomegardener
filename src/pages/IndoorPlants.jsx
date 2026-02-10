@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { createPageUrl } from '@/utils';
-import { Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { 
   Plus, 
   Grid3X3, 
@@ -22,6 +22,7 @@ import { toast } from 'sonner';
 import { motion, AnimatePresence } from 'framer-motion';
 
 export default function IndoorPlants() {
+  const navigate = useNavigate();
   const [spaces, setSpaces] = useState([]);
   const [viewMode, setViewMode] = useState('grid');
   const [loading, setLoading] = useState(true);
@@ -95,12 +96,10 @@ export default function IndoorPlants() {
           </p>
         </div>
         
-        <Link to={createPageUrl('AddIndoorSpace')}>
-          <Button className="bg-emerald-600 hover:bg-emerald-700">
-            <Plus className="w-4 h-4 mr-2" />
-            Add Space
-          </Button>
-        </Link>
+        <Button onClick={() => navigate(createPageUrl('AddIndoorSpace'))} className="bg-emerald-600 hover:bg-emerald-700">
+          <Plus className="w-4 h-4 mr-2" />
+          Add Space
+        </Button>
       </div>
 
       {/* Search & View Toggle */}
@@ -152,12 +151,10 @@ export default function IndoorPlants() {
               }
             </p>
             {!searchQuery && (
-              <Link to={createPageUrl('AddIndoorSpace')}>
-                <Button className="bg-emerald-600 hover:bg-emerald-700">
-                  <Plus className="w-4 h-4 mr-2" />
-                  Create Your First Space
-                </Button>
-              </Link>
+              <Button onClick={() => navigate(createPageUrl('AddIndoorSpace'))} className="bg-emerald-600 hover:bg-emerald-700">
+                <Plus className="w-4 h-4 mr-2" />
+                Create Your First Space
+              </Button>
             )}
           </CardContent>
         </Card>
@@ -172,7 +169,10 @@ export default function IndoorPlants() {
                 exit={{ opacity: 0 }}
                 transition={{ delay: index * 0.05 }}
               >
-                <Link to={createPageUrl('IndoorSpaceDetail') + `?id=${space.id}`}>
+                <div onClick={(e) => {
+                  e.preventDefault();
+                  navigate(createPageUrl('IndoorSpaceDetail') + `?id=${space.id}`);
+                }}>
                   <Card className="hover:shadow-lg transition-all cursor-pointer border-2 hover:border-emerald-400">
                     {/* Photo or Placeholder */}
                     <div className="aspect-video bg-gradient-to-br from-emerald-50 to-green-100 flex items-center justify-center overflow-hidden">
@@ -221,7 +221,7 @@ export default function IndoorPlants() {
                       )}
                     </CardContent>
                   </Card>
-                </Link>
+                </div>
               </motion.div>
             ))}
           </AnimatePresence>
@@ -229,7 +229,10 @@ export default function IndoorPlants() {
       ) : (
         <div className="space-y-3">
           {filteredSpaces.map((space) => (
-            <Link key={space.id} to={createPageUrl('IndoorSpaceDetail') + `?id=${space.id}`}>
+            <div key={space.id} onClick={(e) => {
+              e.preventDefault();
+              navigate(createPageUrl('IndoorSpaceDetail') + `?id=${space.id}`);
+            }}>
               <Card className="hover:shadow-md transition-all cursor-pointer hover:border-emerald-400">
                 <CardContent className="p-4">
                   <div className="flex items-center gap-4">
@@ -265,7 +268,7 @@ export default function IndoorPlants() {
                   </div>
                 </CardContent>
               </Card>
-            </Link>
+            </div>
           ))}
         </div>
       )}

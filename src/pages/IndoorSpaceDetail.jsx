@@ -318,10 +318,10 @@ export default function IndoorSpaceDetail() {
                             {tier.label} (Tier {tier.tier_number})
                           </h4>
                           <div 
-                            className="grid gap-1.5"
-                            style={{ gridTemplateColumns: `repeat(${gridCols}, minmax(0, 1fr))` }}
+                           className="grid gap-1"
+                           style={{ gridTemplateColumns: `repeat(${gridCols}, minmax(0, 1fr))` }}
                           >
-                            {Array.from({ length: gridCols * gridRows }).map((_, idx) => {
+                           {Array.from({ length: gridCols * gridRows }).map((_, idx) => {
                               const x = idx % gridCols;
                               const y = Math.floor(idx / gridCols);
                               const plantInCell = tierPlants.find(p => 
@@ -331,9 +331,9 @@ export default function IndoorSpaceDetail() {
                               return (
                                 <div
                                   key={idx}
-                                  className={`aspect-square rounded-md flex flex-col items-center justify-center text-[10px] transition-all ${
+                                  className={`aspect-square rounded-md flex flex-col items-center justify-center text-[8px] transition-all ${
                                     plantInCell 
-                                      ? 'bg-emerald-100 border-2 border-emerald-500 cursor-pointer hover:shadow-md hover:scale-105' 
+                                      ? 'bg-emerald-100 border border-emerald-500 cursor-pointer hover:shadow-md hover:scale-105' 
                                       : 'border border-dashed border-gray-300 text-gray-400'
                                   }`}
                                   onClick={(e) => {
@@ -346,13 +346,13 @@ export default function IndoorSpaceDetail() {
                                 >
                                   {plantInCell ? (
                                     <>
-                                      <div className="text-xl">🌿</div>
-                                      <div className="font-medium truncate w-full px-0.5 text-center text-[9px] leading-tight">
+                                      <div className="text-base">🌿</div>
+                                      <div className="font-medium truncate w-full px-0.5 text-center text-[7px] leading-tight">
                                         {plantInCell.nickname || plantInCell.variety_name}
                                       </div>
                                     </>
                                   ) : (
-                                    <span className="text-[9px]">Empty</span>
+                                    <span className="text-[8px]">Empty</span>
                                   )}
                                 </div>
                               );
