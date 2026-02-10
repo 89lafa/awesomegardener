@@ -271,7 +271,7 @@ export default function IndoorGrowSpaces() {
                     className="flex-1"
                     onClick={(e) => {
                       e.stopPropagation();
-                      navigate(createPageUrl('IndoorGrowSpaceDetail') + `?id=${space.id}`);
+                      navigate(createPageUrl('IndoorGrowDetail') + `?id=${space.id}`);
                     }}
                   >
                     Open
