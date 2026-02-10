@@ -319,6 +319,20 @@ export default function PlantingModal({
         });
 
       console.log('[PlantingModal] Created PlantInstance:', planting.id);
+
+      // Mark seedling as transplanted
+      if (selectedPlant.seedling_source_id) {
+        try {
+          const entityName = selectedPlant.seedling_source_type === 'tray_cell' ? 'TrayCell' : 
+                           selectedPlant.seedling_source_type === 'container' ? 'IndoorContainer' : 'MyPlant';
+          await base44.entities[entityName].update(selectedPlant.seedling_source_id, {
+            status: 'transplanted',
+            transplanted_date: new Date().toISOString()
+          });
+        } catch (err) {
+          console.error('Error marking seedling as transplanted:', err);
+        }
+      }
       
       // If from crop plan, update quantities - count actual plants, not grid slots
       if (selectedPlant.crop_plan_id) {
@@ -482,6 +496,20 @@ export default function PlantingModal({
         });
 
         console.log('[PlantingModal] Created PlantInstance:', planting.id);
+
+        // Mark seedling as transplanted
+        if (selectedPlant.seedling_source_id) {
+          try {
+            const entityName = selectedPlant.seedling_source_type === 'tray_cell' ? 'TrayCell' : 
+                             selectedPlant.seedling_source_type === 'container' ? 'IndoorContainer' : 'MyPlant';
+            await base44.entities[entityName].update(selectedPlant.seedling_source_id, {
+              status: 'transplanted',
+              transplanted_date: new Date().toISOString()
+            });
+          } catch (err) {
+            console.error('Error marking seedling as transplanted:', err);
+          }
+        }
 
         // If from crop plan, update quantities - count actual plants, not grid slots
         if (selectedPlant.crop_plan_id) {
@@ -920,6 +948,22 @@ export default function PlantingModal({
                     <p className="font-medium text-sm text-emerald-900">{selectedPlant.display_name}</p>
                     <p className="text-xs text-emerald-700 mt-1">📍 {selectedPlant.seedling_location}</p>
                     <p className="text-xs text-emerald-700">📅 Age: {selectedPlant.seedling_age_days}d</p>
+                    {selectedPlant.max_quantity > 1 && (
+                      <div className="mt-2">
+                        <Label className="text-xs">Quantity to plant (max {selectedPlant.max_quantity})</Label>
+                        <Input
+                          type="number"
+                          min="1"
+                          max={selectedPlant.max_quantity}
+                          value={selectedPlant.quantity_to_plant || 1}
+                          onChange={(e) => {
+                            const val = Math.min(parseInt(e.target.value) || 1, selectedPlant.max_quantity);
+                            setSelectedPlant({...selectedPlant, quantity_to_plant: val});
+                          }}
+                          className="mt-1"
+                        />
+                      </div>
+                    )}
                   </div>
                 )}
               </TabsContent>
@@ -1283,7 +1327,9 @@ export default function PlantingModal({
             seedling_source_id: seedlingData.seedling_source_id,
             seedling_source_type: seedlingData.seedling_source_type,
             seedling_age_days: seedlingData.seedling_age_days,
-            seedling_location: seedlingData.seedling_location
+            seedling_location: seedlingData.seedling_location,
+            max_quantity: seedlingData.max_quantity || 1,
+            quantity_to_plant: 1
           });
           checkCompanionAndRotation({
             plant_type_id: seedlingData.plant_type_id,
