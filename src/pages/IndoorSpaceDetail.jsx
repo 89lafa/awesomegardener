@@ -856,15 +856,11 @@ function RackStructure3D({ tiers, plants, tierCount, showLabels, selectedPlant, 
   const tierDepth = 200;
 
   return (
-    <div className="relative" style={{ transformStyle: 'preserve-3d' }}>
+    <div className="relative" style={{ transformStyle: 'preserve-3d', transform: 'translateY(-50px)' }}>
       <div className="absolute bg-gradient-to-r from-slate-700 to-slate-600 rounded-lg shadow-2xl"
-        style={{ left: '50px', top: '0', width: '16px', height: `${tierCount * tierHeight}px`, transform: 'translateZ(-100px)', boxShadow: '0 20px 40px rgba(0,0,0,0.5)' }} />
+        style={{ left: '-100px', top: '0', width: '16px', height: `${tierCount * tierHeight}px`, transform: 'translateZ(0px)', boxShadow: '0 20px 40px rgba(0,0,0,0.5)' }} />
       <div className="absolute bg-gradient-to-r from-slate-700 to-slate-600 rounded-lg shadow-2xl"
-        style={{ right: '50px', top: '0', width: '16px', height: `${tierCount * tierHeight}px`, transform: 'translateZ(-100px)', boxShadow: '0 20px 40px rgba(0,0,0,0.5)' }} />
-      <div className="absolute bg-gradient-to-r from-slate-600 to-slate-500 rounded-lg shadow-2xl"
-        style={{ left: '50px', top: '0', width: '16px', height: `${tierCount * tierHeight}px`, transform: 'translateZ(100px)', boxShadow: '0 20px 40px rgba(0,0,0,0.5)' }} />
-      <div className="absolute bg-gradient-to-r from-slate-600 to-slate-500 rounded-lg shadow-2xl"
-        style={{ right: '50px', top: '0', width: '16px', height: `${tierCount * tierHeight}px`, transform: 'translateZ(100px)', boxShadow: '0 20px 40px rgba(0,0,0,0.5)' }} />
+        style={{ right: '-100px', top: '0', width: '16px', height: `${tierCount * tierHeight}px`, transform: 'translateZ(0px)', boxShadow: '0 20px 40px rgba(0,0,0,0.5)' }} />
 
       {tiers.map((tier, i) => {
         const tierNum = i + 1;

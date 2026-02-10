@@ -247,7 +247,7 @@ export default function BlogPost() {
 
       <Card>
         <CardContent className="p-8 prose prose-emerald max-w-none">
-          <div dangerouslySetInnerHTML={{ __html: post.content }} />
+          <ReactMarkdown>{post.content}</ReactMarkdown>
         </CardContent>
       </Card>
 

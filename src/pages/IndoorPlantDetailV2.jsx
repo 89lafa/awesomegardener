@@ -31,6 +31,9 @@ export default function IndoorPlantDetailV2() {
   const [editMode, setEditMode] = useState(false);
   const [editForm, setEditForm] = useState({});
   const [saving, setSaving] = useState(false);
+  const [allVarieties, setAllVarieties] = useState([]);
+  const [allPlantTypes, setAllPlantTypes] = useState([]);
+  const [selectedPlantType, setSelectedPlantType] = useState('');
 
   useEffect(() => {
     if (plantId) loadData();
@@ -66,6 +69,22 @@ export default function IndoorPlantDetailV2() {
         50
       );
       setLogs(logsData);
+
+      // Load plant types and varieties for edit mode
+      const [typesData, varietiesData] = await Promise.all([
+        base44.entities.PlantType.list('common_name', 500),
+        base44.entities.Variety.list('variety_name', 1000)
+      ]);
+      setAllPlantTypes(typesData);
+      setAllVarieties(varietiesData);
+      
+      // Set initial plant type if variety is loaded
+      if (p.variety_id && varietiesData) {
+        const currentVariety = varietiesData.find(v => v.id === p.variety_id);
+        if (currentVariety) {
+          setSelectedPlantType(currentVariety.plant_type_id);
+        }
+      }
     } catch (error) {
       console.error('Error loading plant:', error);
       toast.error('Failed to load plant');
@@ -98,6 +117,36 @@ export default function IndoorPlantDetailV2() {
     } catch (error) {
       console.error('Error logging action:', error);
       toast.error('Failed to log action');
+    }
+  };
+
+  const handlePhotoUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    try {
+      const { file_url } = await base44.integrations.Core.UploadFile({ file });
+      
+      // If no primary photo, set as primary
+      if (!plant.primary_photo_url) {
+        await base44.entities.IndoorPlant.update(plantId, {
+          primary_photo_url: file_url
+        });
+      } else {
+        // Otherwise log as photo
+        await base44.entities.IndoorPlantLog.create({
+          indoor_plant_id: plantId,
+          log_type: 'photo',
+          log_date: new Date().toISOString().split('T')[0],
+          photos: [file_url]
+        });
+      }
+
+      toast.success('Photo uploaded!');
+      loadData();
+    } catch (error) {
+      console.error('Error uploading photo:', error);
+      toast.error('Failed to upload photo');
     }
   };
 
@@ -137,6 +186,9 @@ export default function IndoorPlantDetailV2() {
           <ArrowLeft className="w-5 h-5" />
         </Button>
         <div className="flex-1">
+          {plant.primary_photo_url && (
+            <img src={plant.primary_photo_url} alt={plant.nickname} className="w-full h-48 object-cover rounded-lg mb-4" />
+          )}
           <h1 className="text-3xl font-bold">{plant.nickname || variety?.variety_name || 'My Plant'}</h1>
           {plant.nickname && variety && (
             <p className="text-gray-600 italic">{variety.variety_name}</p>
@@ -161,6 +213,10 @@ export default function IndoorPlantDetailV2() {
             <span>{age} old</span>
           </div>
         </div>
+        <Button onClick={() => setEditMode(!editMode)} variant="outline">
+          <Edit className="w-4 h-4 mr-2" />
+          Edit
+        </Button>
       </div>
 
       {(variety?.toxic_to_cats || variety?.toxic_to_dogs || variety?.toxic_to_humans) && (
@@ -195,10 +251,17 @@ export default function IndoorPlantDetailV2() {
           <FileText className="w-4 h-4 mr-2" />
           Log Note
         </Button>
-        <Button onClick={() => toast.info('Photo upload coming soon')} variant="outline">
+        <Button onClick={() => document.getElementById('plant-photo-upload').click()} variant="outline">
           <Camera className="w-4 h-4 mr-2" />
           Add Photo
         </Button>
+        <input
+          id="plant-photo-upload"
+          type="file"
+          accept="image/*"
+          className="hidden"
+          onChange={handlePhotoUpload}
+        />
       </div>
 
       <Tabs defaultValue="overview">
@@ -227,11 +290,15 @@ export default function IndoorPlantDetailV2() {
             setEditMode={setEditMode}
             saving={saving}
             saveChanges={saveChanges}
+            allPlantTypes={allPlantTypes}
+            allVarieties={allVarieties}
+            selectedPlantType={selectedPlantType}
+            setSelectedPlantType={setSelectedPlantType}
           />
         </TabsContent>
 
         <TabsContent value="history" className="space-y-4">
-          <HistoryTab logs={logs} />
+          <HistoryTab logs={logs} plant={plant} />
         </TabsContent>
 
         <TabsContent value="stats" className="space-y-4">
@@ -487,29 +554,102 @@ function CareGuideTab({ variety }) {
   );
 }
 
-function EnvironmentTab({ plant, editForm, setEditForm, editMode, setEditMode, saving, saveChanges }) {
+function EnvironmentTab({ plant, editForm, setEditForm, editMode, setEditMode, saving, saveChanges, allPlantTypes, allVarieties, selectedPlantType, setSelectedPlantType }) {
+  const filteredVarieties = selectedPlantType 
+    ? allVarieties.filter(v => v.plant_type_id === selectedPlantType)
+    : allVarieties;
+
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h3 className="text-lg font-semibold">My Plant's Environment</h3>
-        {!editMode ? (
-          <Button onClick={() => setEditMode(true)} variant="outline" size="sm">
-            <Edit className="w-4 h-4 mr-2" />
-            Edit
-          </Button>
-        ) : (
-          <div className="flex gap-2">
-            <Button onClick={() => setEditMode(false)} variant="ghost" size="sm">
-              <X className="w-4 h-4 mr-2" />
-              Cancel
-            </Button>
-            <Button onClick={saveChanges} disabled={saving} className="bg-emerald-600 hover:bg-emerald-700" size="sm">
-              {saving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-              Save
-            </Button>
-          </div>
-        )}
-      </div>
+      {editMode && (
+        <Card>
+          <CardHeader><CardTitle>✏️ Edit Plant Details</CardTitle></CardHeader>
+          <CardContent className="space-y-4">
+            <div>
+              <Label>Nickname</Label>
+              <Input 
+                value={editForm.nickname || ''} 
+                onChange={(e) => setEditForm({...editForm, nickname: e.target.value})}
+                placeholder="e.g., Jacky, Golden"
+              />
+            </div>
+            
+            <div>
+              <Label>Plant Type</Label>
+              <Select value={selectedPlantType} onValueChange={setSelectedPlantType}>
+                <SelectTrigger><SelectValue placeholder="Select plant type" /></SelectTrigger>
+                <SelectContent>
+                  {allPlantTypes.map(pt => (
+                    <SelectItem key={pt.id} value={pt.id}>
+                      {pt.icon} {pt.common_name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {selectedPlantType && (
+              <div>
+                <Label>Plant Variety</Label>
+                <Select value={editForm.variety_id || ''} onValueChange={(v) => setEditForm({...editForm, variety_id: v})}>
+                  <SelectTrigger><SelectValue placeholder="Select variety" /></SelectTrigger>
+                  <SelectContent>
+                    {filteredVarieties.map(v => (
+                      <SelectItem key={v.id} value={v.id}>
+                        {v.variety_name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
+            {plant.primary_photo_url && (
+              <div>
+                <Label>Replace Hero Photo</Label>
+                <div className="mt-2 flex items-center gap-2">
+                  <img src={plant.primary_photo_url} alt="Current" className="w-16 h-16 object-cover rounded border" />
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={() => document.getElementById('replace-hero-photo').click()}
+                  >
+                    Replace
+                  </Button>
+                  <input
+                    id="replace-hero-photo"
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={async (e) => {
+                      const file = e.target.files?.[0];
+                      if (!file) return;
+                      try {
+                        const { file_url } = await base44.integrations.Core.UploadFile({ file });
+                        await base44.entities.IndoorPlant.update(plant.id, { primary_photo_url: file_url });
+                        toast.success('Hero photo updated!');
+                        window.location.reload();
+                      } catch (error) {
+                        toast.error('Failed to update photo');
+                      }
+                    }}
+                  />
+                </div>
+              </div>
+            )}
+
+            <div className="flex gap-2 pt-4">
+              <Button onClick={() => setEditMode(false)} variant="ghost" className="flex-1">
+                Cancel
+              </Button>
+              <Button onClick={saveChanges} disabled={saving} className="flex-1 bg-emerald-600 hover:bg-emerald-700">
+                {saving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                Save Changes
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       <Card>
         <CardHeader><CardTitle>☀️ Light Setup</CardTitle></CardHeader>
@@ -691,6 +831,22 @@ function HistoryTab({ logs }) {
     photo: { icon: Camera, color: 'text-pink-600' },
   };
 
+  const careLogs = logs.filter(l => l.log_type !== 'photo');
+  const photoLogs = logs.filter(l => l.log_type === 'photo');
+
+  const handleDeletePhoto = async (logId) => {
+    if (!confirm('Delete this photo log?')) return;
+    
+    try {
+      await base44.entities.IndoorPlantLog.delete(logId);
+      toast.success('Photo deleted');
+      window.location.reload();
+    } catch (error) {
+      console.error('Error deleting photo:', error);
+      toast.error('Failed to delete photo');
+    }
+  };
+
   if (logs.length === 0) {
     return (
       <Card>
@@ -702,28 +858,90 @@ function HistoryTab({ logs }) {
   }
 
   return (
-    <div className="space-y-2">
-      {logs.map(log => {
-        const { icon: Icon, color } = iconMap[log.log_type] || { icon: CheckCircle2, color: 'text-gray-600' };
-        return (
-          <Card key={log.id}>
-            <CardContent className="p-4">
-              <div className="flex items-start gap-3">
-                <Icon className={`w-5 h-5 ${color} flex-shrink-0 mt-0.5`} />
-                <div className="flex-1">
-                  <div className="flex items-start justify-between gap-2">
-                    <p className="font-medium capitalize">{log.log_type.replace(/_/g, ' ')}</p>
-                    <p className="text-sm text-gray-500">{format(new Date(log.log_date), 'MMM d, yyyy')}</p>
-                  </div>
-                  {log.notes && <p className="text-sm text-gray-600 mt-1">{log.notes}</p>}
-                  {log.watering_amount && <p className="text-xs text-gray-500">Amount: {log.watering_amount}</p>}
-                  {log.fertilizer_type && <p className="text-xs text-gray-500">Type: {log.fertilizer_type.replace(/_/g, ' ')}</p>}
-                </div>
-              </div>
+    <div className="grid md:grid-cols-2 gap-4">
+      {/* Left: Care History */}
+      <div className="space-y-3">
+        <h3 className="font-semibold text-lg">Care History</h3>
+        {careLogs.length === 0 ? (
+          <Card>
+            <CardContent className="py-8 text-center text-gray-500 text-sm">
+              No care logs yet
             </CardContent>
           </Card>
-        );
-      })}
+        ) : (
+          careLogs.map(log => {
+            const { icon: Icon, color } = iconMap[log.log_type] || { icon: CheckCircle2, color: 'text-gray-600' };
+            return (
+              <Card key={log.id}>
+                <CardContent className="p-4">
+                  <div className="flex items-start gap-3">
+                    <Icon className={`w-5 h-5 ${color} flex-shrink-0 mt-0.5`} />
+                    <div className="flex-1">
+                      <div className="flex items-start justify-between gap-2">
+                        <p className="font-medium capitalize">{log.log_type.replace(/_/g, ' ')}</p>
+                        <p className="text-sm text-gray-500">{format(new Date(log.log_date), 'MMM d, yyyy')}</p>
+                      </div>
+                      {log.notes && <p className="text-sm text-gray-600 mt-1">{log.notes}</p>}
+                      {log.watering_amount && <p className="text-xs text-gray-500">Amount: {log.watering_amount}</p>}
+                      {log.fertilizer_type && <p className="text-xs text-gray-500">Type: {log.fertilizer_type.replace(/_/g, ' ')}</p>}
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })
+        )}
+      </div>
+
+      {/* Right: Photos */}
+      <div className="space-y-3">
+        <h3 className="font-semibold text-lg">Photos</h3>
+        {photoLogs.length === 0 ? (
+          <Card>
+            <CardContent className="py-8 text-center text-gray-500 text-sm">
+              No photos yet
+            </CardContent>
+          </Card>
+        ) : (
+          <div className="space-y-3">
+            {photoLogs.map(log => (
+              <Card key={log.id}>
+                <CardContent className="p-4">
+                  <div className="flex items-start gap-3">
+                    <Camera className="w-5 h-5 text-pink-600 flex-shrink-0 mt-0.5" />
+                    <div className="flex-1">
+                      <div className="flex items-start justify-between gap-2 mb-2">
+                        <p className="text-sm text-gray-500">{format(new Date(log.log_date), 'MMM d, yyyy')}</p>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleDeletePhoto(log.id)}
+                          className="h-6 w-6 p-0 text-red-600 hover:text-red-700"
+                        >
+                          <Trash2 className="w-3 h-3" />
+                        </Button>
+                      </div>
+                      {log.photos && log.photos.length > 0 && (
+                        <div className="grid grid-cols-2 gap-2">
+                          {log.photos.map((url, idx) => (
+                            <img 
+                              key={idx}
+                              src={url} 
+                              alt="Plant photo"
+                              className="w-full h-32 object-cover rounded border"
+                            />
+                          ))}
+                        </div>
+                      )}
+                      {log.notes && <p className="text-sm text-gray-600 mt-2">{log.notes}</p>}
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   );
 }

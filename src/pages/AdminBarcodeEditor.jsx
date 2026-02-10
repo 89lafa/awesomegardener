@@ -196,18 +196,16 @@ export default function AdminBarcodeEditor() {
         <CardContent className="space-y-4">
           <div>
             <Label>Plant Type</Label>
-            <Select value={selectedPlantType} onValueChange={setSelectedPlantType}>
-              <SelectTrigger className="mt-2">
-                <SelectValue placeholder="Select plant type..." />
-              </SelectTrigger>
-              <SelectContent>
-                {plantTypes.map(pt => (
-                  <SelectItem key={pt.id} value={pt.id}>
-                    {pt.icon} {pt.common_name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <Combobox
+              placeholder="Search plant types..."
+              items={plantTypes.map(pt => ({
+                value: pt.id,
+                label: `${pt.icon || ''} ${pt.common_name}`
+              }))}
+              value={selectedPlantType}
+              onValueChange={setSelectedPlantType}
+              className="mt-2"
+            />
           </div>
 
           {selectedPlantType && (

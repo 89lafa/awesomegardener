@@ -53,6 +53,7 @@ import AddIndoorPlant from './pages/AddIndoorPlant';
 import AddIndoorSpace from './pages/AddIndoorSpace';
 import AdminAchievements from './pages/AdminAchievements';
 import AdminAuditLog from './pages/AdminAuditLog';
+import AdminBarcodeEditor from './pages/AdminBarcodeEditor';
 import AdminBlogManager from './pages/AdminBlogManager';
 import AdminBulkEdit from './pages/AdminBulkEdit';
 import AdminChallenges from './pages/AdminChallenges';
@@ -154,7 +155,6 @@ import Users from './pages/Users';
 import VarietyReviewQueue from './pages/VarietyReviewQueue';
 import ViewVariety from './pages/ViewVariety';
 import ZoneMap from './pages/ZoneMap';
-import AdminBarcodeEditor from './pages/AdminBarcodeEditor';
 import __Layout from './Layout.jsx';
 
 
@@ -165,6 +165,7 @@ export const PAGES = {
     "AddIndoorSpace": AddIndoorSpace,
     "AdminAchievements": AdminAchievements,
     "AdminAuditLog": AdminAuditLog,
+    "AdminBarcodeEditor": AdminBarcodeEditor,
     "AdminBlogManager": AdminBlogManager,
     "AdminBulkEdit": AdminBulkEdit,
     "AdminChallenges": AdminChallenges,
@@ -266,7 +267,6 @@ export const PAGES = {
     "VarietyReviewQueue": VarietyReviewQueue,
     "ViewVariety": ViewVariety,
     "ZoneMap": ZoneMap,
-    "AdminBarcodeEditor": AdminBarcodeEditor,
 }
 
 export const pagesConfig = {
