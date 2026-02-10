@@ -198,19 +198,10 @@ async function executeWithRetry(base44, entityName, query, sort, limit, key, att
     return result || [];
     
   } catch (error) {
-    // Handle 429 Rate Limit - NO RETRY, return stale cache
+    // Handle 429 Rate Limit - NO RETRY
     if (error.response?.status === 429 || error.status === 429) {
-      if (isDev) console.warn('[API] request_429 - returning stale cache if available', { entity: entityName });
-      throw { code: 'RATE_LIMIT', status: 429, message: 'Rate limit exceeded', retryInMs: 5000 };
-    }
-    
-    // Network errors - retry once
-    if (error.message?.includes('network') || error.message?.includes('fetch')) {
-      if (attempt === 1) {
-        if (isDev) console.debug('[API] network_error - retrying once', { entity: entityName });
-        await sleep(2000);
-        return executeWithRetry(base44, entityName, query, sort, limit, key, 2);
-      }
+      if (isDev) console.warn('[API] request_429 - NO RETRY', { entity: entityName });
+      throw { code: 'RATE_LIMIT', status: 429, message: 'Rate limit exceeded' };
     }
     
     // Other errors - log and throw

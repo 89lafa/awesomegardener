@@ -203,19 +203,22 @@ export default function PlantCatalog() {
 
   const loadVarieties = async (typeId) => {
     try {
-      const vars = await smartQuery(base44, 'Variety', { 
+      await new Promise(resolve => setTimeout(resolve, 300));
+      const vars = await base44.entities.Variety.filter({ 
         plant_type_id: typeId,
         status: 'active'
-      }, 'variety_name');
+      }, 'variety_name', 50);
       setVarieties(vars);
     } catch (error) {
       console.error('[PlantCatalog] Error loading varieties:', error);
+      setVarieties([]);
     }
   };
 
   const loadSubCategories = async (typeId) => {
     try {
-      const subcats = await smartQuery(base44, 'PlantSubCategory', { 
+      await new Promise(resolve => setTimeout(resolve, 300));
+      const subcats = await base44.entities.PlantSubCategory.filter({ 
         plant_type_id: typeId,
         is_active: true
       }, 'sort_order');

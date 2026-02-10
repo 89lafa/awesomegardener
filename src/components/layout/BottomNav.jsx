@@ -38,6 +38,8 @@ const getMoreMenuItems = (user) => {
     { name: 'Calendar', icon: Calendar, page: 'Calendar' },
     { name: 'Tasks', icon: ListChecks, page: 'CalendarTasks' },
     { name: 'Indoor Grow', icon: Sprout, page: 'IndoorGrowSpaces' },
+    { name: 'Houseplants', icon: Sprout, page: 'IndoorPlants' },
+    { name: 'My Indoor Plants', icon: Sprout, page: 'MyIndoorPlants' },
     { name: 'Plot Layout', icon: Hammer, page: 'MyGarden' },
     { name: 'Garden Planting', icon: TreeDeciduous, page: 'GardenPlanting' },
     

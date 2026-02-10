@@ -29,6 +29,7 @@ import ErrorBoundary from '@/components/common/ErrorBoundary';
 const ADMIN_TOOLS = {
   'Data & Catalog': [
     { name: 'Data Import', route: 'AdminDataImport', icon: Upload, description: 'Import plant types, varieties, and taxonomy via CSV' },
+    { name: 'Barcode Editor', route: 'AdminBarcodeEditor', icon: Database, description: 'Manually add and edit seed packet barcodes' },
     { name: 'Data Maintenance', route: 'AdminDataMaintenance', icon: Settings, description: 'Run maintenance scripts and data cleanup' },
     { name: 'Bulk Edit', route: 'AdminBulkEdit', icon: Edit, description: 'Edit multiple records at once' },
     { name: 'Deduplicate Varieties', route: 'AdminDeduplicateVarieties', icon: RefreshCw, description: 'Find and merge duplicate varieties' },

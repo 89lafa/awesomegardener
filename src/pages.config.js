@@ -103,6 +103,7 @@ import GrowingProfile from './pages/GrowingProfile';
 import HarvestLog from './pages/HarvestLog';
 import ImageSubmissions from './pages/ImageSubmissions';
 import IndoorEnvironment from './pages/IndoorEnvironment';
+import IndoorGrowDetail from './pages/IndoorGrowDetail';
 import IndoorGrowSpaceDetail from './pages/IndoorGrowSpaceDetail';
 import IndoorGrowSpaces from './pages/IndoorGrowSpaces';
 import IndoorPlantDetail from './pages/IndoorPlantDetail';
@@ -153,7 +154,7 @@ import Users from './pages/Users';
 import VarietyReviewQueue from './pages/VarietyReviewQueue';
 import ViewVariety from './pages/ViewVariety';
 import ZoneMap from './pages/ZoneMap';
-import IndoorGrowDetail from './pages/IndoorGrowDetail';
+import AdminBarcodeEditor from './pages/AdminBarcodeEditor';
 import __Layout from './Layout.jsx';
 
 
@@ -214,6 +215,7 @@ export const PAGES = {
     "HarvestLog": HarvestLog,
     "ImageSubmissions": ImageSubmissions,
     "IndoorEnvironment": IndoorEnvironment,
+    "IndoorGrowDetail": IndoorGrowDetail,
     "IndoorGrowSpaceDetail": IndoorGrowSpaceDetail,
     "IndoorGrowSpaces": IndoorGrowSpaces,
     "IndoorPlantDetail": IndoorPlantDetail,
@@ -264,7 +266,7 @@ export const PAGES = {
     "VarietyReviewQueue": VarietyReviewQueue,
     "ViewVariety": ViewVariety,
     "ZoneMap": ZoneMap,
-    "IndoorGrowDetail": IndoorGrowDetail,
+    "AdminBarcodeEditor": AdminBarcodeEditor,
 }
 
 export const pagesConfig = {

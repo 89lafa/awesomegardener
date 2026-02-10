@@ -39,6 +39,11 @@ export function KanbanBoard({ tasks, onTaskUpdate }) {
   const handleDragOver = (e) => {
     e.preventDefault();
     e.stopPropagation();
+    e.dataTransfer.dropEffect = 'move';
+  };
+
+  const handleDragEnd = () => {
+    setDraggedTask(null);
   };
 
   const handleDrop = async (e, newStatus) => {
@@ -102,8 +107,12 @@ export function KanbanBoard({ tasks, onTaskUpdate }) {
               <div
                 key={task.id}
                 draggable
-                onDragStart={() => setDraggedTask(task)}
-                className="bg-white rounded-lg p-3 shadow-sm hover:shadow-md transition-all cursor-move"
+                onDragStart={(e) => {
+                  setDraggedTask(task);
+                  e.dataTransfer.effectAllowed = 'move';
+                }}
+                onDragEnd={handleDragEnd}
+                className="bg-white rounded-lg p-3 shadow-sm hover:shadow-md transition-all cursor-move select-none"
               >
                 <div className="flex items-start gap-2">
                   <GripVertical className="w-4 h-4 text-gray-400 flex-shrink-0 mt-0.5" />

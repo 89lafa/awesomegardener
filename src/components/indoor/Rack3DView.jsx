@@ -302,7 +302,7 @@ function Rack3DVisualization({ rack, shelves, trays, allCells, viewAngle, viewPi
 
   return (
     <div
-      className="relative mx-auto transition-all duration-700 ease-out"
+      className="relative mx-auto transition-all duration-700 ease-out flex items-center justify-center"
       style={{
         width: '900px',
         height: '700px',
