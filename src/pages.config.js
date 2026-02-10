@@ -103,6 +103,7 @@ import GrowingProfile from './pages/GrowingProfile';
 import HarvestLog from './pages/HarvestLog';
 import ImageSubmissions from './pages/ImageSubmissions';
 import IndoorEnvironment from './pages/IndoorEnvironment';
+import IndoorGrowSpaceDetail from './pages/IndoorGrowSpaceDetail';
 import IndoorGrowSpaces from './pages/IndoorGrowSpaces';
 import IndoorPlantDetail from './pages/IndoorPlantDetail';
 import IndoorPlantDetailV2 from './pages/IndoorPlantDetailV2';
@@ -152,7 +153,6 @@ import Users from './pages/Users';
 import VarietyReviewQueue from './pages/VarietyReviewQueue';
 import ViewVariety from './pages/ViewVariety';
 import ZoneMap from './pages/ZoneMap';
-import IndoorGrowSpaceDetail from './pages/IndoorGrowSpaceDetail';
 import __Layout from './Layout.jsx';
 
 
@@ -213,6 +213,7 @@ export const PAGES = {
     "HarvestLog": HarvestLog,
     "ImageSubmissions": ImageSubmissions,
     "IndoorEnvironment": IndoorEnvironment,
+    "IndoorGrowSpaceDetail": IndoorGrowSpaceDetail,
     "IndoorGrowSpaces": IndoorGrowSpaces,
     "IndoorPlantDetail": IndoorPlantDetail,
     "IndoorPlantDetailV2": IndoorPlantDetailV2,
@@ -262,7 +263,6 @@ export const PAGES = {
     "VarietyReviewQueue": VarietyReviewQueue,
     "ViewVariety": ViewVariety,
     "ZoneMap": ZoneMap,
-    "IndoorGrowSpaceDetail": IndoorGrowSpaceDetail,
 }
 
 export const pagesConfig = {
