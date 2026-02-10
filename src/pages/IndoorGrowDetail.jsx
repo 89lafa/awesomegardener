@@ -13,26 +13,15 @@ import {
   Box
 } from 'lucide-react';
 
-// Helper component to show tray status
-function TrayStatusBadge({ trayId }) {
-  const [status, setStatus] = useState('loading');
-  
-  useEffect(() => {
-    const checkStatus = async () => {
-      const cells = await base44.entities.TrayCell.filter({ tray_id: trayId });
-      const activeCount = cells.filter(c => 
-        c.status === 'seeded' || c.status === 'germinated' || c.status === 'growing'
-      ).length;
-      setStatus(activeCount > 0 ? 'seeded' : 'empty');
-    };
-    checkStatus();
-  }, [trayId]);
-  
-  if (status === 'loading') return <p className="text-[10px] text-gray-400 mt-1">...</p>;
+// Helper component to show tray status - uses pre-loaded cell data
+function TrayStatusBadge({ trayId, trayCells }) {
+  const activeCount = trayCells.filter(c => 
+    c.tray_id === trayId && ['seeded', 'germinated', 'growing'].includes(c.status)
+  ).length;
   
   return (
-    <p className={`text-[10px] mt-1 font-bold uppercase ${status === 'empty' ? 'text-gray-500' : 'text-emerald-600'}`}>
-      {status === 'empty' ? '📭 EMPTY' : '🌱 SEEDED'}
+    <p className={`text-[10px] mt-1 font-bold uppercase ${activeCount === 0 ? 'text-gray-500' : 'text-emerald-600'}`}>
+      {activeCount === 0 ? '📭 EMPTY' : '🌱 SEEDED'}
     </p>
   );
 }
@@ -64,6 +53,7 @@ export default function IndoorGrowDetail() {
   const [trays, setTrays] = useState([]);
   const [containers, setContainers] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [trayCells, setTrayCells] = useState([]);
   const [showAddRack, setShowAddRack] = useState(false);
   const [showAddTray, setShowAddTray] = useState(false);
   const [showPlantSeeds, setShowPlantSeeds] = useState(false);
@@ -123,8 +113,17 @@ export default function IndoorGrowDetail() {
           'name'
         );
         setTrays(traysData);
+        
+        // Load all tray cells once for status badges
+        if (traysData.length > 0) {
+          const cellsData = await base44.entities.TrayCell.filter(
+            { tray_id: { $in: traysData.map(t => t.id) } }
+          );
+          setTrayCells(cellsData);
+        }
       } else {
         setTrays([]);
+        setTrayCells([]);
       }
     } catch (error) {
       console.error('Error loading space:', error);
@@ -352,7 +351,7 @@ export default function IndoorGrowDetail() {
                                   >
                                    <p className="text-xs font-medium text-gray-900">{tray.name}</p>
                                    <p className="text-[10px] text-gray-600">{tray.total_cells} cells</p>
-                                   <TrayStatusBadge trayId={tray.id} />
+                                   <TrayStatusBadge trayId={tray.id} trayCells={trayCells} />
                                    {tray.notes && (
                                      <p className="text-[9px] text-gray-500 mt-1 truncate">📝 {tray.notes}</p>
                                    )}

@@ -93,10 +93,10 @@ export function PlantSeedsDialog({ isOpen, onClose, trayId, trayName, onSeedPlan
       if (item.plant_profile_id) profileIds.add(item.plant_profile_id);
     }
     
-    // Batch fetch ONLY varieties and profiles - ONE CALL EACH
+    // Batch fetch ONLY varieties and profiles with filters - ONE CALL EACH
     const [varieties, profiles] = await Promise.all([
-      varietyIds.size > 0 ? base44.entities.Variety.list() : Promise.resolve([]),
-      profileIds.size > 0 ? base44.entities.PlantProfile.list() : Promise.resolve([])
+      varietyIds.size > 0 ? base44.entities.Variety.filter({ id: { $in: Array.from(varietyIds) } }) : Promise.resolve([]),
+      profileIds.size > 0 ? base44.entities.PlantProfile.filter({ id: { $in: Array.from(profileIds) } }) : Promise.resolve([])
     ]);
     
     const varietyMap = new Map(varieties.map(v => [v.id, v]));
@@ -107,8 +107,8 @@ export function PlantSeedsDialog({ isOpen, onClose, trayId, trayName, onSeedPlan
     varieties.forEach(v => { if (v.plant_type_id) plantTypeIds.add(v.plant_type_id); });
     profiles.forEach(p => { if (p.plant_type_id) plantTypeIds.add(p.plant_type_id); });
     
-    // Batch fetch plant types - ONE CALL ONLY
-    const plantTypes = plantTypeIds.size > 0 ? await base44.entities.PlantType.list() : [];
+    // Batch fetch plant types with filter - ONE CALL ONLY
+    const plantTypes = plantTypeIds.size > 0 ? await base44.entities.PlantType.filter({ id: { $in: Array.from(plantTypeIds) } }) : [];
     const plantTypeMap = new Map(plantTypes.map(pt => [pt.id, pt]));
     
     // Build display names from cached data
