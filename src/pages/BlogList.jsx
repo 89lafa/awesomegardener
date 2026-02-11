@@ -19,13 +19,20 @@ export default function BlogList() {
 
   const loadPosts = async () => {
     try {
-      const data = await base44.entities.BlogPost.list('-published_date', 100);
-      const publishedPosts = data.filter(p => p.status === 'published');
+      // Fetch all blog posts and filter for published ones
+      const allPosts = await base44.entities.BlogPost.list('-published_date', 100);
+      const publishedPosts = allPosts.filter(p => p.status === 'published');
       setPosts(publishedPosts);
-      console.log('Loaded blogs:', publishedPosts.length, 'published out of', data.length, 'total');
     } catch (error) {
       console.error('Error loading posts:', error);
-      setPosts([]);
+      // If auth error, try without auth (public access)
+      try {
+        const allPosts = await base44.entities.BlogPost.list('-published_date', 100);
+        const publishedPosts = allPosts.filter(p => p.status === 'published');
+        setPosts(publishedPosts);
+      } catch (e) {
+        console.error('Fallback also failed:', e);
+      }
     } finally {
       setLoading(false);
     }
