@@ -4,20 +4,26 @@ Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
     
-    // Fetch all gardens using service role to bypass RLS
-    const allGardens = await base44.asServiceRole.entities.Garden.list('-updated_date', 100);
+    // Use list() with no filter to get ALL gardens, then filter in JS
+    const allGardens = await base44.asServiceRole.entities.Garden.list();
     
-    console.log(`Total gardens: ${allGardens.length}`);
+    console.log(`Total gardens fetched: ${allGardens.length}`);
+    allGardens.forEach(g => {
+      console.log(`Garden: ${g.name}, is_public: ${g.is_public}, archived: ${g.archived}`);
+    });
     
     // Filter for public, non-archived gardens
     const publicGardens = allGardens.filter(g => {
-      return g.is_public === true && g.archived !== true;
+      const isPublic = g.is_public === true;
+      const notArchived = !g.archived || g.archived === false;
+      console.log(`${g.name}: isPublic=${isPublic}, notArchived=${notArchived}`);
+      return isPublic && notArchived;
     });
     
-    console.log(`Public gardens found: ${publicGardens.length}`);
+    console.log(`Public gardens after filter: ${publicGardens.length}`);
 
     // Fetch users
-    const allUsers = await base44.asServiceRole.entities.User.list('-created_date', 100);
+    const allUsers = await base44.asServiceRole.entities.User.list();
     
     const ownersMap = {};
     allUsers.forEach(u => {
