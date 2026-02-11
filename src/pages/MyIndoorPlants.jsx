@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { createPageUrl } from '@/utils';
 import { Link, useNavigate } from 'react-router-dom';
-import { Plus, Search, Grid3X3, List, Table, Loader2, Camera } from 'lucide-react';
+import { Plus, Search, Grid3X3, List, Table, Loader2, Camera, MapPin } from 'lucide-react';
+import EditPlantLocationModal from '@/components/indoor/EditPlantLocationModal';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
@@ -24,6 +25,8 @@ export default function MyIndoorPlants() {
     health_status: 'all'
   });
   const [uploadingFor, setUploadingFor] = useState(null);
+  const [showMoveModal, setShowMoveModal] = useState(false);
+  const [selectedPlantToMove, setSelectedPlantToMove] = useState(null);
   const fileInputRef = React.useRef(null);
 
   useEffect(() => {
@@ -423,10 +426,24 @@ export default function MyIndoorPlants() {
                       )}
                     </div>
                   </div>
-                  <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-2">
                     <div className="text-xs text-gray-500 text-right">
                       {plant.age_display}
                     </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        setSelectedPlantToMove(plant);
+                        setShowMoveModal(true);
+                      }}
+                      className="opacity-0 group-hover:opacity-100 transition-opacity"
+                    >
+                      <MapPin className="w-4 h-4 mr-1" />
+                      <span className="hidden sm:inline">Move</span>
+                    </Button>
                     <Button
                       variant="outline"
                       size="sm"
@@ -455,6 +472,21 @@ export default function MyIndoorPlants() {
           ))}
         </div>
       )}
+
+      {/* Move Plant Modal */}
+      <EditPlantLocationModal
+        open={showMoveModal}
+        onClose={() => {
+          setShowMoveModal(false);
+          setSelectedPlantToMove(null);
+        }}
+        plant={selectedPlantToMove}
+        onSuccess={() => {
+          setShowMoveModal(false);
+          setSelectedPlantToMove(null);
+          loadData();
+        }}
+      />
     </div>
   );
 }
