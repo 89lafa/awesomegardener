@@ -19,14 +19,13 @@ export default function BlogList() {
 
   const loadPosts = async () => {
     try {
-      const data = await base44.entities.BlogPost.filter(
-        { status: 'published' },
-        '-published_date',
-        50
-      );
-      setPosts(data);
+      const data = await base44.entities.BlogPost.list('-published_date', 100);
+      const publishedPosts = data.filter(p => p.status === 'published');
+      setPosts(publishedPosts);
+      console.log('Loaded blogs:', publishedPosts.length, 'published out of', data.length, 'total');
     } catch (error) {
       console.error('Error loading posts:', error);
+      setPosts([]);
     } finally {
       setLoading(false);
     }
