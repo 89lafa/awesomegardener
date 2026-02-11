@@ -23,6 +23,7 @@ import AddToStashModal from '@/components/catalog/AddToStashModal';
 import AddToGrowListModal from '@/components/catalog/AddToGrowListModal';
 import AdvancedFiltersPanel from '@/components/catalog/AdvancedFiltersPanel';
 import VarietyListView from '@/components/catalog/VarietyListView';
+import SpecialCareWarnings from '@/components/indoor/SpecialCareWarnings';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -744,7 +745,10 @@ export default function PlantCatalogDetail() {
                   </div>
                 )}
 
-                {/* Overview - Compact */}
+                {/* Special Care Warnings for Carnivorous Plants */}
+        <SpecialCareWarnings variety={varieties[0]} />
+
+        {/* Overview - Compact */}
         <Card>
           <CardContent className="p-4">
             <div className="flex flex-wrap items-center gap-4">
