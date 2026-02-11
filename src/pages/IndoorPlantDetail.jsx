@@ -19,6 +19,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import CareGuideSection, { CareGuideRow } from '@/components/indoor/CareGuideSection';
 import EnvironmentTab from '@/components/indoor/EnvironmentTab';
 import PlantStatsTab from '@/components/indoor/PlantStatsTab';
+import EditPlantLocationModal from '@/components/indoor/EditPlantLocationModal';
 
 export default function IndoorPlantDetail() {
   const [searchParams] = useSearchParams();
@@ -33,6 +34,7 @@ export default function IndoorPlantDetail() {
   const [loading, setLoading] = useState(true);
   const [showEditModal, setShowEditModal] = useState(false);
   const [showLogModal, setShowLogModal] = useState(false);
+  const [showLocationModal, setShowLocationModal] = useState(false);
   const [logType, setLogType] = useState('note');
   const [logNotes, setLogNotes] = useState('');
   const [editData, setEditData] = useState({});
@@ -50,8 +52,20 @@ export default function IndoorPlantDetail() {
   const loadData = async () => {
     setLoading(true);
     try {
-      const plantData = await base44.entities.IndoorPlant.filter({ id: plantId });
-      if (plantData.length === 0) {
+      // Add delay to let rate limit recover from previous page
+      await new Promise(r => setTimeout(r, 400));
+      
+      let plantData = await base44.entities.IndoorPlant.filter({ id: plantId });
+      
+      // If empty, might be rate-limited - wait and retry once
+      if (!plantData || plantData.length === 0) {
+        console.warn('First attempt returned empty, retrying after delay...');
+        await new Promise(r => setTimeout(r, 1500));
+        plantData = await base44.entities.IndoorPlant.filter({ id: plantId });
+      }
+      
+      // Only redirect if second attempt also fails
+      if (!plantData || plantData.length === 0) {
         toast.error('Plant not found');
         navigate(createPageUrl('MyIndoorPlants'));
         return;
@@ -60,19 +74,72 @@ export default function IndoorPlantDetail() {
       const p = plantData[0];
       setPlant(p);
 
-      const [varietyData, spaceData, tierData, logsData] = await Promise.all([
-        p.variety_id ? base44.entities.Variety.filter({ id: p.variety_id }) : Promise.resolve([]),
-        p.indoor_space_id ? base44.entities.IndoorSpace.filter({ id: p.indoor_space_id }) : Promise.resolve([]),
-        p.tier_id ? base44.entities.IndoorSpaceTier.filter({ id: p.tier_id }) : Promise.resolve([]),
-        base44.entities.IndoorPlantLog.filter({ indoor_plant_id: plantId }, '-log_date', 50)
-      ]);
-
+      // Load related data ONE AT A TIME with delays - no Promise.all
+      let varietyData = [];
+      if (p.variety_id) {
+        try {
+          varietyData = await base44.entities.Variety.filter({ id: p.variety_id });
+        } catch (e) { 
+          console.warn('Variety load failed:', e.message); 
+        }
+      }
       if (varietyData.length > 0) setVariety(varietyData[0]);
+
+      await new Promise(r => setTimeout(r, 300));
+
+      let spaceData = [];
+      if (p.indoor_space_id) {
+        try {
+          spaceData = await base44.entities.IndoorSpace.filter({ id: p.indoor_space_id });
+        } catch (e) { 
+          console.warn('Space load failed:', e.message); 
+        }
+      }
       if (spaceData.length > 0) setSpace(spaceData[0]);
+
+      await new Promise(r => setTimeout(r, 300));
+
+      let tierData = [];
+      if (p.tier_id) {
+        try {
+          tierData = await base44.entities.IndoorSpaceTier.filter({ id: p.tier_id });
+        } catch (e) { 
+          console.warn('Tier load failed:', e.message); 
+        }
+      }
       if (tierData.length > 0) setTier(tierData[0]);
+
+      await new Promise(r => setTimeout(r, 300));
+
+      let logsData = [];
+      try {
+        logsData = await base44.entities.IndoorPlantLog.filter(
+          { indoor_plant_id: plantId }, '-log_date', 50
+        );
+      } catch (e) { 
+        console.warn('Logs load failed:', e.message); 
+      }
       setLogs(logsData);
-      
-      // Load indoor plant varieties
+
+      // DO NOT load varieties here - only when edit modal opens
+      setEditData({
+        nickname: p.nickname || '',
+        variety_id: p.variety_id || '',
+        health_status: p.health_status || 'healthy',
+        special_notes: p.special_notes || ''
+      });
+    } catch (error) {
+      console.error('Error loading plant:', error);
+      // Do NOT redirect on error - plant exists, API just failed
+      toast.error('Some data failed to load. Try refreshing.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const loadVarietiesForEdit = async () => {
+    if (varieties.length > 0) return; // Already loaded
+    try {
       const indoorVarieties = await base44.entities.Variety.filter(
         { 
           $or: [
@@ -84,18 +151,8 @@ export default function IndoorPlantDetail() {
         300
       );
       setVarieties(indoorVarieties);
-
-      setEditData({
-        nickname: p.nickname || '',
-        variety_id: p.variety_id || '',
-        health_status: p.health_status || 'healthy',
-        special_notes: p.special_notes || ''
-      });
-    } catch (error) {
-      console.error('Error loading plant:', error);
-      toast.error('Failed to load plant');
-    } finally {
-      setLoading(false);
+    } catch (err) {
+      console.warn('Failed to load varieties for edit:', err.message);
     }
   };
 
@@ -254,8 +311,14 @@ export default function IndoorPlantDetail() {
         </Button>
 
         <div className="flex gap-2">
-          <Button variant="ghost" size="icon" onClick={() => setShowEditModal(true)}>
+          <Button variant="ghost" size="icon" onClick={() => {
+            loadVarietiesForEdit();
+            setShowEditModal(true);
+          }}>
             <Edit className="w-5 h-5" />
+          </Button>
+          <Button variant="ghost" size="icon" onClick={() => setShowLocationModal(true)}>
+            <MoreVertical className="w-5 h-5" />
           </Button>
         </div>
       </div>
@@ -955,6 +1018,17 @@ export default function IndoorPlantDetail() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Edit Location Modal */}
+      <EditPlantLocationModal
+        open={showLocationModal}
+        onClose={() => setShowLocationModal(false)}
+        plant={plant}
+        onSuccess={() => {
+          setShowLocationModal(false);
+          loadData();
+        }}
+      />
     </div>
   );
 }
