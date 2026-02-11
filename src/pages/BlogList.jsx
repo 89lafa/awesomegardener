@@ -18,21 +18,14 @@ export default function BlogList() {
   }, []);
 
   const loadPosts = async () => {
+    setLoading(true);
     try {
-      // Fetch all blog posts and filter for published ones
+      // List all posts - RLS will filter to published ones automatically
       const allPosts = await base44.entities.BlogPost.list('-published_date', 100);
-      const publishedPosts = allPosts.filter(p => p.status === 'published');
-      setPosts(publishedPosts);
+      setPosts(allPosts);
     } catch (error) {
       console.error('Error loading posts:', error);
-      // If auth error, try without auth (public access)
-      try {
-        const allPosts = await base44.entities.BlogPost.list('-published_date', 100);
-        const publishedPosts = allPosts.filter(p => p.status === 'published');
-        setPosts(publishedPosts);
-      } catch (e) {
-        console.error('Fallback also failed:', e);
-      }
+      setPosts([]);
     } finally {
       setLoading(false);
     }

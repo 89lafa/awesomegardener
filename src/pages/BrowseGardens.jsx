@@ -36,10 +36,10 @@ export default function BrowseGardens() {
   }, []);
 
   const loadGardens = async () => {
+    setLoading(true);
     try {
-      // Fetch public gardens directly using service role
-      const allGardens = await base44.entities.Garden.list();
-      const publicGardens = allGardens.filter(g => g.is_public === true && g.archived !== true);
+      // Fetch all gardens - RLS handles public filtering
+      const allGardens = await base44.entities.Garden.list('-updated_date', 200);
       
       // Fetch users for owner info
       const users = await base44.entities.User.list();
@@ -50,7 +50,7 @@ export default function BrowseGardens() {
       });
       
       // Attach owner data
-      const enriched = publicGardens.map(g => ({
+      const enriched = allGardens.map(g => ({
         ...g,
         owner: userMap[g.created_by_id] || userMap[g.created_by] || null
       }));
@@ -58,6 +58,7 @@ export default function BrowseGardens() {
       setGardens(enriched);
     } catch (error) {
       console.error('Error loading gardens:', error);
+      setGardens([]);
     } finally {
       setLoading(false);
     }
