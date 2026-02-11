@@ -19,6 +19,7 @@ import { ArrowLeft, ExternalLink, Loader2, Edit, Package, Plus, Sprout, Sun, Cal
 import { toast } from 'sonner';
 import AddToStashModal from '@/components/catalog/AddToStashModal';
 import ReviewSection from '@/components/variety/ReviewSection';
+import SpecialCareWarnings from '@/components/indoor/SpecialCareWarnings';
 
 export default function ViewVariety() {
   const [searchParams] = useSearchParams();
@@ -244,6 +245,9 @@ export default function ViewVariety() {
           ))}
         </div>
       )}
+
+      {/* Special Care Warnings for Carnivorous Plants */}
+      <SpecialCareWarnings variety={variety} />
 
       {variety.affiliate_url && (
         <Card className="bg-gradient-to-r from-emerald-50 to-green-50 border-emerald-200">

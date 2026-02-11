@@ -20,10 +20,9 @@ Deno.serve(async (req) => {
     // Filter for gardens that are public and not archived
     const publicGardens = allGardens.filter(g => {
       const isPublic = g.is_public === true;
-      const privacyPublic = g.privacy === 'public';
       const notArchived = g.archived !== true;
-      console.log(`Garden ${g.name}: is_public=${g.is_public}, privacy=${g.privacy}, archived=${g.archived}, passes=${isPublic && privacyPublic && notArchived}`);
-      return isPublic && privacyPublic && notArchived;
+      console.log(`Garden ${g.name}: is_public=${g.is_public}, privacy=${g.privacy}, archived=${g.archived}, passes=${isPublic && notArchived}`);
+      return isPublic && notArchived;
     });
     
     console.log(`Public gardens count: ${publicGardens.length}`);
