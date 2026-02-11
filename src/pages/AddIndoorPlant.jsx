@@ -25,6 +25,9 @@ export default function AddIndoorPlant() {
   const [varieties, setVarieties] = useState([]);
   const [plantTypes, setPlantTypes] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
+  const [selectedPlantType, setSelectedPlantType] = useState('');
+  const [isCustomVariety, setIsCustomVariety] = useState(false);
+  const [customVarietyName, setCustomVarietyName] = useState('');
 
   const [formData, setFormData] = useState({
     variety_id: '',
@@ -127,15 +130,42 @@ export default function AddIndoorPlant() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!formData.variety_id || !formData.acquisition_date || !formData.indoor_space_id) {
+    
+    // Validation: check if custom variety needs name
+    if (isCustomVariety && !customVarietyName.trim()) {
+      toast.error('Please enter a custom variety name');
+      return;
+    }
+    
+    if (!isCustomVariety && !formData.variety_id) {
+      toast.error('Please select a plant variety');
+      return;
+    }
+    
+    if (!formData.acquisition_date || !formData.indoor_space_id) {
       toast.error('Please fill in required fields');
       return;
     }
 
     setSaving(true);
     try {
+      let varietyIdToUse = formData.variety_id;
+      
+      // Create custom variety if needed
+      if (isCustomVariety && selectedPlantType) {
+        const customVariety = await base44.entities.Variety.create({
+          plant_type_id: selectedPlantType,
+          variety_name: customVarietyName.trim(),
+          is_custom: true,
+          status: 'active'
+        });
+        varietyIdToUse = customVariety.id;
+        toast.success(`Custom variety "${customVarietyName}" created!`);
+      }
+
       const plantData = {
         ...formData,
+        variety_id: varietyIdToUse,
         purchase_price: formData.purchase_price ? parseFloat(formData.purchase_price) : null,
         pot_size_inches: formData.pot_size_inches ? parseFloat(formData.pot_size_inches) : null,
         watering_frequency_days: formData.watering_frequency_days ? parseInt(formData.watering_frequency_days) : null,
@@ -198,45 +228,109 @@ export default function AddIndoorPlant() {
             <CardTitle>1. Select Plant Variety</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
+            {/* Plant Type Selector */}
             <div>
-              <Label>Search Plants</Label>
-              <div className="relative mt-2">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                <Input
-                  placeholder="Search by name..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-10"
-                />
-              </div>
-            </div>
-
-            <div>
-              <Label>Plant Variety *</Label>
-              <Select value={formData.variety_id} onValueChange={(v) => setFormData({ ...formData, variety_id: v })}>
+              <Label>Plant Type *</Label>
+              <Select 
+                value={selectedPlantType} 
+                onValueChange={(v) => {
+                  setSelectedPlantType(v);
+                  setFormData({ ...formData, variety_id: '' });
+                  setIsCustomVariety(false);
+                  setCustomVarietyName('');
+                }}
+              >
                 <SelectTrigger className="mt-2">
-                  <SelectValue placeholder="Select variety" />
+                  <SelectValue placeholder="Select plant type first" />
                 </SelectTrigger>
                 <SelectContent className="max-h-64">
-                  {filteredVarieties.length === 0 ? (
-                    <SelectItem value="no-results" disabled>
-                      No matching plants found
+                  {plantTypes.map(pt => (
+                    <SelectItem key={pt.id} value={pt.id}>
+                      {pt.icon && `${pt.icon} `}{pt.common_name}
                     </SelectItem>
-                  ) : (
-                    filteredVarieties.map(v => (
-                      <SelectItem key={v.id} value={v.id}>
-                        {v.variety_name} {v.plant_type_name && `(${v.plant_type_name})`}
-                      </SelectItem>
-                    ))
-                  )}
+                  ))}
                 </SelectContent>
               </Select>
-              {filteredVarieties.length === 0 && searchQuery && (
-                <p className="text-xs text-amber-600 mt-1">
-                  No indoor plants match "{searchQuery}". Try searching for: Aloe, Monstera, Pothos, Snake Plant, etc.
-                </p>
-              )}
             </div>
+
+            {selectedPlantType && (
+              <>
+                <div className="flex items-center gap-2 bg-gray-50 p-3 rounded-lg">
+                  <input
+                    type="checkbox"
+                    id="customVariety"
+                    checked={isCustomVariety}
+                    onChange={(e) => {
+                      setIsCustomVariety(e.target.checked);
+                      if (e.target.checked) {
+                        setFormData({ ...formData, variety_id: '' });
+                      }
+                    }}
+                    className="w-4 h-4"
+                  />
+                  <Label htmlFor="customVariety" className="cursor-pointer">
+                    This is a custom variety not in our catalog
+                  </Label>
+                </div>
+
+                {isCustomVariety ? (
+                  <div>
+                    <Label>Custom Variety Name *</Label>
+                    <Input
+                      placeholder="Enter the variety name"
+                      value={customVarietyName}
+                      onChange={(e) => setCustomVarietyName(e.target.value)}
+                      className="mt-2"
+                    />
+                    <p className="text-xs text-gray-500 mt-1">
+                      We'll create this variety for you
+                    </p>
+                  </div>
+                ) : (
+                  <>
+                    <div>
+                      <Label>Search Varieties</Label>
+                      <div className="relative mt-2">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                        <Input
+                          placeholder="Search by name..."
+                          value={searchQuery}
+                          onChange={(e) => setSearchQuery(e.target.value)}
+                          className="pl-10"
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <Label>Plant Variety *</Label>
+                      <Select value={formData.variety_id} onValueChange={(v) => setFormData({ ...formData, variety_id: v })}>
+                        <SelectTrigger className="mt-2">
+                          <SelectValue placeholder="Select variety" />
+                        </SelectTrigger>
+                        <SelectContent className="max-h-64">
+                          {filteredVarieties.filter(v => v.plant_type_id === selectedPlantType).length === 0 ? (
+                            <SelectItem value="no-results" disabled>
+                              No matching varieties found
+                            </SelectItem>
+                          ) : (
+                            filteredVarieties.filter(v => v.plant_type_id === selectedPlantType).map(v => (
+                              <SelectItem key={v.id} value={v.id}>
+                                {v.variety_name}
+                              </SelectItem>
+                            ))
+                          )}
+                        </SelectContent>
+                      </Select>
+                      {filteredVarieties.filter(v => v.plant_type_id === selectedPlantType).length === 0 && (
+                        <p className="text-xs text-amber-600 mt-1">
+                          No varieties found for this type. Check "Custom variety" above to add your own.
+                        </p>
+                      )}
+                    </div>
+                  </>
+                )}
+              </>
+            )}
 
             <div>
               <Label>Nickname (optional)</Label>
@@ -461,7 +555,7 @@ export default function AddIndoorPlant() {
           </Button>
           <Button
             type="submit"
-            disabled={saving || !formData.variety_id || !formData.acquisition_date || !formData.indoor_space_id}
+            disabled={saving || (!isCustomVariety && !formData.variety_id) || (isCustomVariety && !customVarietyName.trim()) || !formData.acquisition_date || !formData.indoor_space_id}
             className="bg-emerald-600 hover:bg-emerald-700"
           >
             {saving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
