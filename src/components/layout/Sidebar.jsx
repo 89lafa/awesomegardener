@@ -41,18 +41,18 @@ const getNavItems = (userRole, isEditor, user) => {
     { name: 'Seed Stash', icon: Package, page: 'SeedStash' },
     { name: 'Grow Lists', icon: ListChecks, page: 'GrowLists' },
     { name: 'Gardens', icon: Globe, page: 'Gardens' },
-    { name: 'My Plants', icon: Apple, page: 'MyPlants' },
+    { name: 'My Garden Plants', icon: Apple, page: 'MyPlants' },
     
     // Garden management
     { category: true, label: 'GARDEN MANAGEMENT' },
     { name: 'Calendar', icon: Calendar, page: 'Calendar' },
     { name: 'Tasks', icon: ListChecks, page: 'CalendarTasks' },
     { name: 'Indoor Grow', icon: Sprout, page: 'IndoorGrowSpaces' },
-    { name: 'Houseplants', icon: Sprout, page: 'IndoorPlants' },
-    { name: 'My Indoor Plants', icon: Sprout, page: 'MyIndoorPlants' },
+    { name: 'Houseplant Spaces', icon: Sprout, page: 'IndoorPlants' },
+    { name: 'My Houseplants', icon: Sprout, page: 'MyIndoorPlants' },
     { name: 'Ready to Plant', icon: Sprout, page: 'ReadyToPlantSeedlings' },
     { name: 'Plot Layout', icon: Hammer, page: 'MyGarden' },
-    { name: 'Garden Planting', icon: TreeDeciduous, page: 'GardenPlanting' },
+    { name: 'Garden Spaces', icon: TreeDeciduous, page: 'GardenPlanting' },
     
     // Tracking - Single Section with Tabs
     { category: true, label: 'TRACKING' },

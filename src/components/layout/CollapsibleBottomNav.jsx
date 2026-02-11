@@ -26,15 +26,15 @@ const getMoreMenuItems = (user) => {
   return [
     { category: 'PLANTING & PLANNING' },
     { name: 'Gardens', icon: Leaf, page: 'Gardens' },
-    { name: 'My Plants', icon: Leaf, page: 'MyPlants' },
+    { name: 'My Garden Plants', icon: Leaf, page: 'MyPlants' },
     { name: 'Grow Lists', icon: Leaf, page: 'GrowLists' },
     
     { category: 'GARDEN MANAGEMENT' },
     { name: 'Calendar', icon: Leaf, page: 'Calendar' },
     { name: 'Tasks', icon: Leaf, page: 'CalendarTasks' },
     { name: 'Indoor Grow', icon: Leaf, page: 'IndoorGrowSpaces' },
-    { name: 'Houseplants', icon: Leaf, page: 'IndoorPlants' },
-    { name: 'My Indoor Plants', icon: Leaf, page: 'MyIndoorPlants' },
+    { name: 'Houseplant Spaces', icon: Leaf, page: 'IndoorPlants' },
+    { name: 'My Houseplants', icon: Leaf, page: 'MyIndoorPlants' },
     
     { category: 'TRACKING' },
     { name: 'Diary', icon: Leaf, page: 'GardenDiary' },
