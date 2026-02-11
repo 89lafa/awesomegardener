@@ -38,9 +38,11 @@ export default function BrowseGardens() {
   const loadGardens = async () => {
     try {
       const { data } = await base44.functions.invoke('getPublicGardens');
-      setGardens(data.gardens || []);
+      console.log('getPublicGardens response:', data);
+      setGardens(data?.gardens || []);
     } catch (error) {
       console.error('Error loading gardens:', error);
+      setGardens([]);
     } finally {
       setLoading(false);
     }
