@@ -53,8 +53,9 @@ import { Sparkles } from 'lucide-react';
 import { smartQuery } from '@/components/utils/smartQuery';
 import RateLimitBanner from '@/components/common/RateLimitBanner';
 import { useDebouncedValue } from '../components/utils/useDebouncedValue';
+import SpecialCareWarnings from '@/components/indoor/SpecialCareWarnings';
 
-const CATEGORIES = ['vegetable', 'fruit', 'herb', 'flower', 'other'];
+const CATEGORIES = ['vegetable', 'fruit', 'herb', 'flower', 'carnivorous', 'other'];
 
 export default function PlantCatalog() {
   const [searchParams] = useSearchParams();
@@ -420,6 +421,8 @@ export default function PlantCatalog() {
           <ArrowLeft className="w-4 h-4" />
           Back to {selectedType?.name}
         </Button>
+
+        <SpecialCareWarnings variety={selectedVariety} />
 
         <div className="grid lg:grid-cols-3 gap-6">
           <div className="lg:col-span-2 space-y-6">
