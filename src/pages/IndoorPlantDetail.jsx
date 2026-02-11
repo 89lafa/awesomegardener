@@ -20,6 +20,7 @@ import CareGuideSection, { CareGuideRow } from '@/components/indoor/CareGuideSec
 import EnvironmentTab from '@/components/indoor/EnvironmentTab';
 import PlantStatsTab from '@/components/indoor/PlantStatsTab';
 import EditPlantLocationModal from '@/components/indoor/EditPlantLocationModal';
+import SpecialCareWarnings from '@/components/indoor/SpecialCareWarnings';
 
 export default function IndoorPlantDetail() {
   const [searchParams] = useSearchParams();
@@ -646,6 +647,9 @@ export default function IndoorPlantDetail() {
 
         {/* CARE GUIDE TAB */}
         <TabsContent value="care-guide" className="space-y-4">
+          {/* Special Care Warnings */}
+          <SpecialCareWarnings variety={variety} />
+          
           {!variety ? (
             <Card className="py-12">
               <CardContent className="text-center text-gray-500">
