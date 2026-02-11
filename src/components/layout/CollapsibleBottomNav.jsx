@@ -114,17 +114,19 @@ export default function CollapsibleBottomNav() {
 
   const handleTabClick = (tabPath) => {
     const currentPath = location.pathname;
-    const isOnTab = currentPath === tabPath || getStoredPath(tabPath) === currentPath;
+    const storedPath = getStoredPath(tabPath);
+    const isCurrentlyOnThisTab = currentPath.startsWith(tabPath);
     
-    if (isOnTab && currentPath === tabPath) {
-      setStoredPath(tabPath, tabPath);
+    if (isCurrentlyOnThisTab && currentPath === tabPath) {
+      // Already on root - do nothing or reload
       navigate(tabPath, { replace: true });
-    } else if (isOnTab && currentPath !== tabPath) {
+    } else if (isCurrentlyOnThisTab) {
+      // On a sub-page of this tab - go to root
       setStoredPath(tabPath, tabPath);
       navigate(tabPath);
     } else {
-      const storedPath = getStoredPath(tabPath);
-      navigate(storedPath);
+      // Switching tabs - go to stored path or root
+      navigate(storedPath || tabPath);
     }
   };
   
