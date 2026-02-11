@@ -4,17 +4,18 @@ Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
     
-    // Use asServiceRole to bypass RLS restrictions completely
-    // Query gardens with is_public = true and not archived
+    // Use asServiceRole to bypass RLS and fetch public gardens
     const publicGardens = await base44.asServiceRole.entities.Garden.filter({
-      is_public: true,
-      archived: { $ne: true }
-    }, '-updated_date', 500);
+      is_public: true
+    }, '-updated_date', 100);
     
-    console.log(`Public gardens found: ${publicGardens.length}`);
+    // Filter out archived gardens in JavaScript
+    const activePublicGardens = publicGardens.filter(g => g.archived !== true);
+    
+    console.log(`Public gardens found: ${activePublicGardens.length}`);
 
-    // Fetch all users for owner data
-    const allUsers = await base44.asServiceRole.entities.User.list();
+    // Fetch users - limit to reasonable amount
+    const allUsers = await base44.asServiceRole.entities.User.list('-created_date', 100);
     
     const ownersMap = {};
     allUsers.forEach(u => {
@@ -23,7 +24,7 @@ Deno.serve(async (req) => {
     });
 
     // Attach owner data to gardens
-    const gardensWithOwners = publicGardens.map(g => {
+    const gardensWithOwners = activePublicGardens.map(g => {
       const ownerId = g.created_by_id || g.created_by;
       return {
         ...g,
@@ -32,17 +33,12 @@ Deno.serve(async (req) => {
     });
 
     return Response.json({ 
-      gardens: gardensWithOwners,
-      debug: {
-        totalQueried: publicGardens.length,
-        publicGardensCount: publicGardens.length
-      }
+      gardens: gardensWithOwners
     });
   } catch (error) {
     console.error('Error in getPublicGardens:', error);
     return Response.json({ 
-      error: error.message, 
-      stack: error.stack 
+      error: error.message
     }, { status: 500 });
   }
 });
