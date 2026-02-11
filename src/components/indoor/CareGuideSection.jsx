@@ -2,8 +2,9 @@ import React, { useState } from 'react';
 import { ChevronDown, ChevronRight } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import SpecialCareWarnings from '@/components/indoor/SpecialCareWarnings';
 
-export default function CareGuideSection({ icon, title, summary, children, defaultOpen = false }) {
+export default function CareGuideSection({ icon, title, summary, children, defaultOpen = false, variety = null }) {
   const [open, setOpen] = useState(defaultOpen);
 
   return (
@@ -27,6 +28,7 @@ export default function CareGuideSection({ icon, title, summary, children, defau
         
         {open && (
           <div className="px-4 pb-4 pt-2 border-t bg-gray-50/50">
+            {variety && <SpecialCareWarnings variety={variety} className="mb-4" />}
             {children}
           </div>
         )}
