@@ -3,70 +3,42 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.6';
 Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
-    const user = await base44.auth.me();
     
+    const user = await base44.auth.me();
     if (user?.role !== 'admin') {
-      return Response.json({ error: 'Admin access required' }, { status: 403 });
+      return Response.json({ error: 'Admin only' }, { status: 403 });
     }
 
-    const results = {
-      families_created: [],
-      plant_types_created: [],
-      browse_category_updated: false
-    };
+    const results = { families: [], plantTypes: [], browseCategory: null };
 
-    // Step 1: Create missing PlantFamilies
+    // Step 1: Get Indoor Plants group
+    const groups = await base44.asServiceRole.entities.PlantGroup.filter({ name: 'Indoor & Houseplants' });
+    if (!groups || groups.length === 0) {
+      return Response.json({ error: 'Indoor & Houseplants group not found' }, { status: 404 });
+    }
+    const indoorGroupId = groups[0].id;
+
+    // Step 2: Create missing PlantFamilies
     const familyData = [
-      {
-        scientific_name: "Droseraceae",
-        common_name: "Sundew family",
-        notes: "Carnivorous plants. Includes Venus Flytrap (Dionaea), Sundews (Drosera), Waterwheel Plant (Aldrovanda)."
-      },
-      {
-        scientific_name: "Sarraceniaceae",
-        common_name: "Pitcher plant family",
-        notes: "Carnivorous plants. Includes American Pitcher Plants (Sarracenia), Cobra Lily (Darlingtonia), Sun Pitchers (Heliamphora)."
-      },
-      {
-        scientific_name: "Nepenthaceae",
-        common_name: "Tropical pitcher family",
-        notes: "Carnivorous plants. Includes tropical pitcher plants (Nepenthes)."
-      },
-      {
-        scientific_name: "Lentibulariaceae",
-        common_name: "Bladderwort family",
-        notes: "Carnivorous plants. Includes Butterworts (Pinguicula) and Bladderworts (Utricularia)."
-      }
+      { scientific_name: "Droseraceae", common_name: "Sundew family", notes: "Carnivorous plants. Includes Venus Flytrap (Dionaea), Sundews (Drosera), Waterwheel Plant (Aldrovanda)." },
+      { scientific_name: "Sarraceniaceae", common_name: "Pitcher plant family", notes: "Carnivorous plants. Includes American Pitcher Plants (Sarracenia), Cobra Lily (Darlingtonia), Sun Pitchers (Heliamphora)." },
+      { scientific_name: "Nepenthaceae", common_name: "Tropical pitcher family", notes: "Carnivorous plants. Includes tropical pitcher plants (Nepenthes)." },
+      { scientific_name: "Lentibulariaceae", common_name: "Bladderwort family", notes: "Carnivorous plants. Includes Butterworts (Pinguicula) and Bladderworts (Utricularia)." }
     ];
 
     const familyMap = {};
     
     for (const fam of familyData) {
-      const existing = await base44.asServiceRole.entities.PlantFamily.filter({
-        scientific_name: fam.scientific_name
-      });
-      
-      if (existing.length === 0) {
-        const created = await base44.asServiceRole.entities.PlantFamily.create(fam);
-        results.families_created.push(fam.scientific_name);
-        familyMap[fam.scientific_name] = created.id;
-      } else {
+      const existing = await base44.asServiceRole.entities.PlantFamily.filter({ scientific_name: fam.scientific_name });
+      if (existing && existing.length > 0) {
         familyMap[fam.scientific_name] = existing[0].id;
+        results.families.push({ action: 'exists', ...fam, id: existing[0].id });
+      } else {
+        const created = await base44.asServiceRole.entities.PlantFamily.create(fam);
+        familyMap[fam.scientific_name] = created.id;
+        results.families.push({ action: 'created', ...fam, id: created.id });
       }
     }
-
-    // Step 2: Get Indoor Plants group ID
-    const indoorGroup = await base44.asServiceRole.entities.PlantGroup.filter({
-      name: "Indoor & Houseplants"
-    });
-    
-    if (indoorGroup.length === 0) {
-      return Response.json({ 
-        error: 'Indoor Plants group not found. Create it first.' 
-      }, { status: 400 });
-    }
-    
-    const indoorGroupId = indoorGroup[0].id;
 
     // Step 3: Create 3 new PlantTypes
     const newPlantTypes = [
@@ -77,7 +49,7 @@ Deno.serve(async (req) => {
         plant_family_id: familyMap["Lentibulariaceae"],
         plant_group_id: indoorGroupId,
         category: "carnivorous",
-        typical_sun: "bright_indirect",
+        typical_sun: "partial_sun",
         typical_water: "high",
         is_perennial: true,
         icon: "🪴",
@@ -90,7 +62,7 @@ Deno.serve(async (req) => {
         plant_family_id: familyMap["Sarraceniaceae"],
         plant_group_id: indoorGroupId,
         category: "carnivorous",
-        typical_sun: "bright_direct",
+        typical_sun: "full_sun",
         typical_water: "high",
         is_perennial: true,
         icon: "🪴",
@@ -103,7 +75,7 @@ Deno.serve(async (req) => {
         plant_family_id: familyMap["Droseraceae"],
         plant_group_id: indoorGroupId,
         category: "carnivorous",
-        typical_sun: "bright_indirect",
+        typical_sun: "partial_sun",
         typical_water: "high",
         is_perennial: true,
         icon: "🪴",
@@ -111,48 +83,36 @@ Deno.serve(async (req) => {
       }
     ];
 
-    const newTypeIds = [];
+    const createdPlantTypeIds = [];
     
     for (const pt of newPlantTypes) {
-      const existing = await base44.asServiceRole.entities.PlantType.filter({
-        plant_type_code: pt.plant_type_code
-      });
-      
-      if (existing.length === 0) {
-        const created = await base44.asServiceRole.entities.PlantType.create(pt);
-        results.plant_types_created.push(pt.common_name);
-        newTypeIds.push(created.id);
+      const existing = await base44.asServiceRole.entities.PlantType.filter({ plant_type_code: pt.plant_type_code });
+      if (existing && existing.length > 0) {
+        createdPlantTypeIds.push(existing[0].id);
+        results.plantTypes.push({ action: 'exists', ...pt, id: existing[0].id });
       } else {
-        newTypeIds.push(existing[0].id);
+        const created = await base44.asServiceRole.entities.PlantType.create(pt);
+        createdPlantTypeIds.push(created.id);
+        results.plantTypes.push({ action: 'created', ...pt, id: created.id });
       }
     }
 
-    // Step 4: Update BrowseCategory for carnivorous plants
-    const carnivorousCat = await base44.asServiceRole.entities.BrowseCategory.filter({
-      category_code: "BC_CARNIVOROUS"
-    });
-    
-    if (carnivorousCat.length > 0) {
-      const cat = carnivorousCat[0];
-      const existingIds = cat.plant_type_ids || [];
-      const allIds = [...new Set([...existingIds, ...newTypeIds])];
+    // Step 4: Update BrowseCategory BC_CARNIVOROUS
+    const browseCategories = await base44.asServiceRole.entities.BrowseCategory.filter({ category_code: 'BC_CARNIVOROUS' });
+    if (browseCategories && browseCategories.length > 0) {
+      const bc = browseCategories[0];
+      const currentIds = bc.plant_type_ids || [];
+      const updatedIds = [...new Set([...currentIds, ...createdPlantTypeIds])];
       
-      await base44.asServiceRole.entities.BrowseCategory.update(cat.id, {
-        plant_type_ids: allIds
+      await base44.asServiceRole.entities.BrowseCategory.update(bc.id, {
+        plant_type_ids: updatedIds
       });
-      
-      results.browse_category_updated = true;
+      results.browseCategory = { action: 'updated', id: bc.id, plant_type_ids: updatedIds };
     }
 
-    return Response.json({
-      success: true,
-      results
-    });
+    return Response.json({ success: true, results });
   } catch (error) {
     console.error('Error initializing carnivorous plants:', error);
-    return Response.json({ 
-      error: error.message,
-      stack: error.stack
-    }, { status: 500 });
+    return Response.json({ error: error.message, stack: error.stack }, { status: 500 });
   }
 });
