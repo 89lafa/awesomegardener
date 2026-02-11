@@ -105,16 +105,34 @@ export default function PlantCatalog() {
   const loadPlantTypes = async (isRetry = false) => {
     if (isRetry) setRetrying(true);
     
+    // Clear old cache format that's missing plantGroups
+    try {
+      const existingCache = sessionStorage.getItem('plant_catalog_cache');
+      if (existingCache) {
+        const parsed = JSON.parse(existingCache);
+        if (!parsed.plantGroups) {
+          console.debug('[PlantCatalog] Clearing old cache format');
+          sessionStorage.removeItem('plant_catalog_cache');
+        }
+      }
+    } catch (e) { /* ignore */ }
+    
     const cached = sessionStorage.getItem('plant_catalog_cache');
     if (cached && !isRetry) {
       try {
-        const { types, browseCats, timestamp } = JSON.parse(cached);
+        const { types, browseCats, plantGroups: cachedGroups, timestamp } = JSON.parse(cached);
         const age = Date.now() - timestamp;
         if (age < 30 * 60 * 1000) {
           console.debug('[PlantCatalog] Using cached data, age:', Math.round(age/1000), 's');
           const validTypes = types.filter(type => 
             type.id && type.common_name && type.is_active !== false && !type.notes?.includes('DEPRECATED')
-          );
+          ).map(type => {
+            const group = (cachedGroups || []).find(g => g.id === type.plant_group_id);
+            return {
+              ...type,
+              plant_group_sort_order: group?.sort_order ?? 99
+            };
+          });
           const browseTypes = browseCats.map(cat => ({
             id: `browse_${cat.category_code}`,
             common_name: cat.name,
@@ -148,8 +166,9 @@ export default function PlantCatalog() {
       
       console.debug('[PlantCatalog] fetch_success PlantType count=', types.length);
       
+      // CRITICAL: Store plantGroups in cache
       sessionStorage.setItem('plant_catalog_cache', JSON.stringify({
-        types, browseCats, timestamp: Date.now()
+        types, browseCats, plantGroups, timestamp: Date.now()
       }));
       
       const validTypes = types.filter(type => 
