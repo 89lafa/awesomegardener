@@ -5,8 +5,9 @@ import { createPageUrl } from '@/utils';
 import { 
   ArrowLeft, Plus, Thermometer, Droplets, Sun, Edit, Trash2, Loader2, Sprout,
   List, Box, ChevronLeft, ChevronRight, ChevronUp, ChevronDown, RotateCcw,
-  ZoomIn, Maximize2, AlertTriangle, AlertCircle
+  ZoomIn, Maximize2, AlertTriangle, AlertCircle, MapPin
 } from 'lucide-react';
+import EditSpaceModal from '@/components/indoor/EditSpaceModal';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
@@ -27,6 +28,7 @@ export default function IndoorSpaceDetail() {
   const [loading, setLoading] = useState(true);
   const [viewMode, setViewMode] = useState('list');
   const [showPlaceExistingModal, setShowPlaceExistingModal] = useState(false);
+  const [showEditSpaceModal, setShowEditSpaceModal] = useState(false);
 
   useEffect(() => {
     if (spaceId) {
@@ -57,21 +59,23 @@ export default function IndoorSpaceDetail() {
         is_active: true
       }, '-created_date');
       
-      // Enrich with variety data in batches
-      const enrichedPlants = await Promise.all(
-        plantsData.map(async (plant) => {
-          if (plant.variety_id) {
-            try {
-              const varietyData = await base44.entities.Variety.filter({ id: plant.variety_id });
-              return { ...plant, variety_name: varietyData[0]?.variety_name };
-            } catch (error) {
-              console.error('Error loading variety:', error);
-              return plant;
-            }
+      // Load variety names ONE AT A TIME to avoid rate limiting
+      const enrichedPlants = [];
+      for (const plant of plantsData) {
+        if (plant.variety_id) {
+          try {
+            const varietyData = await base44.entities.Variety.filter({ id: plant.variety_id });
+            enrichedPlants.push({ ...plant, variety_name: varietyData[0]?.variety_name });
+          } catch (error) {
+            // If rate limited, just use plant without variety name
+            enrichedPlants.push(plant);
           }
-          return plant;
-        })
-      );
+          // Wait 300ms between each variety fetch
+          await new Promise(r => setTimeout(r, 300));
+        } else {
+          enrichedPlants.push(plant);
+        }
+      }
       
       setPlants(enrichedPlants);
     } catch (error) {
@@ -461,11 +465,48 @@ export default function IndoorSpaceDetail() {
                 )}
 
                 <div className="pt-4 space-y-2">
-                  <Button variant="outline" className="w-full">
+                  <Button 
+                    variant="outline" 
+                    className="w-full"
+                    onClick={() => setShowEditSpaceModal(true)}
+                  >
                     <Edit className="w-4 h-4 mr-2" />
                     Edit Space
                   </Button>
-                  <Button variant="outline" className="w-full text-red-600 hover:text-red-700">
+                  <Button 
+                    variant="outline" 
+                    className="w-full text-red-600 hover:text-red-700"
+                    onClick={async () => {
+                      if (!confirm(`Are you sure you want to delete "${space.name}"? All plants will be unassigned from this space.`)) return;
+                      
+                      try {
+                        // Unassign all plants first
+                        for (const plant of plants) {
+                          await base44.entities.IndoorPlant.update(plant.id, {
+                            indoor_space_id: null,
+                            tier_id: null,
+                            grid_position_x: null,
+                            grid_position_y: null
+                          });
+                        }
+                        
+                        // Delete tiers
+                        const tiersToDelete = await base44.entities.IndoorSpaceTier.filter({ indoor_space_id: spaceId });
+                        for (const tier of tiersToDelete) {
+                          await base44.entities.IndoorSpaceTier.delete(tier.id);
+                        }
+                        
+                        // Delete space
+                        await base44.entities.IndoorSpace.delete(spaceId);
+                        
+                        toast.success('Space deleted');
+                        navigate(createPageUrl('IndoorPlants'));
+                      } catch (error) {
+                        console.error('Error deleting space:', error);
+                        toast.error('Failed to delete space');
+                      }
+                    }}
+                  >
                     <Trash2 className="w-4 h-4 mr-2" />
                     Delete Space
                   </Button>
@@ -477,15 +518,25 @@ export default function IndoorSpaceDetail() {
           )}
 
           <PlaceExistingPlantModal
-          open={showPlaceExistingModal}
-          onClose={() => setShowPlaceExistingModal(false)}
-          spaceId={spaceId}
-          tiers={tiers}
-          onSuccess={() => {
-            setShowPlaceExistingModal(false);
-            loadData();
-            toast.success('Plant placed in space!');
-          }}
+            open={showPlaceExistingModal}
+            onClose={() => setShowPlaceExistingModal(false)}
+            spaceId={spaceId}
+            tiers={tiers}
+            onSuccess={() => {
+              setShowPlaceExistingModal(false);
+              loadData();
+              toast.success('Plant placed in space!');
+            }}
+          />
+
+          <EditSpaceModal
+            open={showEditSpaceModal}
+            onClose={() => setShowEditSpaceModal(false)}
+            space={space}
+            onSuccess={() => {
+              setShowEditSpaceModal(false);
+              loadData();
+            }}
           />
           </div>
           );
@@ -507,20 +558,20 @@ export default function IndoorSpaceDetail() {
           const loadPlants = async () => {
             try {
               const data = await base44.entities.IndoorPlant.filter({ is_active: true });
-              const enriched = await Promise.all(
-                data.map(async p => {
-                  if (p.variety_id) {
-                    try {
-                      const variety = await base44.entities.Variety.filter({ id: p.variety_id }).then(r => r[0]);
-                      return { ...p, variety_name: variety?.variety_name };
-                    } catch (error) {
-                      console.error('Error loading variety:', error);
-                      return p;
-                    }
+              const enriched = [];
+              for (const p of data) {
+                if (p.variety_id) {
+                  try {
+                    const variety = await base44.entities.Variety.filter({ id: p.variety_id }).then(r => r[0]);
+                    enriched.push({ ...p, variety_name: variety?.variety_name });
+                  } catch (error) {
+                    enriched.push(p);
                   }
-                  return p;
-                })
-              );
+                  await new Promise(r => setTimeout(r, 300));
+                } else {
+                  enriched.push(p);
+                }
+              }
               setPlants(enriched);
             } catch (error) {
               console.error('Error loading plants:', error);
