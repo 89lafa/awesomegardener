@@ -37,12 +37,27 @@ export default function BrowseGardens() {
 
   const loadGardens = async () => {
     try {
-      const { data } = await base44.functions.invoke('getPublicGardens');
-      console.log('getPublicGardens response:', data);
-      setGardens(data?.gardens || []);
+      // Fetch public gardens directly using service role
+      const allGardens = await base44.entities.Garden.list();
+      const publicGardens = allGardens.filter(g => g.is_public === true && g.archived !== true);
+      
+      // Fetch users for owner info
+      const users = await base44.entities.User.list();
+      const userMap = {};
+      users.forEach(u => {
+        userMap[u.id] = u;
+        userMap[u.email] = u;
+      });
+      
+      // Attach owner data
+      const enriched = publicGardens.map(g => ({
+        ...g,
+        owner: userMap[g.created_by_id] || userMap[g.created_by] || null
+      }));
+      
+      setGardens(enriched);
     } catch (error) {
       console.error('Error loading gardens:', error);
-      setGardens([]);
     } finally {
       setLoading(false);
     }
