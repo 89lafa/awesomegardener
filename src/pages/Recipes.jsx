@@ -332,8 +332,6 @@ export default function Recipes() {
           </Card>
         ))}
       </div>
-
-          </div>
         </>
       )}
 
