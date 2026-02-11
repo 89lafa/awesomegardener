@@ -280,14 +280,14 @@ export default function IndoorSpaceDetail() {
                 {plants.map((plant) => (
                   <Card 
                     key={plant.id}
-                    className="hover:shadow-lg transition-shadow cursor-pointer h-full"
+                    className="hover:shadow-lg transition-shadow cursor-pointer h-full relative"
                   >
                     <CardContent 
                       className="p-4"
                       onClick={(e) => {
                         e.preventDefault();
                         e.stopPropagation();
-                        navigate(createPageUrl('IndoorPlantDetail') + `?id=${plant.id}`);
+                        window.location.href = createPageUrl('IndoorPlantDetail') + `?id=${plant.id}`;
                       }}
                     >
                       <div className="text-4xl mb-2 text-center">🪴</div>
@@ -374,7 +374,7 @@ export default function IndoorSpaceDetail() {
                                     onClick={(e) => {
                                       e.preventDefault();
                                       e.stopPropagation();
-                                      navigate(createPageUrl('IndoorPlantDetail') + `?id=${p.id}`);
+                                      window.location.href = createPageUrl('IndoorPlantDetail') + `?id=${p.id}`;
                                     }}
                                     className="cursor-pointer hover:bg-yellow-100 transition-colors px-2 py-1 bg-white rounded border border-yellow-300 text-[10px] font-medium"
                                   >
