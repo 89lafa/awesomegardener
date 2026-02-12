@@ -39,8 +39,11 @@ export default function BrowseGardens() {
     setLoading(true);
     try {
       // Fetch all gardens - RLS handles public filtering
- const allGardens = await base44.entities.Garden.list('-updated_date', 200);
-
+ const allGardens = await base44.entities.Garden.filter(
+  { is_public: true }, 
+  '-updated_date', 
+  200
+);
 // Try to fetch users for owner info (may fail for non-admin)
 let userMap = {};
 try {
