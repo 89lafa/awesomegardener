@@ -39,23 +39,27 @@ export default function BrowseGardens() {
     setLoading(true);
     try {
       // Fetch all gardens - RLS handles public filtering
-      const allGardens = await base44.entities.Garden.list('-updated_date', 200);
-      
-      // Fetch users for owner info
-      const users = await base44.entities.User.list();
-      const userMap = {};
-      users.forEach(u => {
-        userMap[u.id] = u;
-        userMap[u.email] = u;
-      });
-      
-      // Attach owner data
-      const enriched = allGardens.map(g => ({
-        ...g,
-        owner: userMap[g.created_by_id] || userMap[g.created_by] || null
-      }));
-      
-      setGardens(enriched);
+ const allGardens = await base44.entities.Garden.list('-updated_date', 200);
+
+// Try to fetch users for owner info (may fail for non-admin)
+let userMap = {};
+try {
+  const users = await base44.entities.User.list();
+  users.forEach(u => {
+    userMap[u.id] = u;
+    userMap[u.email] = u;
+  });
+} catch (e) {
+  console.log('Could not load user profiles - showing gardens without owner details');
+}
+
+// Attach owner data (will be null if user fetch failed)
+const enriched = allGardens.map(g => ({
+  ...g,
+  owner: userMap[g.created_by_id] || userMap[g.created_by] || null
+}));
+
+setGardens(enriched);
     } catch (error) {
       console.error('Error loading gardens:', error);
       setGardens([]);
