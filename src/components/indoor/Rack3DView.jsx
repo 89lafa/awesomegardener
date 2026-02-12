@@ -212,7 +212,7 @@ function RackStructure3D({ rack, shelves, trays, allCells, showLabels }) {
   const tierDepth = 200;
 
   return (
-    <div className="relative" style={{ transformStyle: 'preserve-3d' }}>
+    <div className="relative" style={{ transformStyle: 'preserve-3d', marginTop: '200px' }}>
       {/* Back support poles */}
       <div
         className="absolute bg-gradient-to-r from-slate-700 to-slate-600 rounded-lg shadow-2xl"
