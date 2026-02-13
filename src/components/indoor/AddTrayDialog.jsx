@@ -25,10 +25,9 @@ const TRAY_PRESETS = [
   { name: '288-cell', cells: 288, rows: 12, cols: 24, insert: '288-cell' },
 ];
 
-export default function AddTrayDialog({ open, onOpenChange, spaceId, onSuccess }) {
+export default function AddTrayDialog({ open, onOpenChange, spaceId, shelfId, onSuccess }) {
   const isOpen = open;
   const onClose = () => onOpenChange(false);
-  const shelfId = spaceId; // For compatibility
   const onTrayAdded = onSuccess;
   const [trayName, setTrayName] = useState('');
   const [quantity, setQuantity] = useState(1);
