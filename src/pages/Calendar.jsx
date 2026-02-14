@@ -48,6 +48,7 @@ import RateLimitBanner from '@/components/common/RateLimitBanner';
 import BuildCalendarWizard from '@/components/ai/BuildCalendarWizard';
 import { getPlantTypesCached } from '@/components/utils/dataCache';
 import { createPageUrl } from '@/utils';
+import { KanbanBoard } from '@/components/tasks/KanbanBoard';
 
 export default function Calendar() {
   const [searchParams] = useSearchParams();
@@ -525,6 +526,7 @@ export default function Calendar() {
             <SelectContent>
               <SelectItem value="calendar">Calendar</SelectItem>
               <SelectItem value="timeline">Timeline</SelectItem>
+              <SelectItem value="kanban">Kanban</SelectItem>
             </SelectContent>
           </Select>
           
@@ -555,6 +557,14 @@ export default function Calendar() {
                 setShowDayPanel(true);
               }}
             />
+          ) : viewMode === 'kanban' ? (
+            <div className="p-4">
+              <KanbanBoard 
+                tasks={filteredTasks}
+                cropPlans={cropPlans}
+                onTaskUpdate={loadPlansAndTasks}
+              />
+            </div>
           ) : (
             <TimelineView 
               tasks={filteredTasks}
@@ -922,7 +932,7 @@ function TimelineView({ tasks, crops, season, onTaskClick }) {
                   .sort((a, b) => new Date(a.start_date) - new Date(b.start_date));
 
                 return (
-                  <div key={crop.id} className={cn("flex border-b", idx % 2 === 0 ? "bg-white" : "bg-gray-50/50")} style={{ height: `${ROW_H}px` }}>
+                  <div key={crop.id} className={cn("flex border-b relative hover:z-[35]", idx % 2 === 0 ? "bg-white" : "bg-gray-50/50")} style={{ height: `${ROW_H}px` }}>
                     {/* Sticky crop name */}
                     <div
                       className={cn(
@@ -991,7 +1001,7 @@ function TimelineView({ tasks, crops, season, onTaskClick }) {
                               )}
                             </div>
                             {/* Tooltip on hover */}
-                            <div className="hidden group-hover:block absolute bottom-full left-0 mb-1 bg-gray-900 text-white text-xs rounded px-2 py-1 whitespace-nowrap z-50 shadow-lg pointer-events-none">
+                            <div className="hidden group-hover:block absolute top-full left-0 mt-1 bg-gray-900 text-white text-xs rounded px-2 py-1 whitespace-nowrap z-[100] shadow-lg pointer-events-none">
                               {crop.label}: {task.title}
                               <br />
                               {task.start_date}{task.end_date ? ` → ${task.end_date}` : ''}
