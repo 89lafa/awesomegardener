@@ -65,8 +65,8 @@ export default function GrowLists() {
   const [showNewDialog, setShowNewDialog] = useState(searchParams.get('action') === 'new');
   const [showAddItemDialog, setShowAddItemDialog] = useState(false);
   const [showAIRecommendations, setShowAIRecommendations] = useState(false);
-  const [viewMode, setViewMode] = useState('cards'); // 'cards' or 'list'
-  const [itemViewMode, setItemViewMode] = useState('card'); // 'card' or 'list' for detail view items
+  const [viewMode, setViewMode] = useState('cards');
+  const [itemViewMode, setItemViewMode] = useState('card');
 
   const [seasons, setSeasons] = useState([]);
   const [newList, setNewList] = useState({
@@ -87,11 +87,14 @@ export default function GrowLists() {
   });
   
   const [seedSearch, setSeedSearch] = useState('');
+  // ══════════════════════════════════════════════════════════════
+  // FIX: Add search state for Plant Type dropdown
+  // ══════════════════════════════════════════════════════════════
+  const [plantTypeSearch, setPlantTypeSearch] = useState('');
 
   useEffect(() => {
     loadData();
     
-    // Real-time subscription to prevent empty states
     const unsubscribe = base44.entities.GrowList.subscribe((event) => {
       console.log('[GrowList Subscription]', event.type, event.id);
       loadData();
@@ -101,7 +104,6 @@ export default function GrowLists() {
   }, []);
 
   useEffect(() => {
-    // Check for addSeed param
     const addSeedId = searchParams.get('addSeed');
     if (addSeedId && seeds.length > 0) {
       const seed = seeds.find(s => s.id === addSeedId);
@@ -122,7 +124,6 @@ export default function GrowLists() {
     try {
       const user = await base44.auth.me();
       
-      // V1B-2: Batch query optimization - load lists and seeds first
       const [listsData, gardensData, seedsData, seasonsData] = await Promise.all([
         base44.entities.GrowList.filter({ created_by: user.email }, '-created_date'),
         base44.entities.Garden.filter({ archived: false, created_by: user.email }),
@@ -130,17 +131,18 @@ export default function GrowLists() {
         base44.entities.GardenSeason.filter({ created_by: user.email }, '-year')
       ]);
       
-      // Extract unique profile IDs from seeds
       const uniqueProfileIds = [...new Set(seedsData.map(s => s.plant_profile_id).filter(Boolean))];
       
-      // Batch fetch only needed profiles
       const profilesData = uniqueProfileIds.length > 0 
         ? await base44.entities.PlantProfile.filter({ id: { $in: uniqueProfileIds } })
         : [];
       
-      // Use cached plant types
+      // ══════════════════════════════════════════════════════════
+      // FIX #1: Changed limit from 100 → 500 to load ALL types
+      // (86 types exist, but 100 limit could truncate with cache)
+      // ══════════════════════════════════════════════════════════
       const typesData = await getPlantTypesCached(() => 
-        base44.entities.PlantType.list('common_name', 100)
+        base44.entities.PlantType.list('common_name', 500)
       );
       
       setGrowLists(listsData);
@@ -149,7 +151,6 @@ export default function GrowLists() {
       setPlantTypes(typesData);
       setSeasons(seasonsData);
       
-      // Build profiles map
       const pMap = {};
       profilesData.forEach(p => pMap[p.id] = p);
       setProfilesMap(pMap);
@@ -164,7 +165,7 @@ export default function GrowLists() {
 
   const handleCreateList = async () => {
     if (!newList.name.trim()) return;
-    if (creatingList) return; // Prevent double-submit
+    if (creatingList) return;
     setCreatingList(true);
 
     try {
@@ -209,7 +210,7 @@ export default function GrowLists() {
 
   const handleAddItem = async () => {
     if (!selectedList || !newItem.plant_type_name) return;
-    if (addingItem) return; // Prevent double-submit
+    if (addingItem) return;
     setAddingItem(true);
 
     const item = {
@@ -242,6 +243,7 @@ export default function GrowLists() {
         notes: ''
       });
       setSeedSearch('');
+      setPlantTypeSearch('');
       toast.success('Item added!');
     } catch (error) {
       console.error('Error adding item:', error);
@@ -253,14 +255,11 @@ export default function GrowLists() {
 
   const removeFromList = async (listId, itemIndex) => {
     if (!selectedList) return;
-
     try {
       const updatedItems = selectedList.items.filter((_, idx) => idx !== itemIndex);
       await base44.entities.GrowList.update(listId, { items: updatedItems });
       setSelectedList({ ...selectedList, items: updatedItems });
-      setGrowLists(growLists.map(l => 
-        l.id === listId ? { ...l, items: updatedItems } : l
-      ));
+      setGrowLists(growLists.map(l => l.id === listId ? { ...l, items: updatedItems } : l));
       toast.success('Item removed');
     } catch (error) {
       console.error('Error removing item:', error);
@@ -269,14 +268,11 @@ export default function GrowLists() {
 
   const handleRemoveItem = async (itemId) => {
     if (!selectedList) return;
-
     try {
       const updatedItems = selectedList.items.filter(i => i.id !== itemId);
       await base44.entities.GrowList.update(selectedList.id, { items: updatedItems });
       setSelectedList({ ...selectedList, items: updatedItems });
-      setGrowLists(growLists.map(l => 
-        l.id === selectedList.id ? { ...l, items: updatedItems } : l
-      ));
+      setGrowLists(growLists.map(l => l.id === selectedList.id ? { ...l, items: updatedItems } : l));
       toast.success('Item removed');
     } catch (error) {
       console.error('Error removing item:', error);
@@ -285,16 +281,13 @@ export default function GrowLists() {
 
   const handleEditItemQuantity = async (itemId, newQty) => {
     if (!selectedList || !newQty || newQty < 1) return;
-
     try {
       const updatedItems = selectedList.items.map(i => 
         i.id === itemId ? { ...i, quantity: newQty } : i
       );
       await base44.entities.GrowList.update(selectedList.id, { items: updatedItems });
       setSelectedList({ ...selectedList, items: updatedItems });
-      setGrowLists(growLists.map(l => 
-        l.id === selectedList.id ? { ...l, items: updatedItems } : l
-      ));
+      setGrowLists(growLists.map(l => l.id === selectedList.id ? { ...l, items: updatedItems } : l));
       toast.success('Quantity updated');
     } catch (error) {
       console.error('Error updating quantity:', error);
@@ -306,9 +299,7 @@ export default function GrowLists() {
     try {
       await base44.entities.GrowList.update(list.id, { status });
       setGrowLists(growLists.map(l => l.id === list.id ? { ...l, status } : l));
-      if (selectedList?.id === list.id) {
-        setSelectedList({ ...selectedList, status });
-      }
+      if (selectedList?.id === list.id) setSelectedList({ ...selectedList, status });
       toast.success('Status updated');
     } catch (error) {
       console.error('Error updating status:', error);
@@ -323,6 +314,84 @@ export default function GrowLists() {
     }
   };
 
+  // ══════════════════════════════════════════════════════════════
+  // FIX #2: Robust seed selection handler that ALWAYS resolves
+  // plant_type_id from profile → variety → name matching
+  // ══════════════════════════════════════════════════════════════
+  const handleSeedSelection = async (seedId) => {
+    const seed = seeds.find(s => s.id === seedId);
+    if (!seed) return;
+    
+    const profile = profilesMap[seed.plant_profile_id];
+    if (!profile) return;
+    
+    let plantTypeId = '';
+    let plantTypeName = '';
+    
+    // Strategy 1: Profile has plant_type_id directly
+    if (profile.plant_type_id) {
+      plantTypeId = profile.plant_type_id;
+      const matched = plantTypes.find(t => t.id === plantTypeId);
+      plantTypeName = matched?.common_name || profile.common_name || '';
+    }
+    
+    // Strategy 2: Profile has common_name — match against plant types
+    if (!plantTypeId && profile.common_name) {
+      const nameLower = profile.common_name.toLowerCase();
+      const matched = plantTypes.find(t => t.common_name.toLowerCase() === nameLower);
+      if (matched) {
+        plantTypeId = matched.id;
+        plantTypeName = matched.common_name;
+      } else {
+        // Partial match
+        const partial = plantTypes.find(t => 
+          nameLower.includes(t.common_name.toLowerCase()) ||
+          t.common_name.toLowerCase().includes(nameLower)
+        );
+        if (partial) {
+          plantTypeId = partial.id;
+          plantTypeName = partial.common_name;
+        }
+      }
+    }
+    
+    // Strategy 3: Look up variety from profile to get plant_type_id
+    if (!plantTypeId && profile.variety_id) {
+      try {
+        const varieties = await base44.entities.Variety.filter({ id: profile.variety_id });
+        if (varieties.length > 0 && varieties[0].plant_type_id) {
+          plantTypeId = varieties[0].plant_type_id;
+          const typeMatch = plantTypes.find(t => t.id === plantTypeId);
+          plantTypeName = typeMatch?.common_name || varieties[0].plant_type_name || '';
+        }
+      } catch (error) {
+        console.error('Error fetching variety for type detection:', error);
+      }
+    }
+    
+    // Strategy 4: Use whatever name we have
+    if (!plantTypeName) {
+      plantTypeName = profile.common_name || '';
+    }
+    
+    console.log('[GrowLists] Seed selected:', {
+      seedId,
+      plantTypeId,
+      plantTypeName,
+      varietyName: profile.variety_name
+    });
+    
+    setNewItem({
+      ...newItem,
+      seed_lot_id: seedId,
+      plant_type_id: plantTypeId,
+      plant_type_name: plantTypeName,
+      variety_id: profile.variety_id || '',
+      variety_name: profile.variety_name || '',
+      available_quantity: seed.quantity || 0
+    });
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -331,7 +400,7 @@ export default function GrowLists() {
     );
   }
 
-  // Detail view
+  // ══════ DETAIL VIEW ══════
   if (selectedList) {
     return (
       <div className="space-y-6">
@@ -355,14 +424,10 @@ export default function GrowLists() {
                 }}
                 className="text-2xl font-bold max-w-md"
               />
-              <Badge className={getStatusColor(selectedList.status)}>
-                {selectedList.status}
-              </Badge>
+              <Badge className={getStatusColor(selectedList.status)}>{selectedList.status}</Badge>
             </div>
             <div className="flex flex-wrap items-center gap-4">
-              <p className="text-gray-600">
-                {selectedList.items?.length || 0} items
-              </p>
+              <p className="text-gray-600">{selectedList.items?.length || 0} items</p>
               <div className="flex items-center gap-2">
                 <Label className="text-sm">Garden:</Label>
                 <Select 
@@ -377,9 +442,7 @@ export default function GrowLists() {
                     }
                   }}
                 >
-                  <SelectTrigger className="w-48">
-                    <SelectValue placeholder="Select garden" />
-                  </SelectTrigger>
+                  <SelectTrigger className="w-48"><SelectValue placeholder="Select garden" /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value={null}>None</SelectItem>
                     {gardens.map((garden) => (
@@ -399,15 +462,11 @@ export default function GrowLists() {
                       setGrowLists(growLists.map(l => l.id === selectedList.id ? { ...l, garden_season_id: v || null } : l));
                     }}
                   >
-                    <SelectTrigger className="w-40">
-                      <SelectValue placeholder="Select season" />
-                    </SelectTrigger>
+                    <SelectTrigger className="w-40"><SelectValue placeholder="Select season" /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value={null}>None</SelectItem>
                       {seasons.filter(s => s.garden_id === selectedList.garden_id).map((season) => (
-                        <SelectItem key={season.id} value={season.id}>
-                          {season.year} {season.season}
-                        </SelectItem>
+                        <SelectItem key={season.id} value={season.id}>{season.year} {season.season}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
@@ -420,10 +479,8 @@ export default function GrowLists() {
               <Button 
                 className="gap-2 bg-emerald-600 hover:bg-emerald-700 text-xs sm:text-sm h-9"
                 onClick={() => {
-                  // Save selected season to localStorage so Calendar loads it
                   localStorage.setItem('calendar_active_garden', selectedList.garden_id);
                   localStorage.setItem('calendar_active_season', selectedList.garden_season_id);
-                  // Navigate with sync params
                   navigate(`/Calendar?syncGrowList=${selectedList.id}&season=${selectedList.garden_season_id}`);
                 }}
               >
@@ -431,17 +488,10 @@ export default function GrowLists() {
                 Sync to Calendar
               </Button>
             )}
-            <Button 
-              variant="outline"
-              onClick={() => handleUpdateStatus(selectedList, selectedList.status === 'active' ? 'archived' : 'active')}
-              className="text-xs sm:text-sm h-9"
-            >
+            <Button variant="outline" onClick={() => handleUpdateStatus(selectedList, selectedList.status === 'active' ? 'archived' : 'active')} className="text-xs sm:text-sm h-9">
               {selectedList.status === 'active' ? 'Archive' : 'Activate'}
             </Button>
-            <Button 
-              onClick={() => setShowAddItemDialog(true)}
-              className="bg-emerald-600 hover:bg-emerald-700 gap-2 text-xs sm:text-sm h-9"
-            >
+            <Button onClick={() => setShowAddItemDialog(true)} className="bg-emerald-600 hover:bg-emerald-700 gap-2 text-xs sm:text-sm h-9">
               <Plus className="w-3 h-3 sm:w-4 sm:h-4" />
               <span className="hidden sm:inline">Add Item</span>
               <span className="sm:hidden">Add</span>
@@ -451,23 +501,14 @@ export default function GrowLists() {
 
         <AdBanner placement="top_banner" pageType="grow_list" />
 
-        {/* View Mode Toggle */}
         {selectedList.items?.length > 0 && (
           <div className="flex items-center gap-2">
-            <Button
-              variant={itemViewMode === 'card' ? 'default' : 'outline'}
-              size="sm"
-              onClick={() => setItemViewMode('card')}
-              className={itemViewMode === 'card' ? 'bg-emerald-600 hover:bg-emerald-700' : ''}
-            >
+            <Button variant={itemViewMode === 'card' ? 'default' : 'outline'} size="sm" onClick={() => setItemViewMode('card')}
+              className={itemViewMode === 'card' ? 'bg-emerald-600 hover:bg-emerald-700' : ''}>
               <Grid3x3 className="w-4 h-4" />
             </Button>
-            <Button
-              variant={itemViewMode === 'list' ? 'default' : 'outline'}
-              size="sm"
-              onClick={() => setItemViewMode('list')}
-              className={itemViewMode === 'list' ? 'bg-emerald-600 hover:bg-emerald-700' : ''}
-            >
+            <Button variant={itemViewMode === 'list' ? 'default' : 'outline'} size="sm" onClick={() => setItemViewMode('list')}
+              className={itemViewMode === 'list' ? 'bg-emerald-600 hover:bg-emerald-700' : ''}>
               <List className="w-4 h-4" />
             </Button>
           </div>
@@ -475,43 +516,18 @@ export default function GrowLists() {
 
         {/* Items */}
         {!selectedList.items?.length ? (
-          <Card 
-            className="py-12"
-            style={{ 
-              background: 'var(--glass-bg)',
-              backdropFilter: 'blur(12px)',
-              WebkitBackdropFilter: 'blur(12px)',
-              border: '1px solid var(--glass-border)'
-            }}
-          >
+          <Card className="py-12" style={{ background: 'var(--glass-bg)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)', border: '1px solid var(--glass-border)' }}>
             <CardContent className="text-center">
               <ListChecks className="w-12 h-12 mx-auto mb-3" style={{ color: 'var(--text-muted)' }} />
               <p className="mb-4" style={{ color: 'var(--text-secondary)' }}>No items in this grow list yet</p>
-              <Button 
-                onClick={() => setShowAddItemDialog(true)}
-                className="bg-emerald-600 hover:bg-emerald-700"
-              >
-                Add First Item
-              </Button>
+              <Button onClick={() => setShowAddItemDialog(true)} className="bg-emerald-600 hover:bg-emerald-700">Add First Item</Button>
             </CardContent>
           </Card>
         ) : itemViewMode === 'card' ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
             {selectedList.items.map((item, index) => (
-              <motion.div
-                key={item.id}
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: index * 0.05 }}
-              >
-                <Card
-                  style={{ 
-                    background: 'var(--glass-bg)',
-                    backdropFilter: 'blur(12px)',
-                    WebkitBackdropFilter: 'blur(12px)',
-                    border: '1px solid var(--glass-border)'
-                  }}
-                >
+              <motion.div key={item.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.05 }}>
+                <Card style={{ background: 'var(--glass-bg)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)', border: '1px solid var(--glass-border)' }}>
                   <CardContent className="p-3">
                     <div className="flex flex-col gap-2">
                       <div className="flex items-start justify-between gap-2">
@@ -526,39 +542,16 @@ export default function GrowLists() {
                           </div>
                         </div>
                         <div className="flex gap-1 flex-shrink-0">
-                          <Button 
-                            variant="ghost" 
-                            size="icon"
-                            className="h-7 w-7"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              const newQty = prompt('Enter new quantity:', item.quantity || 1);
-                              if (newQty) {
-                                handleEditItemQuantity(item.id, parseInt(newQty));
-                              }
-                            }}
-                          >
+                          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={(e) => { e.stopPropagation(); const newQty = prompt('Enter new quantity:', item.quantity || 1); if (newQty) handleEditItemQuantity(item.id, parseInt(newQty)); }}>
                             <Edit className="w-3 h-3 text-gray-400" />
                           </Button>
-                          <Button 
-                            variant="ghost" 
-                            size="icon"
-                            className="h-7 w-7"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleRemoveItem(item.id);
-                            }}
-                          >
+                          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={(e) => { e.stopPropagation(); handleRemoveItem(item.id); }}>
                             <Trash2 className="w-3 h-3 text-gray-400" />
                           </Button>
                         </div>
                       </div>
-                      <Badge variant="outline" className="text-xs w-fit">
-                        Qty: {item.quantity || item.target_count || 1}
-                      </Badge>
-                      {item.notes && (
-                       <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>{item.notes}</p>
-                      )}
+                      <Badge variant="outline" className="text-xs w-fit">Qty: {item.quantity || item.target_count || 1}</Badge>
+                      {item.notes && <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>{item.notes}</p>}
                     </div>
                   </CardContent>
                 </Card>
@@ -568,20 +561,8 @@ export default function GrowLists() {
         ) : (
           <div className="space-y-2">
             {selectedList.items.map((item, index) => (
-              <motion.div
-                key={item.id}
-                initial={{ opacity: 0, x: -10 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: index * 0.03 }}
-              >
-                <Card
-                  style={{ 
-                    background: 'var(--glass-bg)',
-                    backdropFilter: 'blur(12px)',
-                    WebkitBackdropFilter: 'blur(12px)',
-                    border: '1px solid var(--glass-border)'
-                  }}
-                >
+              <motion.div key={item.id} initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: index * 0.03 }}>
+                <Card style={{ background: 'var(--glass-bg)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)', border: '1px solid var(--glass-border)' }}>
                   <CardContent className="p-3">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-3 flex-1 min-w-0">
@@ -593,21 +574,12 @@ export default function GrowLists() {
                            {item.variety_name && item.plant_type_name ? `${item.variety_name} - ${item.plant_type_name}` : (item.variety_name || item.plant_type_name)}
                          </h3>
                          <div className="flex items-center gap-2 mt-0.5">
-                           <Badge variant="outline" className="text-xs">
-                             Qty: {item.quantity || item.target_count || 1}
-                           </Badge>
+                           <Badge variant="outline" className="text-xs">Qty: {item.quantity || item.target_count || 1}</Badge>
                          </div>
-                         {item.notes && (
-                           <p className="text-xs mt-1" style={{ color: 'var(--text-secondary)' }}>{item.notes}</p>
-                         )}
+                         {item.notes && <p className="text-xs mt-1" style={{ color: 'var(--text-secondary)' }}>{item.notes}</p>}
                         </div>
                       </div>
-                      <Button 
-                        variant="ghost" 
-                        size="icon"
-                        className="flex-shrink-0"
-                        onClick={() => handleRemoveItem(item.id)}
-                      >
+                      <Button variant="ghost" size="icon" className="flex-shrink-0" onClick={() => handleRemoveItem(item.id)}>
                         <Trash2 className="w-4 h-4 text-gray-400" />
                       </Button>
                     </div>
@@ -618,13 +590,20 @@ export default function GrowLists() {
           </div>
         )}
 
-        {/* Add Item Dialog */}
+        {/* ══════════════════════════════════════════════════════
+            ADD ITEM DIALOG — with all 4 fixes applied:
+            1. Seed selection auto-detects plant type
+            2. Plant Type dropdown has search filter
+            3. Plant Type dropdown loads all types (500 limit)
+            4. Add Item enabled when plant_type_name exists
+           ══════════════════════════════════════════════════════ */}
         <Dialog open={showAddItemDialog} onOpenChange={setShowAddItemDialog}>
           <DialogContent>
             <DialogHeader>
               <DialogTitle>Add Item to Grow List</DialogTitle>
             </DialogHeader>
             <div className="space-y-4">
+              {/* Seed Stash Selection */}
               <div>
                 <Label>From Seed Stash (optional)</Label>
                 <Input 
@@ -635,54 +614,7 @@ export default function GrowLists() {
                 />
                 <Select 
                   value={newItem.seed_lot_id} 
-                  onValueChange={async (v) => {
-                    const seed = seeds.find(s => s.id === v);
-                    if (seed) {
-                      const profile = profilesMap[seed.plant_profile_id];
-                      
-                      // Auto-detect plant type if missing
-                      let plantTypeId = profile?.plant_type_id || '';
-                      let plantTypeName = profile?.common_name || '';
-                      
-                      if (!plantTypeId && profile?.variety_name) {
-                        // Try to match variety name to plant type
-                        const varietyName = profile.variety_name.toLowerCase();
-                        const matchedType = plantTypes.find(pt => 
-                          varietyName.includes(pt.common_name.toLowerCase()) ||
-                          pt.common_name.toLowerCase().includes(varietyName)
-                        );
-                        
-                        if (matchedType) {
-                          plantTypeId = matchedType.id;
-                          plantTypeName = matchedType.common_name;
-                        } else {
-                          // Try to fetch the variety and get plant_type_id
-                          if (profile.variety_id) {
-                            try {
-                              const varieties = await base44.entities.Variety.filter({ id: profile.variety_id });
-                              if (varieties.length > 0 && varieties[0].plant_type_id) {
-                                plantTypeId = varieties[0].plant_type_id;
-                                const typeMatch = plantTypes.find(t => t.id === plantTypeId);
-                                plantTypeName = typeMatch?.common_name || '';
-                              }
-                            } catch (error) {
-                              console.error('Error fetching variety:', error);
-                            }
-                          }
-                        }
-                      }
-                      
-                      setNewItem({
-                        ...newItem,
-                        seed_lot_id: v,
-                        plant_type_id: plantTypeId,
-                        plant_type_name: plantTypeName,
-                        variety_id: profile?.variety_id || '',
-                        variety_name: profile?.variety_name || '',
-                        available_quantity: seed.quantity || 0
-                      });
-                    }
-                  }}
+                  onValueChange={handleSeedSelection}
                 >
                   <SelectTrigger className="mt-2">
                     <SelectValue placeholder="Select from your seeds" />
@@ -717,15 +649,21 @@ export default function GrowLists() {
                   </SelectContent>
                 </Select>
                 {newItem.seed_lot_id && newItem.available_quantity !== undefined && (
-                  <p className="text-xs text-gray-600 mt-1">
-                    Available: {newItem.available_quantity} seeds
-                  </p>
+                  <p className="text-xs text-gray-600 mt-1">Available: {newItem.available_quantity} seeds</p>
                 )}
               </div>
 
+              {/* Plant Type + Variety */}
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <Label>Plant Type</Label>
+                  {/* FIX #4: Search input for filtering plant types */}
+                  <Input
+                    placeholder="Search types..."
+                    value={plantTypeSearch}
+                    onChange={(e) => setPlantTypeSearch(e.target.value)}
+                    className="mt-2 mb-1"
+                  />
                   <Select 
                     value={newItem.plant_type_id} 
                     onValueChange={(v) => {
@@ -735,21 +673,27 @@ export default function GrowLists() {
                         plant_type_id: v,
                         plant_type_name: type?.common_name || ''
                       });
+                      setPlantTypeSearch('');
                     }}
                   >
-                    <SelectTrigger className="mt-2">
+                    <SelectTrigger>
                       <SelectValue placeholder="Select type" />
                     </SelectTrigger>
-                    <SelectContent>
+                    <SelectContent className="max-h-64">
                       {plantTypes.length === 0 ? (
                         <div className="p-2 text-sm text-gray-500">No plant types available</div>
                       ) : (
-                        plantTypes.map((type) => (
-                          <SelectItem key={type.id} value={type.id}>
-                            {type.icon && <span className="mr-2">{type.icon}</span>}
-                            {type.common_name}
-                          </SelectItem>
-                        ))
+                        plantTypes
+                          .filter(type => {
+                            if (!plantTypeSearch) return true;
+                            return type.common_name?.toLowerCase().includes(plantTypeSearch.toLowerCase());
+                          })
+                          .map((type) => (
+                            <SelectItem key={type.id} value={type.id}>
+                              {type.icon && <span className="mr-2">{type.icon}</span>}
+                              {type.common_name}
+                            </SelectItem>
+                          ))
                       )}
                     </SelectContent>
                   </Select>
@@ -795,21 +739,23 @@ export default function GrowLists() {
               </div>
             </div>
             <DialogFooter>
-              <Button variant="outline" onClick={() => setShowAddItemDialog(false)}>Cancel</Button>
+              <Button variant="outline" onClick={() => { setShowAddItemDialog(false); setPlantTypeSearch(''); }}>Cancel</Button>
+              {/* ══════════════════════════════════════════════════
+                  FIX #3: Relaxed requirement — allow plant_type_name
+                  without plant_type_id (happens when auto-detect
+                  finds the name but not the exact ID)
+                 ══════════════════════════════════════════════════ */}
               <Button 
                 onClick={handleAddItem}
                 disabled={
-                  !newItem.plant_type_id || 
+                  (!newItem.plant_type_id && !newItem.plant_type_name) || 
                   addingItem ||
                   (newItem.seed_lot_id && newItem.available_quantity !== undefined && newItem.quantity > newItem.available_quantity)
                 }
                 className="bg-emerald-600 hover:bg-emerald-700"
               >
                 {addingItem ? (
-                  <>
-                    <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                    Adding...
-                  </>
+                  <><Loader2 className="w-4 h-4 animate-spin mr-2" />Adding...</>
                 ) : (
                   'Add Item'
                 )}
@@ -818,16 +764,12 @@ export default function GrowLists() {
           </DialogContent>
         </Dialog>
         
-        <PlantRecommendations
-          open={showAIRecommendations}
-          onOpenChange={setShowAIRecommendations}
-          context="growlist"
-        />
+        <PlantRecommendations open={showAIRecommendations} onOpenChange={setShowAIRecommendations} context="growlist" />
       </div>
     );
   }
 
-  // List view
+  // ══════ LIST VIEW ══════
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
@@ -837,45 +779,19 @@ export default function GrowLists() {
          </div>
          <div className="flex gap-2 flex-wrap">
            <Link to={createPageUrl('NeedToBuy')}>
-             <Button 
-               variant="outline"
-               className="gap-2 bg-blue-50 hover:bg-blue-100 text-blue-700 border-blue-300"
-             >
-               🛒 Need to Buy
-             </Button>
+             <Button variant="outline" className="gap-2 bg-blue-50 hover:bg-blue-100 text-blue-700 border-blue-300">🛒 Need to Buy</Button>
            </Link>
            <div className="flex border rounded-lg">
-            <Button
-              variant={viewMode === 'cards' ? 'default' : 'ghost'}
-              size="sm"
-              onClick={() => setViewMode('cards')}
-              className={viewMode === 'cards' ? 'bg-emerald-600 hover:bg-emerald-700' : ''}
-            >
-              Cards
-            </Button>
-            <Button
-              variant={viewMode === 'list' ? 'default' : 'ghost'}
-              size="sm"
-              onClick={() => setViewMode('list')}
-              className={viewMode === 'list' ? 'bg-emerald-600 hover:bg-emerald-700' : ''}
-            >
-              List
-            </Button>
+            <Button variant={viewMode === 'cards' ? 'default' : 'ghost'} size="sm" onClick={() => setViewMode('cards')}
+              className={viewMode === 'cards' ? 'bg-emerald-600 hover:bg-emerald-700' : ''}>Cards</Button>
+            <Button variant={viewMode === 'list' ? 'default' : 'ghost'} size="sm" onClick={() => setViewMode('list')}
+              className={viewMode === 'list' ? 'bg-emerald-600 hover:bg-emerald-700' : ''}>List</Button>
           </div>
-          <Button 
-            onClick={() => setShowAIRecommendations(true)}
-            variant="outline"
-            className="gap-2 bg-purple-50 hover:bg-purple-100 text-purple-700 border-purple-300"
-          >
-            <Sparkles className="w-4 h-4" />
-            AI Suggest
+          <Button onClick={() => setShowAIRecommendations(true)} variant="outline" className="gap-2 bg-purple-50 hover:bg-purple-100 text-purple-700 border-purple-300">
+            <Sparkles className="w-4 h-4" />AI Suggest
           </Button>
-          <Button 
-            onClick={() => setShowNewDialog(true)}
-            className="bg-emerald-600 hover:bg-emerald-700 gap-2"
-          >
-            <Plus className="w-4 h-4" />
-            New Grow List
+          <Button onClick={() => setShowNewDialog(true)} className="bg-emerald-600 hover:bg-emerald-700 gap-2">
+            <Plus className="w-4 h-4" />New Grow List
           </Button>
         </div>
       </div>
@@ -883,81 +799,45 @@ export default function GrowLists() {
       <AdBanner placement="top_banner" pageType="grow_list" />
 
       {growLists.length === 0 ? (
-        <Card 
-          className="py-16"
-          style={{ 
-            background: 'var(--glass-bg)',
-            backdropFilter: 'blur(12px)',
-            WebkitBackdropFilter: 'blur(12px)',
-            border: '1px solid var(--glass-border)'
-          }}
-        >
+        <Card className="py-16" style={{ background: 'var(--glass-bg)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)', border: '1px solid var(--glass-border)' }}>
           <CardContent className="text-center">
             <ListChecks className="w-16 h-16 mx-auto mb-4" style={{ color: 'var(--text-muted)' }} />
             <h3 className="text-lg font-semibold mb-2" style={{ color: 'var(--text-primary)' }}>No grow lists yet</h3>
             <p className="mb-6" style={{ color: 'var(--text-secondary)' }}>Create a grow list to plan your garden</p>
-            <Button 
-              onClick={() => setShowNewDialog(true)}
-              className="bg-emerald-600 hover:bg-emerald-700"
-            >
-              Create Grow List
-            </Button>
+            <Button onClick={() => setShowNewDialog(true)} className="bg-emerald-600 hover:bg-emerald-700">Create Grow List</Button>
           </CardContent>
         </Card>
       ) : viewMode === 'cards' ? (
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
           {growLists.map((list, index) => (
-            <motion.div
-              key={list.id}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: index * 0.05 }}
-            >
-            <Card 
-              className="cursor-pointer hover:shadow-lg transition-all duration-300"
-              onClick={() => setSelectedList(list)}
-              style={{ 
-                background: 'var(--glass-bg)',
-                backdropFilter: 'blur(12px)',
-                WebkitBackdropFilter: 'blur(12px)',
-                border: '1px solid var(--glass-border)'
-              }}
-            >
+            <motion.div key={list.id} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.05 }}>
+            <Card className="cursor-pointer hover:shadow-lg transition-all duration-300" onClick={() => setSelectedList(list)}
+              style={{ background: 'var(--glass-bg)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)', border: '1px solid var(--glass-border)' }}>
                 <CardHeader className="pb-3">
                   <div className="flex items-start justify-between">
                     <div>
                       <CardTitle className="text-lg" style={{ color: 'var(--text-primary)' }}>{list.name}</CardTitle>
                       <div className="flex items-center gap-2 mt-2">
-                        <Badge className={getStatusColor(list.status)}>
-                          {list.status}
-                        </Badge>
-                        {list.year && (
-                          <Badge variant="outline">{list.year}</Badge>
-                        )}
+                        <Badge className={getStatusColor(list.status)}>{list.status}</Badge>
+                        {list.year && <Badge variant="outline">{list.year}</Badge>}
                       </div>
                     </div>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-                        <Button variant="ghost" size="icon">
-                          <MoreVertical className="w-4 h-4" />
-                        </Button>
+                        <Button variant="ghost" size="icon"><MoreVertical className="w-4 h-4" /></Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
                         <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleDeleteList(list); }}>
-                          <Trash2 className="w-4 h-4 mr-2" />
-                          Delete
+                          <Trash2 className="w-4 h-4 mr-2" />Delete
                         </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </div>
                 </CardHeader>
                 <CardContent>
-                  <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
-                    {list.items?.length || 0} items
-                  </p>
+                  <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>{list.items?.length || 0} items</p>
                   <div className="flex items-center gap-1 mt-2 text-sm" style={{ color: 'var(--primary)' }}>
-                    <span>View details</span>
-                    <ChevronRight className="w-4 h-4" />
+                    <span>View details</span><ChevronRight className="w-4 h-4" />
                   </div>
                 </CardContent>
               </Card>
@@ -967,22 +847,9 @@ export default function GrowLists() {
       ) : (
         <div className="space-y-2">
           {growLists.map((list, index) => (
-            <motion.div
-              key={list.id}
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: index * 0.03 }}
-            >
-              <Card 
-                className="cursor-pointer hover:shadow-lg transition-all duration-300"
-                onClick={() => setSelectedList(list)}
-                style={{ 
-                  background: 'var(--glass-bg)',
-                  backdropFilter: 'blur(12px)',
-                  WebkitBackdropFilter: 'blur(12px)',
-                  border: '1px solid var(--glass-border)'
-                }}
-              >
+            <motion.div key={list.id} initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: index * 0.03 }}>
+              <Card className="cursor-pointer hover:shadow-lg transition-all duration-300" onClick={() => setSelectedList(list)}
+                style={{ background: 'var(--glass-bg)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)', border: '1px solid var(--glass-border)' }}>
                 <CardContent className="p-4">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-4 flex-1">
@@ -993,12 +860,8 @@ export default function GrowLists() {
                         <div>
                           <h3 className="font-semibold" style={{ color: 'var(--text-primary)' }}>{list.name}</h3>
                           <div className="flex items-center gap-2 mt-1">
-                            <Badge className={`${getStatusColor(list.status)} text-xs`}>
-                              {list.status}
-                            </Badge>
-                            {list.year && (
-                              <Badge variant="outline" className="text-xs">{list.year}</Badge>
-                            )}
+                            <Badge className={`${getStatusColor(list.status)} text-xs`}>{list.status}</Badge>
+                            {list.year && <Badge variant="outline" className="text-xs">{list.year}</Badge>}
                             <span className="text-sm" style={{ color: 'var(--text-secondary)' }}>• {list.items?.length || 0} items</span>
                           </div>
                         </div>
@@ -1008,14 +871,11 @@ export default function GrowLists() {
                       <ChevronRight className="w-5 h-5 text-gray-400" />
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-                          <Button variant="ghost" size="icon">
-                            <MoreVertical className="w-4 h-4" />
-                          </Button>
+                          <Button variant="ghost" size="icon"><MoreVertical className="w-4 h-4" /></Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
                           <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleDeleteList(list); }}>
-                            <Trash2 className="w-4 h-4 mr-2" />
-                            Delete
+                            <Trash2 className="w-4 h-4 mr-2" />Delete
                           </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
@@ -1031,50 +891,27 @@ export default function GrowLists() {
       {/* New List Dialog */}
       <Dialog open={showNewDialog} onOpenChange={setShowNewDialog}>
         <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Create Grow List</DialogTitle>
-          </DialogHeader>
+          <DialogHeader><DialogTitle>Create Grow List</DialogTitle></DialogHeader>
           <div className="space-y-4">
             <div>
               <Label htmlFor="listName">List Name</Label>
-              <Input
-                id="listName"
-                placeholder="e.g., 2025 Summer Garden"
-                value={newList.name}
-                onChange={(e) => setNewList({ ...newList, name: e.target.value })}
-                className="mt-2"
-              />
+              <Input id="listName" placeholder="e.g., 2025 Summer Garden" value={newList.name} onChange={(e) => setNewList({ ...newList, name: e.target.value })} className="mt-2" />
             </div>
             <div>
               <Label htmlFor="year">Year</Label>
-              <Input
-                id="year"
-                type="number"
-                value={newList.year}
-                onChange={(e) => setNewList({ ...newList, year: parseInt(e.target.value) || '' })}
-                className="mt-2"
-              />
+              <Input id="year" type="number" value={newList.year} onChange={(e) => setNewList({ ...newList, year: parseInt(e.target.value) || '' })} className="mt-2" />
             </div>
             <div>
               <Label>Link to Garden (optional)</Label>
-              <Select 
-                value={newList.garden_id} 
-                onValueChange={async (v) => {
-                  setNewList({ ...newList, garden_id: v, garden_season_id: '' });
-                  // Load seasons for selected garden
-                  if (v) {
-                    const currentUser = await base44.auth.me();
-                    const gardenSeasons = await base44.entities.GardenSeason.filter({ 
-                      garden_id: v,
-                      created_by: currentUser.email
-                    }, '-year');
-                    setSeasons(gardenSeasons);
-                  }
-                }}
-              >
-                <SelectTrigger className="mt-2">
-                  <SelectValue placeholder="Select a garden" />
-                </SelectTrigger>
+              <Select value={newList.garden_id} onValueChange={async (v) => {
+                setNewList({ ...newList, garden_id: v, garden_season_id: '' });
+                if (v) {
+                  const currentUser = await base44.auth.me();
+                  const gardenSeasons = await base44.entities.GardenSeason.filter({ garden_id: v, created_by: currentUser.email }, '-year');
+                  setSeasons(gardenSeasons);
+                }
+              }}>
+                <SelectTrigger className="mt-2"><SelectValue placeholder="Select a garden" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value={null}>None</SelectItem>
                   {gardens.map((garden) => (
@@ -1083,23 +920,15 @@ export default function GrowLists() {
                 </SelectContent>
               </Select>
             </div>
-
             {newList.garden_id && (
               <div>
                 <Label>Season (optional)</Label>
-                <Select 
-                  value={newList.garden_season_id} 
-                  onValueChange={(v) => setNewList({ ...newList, garden_season_id: v })}
-                >
-                  <SelectTrigger className="mt-2">
-                    <SelectValue placeholder="Select a season" />
-                  </SelectTrigger>
+                <Select value={newList.garden_season_id} onValueChange={(v) => setNewList({ ...newList, garden_season_id: v })}>
+                  <SelectTrigger className="mt-2"><SelectValue placeholder="Select a season" /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value={null}>No specific season</SelectItem>
                     {seasons.filter(s => s.garden_id === newList.garden_id).map((season) => (
-                      <SelectItem key={season.id} value={season.id}>
-                        {season.year} {season.season}
-                      </SelectItem>
+                      <SelectItem key={season.id} value={season.id}>{season.year} {season.season}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
@@ -1108,29 +937,14 @@ export default function GrowLists() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowNewDialog(false)}>Cancel</Button>
-            <Button 
-              onClick={handleCreateList}
-              disabled={!newList.name.trim() || creatingList}
-              className="bg-emerald-600 hover:bg-emerald-700"
-            >
-              {creatingList ? (
-                <>
-                  <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                  Creating...
-                </>
-              ) : (
-                'Create List'
-              )}
+            <Button onClick={handleCreateList} disabled={!newList.name.trim() || creatingList} className="bg-emerald-600 hover:bg-emerald-700">
+              {creatingList ? (<><Loader2 className="w-4 h-4 animate-spin mr-2" />Creating...</>) : 'Create List'}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
       
-      <PlantRecommendations
-        open={showAIRecommendations}
-        onOpenChange={setShowAIRecommendations}
-        context="growlist"
-      />
+      <PlantRecommendations open={showAIRecommendations} onOpenChange={setShowAIRecommendations} context="growlist" />
     </div>
   );
 }
