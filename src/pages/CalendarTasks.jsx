@@ -138,7 +138,165 @@ export default function CalendarTasks() {
 
       setCropPlans(cropsData);
       setTasks(allTasks);
+
+      // Auto-generate indoor care tasks if plants exist but have no pending tasks
+      generateIndoorCareTasksIfNeeded(currentUser, indoorTasksData);
     } catch (error) { console.error('Error loading tasks/crops:', error); }
+  };
+
+  const generateIndoorCareTasksIfNeeded = async (currentUser, existingIndoorTasks) => {
+    try {
+      // Load all indoor plants
+      const plants = await base44.entities.IndoorPlant.filter({ created_by: currentUser.email });
+      if (plants.length === 0) return;
+
+      // Get plant IDs that already have pending (non-completed) tasks
+      const plantsWithPendingTasks = new Set();
+      existingIndoorTasks.forEach(t => {
+        if (!t.is_completed && t.indoor_plant_id) {
+          plantsWithPendingTasks.add(t.indoor_plant_id);
+        }
+      });
+
+      // Find plants that need task generation
+      const plantsNeedingTasks = plants.filter(p => !plantsWithPendingTasks.has(p.id));
+      if (plantsNeedingTasks.length === 0) return;
+
+      console.log(`[Tasks] Generating care tasks for ${plantsNeedingTasks.length} indoor plants`);
+      const now = new Date();
+      let tasksCreated = 0;
+
+      for (const plant of plantsNeedingTasks) {
+        try {
+          // Load variety for care schedule info
+          let variety = null;
+          if (plant.variety_id) {
+            try {
+              const varieties = await base44.entities.Variety.filter({ id: plant.variety_id });
+              variety = varieties[0];
+            } catch (e) { /* ignore */ }
+          }
+
+          const plantName = plant.nickname || variety?.variety_name || 'Plant';
+          
+          // Parse watering frequency (default every 7 days)
+          let wateringDays = 7;
+          if (variety?.watering_frequency_range) {
+            const match = variety.watering_frequency_range.match(/(\d+)/);
+            if (match) wateringDays = parseInt(match[1]);
+          }
+
+          // Parse fertilizer frequency (default every 30 days)
+          let fertilizerDays = 30;
+          if (variety?.fertilizer_frequency) {
+            const freq = variety.fertilizer_frequency.toLowerCase();
+            if (freq.includes('week')) fertilizerDays = 7;
+            else if (freq.includes('bi-week') || freq.includes('biweek')) fertilizerDays = 14;
+            else if (freq.includes('month')) fertilizerDays = 30;
+            else if (freq.includes('quarter')) fertilizerDays = 90;
+            else {
+              const match = freq.match(/(\d+)/);
+              if (match) fertilizerDays = parseInt(match[1]);
+            }
+          }
+
+          // Calculate next water date
+          const lastWatered = plant.last_watered_date ? new Date(plant.last_watered_date) : null;
+          const nextWaterDate = lastWatered ? addDays(lastWatered, wateringDays) : now;
+          
+          // Create water tasks for next 30 days
+          let waterDate = new Date(nextWaterDate);
+          if (isBefore(waterDate, now)) waterDate = now;
+          
+          for (let i = 0; i < 4 && waterDate <= addDays(now, 30); i++) {
+            await base44.entities.IndoorCareTask.create({
+              indoor_plant_id: plant.id,
+              task_type: 'water',
+              title: `💧 Water ${plantName}`,
+              due_date: format(waterDate, 'yyyy-MM-dd'),
+              is_completed: false
+            });
+            tasksCreated++;
+            waterDate = addDays(waterDate, wateringDays);
+          }
+
+          // Create fertilizer task if needed
+          const lastFertilized = plant.last_fertilized_date ? new Date(plant.last_fertilized_date) : null;
+          const nextFertDate = lastFertilized ? addDays(lastFertilized, fertilizerDays) : addDays(now, 7);
+          if (nextFertDate <= addDays(now, 45)) {
+            await base44.entities.IndoorCareTask.create({
+              indoor_plant_id: plant.id,
+              task_type: 'fertilize',
+              title: `🌿 Fertilize ${plantName}`,
+              due_date: format(nextFertDate > now ? nextFertDate : addDays(now, 7), 'yyyy-MM-dd'),
+              is_completed: false
+            });
+            tasksCreated++;
+          }
+
+          // Create rotate task (every 14 days)
+          const lastRotated = plant.last_rotated_date ? new Date(plant.last_rotated_date) : null;
+          const nextRotateDate = lastRotated ? addDays(lastRotated, 14) : addDays(now, 3);
+          if (nextRotateDate <= addDays(now, 30)) {
+            await base44.entities.IndoorCareTask.create({
+              indoor_plant_id: plant.id,
+              task_type: 'rotate',
+              title: `🔄 Rotate ${plantName}`,
+              due_date: format(nextRotateDate > now ? nextRotateDate : addDays(now, 3), 'yyyy-MM-dd'),
+              is_completed: false
+            });
+            tasksCreated++;
+          }
+
+          // Misting if variety indicates it's beneficial
+          if (variety?.misting_beneficial === 'true' || variety?.misting_beneficial === 'Yes') {
+            await base44.entities.IndoorCareTask.create({
+              indoor_plant_id: plant.id,
+              task_type: 'mist',
+              title: `💨 Mist ${plantName}`,
+              due_date: format(addDays(now, 1), 'yyyy-MM-dd'),
+              is_completed: false
+            });
+            tasksCreated++;
+          }
+
+          // Small delay to avoid rate limits
+          await new Promise(r => setTimeout(r, 300));
+        } catch (plantError) {
+          console.error(`Error generating tasks for plant ${plant.id}:`, plantError);
+        }
+      }
+
+      if (tasksCreated > 0) {
+        console.log(`[Tasks] Created ${tasksCreated} indoor care tasks`);
+        toast.success(`Generated ${tasksCreated} indoor care tasks for ${plantsNeedingTasks.length} plants`);
+        // Reload tasks to show the new ones
+        const refreshedIndoorTasks = await base44.entities.IndoorCareTask.filter({ created_by: currentUser.email }, 'due_date');
+        const enriched = await Promise.all(
+          refreshedIndoorTasks.map(async (t) => {
+            if (t.indoor_plant_id) {
+              try {
+                const ps = await base44.entities.IndoorPlant.filter({ id: t.indoor_plant_id });
+                const p = ps[0];
+                if (p && p.variety_id) {
+                  const vs = await base44.entities.Variety.filter({ id: p.variety_id });
+                  const v = vs[0];
+                  return { ...t, title: t.title || `${t.task_type} ${p.nickname || v?.variety_name || 'Plant'}`, plant_name: p.nickname || v?.variety_name };
+                }
+              } catch (e) { /* ignore */ }
+            }
+            return { ...t, title: t.title || `${t.task_type} task` };
+          })
+        );
+        setTasks(prev => {
+          const nonIndoor = prev.filter(t => t.source !== 'indoor');
+          const newIndoor = enriched.map(t => ({ ...t, source: 'indoor', category: 'indoor', date_field: 'due_date', start_date: t.due_date }));
+          return [...nonIndoor, ...newIndoor].sort((a, b) => new Date(a.start_date) - new Date(b.start_date));
+        });
+      }
+    } catch (error) {
+      console.error('Error generating indoor care tasks:', error);
+    }
   };
 
   const handleToggleComplete = async (task) => {
@@ -514,7 +672,7 @@ export default function CalendarTasks() {
   };
 
   return (
-    <div className="space-y-6 max-w-6xl">
+    <div className="space-y-6">
       {rateLimitError && (
         <RateLimitBanner retryInMs={rateLimitError.retryInMs || 5000} onRetry={() => loadData(true)} retrying={retrying} />
       )}
@@ -619,7 +777,7 @@ export default function CalendarTasks() {
           <p className="text-sm text-gray-500">Add crops in Calendar Planner or plants to generate tasks</p>
         </Card>
       ) : viewMode === 'kanban' ? (
-        <KanbanBoard tasks={filteredTasks} onTaskUpdate={loadTasksAndCrops} />
+        <KanbanBoard tasks={filteredTasks} cropPlans={cropPlans} onTaskUpdate={loadTasksAndCrops} />
       ) : viewMode === 'calendar' ? (
         /* ★ THE ACTUAL CALENDAR VIEW ★ */
         <MonthCalendarGrid />
