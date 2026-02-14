@@ -71,6 +71,7 @@ export default function Calendar() {
   const [selectedTask, setSelectedTask] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [taskFilter, setTaskFilter] = useState('all');
+  const [refreshKey, setRefreshKey] = useState(0);
   const [sortBy, setSortBy] = useState('date');
   const [timelineMonths, setTimelineMonths] = useState(12);
   const [viewMode, setViewMode] = useState('calendar');
@@ -171,15 +172,17 @@ export default function Calendar() {
     }
   };
   
-  const loadPlansAndTasks = async () => {
+  const loadPlansAndTasks = async (forceFresh = false) => {
     if (!activeSeasonId || !user) return;
     try {
+      if (forceFresh) clearCache();
       const [plansData, tasksData] = await Promise.all([
         smartQuery(base44, 'CropPlan', { garden_season_id: activeSeasonId, user_owner_email: user.email }),
         smartQuery(base44, 'CropTask', { garden_season_id: activeSeasonId, created_by: user.email }, 'start_date')
       ]);
       setCropPlans(plansData);
       setTasks(tasksData);
+      setRefreshKey(k => k + 1);
     } catch (error) {
       console.error('Error loading plans/tasks:', error);
     }
@@ -193,7 +196,7 @@ export default function Calendar() {
         await base44.entities.CropTask.delete(task.id);
       }
       await base44.entities.CropPlan.delete(crop.id);
-      await loadPlansAndTasks();
+      await loadPlansAndTasks(true);
       toast.success('Crop deleted');
     } catch (error) {
       console.error('Error deleting crop:', error);
@@ -221,7 +224,7 @@ export default function Calendar() {
         succession_parent_id: isSuccession ? crop.id : null
       });
       await base44.functions.invoke('generateTasksForCrop', { crop_plan_id: newCrop.id });
-      await loadPlansAndTasks();
+      await loadPlansAndTasks(true);
       toast.success(isSuccession ? 'Succession planting created' : 'Crop duplicated');
     } catch (error) {
       console.error('Error duplicating crop:', error);
@@ -240,7 +243,7 @@ export default function Calendar() {
       if (response.data.success) {
         clearCache();
         await new Promise(resolve => setTimeout(resolve, 500));
-        await loadPlansAndTasks();
+        await loadPlansAndTasks(true);
         toast.success(`Synced: ${response.data.created} new, ${response.data.updated} updated crops with tasks`);
         window.history.replaceState({}, '', window.location.pathname);
       } else {
@@ -257,7 +260,7 @@ export default function Calendar() {
   const handleGenerateTasks = async (crop) => {
     try {
       await base44.functions.invoke('generateTasksForCrop', { crop_plan_id: crop.id });
-      await loadPlansAndTasks();
+      await loadPlansAndTasks(true);
       toast.success('Tasks generated');
     } catch (error) {
       console.error('Error generating tasks:', error);
@@ -403,7 +406,7 @@ export default function Calendar() {
                   }
                 }
                 await new Promise(r => setTimeout(r, 500));
-                await loadPlansAndTasks();
+                await loadPlansAndTasks(true);
                 setSyncing(false);
                 if (failedCount > 0) {
                   toast.warning(`Created ${totalCreated} tasks. ${failedCount} crops failed.`, { id: 'regen-all', duration: 6000 });
@@ -468,7 +471,7 @@ export default function Calendar() {
                           toast.loading('Generating tasks...', { id: 'gen-tasks' });
                           const response = await base44.functions.invoke('generateTasksForCrop', { crop_plan_id: crop.id });
                           await new Promise(r => setTimeout(r, 500));
-                          await loadPlansAndTasks();
+                          await loadPlansAndTasks(true);
                           toast.success(`Created ${response.data.tasks_created || 0} tasks for ${crop.label}`, { id: 'gen-tasks' });
                         } catch (error) {
                           console.error('Error generating tasks:', error);
@@ -562,7 +565,7 @@ export default function Calendar() {
               <KanbanBoard 
                 tasks={filteredTasks}
                 cropPlans={cropPlans}
-                onTaskUpdate={loadPlansAndTasks}
+                onTaskUpdate={() => loadPlansAndTasks(true)}
               />
             </div>
           ) : (
@@ -577,9 +580,9 @@ export default function Calendar() {
       </div>
       
       {/* Modals */}
-      <AddCropModal open={showAddCrop} onOpenChange={setShowAddCrop} seasonId={activeSeasonId} onSuccess={loadPlansAndTasks} />
-      {selectedTask && <TaskDetailPanel task={selectedTask} onClose={() => setSelectedTask(null)} onUpdate={loadPlansAndTasks} />}
-      <CropEditModal crop={selectedCrop} open={showEditCrop} onOpenChange={setShowEditCrop} onSuccess={loadPlansAndTasks} />
+      <AddCropModal open={showAddCrop} onOpenChange={setShowAddCrop} seasonId={activeSeasonId} onSuccess={() => loadPlansAndTasks(true)} />
+      {selectedTask && <TaskDetailPanel task={selectedTask} onClose={() => setSelectedTask(null)} onUpdate={() => loadPlansAndTasks(true)} />}
+      <CropEditModal crop={selectedCrop} open={showEditCrop} onOpenChange={setShowEditCrop} onSuccess={() => loadPlansAndTasks(true)} />
       <DayTasksPanel
         date={selectedDate}
         tasks={selectedDate ? tasks.filter(t => {
@@ -609,7 +612,7 @@ export default function Calendar() {
       <BuildCalendarWizard
         open={showAIWizard}
         onOpenChange={setShowAIWizard}
-        onComplete={() => { loadPlansAndTasks(); toast.success('AI crop plans created!'); }}
+        onComplete={() => { loadPlansAndTasks(true); toast.success('AI crop plans created!'); }}
       />
     </div>
   );
@@ -622,6 +625,11 @@ export default function Calendar() {
 const PHASE_ICONS = {
   seed: '🌱', direct_seed: '🌾', transplant: '🪴',
   bed_prep: '🔧', cultivate: '✂️', harvest: '🥕'
+};
+
+const PHASE_LABELS = {
+  seed: 'Seeds', direct_seed: 'Sow', transplant: 'Transplant',
+  bed_prep: 'Prep', cultivate: 'Cultivate', harvest: 'Harvest'
 };
 
 /* Helper: parse date string safely as local date */
@@ -824,7 +832,7 @@ function CalendarGridView({ tasks, crops, season, onTaskClick, onDayClick }) {
                             <div className="flex items-center h-full px-1.5 gap-0.5 overflow-hidden">
                               <span className="text-[11px] flex-shrink-0 leading-none">{icon}</span>
                               <span className="text-[11px] text-white font-semibold truncate leading-none">
-                                {bar.crop?.label || bar.task.title}
+                                {bar.crop?.label ? `${bar.crop.label} - ${PHASE_LABELS[bar.task.task_type] || bar.task.task_type}` : bar.task.title}
                               </span>
                               {bar.task.is_completed && (
                                 <span className="text-white text-[10px] ml-auto flex-shrink-0 opacity-80">✓</span>
@@ -988,12 +996,7 @@ function TimelineView({ tasks, crops, season, onTaskClick }) {
                               <span className="text-xs flex-shrink-0">{icon}</span>
                               {barW > 50 && (
                                 <span className="text-[11px] text-white font-semibold truncate">
-                                  {task.task_type === 'seed' ? 'Seeds' :
-                                   task.task_type === 'transplant' ? 'Transplant' :
-                                   task.task_type === 'harvest' ? 'Harvest' :
-                                   task.task_type === 'direct_seed' ? 'Sow' :
-                                   task.task_type === 'bed_prep' ? 'Prep' :
-                                   task.task_type === 'cultivate' ? 'Cultivate' : task.title}
+                                  {barW > 120 ? `${crop.label} - ${PHASE_LABELS[task.task_type] || task.task_type}` : PHASE_LABELS[task.task_type] || task.title}
                                 </span>
                               )}
                               {task.is_completed && barW > 30 && (
