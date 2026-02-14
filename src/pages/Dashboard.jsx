@@ -96,11 +96,11 @@ function StatCard({ icon: Icon, emoji, title, value, subtitle, color, gradient, 
           <p className="text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: color || '#10b981' }}>
             {title}
           </p>
-          <p className="text-3xl font-extrabold tracking-tight" style={{ color: 'var(--text-primary)' }}>
+          <p className="text-3xl font-extrabold tracking-tight text-gray-900 dark:text-white">
             <AnimatedCounter value={value} />
           </p>
           {subtitle && (
-            <p className="text-xs mt-1.5" style={{ color: 'var(--text-muted)' }}>{subtitle}</p>
+            <p className="text-xs mt-1.5 text-gray-500 dark:text-gray-300">{subtitle}</p>
           )}
         </div>
         <div className="flex-shrink-0 w-12 h-12 rounded-xl flex items-center justify-center text-2xl"
@@ -129,7 +129,7 @@ function WeatherWidget({ weather, loading }) {
       <div className="rounded-2xl p-5 flex flex-col items-center justify-center text-center"
         style={{ background: 'var(--card-bg)', border: '1px solid var(--border-color)', minHeight: 130 }}>
         <Cloud className="w-8 h-8 mb-2 text-gray-400" />
-        <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Set ZIP in Settings for weather</p>
+        <p className="text-xs" style={{ color: 'var(--text-muted, #9ca3af)' }}>Set ZIP in Settings for weather</p>
       </div>
     );
   }
@@ -178,10 +178,10 @@ function UpcomingTasksWidget({ tasks, onNavigate }) {
   const TASK_ICONS = { seed: '🌱', transplant: '🪴', harvest: '🥕', water: '💧', cultivate: '✂️', direct_seed: '🌾', bed_prep: '🔧' };
 
   return (
-    <div className="glass-card-no-padding h-full">
+    <div className="glass-card-no-padding">
       <div className="p-5">
         <div className="flex items-center justify-between mb-4">
-          <h3 className="font-bold text-base flex items-center gap-2" style={{ color: 'var(--text-primary)' }}>
+          <h3 className="font-bold text-base flex items-center gap-2 text-gray-900 dark:text-white">
             <Timer className="w-4 h-4 text-emerald-500" /> Upcoming Tasks
           </h3>
           <button onClick={() => onNavigate('CalendarTasks')} className="text-xs font-semibold text-emerald-600 hover:text-emerald-500 flex items-center gap-0.5">
@@ -191,7 +191,7 @@ function UpcomingTasksWidget({ tasks, onNavigate }) {
         {upcoming.length === 0 ? (
           <div className="text-center py-6">
             <p className="text-2xl mb-2">🎉</p>
-            <p className="text-sm" style={{ color: 'var(--text-muted)' }}>All caught up!</p>
+            <p className="text-sm" style={{ color: 'var(--text-muted, #9ca3af)' }}>All caught up!</p>
           </div>
         ) : (
           <div className="space-y-2.5">
@@ -204,8 +204,8 @@ function UpcomingTasksWidget({ tasks, onNavigate }) {
                 <div key={task.id} className="flex items-center gap-3 p-2.5 rounded-xl transition-colors hover:bg-emerald-50/50 dark:hover:bg-emerald-900/20">
                   <span className="text-lg flex-shrink-0">{TASK_ICONS[task.task_type] || '📋'}</span>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium truncate" style={{ color: 'var(--text-primary)' }}>{task.title}</p>
-                    <p className="text-[11px]" style={{ color: 'var(--text-muted)' }}>
+                    <p className="text-sm font-medium truncate text-gray-900 dark:text-white">{task.title}</p>
+                    <p className="text-[11px] text-gray-500 dark:text-gray-400">
                       {format(taskDate, 'MMM d')}
                     </p>
                   </div>
@@ -426,7 +426,7 @@ export default function Dashboard() {
     return (
       <div className="flex flex-col items-center justify-center h-64 gap-3">
         <Loader2 className="w-8 h-8 animate-spin text-emerald-600" />
-        <p className="text-sm" style={{ color: 'var(--text-muted)' }}>Loading your garden...</p>
+        <p className="text-sm" style={{ color: 'var(--text-muted, #9ca3af)' }}>Loading your garden...</p>
       </div>
     );
   }
@@ -440,12 +440,12 @@ export default function Dashboard() {
       {/* ═══ HERO HEADER ═══ */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="flex-1">
-          <h1 className="text-3xl md:text-4xl font-extrabold tracking-tight" style={{ color: 'var(--text-primary)' }}>
+          <h1 className="text-3xl md:text-4xl font-extrabold tracking-tight" style={{ color: 'var(--text-primary, #111827)' }}>
             {greeting}, {user?.nickname || user?.full_name?.split(' ')[0] || 'Gardener'}! 
             <span className="ml-2">{new Date().getHours() < 12 ? '🌅' : new Date().getHours() < 17 ? '☀️' : '🌙'}</span>
           </h1>
           <div className="flex flex-wrap items-center gap-3 mt-2">
-            <span className="text-sm" style={{ color: 'var(--text-muted)' }}>
+            <span className="text-sm" style={{ color: 'var(--text-muted, #9ca3af)' }}>
               {format(new Date(), 'EEEE, MMMM d, yyyy')}
             </span>
             {user?.zone && (
@@ -474,7 +474,7 @@ export default function Dashboard() {
         {/* Mascot — desktop only */}
         <div className="hidden lg:flex items-center gap-3 flex-shrink-0">
           <div className="rounded-2xl px-5 py-3 shadow-lg" style={{ background: 'var(--card-bg)', border: '1px solid var(--border-color)' }}>
-            <p className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
+            <p className="text-sm font-medium" style={{ color: 'var(--text-primary, #111827)' }}>
               {stats.overdueTasks > 0 
                 ? `You have ${stats.overdueTasks} overdue tasks! Let's catch up! 💪`
                 : stats.activeCrops > 0 
@@ -533,7 +533,7 @@ export default function Dashboard() {
           {/* Quick Actions */}
           <div className="glass-card-no-padding">
             <div className="p-5">
-              <h3 className="font-bold text-base mb-3 flex items-center gap-2" style={{ color: 'var(--text-primary)' }}>
+              <h3 className="font-bold text-base mb-3 flex items-center gap-2" style={{ color: 'var(--text-primary, #111827)' }}>
                 <Zap className="w-4 h-4 text-amber-500" /> Quick Actions
               </h3>
               <div className="grid grid-cols-2 gap-2">
@@ -564,10 +564,10 @@ export default function Dashboard() {
         {/* AI Tools Card */}
         <div className="glass-card-no-padding">
           <div className="p-5">
-            <h3 className="font-bold text-base mb-3 flex items-center gap-2" style={{ color: 'var(--text-primary)' }}>
+            <h3 className="font-bold text-base mb-3 flex items-center gap-2" style={{ color: 'var(--text-primary, #111827)' }}>
               ✨ AI Tools
             </h3>
-            <p className="text-sm mb-4" style={{ color: 'var(--text-muted)' }}>
+            <p className="text-sm mb-4" style={{ color: 'var(--text-muted, #9ca3af)' }}>
               Get AI-powered planting advice, disease identification, and crop planning
             </p>
             <Button 
@@ -584,14 +584,14 @@ export default function Dashboard() {
       {/* ═══ POPULAR CROPS ═══ */}
       {popularCrops && (
         <div className="space-y-4">
-          <h2 className="text-xl font-bold flex items-center gap-2" style={{ color: 'var(--text-primary)' }}>
+          <h2 className="text-xl font-bold flex items-center gap-2" style={{ color: 'var(--text-primary, #111827)' }}>
             <Flame className="w-5 h-5 text-orange-500" /> What Others Are Growing
           </h2>
           <div className="grid md:grid-cols-3 gap-4">
             {['tomatoes', 'peppers', 'other'].map(cropType => (
               <div key={cropType} className="glass-card-no-padding">
                 <div className="p-5">
-                  <h3 className="text-base flex items-center gap-2 mb-4 font-bold" style={{ color: 'var(--text-primary)' }}>
+                  <h3 className="text-base flex items-center gap-2 mb-4 font-bold" style={{ color: 'var(--text-primary, #111827)' }}>
                     {cropType === 'tomatoes' ? '🍅 Top Tomatoes' : cropType === 'peppers' ? '🌶️ Top Peppers' : '🥬 Top Other'}
                   </h3>
                   <div className="space-y-1.5">
@@ -599,17 +599,17 @@ export default function Dashboard() {
                       popularCrops[cropType].map((crop, idx) => (
                         <a href={`/ViewVariety?id=${crop.variety_id}`} key={crop.variety_id}
                           className="flex items-center gap-3 p-2 rounded-lg transition-colors hover:bg-emerald-50/50 dark:hover:bg-emerald-900/20">
-                          <span className="text-xs font-bold w-5 text-center" style={{ color: 'var(--text-muted)' }}>
+                          <span className="text-xs font-bold w-5 text-center" style={{ color: 'var(--text-muted, #9ca3af)' }}>
                             {idx === 0 ? '🥇' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : `#${idx + 1}`}
                           </span>
-                          <span className="flex-1 text-sm truncate" style={{ color: 'var(--text-primary)' }}>{crop.variety_name}</span>
+                          <span className="flex-1 text-sm truncate" style={{ color: 'var(--text-primary, #111827)' }}>{crop.variety_name}</span>
                           <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400">
                             {crop.unique_users} growers
                           </span>
                         </a>
                       ))
                     ) : (
-                      <p className="text-sm text-center py-4" style={{ color: 'var(--text-muted)' }}>Not enough data yet</p>
+                      <p className="text-sm text-center py-4" style={{ color: 'var(--text-muted, #9ca3af)' }}>Not enough data yet</p>
                     )}
                   </div>
                 </div>
