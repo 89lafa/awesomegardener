@@ -72,13 +72,12 @@ export default function Calendar() {
   const [taskFilter, setTaskFilter] = useState('all');
   const [sortBy, setSortBy] = useState('date');
   const [timelineMonths, setTimelineMonths] = useState(12);
-  const [viewMode, setViewMode] = useState('calendar'); // 'calendar' or 'timeline'
+  const [viewMode, setViewMode] = useState('calendar');
   const [rateLimitError, setRateLimitError] = useState(null);
   const [retrying, setRetrying] = useState(false);
   const [showAIWizard, setShowAIWizard] = useState(false);
   const [currentMonth, setCurrentMonth] = useState(new Date());
   
-  // Swipe support for month navigation
   const swipeHandlers = useSwipe({
     onSwipeLeft: () => setCurrentMonth(m => addMonths(m, 1)),
     onSwipeRight: () => setCurrentMonth(m => addMonths(m, -1)),
@@ -93,21 +92,13 @@ export default function Calendar() {
     const seasonParam = searchParams.get('season');
     
     if (syncGrowListId && seasonParam && !syncing && !loading && seasons.length > 0 && !syncProcessedRef.current) {
-      console.log('[Calendar] Sync params detected:', { syncGrowListId, seasonParam, activeSeasonId });
       syncProcessedRef.current = true;
-      
-      // Set the season from URL first
       if (seasonParam !== activeSeasonId) {
-        console.log('[Calendar] Setting season to:', seasonParam);
         setActiveSeasonId(seasonParam);
         localStorage.setItem('calendar_active_season', seasonParam);
       }
-      
-      // Execute sync immediately
       (async () => {
-        console.log('[Calendar] Executing sync...');
         await handleSyncGrowList(syncGrowListId, seasonParam);
-        // Clear URL params after sync completes
         window.history.replaceState({}, '', window.location.pathname);
       })();
     }
@@ -133,46 +124,33 @@ export default function Calendar() {
     if (!seasons.length || !activeSeasonId) return new Date();
     const season = seasons.find(s => s.id === activeSeasonId);
     if (!season) return new Date();
-    
-    // Start from beginning of the year for the selected season
     return startOfYear(new Date(season.year, 0, 1));
   };
   
   const loadData = async (isRetry = false) => {
     if (isRetry) setRetrying(true);
-    
     try {
       const userData = await base44.auth.me();
       setUser(userData);
-      
       const gardensData = await smartQuery(base44, 'Garden', { 
-        archived: false, 
-        created_by: userData.email 
+        archived: false, created_by: userData.email 
       }, '-updated_date');
       setGardens(gardensData);
       setRateLimitError(null);
-      
-      // Load saved state
       const savedGardenId = localStorage.getItem('calendar_active_garden');
       const savedSeasonId = localStorage.getItem('calendar_active_season');
-      
       if (gardensData.length > 0) {
         const garden = savedGardenId 
           ? gardensData.find(g => g.id === savedGardenId) || gardensData[0]
           : gardensData[0];
         setActiveGarden(garden);
-        
         const seasonsData = await smartQuery(base44, 'GardenSeason', { 
-          garden_id: garden.id,
-          created_by: userData.email
+          garden_id: garden.id, created_by: userData.email
         }, '-year');
         setSeasons(seasonsData);
-        
         if (seasonsData.length > 0) {
-          // Find current year season if possible
           const currentYear = new Date().getFullYear();
           const currentSeason = seasonsData.find(s => s.year === currentYear);
-          
           const season = savedSeasonId 
             ? seasonsData.find(s => s.id === savedSeasonId) || (currentSeason || seasonsData[0])
             : (currentSeason || seasonsData[0]);
@@ -194,20 +172,11 @@ export default function Calendar() {
   
   const loadPlansAndTasks = async () => {
     if (!activeSeasonId || !user) return;
-    
     try {
-      // Batch query - load both plans and tasks together, using user_owner_email for CropPlan
       const [plansData, tasksData] = await Promise.all([
         smartQuery(base44, 'CropPlan', { garden_season_id: activeSeasonId, user_owner_email: user.email }),
         smartQuery(base44, 'CropTask', { garden_season_id: activeSeasonId, created_by: user.email }, 'start_date')
       ]);
-      console.log('[Calendar] Loaded', plansData.length, 'plans and', tasksData.length, 'tasks for season', activeSeasonId);
-      console.log('[Calendar] Tasks breakdown:', {
-        seed: tasksData.filter(t => t.task_type === 'seed').length,
-        transplant: tasksData.filter(t => t.task_type === 'transplant').length,
-        harvest: tasksData.filter(t => t.task_type === 'harvest').length,
-        cultivate: tasksData.filter(t => t.task_type === 'cultivate').length,
-      });
       setCropPlans(plansData);
       setTasks(tasksData);
     } catch (error) {
@@ -218,12 +187,10 @@ export default function Calendar() {
   const handleDeleteCrop = async (crop) => {
     if (!confirm(`Delete ${crop.label || 'this crop'}?`)) return;
     try {
-      // Delete all tasks
       const cropTasks = tasks.filter(t => t.crop_plan_id === crop.id);
       for (const task of cropTasks) {
         await base44.entities.CropTask.delete(task.id);
       }
-      // Delete plan
       await base44.entities.CropPlan.delete(crop.id);
       await loadPlansAndTasks();
       toast.success('Crop deleted');
@@ -236,7 +203,6 @@ export default function Calendar() {
   const handleDuplicateCrop = async (crop, isSuccession = false) => {
     try {
       const interval = isSuccession ? parseInt(prompt('Enter succession interval (days):', '14') || '14') : 0;
-      
       const newCrop = await base44.entities.CropPlan.create({
         garden_season_id: crop.garden_season_id,
         plant_type_id: crop.plant_type_id,
@@ -244,24 +210,16 @@ export default function Calendar() {
         variety_id: crop.variety_id,
         label: isSuccession ? `${crop.label || 'Crop'} (S2)` : `${crop.label || 'Crop'} (Copy)`,
         quantity_planned: crop.quantity_planned || 1,
-        quantity_scheduled: 0,
-        quantity_planted: 0,
-        status: 'planned',
-        color_hex: crop.color_hex,
-        planting_method: crop.planting_method,
-        date_mode: crop.date_mode,
-        relative_anchor: crop.relative_anchor,
+        quantity_scheduled: 0, quantity_planted: 0, status: 'planned',
+        color_hex: crop.color_hex, planting_method: crop.planting_method,
+        date_mode: crop.date_mode, relative_anchor: crop.relative_anchor,
         seed_offset_days: (crop.seed_offset_days || 0) + interval,
         transplant_offset_days: (crop.transplant_offset_days || 0) + interval,
         direct_seed_offset_days: (crop.direct_seed_offset_days || 0) + interval,
-        dtm_days: crop.dtm_days,
-        harvest_window_days: crop.harvest_window_days,
+        dtm_days: crop.dtm_days, harvest_window_days: crop.harvest_window_days,
         succession_parent_id: isSuccession ? crop.id : null
       });
-      
-      // Auto-generate tasks with new dates
       await base44.functions.invoke('generateTasksForCrop', { crop_plan_id: newCrop.id });
-      
       await loadPlansAndTasks();
       toast.success(isSuccession ? 'Succession planting created' : 'Crop duplicated');
     } catch (error) {
@@ -272,27 +230,17 @@ export default function Calendar() {
 
   const handleSyncGrowList = async (growListId, targetSeasonId) => {
     const seasonId = targetSeasonId || activeSeasonId;
-    if (!seasonId) {
-      toast.error('Please select a season first');
-      return;
-    }
-
+    if (!seasonId) { toast.error('Please select a season first'); return; }
     setSyncing(true);
     try {
       const response = await base44.functions.invoke('syncGrowListToCalendar', {
-        grow_list_id: growListId,
-        garden_season_id: seasonId,
-        auto_generate_tasks: true
+        grow_list_id: growListId, garden_season_id: seasonId, auto_generate_tasks: true
       });
-
       if (response.data.success) {
-        // Clear cache to force fresh data load
         clearCache();
-        // Force immediate reload with loading state
         await new Promise(resolve => setTimeout(resolve, 500));
         await loadPlansAndTasks();
         toast.success(`Synced: ${response.data.created} new, ${response.data.updated} updated crops with tasks`);
-        // Clear URL params
         window.history.replaceState({}, '', window.location.pathname);
       } else {
         toast.error('Sync failed');
@@ -364,7 +312,7 @@ export default function Calendar() {
         />
       )}
       
-      {/* Left Sidebar - My Crops - Hidden on mobile when timeline view */}
+      {/* Left Sidebar - My Crops */}
       <div className={cn(
         "w-full lg:w-80 border-r bg-white flex flex-col",
         viewMode === 'timeline' && "hidden lg:flex"
@@ -382,52 +330,21 @@ export default function Calendar() {
             disabled={syncing}
           >
             {syncing ? (
-              <>
-                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                Syncing...
-              </>
+              <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Syncing...</>
             ) : (
-              <>
-                <Plus className="w-4 h-4 mr-2" />
-                Add Crop
-              </>
+              <><Plus className="w-4 h-4 mr-2" />Add Crop</>
             )}
           </Button>
           <Button
             onClick={async () => {
-              if (!activeSeasonId) {
-                toast.error('Please select a season first');
-                return;
-              }
-              
+              if (!activeSeasonId) { toast.error('Please select a season first'); return; }
               if (syncing) return;
-              
               try {
-                console.log('[Calendar] Import button clicked, loading grow lists...');
-                const userLists = await base44.entities.GrowList.filter({ 
-                  created_by: user.email
-                }, '-updated_date');
-                
-                console.log('[Calendar] Found', userLists.length, 'grow lists');
-                
-                if (userLists.length === 0) {
-                  toast.error('No grow lists found. Create one first!');
-                  return;
-                }
-
-                const matchingLists = userLists.filter(l => 
-                  l.garden_season_id === activeSeasonId || !l.garden_season_id
-                );
-
-                console.log('[Calendar] Found', matchingLists.length, 'matching lists for season', activeSeasonId);
-
-                if (matchingLists.length === 0) {
-                  toast.error(`No grow lists for this season. Create one in Grow Lists page.`);
-                  return;
-                }
-
+                const userLists = await base44.entities.GrowList.filter({ created_by: user.email }, '-updated_date');
+                if (userLists.length === 0) { toast.error('No grow lists found. Create one first!'); return; }
+                const matchingLists = userLists.filter(l => l.garden_season_id === activeSeasonId || !l.garden_season_id);
+                if (matchingLists.length === 0) { toast.error('No grow lists for this season.'); return; }
                 if (matchingLists.length === 1) {
-                  console.log('[Calendar] Auto-importing single list:', matchingLists[0].name);
                   await handleSyncGrowList(matchingLists[0].id, activeSeasonId);
                 } else {
                   const listNum = prompt(
@@ -435,15 +352,9 @@ export default function Calendar() {
                       `${i+1}. ${l.name} (${l.items?.length || 0} items)`
                     ).join('\n')}\n\nEnter number:`
                   );
-                  
-                  console.log('[Calendar] User selected:', listNum);
-                  
                   if (listNum) {
                     const list = matchingLists[parseInt(listNum) - 1];
-                    if (list) {
-                      console.log('[Calendar] Importing list:', list.name);
-                      await handleSyncGrowList(list.id, activeSeasonId);
-                    }
+                    if (list) await handleSyncGrowList(list.id, activeSeasonId);
                   }
                 }
               } catch (error) {
@@ -460,89 +371,57 @@ export default function Calendar() {
           </Button>
           <Button
             onClick={() => setShowAIWizard(true)}
-            variant="outline"
-            size="sm"
+            variant="outline" size="sm"
             className="w-full gap-2 bg-purple-50 hover:bg-purple-100 text-purple-700 border-purple-300"
           >
             ✨ AI Build My Calendar
           </Button>
           <Link to={createPageUrl('NeedToBuy')} className="w-full">
-            <Button
-              variant="outline"
-              size="sm"
-              className="w-full gap-2 bg-blue-50 hover:bg-blue-100 text-blue-700 border-blue-300"
-            >
-              <ShoppingCart className="w-4 h-4" />
-              Need to Buy
+            <Button variant="outline" size="sm" className="w-full gap-2 bg-blue-50 hover:bg-blue-100 text-blue-700 border-blue-300">
+              <ShoppingCart className="w-4 h-4" />Need to Buy
             </Button>
           </Link>
-          <Button
-            onClick={() => setShowGuide(true)}
-            variant="outline"
-            size="sm"
-            className="w-full"
-          >
-            📖 User Guide
-          </Button>
+          <Button onClick={() => setShowGuide(true)} variant="outline" size="sm" className="w-full">📖 User Guide</Button>
           <Button
             onClick={async () => {
-              if (filteredCrops.length === 0) {
-                toast.error('No crops to generate tasks for');
-                return;
-              }
-              
+              if (filteredCrops.length === 0) { toast.error('No crops to generate tasks for'); return; }
               try {
                 toast.loading(`Regenerating tasks for ${filteredCrops.length} crops...`, { id: 'regen-all' });
                 setSyncing(true);
                 let totalCreated = 0;
                 let failedCount = 0;
-
-                // Process crops with delays to avoid rate limits
                 for (let i = 0; i < filteredCrops.length; i++) {
                   const crop = filteredCrops[i];
                   try {
                     const response = await base44.functions.invoke('generateTasksForCrop', { crop_plan_id: crop.id });
                     totalCreated += response.data.tasks_created || 0;
-                    
-                    // Add 800ms delay between crops to avoid rate limits
-                    if (i < filteredCrops.length - 1) {
-                      await new Promise(r => setTimeout(r, 800));
-                    }
+                    if (i < filteredCrops.length - 1) await new Promise(r => setTimeout(r, 800));
                   } catch (error) {
                     console.error(`Failed to generate tasks for ${crop.label}:`, error);
                     failedCount++;
-                    // Continue with next crop even if one fails
                   }
                 }
-
                 await new Promise(r => setTimeout(r, 500));
                 await loadPlansAndTasks();
                 setSyncing(false);
-                
                 if (failedCount > 0) {
-                  toast.warning(`Created ${totalCreated} tasks. ${failedCount} crops failed (rate limit or missing data)`, { id: 'regen-all', duration: 6000 });
+                  toast.warning(`Created ${totalCreated} tasks. ${failedCount} crops failed.`, { id: 'regen-all', duration: 6000 });
                 } else {
                   toast.success(`Created ${totalCreated} tasks across ${filteredCrops.length} crops`, { id: 'regen-all' });
                 }
               } catch (error) {
                 console.error('Error regenerating all tasks:', error);
-                const errorMsg = error.response?.data?.error || error.message || 'Unknown error';
-                toast.error(`Failed: ${errorMsg}`, { id: 'regen-all' });
+                toast.error(`Failed: ${error.message}`, { id: 'regen-all' });
                 setSyncing(false);
               }
-              }}
-              variant="outline"
-              size="sm"
-              className="w-full gap-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border-emerald-200 interactive-button"
-              disabled={syncing || filteredCrops.length === 0}
-              >
-              {syncing ? (
-              <Loader2 className="w-4 h-4 animate-spin" />
-              ) : (
-              <RefreshCw className="w-4 h-4" />
-              )}
-              Regenerate All Tasks
-              </Button>
+            }}
+            variant="outline" size="sm"
+            className="w-full gap-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border-emerald-200 interactive-button"
+            disabled={syncing || filteredCrops.length === 0}
+          >
+            {syncing ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
+            Regenerate All Tasks
+          </Button>
         </div>
         
         <div className="flex-1 overflow-y-auto p-2">
@@ -564,62 +443,41 @@ export default function Calendar() {
                   )}
                   onClick={() => setSelectedCrop(crop)}
                 >
-                  <div 
-                    className="w-3 h-3 rounded-full flex-shrink-0"
-                    style={{ backgroundColor: crop.color_hex || '#10b981' }}
-                  />
+                  <div className="w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: crop.color_hex || '#10b981' }} />
                   <div className="flex-1 min-w-0">
-                    <p className="font-medium text-sm truncate" title={crop.label || 'Unnamed Crop'}>
-                      {crop.label || 'Unnamed Crop'}
-                    </p>
-                    <p className="text-xs text-gray-500">
-                      Qty: {crop.quantity_planted || crop.quantity_scheduled || 0}/{crop.quantity_planned}
-                    </p>
+                    <p className="font-medium text-sm truncate" title={crop.label || 'Unnamed Crop'}>{crop.label || 'Unnamed Crop'}</p>
+                    <p className="text-xs text-gray-500">Qty: {crop.quantity_planted || crop.quantity_scheduled || 0}/{crop.quantity_planned}</p>
                   </div>
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-                      <Button variant="ghost" size="icon" className="h-8 w-8">
-                        <MoreVertical className="w-4 h-4" />
-                      </Button>
+                      <Button variant="ghost" size="icon" className="h-8 w-8"><MoreVertical className="w-4 h-4" /></Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
-                      <DropdownMenuItem onClick={() => {
-                        setSelectedCrop(crop);
-                        setShowEditCrop(true);
-                      }}>
-                        <Edit className="w-4 h-4 mr-2" />
-                        Edit
+                      <DropdownMenuItem onClick={() => { setSelectedCrop(crop); setShowEditCrop(true); }}>
+                        <Edit className="w-4 h-4 mr-2" />Edit
                       </DropdownMenuItem>
                       <DropdownMenuItem onClick={() => handleDuplicateCrop(crop, true)}>
-                        <Copy className="w-4 h-4 mr-2" />
-                        Succession Planting
+                        <Copy className="w-4 h-4 mr-2" />Succession Planting
                       </DropdownMenuItem>
                       <DropdownMenuItem onClick={() => handleDuplicateCrop(crop, false)}>
-                        <Copy className="w-4 h-4 mr-2" />
-                        Duplicate
+                        <Copy className="w-4 h-4 mr-2" />Duplicate
                       </DropdownMenuItem>
                       <DropdownMenuItem onClick={async () => {
                         try {
                           toast.loading('Generating tasks...', { id: 'gen-tasks' });
                           const response = await base44.functions.invoke('generateTasksForCrop', { crop_plan_id: crop.id });
-                          console.log('[Calendar] Task generation response:', response.data);
-                          
                           await new Promise(r => setTimeout(r, 500));
                           await loadPlansAndTasks();
-                          
                           toast.success(`Created ${response.data.tasks_created || 0} tasks for ${crop.label}`, { id: 'gen-tasks' });
                         } catch (error) {
                           console.error('Error generating tasks:', error);
-                          const errorMsg = error.response?.data?.error || error.message || 'Unknown error';
-                          toast.error(`Failed: ${errorMsg}`, { id: 'gen-tasks' });
+                          toast.error(`Failed: ${error.message}`, { id: 'gen-tasks' });
                         }
                       }}>
-                        <RefreshCw className="w-4 h-4 mr-2" />
-                        Regenerate Tasks
+                        <RefreshCw className="w-4 h-4 mr-2" />Regenerate Tasks
                       </DropdownMenuItem>
                       <DropdownMenuItem onClick={() => handleDeleteCrop(crop)}>
-                        <Trash2 className="w-4 h-4 mr-2" />
-                        Delete
+                        <Trash2 className="w-4 h-4 mr-2" />Delete
                       </DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>
@@ -630,32 +488,25 @@ export default function Calendar() {
         </div>
       </div>
       
-      {/* Main Timeline/Calendar Area */}
+      {/* Main Calendar/Timeline Area */}
       <div className="flex-1 flex flex-col overflow-hidden">
         {/* Top Controls */}
-        <div className="p-4 border-b bg-white flex items-center gap-3">
+        <div className="p-4 border-b bg-white flex flex-wrap items-center gap-3">
           <Select value={activeGarden?.id} onValueChange={async (id) => {
             const garden = gardens.find(g => g.id === id);
             setActiveGarden(garden);
             localStorage.setItem('calendar_active_garden', id);
             const currentUser = await base44.auth.me();
-            const seasonsData = await base44.entities.GardenSeason.filter({ 
-              garden_id: id,
-              created_by: currentUser.email
-            }, '-year');
+            const seasonsData = await base44.entities.GardenSeason.filter({ garden_id: id, created_by: currentUser.email }, '-year');
             setSeasons(seasonsData);
             if (seasonsData.length > 0) {
               setActiveSeasonId(seasonsData[0].id);
               localStorage.setItem('calendar_active_season', seasonsData[0].id);
             }
           }}>
-            <SelectTrigger className="w-48">
-              <SelectValue placeholder="Select garden" />
-            </SelectTrigger>
+            <SelectTrigger className="w-48"><SelectValue placeholder="Select garden" /></SelectTrigger>
             <SelectContent>
-              {gardens.map(g => (
-                <SelectItem key={g.id} value={g.id}>{g.name}</SelectItem>
-              ))}
+              {gardens.map(g => <SelectItem key={g.id} value={g.id}>{g.name}</SelectItem>)}
             </SelectContent>
           </Select>
           
@@ -663,24 +514,14 @@ export default function Calendar() {
             setActiveSeasonId(seasonId);
             localStorage.setItem('calendar_active_season', seasonId);
           }}>
-            <SelectTrigger className="w-40">
-              <SelectValue placeholder="Season" />
-            </SelectTrigger>
+            <SelectTrigger className="w-40"><SelectValue placeholder="Season" /></SelectTrigger>
             <SelectContent>
-              {seasons.map(s => (
-                <SelectItem key={s.id} value={s.id}>
-                  {s.year} {s.season}
-                </SelectItem>
-              ))}
+              {seasons.map(s => <SelectItem key={s.id} value={s.id}>{s.year} {s.season}</SelectItem>)}
             </SelectContent>
           </Select>
           
-
-          
           <Select value={viewMode} onValueChange={setViewMode}>
-            <SelectTrigger className="w-32">
-              <SelectValue />
-            </SelectTrigger>
+            <SelectTrigger className="w-32"><SelectValue /></SelectTrigger>
             <SelectContent>
               <SelectItem value="calendar">Calendar</SelectItem>
               <SelectItem value="timeline">Timeline</SelectItem>
@@ -688,9 +529,7 @@ export default function Calendar() {
           </Select>
           
           <Select value={taskFilter} onValueChange={setTaskFilter}>
-            <SelectTrigger className="w-40">
-              <SelectValue placeholder="Filter tasks" />
-            </SelectTrigger>
+            <SelectTrigger className="w-40"><SelectValue placeholder="Filter tasks" /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Tasks</SelectItem>
               <SelectItem value="bed_prep">Bed Prep</SelectItem>
@@ -703,59 +542,34 @@ export default function Calendar() {
           </Select>
         </div>
         
-        {/* Calendar/Timeline View */}
-        <div className="flex-1 overflow-auto bg-gray-50 relative">
+        {/* View Area */}
+        <div className="flex-1 overflow-auto bg-gray-50">
           {viewMode === 'calendar' ? (
-            <div className="p-2 md:p-4">
-              <CalendarGridView
-                tasks={filteredTasks}
-                crops={cropPlans}
-                season={getCurrentSeason()}
-                onTaskClick={setSelectedTask}
-                onDayClick={(date) => {
-                  setSelectedDate(date);
-                  setShowDayPanel(true);
-                }}
-              />
-            </div>
+            <CalendarGridView
+              tasks={filteredTasks}
+              crops={cropPlans}
+              season={getCurrentSeason()}
+              onTaskClick={setSelectedTask}
+              onDayClick={(date) => {
+                setSelectedDate(date);
+                setShowDayPanel(true);
+              }}
+            />
           ) : (
-            <div className="overflow-x-auto overflow-y-hidden pb-4">
-              <TimelineView 
-                tasks={filteredTasks}
-                crops={cropPlans}
-                season={getCurrentSeason()}
-                onTaskClick={setSelectedTask}
-              />
-            </div>
+            <TimelineView 
+              tasks={filteredTasks}
+              crops={cropPlans}
+              season={getCurrentSeason()}
+              onTaskClick={setSelectedTask}
+            />
           )}
         </div>
       </div>
       
-      {/* Add Crop Modal */}
-      <AddCropModal
-        open={showAddCrop}
-        onOpenChange={setShowAddCrop}
-        seasonId={activeSeasonId}
-        onSuccess={loadPlansAndTasks}
-      />
-      
-      {/* Task Detail Panel */}
-      {selectedTask && (
-        <TaskDetailPanel
-          task={selectedTask}
-          onClose={() => setSelectedTask(null)}
-          onUpdate={loadPlansAndTasks}
-        />
-      )}
-      
-      {/* Edit Crop Modal */}
-      <CropEditModal
-        crop={selectedCrop}
-        open={showEditCrop}
-        onOpenChange={setShowEditCrop}
-        onSuccess={loadPlansAndTasks}
-      />
-
+      {/* Modals */}
+      <AddCropModal open={showAddCrop} onOpenChange={setShowAddCrop} seasonId={activeSeasonId} onSuccess={loadPlansAndTasks} />
+      {selectedTask && <TaskDetailPanel task={selectedTask} onClose={() => setSelectedTask(null)} onUpdate={loadPlansAndTasks} />}
+      <CropEditModal crop={selectedCrop} open={showEditCrop} onOpenChange={setShowEditCrop} onSuccess={loadPlansAndTasks} />
       <DayTasksPanel
         date={selectedDate}
         tasks={selectedDate ? tasks.filter(t => {
@@ -773,319 +587,444 @@ export default function Calendar() {
               completed_at: newCompleted ? new Date().toISOString() : null
             });
             setTasks(prev => prev.map(t => 
-              t.id === task.id 
-                ? { ...t, is_completed: newCompleted, completed_at: newCompleted ? new Date().toISOString() : null }
-                : t
+              t.id === task.id ? { ...t, is_completed: newCompleted, completed_at: newCompleted ? new Date().toISOString() : null } : t
             ));
             toast.success(newCompleted ? 'Task completed!' : 'Task reopened');
           } catch (error) {
-            console.error('Error toggling task:', error);
             toast.error('Failed to update task');
           }
         }}
       />
-      
-      {/* User Guide */}
-      <CalendarGuide
-        open={showGuide}
-        onOpenChange={setShowGuide}
-      />
-      
-      {/* AI Calendar Builder */}
+      <CalendarGuide open={showGuide} onOpenChange={setShowGuide} />
       <BuildCalendarWizard
         open={showAIWizard}
         onOpenChange={setShowAIWizard}
-        onComplete={() => {
-          loadPlansAndTasks();
-          toast.success('AI crop plans created! Review them in the sidebar.');
-        }}
+        onComplete={() => { loadPlansAndTasks(); toast.success('AI crop plans created!'); }}
       />
     </div>
   );
 }
 
-// Calendar Grid View - Compact full year view like SeedTime
+
+/* ================================================================
+   PHASE ICONS - shared between both views
+   ================================================================ */
+const PHASE_ICONS = {
+  seed: '🌱', direct_seed: '🌾', transplant: '🪴',
+  bed_prep: '🔧', cultivate: '✂️', harvest: '🥕'
+};
+
+/* Helper: parse date string safely as local date */
+function parseLocalDate(str) {
+  if (!str) return null;
+  const [y, m, d] = str.split('T')[0].split('-').map(Number);
+  return new Date(y, m - 1, d);
+}
+
+/* Helper: are two dates the same calendar day? */
+function sameDay(a, b) {
+  return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
+}
+
+
+/* ================================================================
+   CALENDAR GRID VIEW - SeedTime-style continuous spanning bars
+   ================================================================ */
 function CalendarGridView({ tasks, crops, season, onTaskClick, onDayClick }) {
   if (!season) {
-    return (
-      <div className="p-8 text-center text-gray-500">
-        Select a season to view calendar
-      </div>
-    );
+    return <div className="p-8 text-center text-gray-500">Select a season to view calendar</div>;
   }
 
-  const startDate = startOfYear(new Date(season.year, 0, 1));
-  const months = Array.from({ length: 12 }, (_, i) => addMonths(startDate, i));
+  const year = season.year;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  const BAR_HEIGHT = 20;
+  const BAR_GAP = 2;
+  const DAY_NUM_HEIGHT = 18;
+  const MAX_BARS = 3;
+
+  /* Build week rows for a month. Each week = array of 7 Date objects */
+  function getWeeksForMonth(monthIndex) {
+    const firstOfMonth = new Date(year, monthIndex, 1);
+    const lastOfMonth = new Date(year, monthIndex + 1, 0);
+    const weeks = [];
+
+    // Start from Sunday of the week containing the 1st
+    const firstSunday = new Date(year, monthIndex, 1 - firstOfMonth.getDay());
+    
+    let weekStart = new Date(firstSunday);
+    while (weekStart <= lastOfMonth) {
+      const days = [];
+      for (let d = 0; d < 7; d++) {
+        days.push(new Date(weekStart.getFullYear(), weekStart.getMonth(), weekStart.getDate() + d));
+      }
+      weeks.push(days);
+      weekStart = new Date(weekStart.getFullYear(), weekStart.getMonth(), weekStart.getDate() + 7);
+    }
+    return weeks;
+  }
+
+  /* Find tasks overlapping a week and assign bar positions */
+  function getTaskBars(weekDays) {
+    const wkStart = weekDays[0];
+    const wkEnd = weekDays[6];
+    wkStart.setHours(0,0,0,0);
+    wkEnd.setHours(23,59,59,999);
+
+    const overlapping = [];
+    tasks.forEach(task => {
+      if (!task.start_date) return;
+      const tStart = parseLocalDate(task.start_date);
+      const tEnd = task.end_date ? parseLocalDate(task.end_date) : new Date(tStart);
+      if (!tStart) return;
+      tStart.setHours(0,0,0,0);
+      tEnd.setHours(23,59,59,999);
+      if (tStart <= wkEnd && tEnd >= wkStart) {
+        const crop = crops.find(c => c.id === task.crop_plan_id);
+        const startCol = tStart < wkStart ? 0 : tStart.getDay();
+        const endCol = tEnd > wkEnd ? 6 : tEnd.getDay();
+        const continuesFrom = tStart < wkStart;
+        const continuesTo = tEnd > wkEnd;
+        overlapping.push({ task, crop, startCol, endCol, continuesFrom, continuesTo, row: 0 });
+      }
+    });
+
+    // Sort by span length (longest first) then start col
+    overlapping.sort((a, b) => {
+      const aLen = a.endCol - a.startCol;
+      const bLen = b.endCol - b.startCol;
+      if (bLen !== aLen) return bLen - aLen;
+      return a.startCol - b.startCol;
+    });
+
+    // Assign rows to avoid overlap
+    const rowEnds = [];
+    overlapping.forEach(bar => {
+      let placed = false;
+      for (let r = 0; r < rowEnds.length; r++) {
+        if (bar.startCol > rowEnds[r]) {
+          rowEnds[r] = bar.endCol;
+          bar.row = r;
+          placed = true;
+          break;
+        }
+      }
+      if (!placed) {
+        bar.row = rowEnds.length;
+        rowEnds.push(bar.endCol);
+      }
+    });
+
+    return overlapping;
+  }
 
   return (
-    <div className="p-2">
-      {/* Calendar Grid - Compact */}
-      <div className="space-y-0 border rounded-lg overflow-hidden">
-        {months.map((month, monthIdx) => {
-          const daysInMonth = getDaysInMonth(month);
-          const monthStart = startOfMonth(month);
-          const startDayOfWeek = monthStart.getDay();
-          
+    <div className="p-2 md:p-4">
+      <div className="border rounded-lg bg-white overflow-hidden shadow-sm">
+        {/* Day-of-week header */}
+        <div className="grid grid-cols-7 border-b bg-gray-50">
+          {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(d => (
+            <div key={d} className="text-center text-[11px] font-semibold py-2 text-gray-500 border-r last:border-r-0 uppercase tracking-wide">{d}</div>
+          ))}
+        </div>
+
+        {/* Months */}
+        {Array.from({ length: 12 }, (_, monthIdx) => {
+          const weeks = getWeeksForMonth(monthIdx);
           return (
-            <div key={monthIdx} className="border-b last:border-b-0">
-              {/* Month Header - Compact */}
-              <div className="grid grid-cols-[80px_1fr] bg-gray-50 border-b">
-                <div className="px-2 py-1.5 font-semibold text-xs border-r">
-                  {format(month, 'MMMM')}
-                </div>
-                <div className="grid grid-cols-7">
-                  {monthIdx === 0 && ['Su', 'M', 'T', 'W', 'Th', 'F', 'Sa'].map((day, i) => (
-                    <div key={i} className="text-center text-[10px] font-medium py-1 border-r last:border-r-0 text-gray-500">
-                      {day}
-                    </div>
-                  ))}
-                </div>
+            <div key={monthIdx}>
+              {/* Month label */}
+              <div className="bg-gray-100 border-b border-t px-4 py-1.5 font-bold text-sm text-gray-700 sticky top-0 z-20">
+                {format(new Date(year, monthIdx, 1), 'MMMM yyyy')}
               </div>
               
-              {/* Days Grid - Very Compact */}
-              <div className="grid grid-cols-[80px_1fr]">
-                <div className="border-r" />
-                <div className="grid grid-cols-7">
-                  {/* Empty cells */}
-                  {Array.from({ length: startDayOfWeek }).map((_, i) => (
-                    <div key={`empty-${i}`} className="h-12 border-r border-b bg-gray-50/50" />
-                  ))}
-                  
-                  {/* Days */}
-                  {Array.from({ length: daysInMonth }).map((_, dayIdx) => {
-                    const day = dayIdx + 1;
-                    const currentDate = new Date(season.year, monthIdx, day);
-                    currentDate.setHours(0, 0, 0, 0);
-                    
-                    const dayTasks = tasks.filter(task => {
-                      if (!task.start_date) return false;
-                      const taskStart = new Date(task.start_date);
-                      taskStart.setHours(0, 0, 0, 0);
-                      const taskEnd = task.end_date ? new Date(task.end_date) : taskStart;
-                      taskEnd.setHours(0, 0, 0, 0);
-                      return currentDate >= taskStart && currentDate <= taskEnd;
-                    });
-                    
-                    return (
-                      <div
-                        key={day}
-                        className="h-16 border-r border-b relative group cursor-pointer hover:bg-emerald-50/50 transition-colors"
-                        onClick={(e) => {
-                          e.preventDefault();
-                          e.stopPropagation();
-                          onDayClick?.(currentDate);
-                        }}
-                      >
-                        <div className="absolute top-0.5 left-0.5 text-[9px] text-gray-400 font-medium group-hover:text-emerald-600 transition-colors pointer-events-none">{day}</div>
-                        {dayTasks.length > 0 && (
-                          <div className="absolute inset-0 flex flex-col gap-0.5 p-0.5 pt-3 pointer-events-none">
-                            {dayTasks.slice(0, 3).map((task) => {
-                              const crop = crops.find(c => c.id === task.crop_plan_id);
-                              const taskTypeShort = task.task_type === 'seed' ? 'Start' : 
-                                                   task.task_type === 'transplant' ? 'Trans' :
-                                                   task.task_type === 'harvest' ? 'Harv' :
-                                                   task.task_type === 'direct_seed' ? 'Sow' : 'Task';
-                              const progress = task.quantity_target > 0 ? (task.quantity_completed || 0) / task.quantity_target : 1;
-                              const isComplete = task.is_completed || progress >= 1;
+              {/* Week rows */}
+              {weeks.map((weekDays, weekIdx) => {
+                const bars = getTaskBars(weekDays);
+                const visibleBars = bars.filter(b => b.row < MAX_BARS);
+                const hiddenCount = bars.filter(b => b.row >= MAX_BARS).length;
+                const totalBarRows = Math.min(bars.length > 0 ? Math.max(...bars.map(b => b.row)) + 1 : 0, MAX_BARS);
+                const rowHeight = DAY_NUM_HEIGHT + totalBarRows * (BAR_HEIGHT + BAR_GAP) + (hiddenCount > 0 ? 16 : 0) + 6;
 
-                              const showPrediction = task.task_type === 'harvest' && !task.is_completed && crop?.dtm_days;
-
-                              return (
-                                <div
-                                  key={task.id}
-                                  className="w-full h-3 rounded flex items-center px-1 overflow-hidden relative"
-                                  style={{ backgroundColor: task.color_hex || crop?.color_hex || '#10b981' }}
-                                  title={`${crop?.label || 'Crop'}: ${task.title}${task.quantity_target > 1 ? ` (${task.quantity_completed || 0}/${task.quantity_target})` : ''}${showPrediction ? ' • AI Predicted' : ''}`}
-                                >
-                                  {task.quantity_target > 1 && (
-                                    <div 
-                                      className="absolute inset-0 bg-white/30"
-                                      style={{ width: `${(1 - progress) * 100}%`, right: 0, left: 'auto' }}
-                                    />
-                                  )}
-                                  <span className="text-[9px] text-white font-semibold truncate leading-none relative z-10">
-                                   {task.title || `${crop?.label} - ${taskTypeShort}`}
-                                   {showPrediction && ' 🔮'}
-                                   {isComplete && ' ✓'}
-                                  </span>
-                                </div>
-                              );
-                            })}
-                            {dayTasks.length > 3 && (
-                              <div className="w-full h-3 rounded bg-gray-700 flex items-center justify-center px-1">
-                                <span className="text-[9px] text-white font-semibold">
-                                  +{dayTasks.length - 3} more
-                                </span>
-                              </div>
+                return (
+                  <div key={weekIdx} className="relative border-b last:border-b-0" style={{ minHeight: `${Math.max(rowHeight, 52)}px` }}>
+                    {/* Day cells (background + numbers) */}
+                    <div className="grid grid-cols-7 absolute inset-0">
+                      {weekDays.map((day, dayIdx) => {
+                        const isCurrentMonth = day.getMonth() === monthIdx;
+                        const isToday = sameDay(day, today);
+                        return (
+                          <div
+                            key={dayIdx}
+                            className={cn(
+                              "border-r last:border-r-0 cursor-pointer transition-colors",
+                              !isCurrentMonth && "bg-gray-50/70",
+                              isCurrentMonth && "hover:bg-emerald-50/40",
+                              isToday && "bg-amber-50/60"
                             )}
+                            onClick={() => isCurrentMonth && onDayClick?.(day)}
+                          >
+                            <div className="flex justify-end p-1">
+                              <span className={cn(
+                                "text-[11px] font-medium leading-none",
+                                isToday && "bg-emerald-600 text-white rounded-full w-5 h-5 flex items-center justify-center text-[10px] font-bold",
+                                !isCurrentMonth && "text-gray-300",
+                                isCurrentMonth && !isToday && "text-gray-500"
+                              )}>
+                                {day.getDate()}
+                              </span>
+                            </div>
                           </div>
-                        )}
-                      </div>
-                    );
-                  })}
-                  
-                  {/* Fill */}
-                  {Array.from({ length: (7 - ((startDayOfWeek + daysInMonth) % 7)) % 7 }).map((_, i) => (
-                    <div key={`fill-${i}`} className="h-12 border-r border-b bg-gray-50/50" />
-                  ))}
-                </div>
-              </div>
+                        );
+                      })}
+                    </div>
+
+                    {/* Task bars - absolutely positioned, spanning across columns */}
+                    <div className="relative pointer-events-none" style={{ paddingTop: `${DAY_NUM_HEIGHT}px` }}>
+                      {visibleBars.map((bar) => {
+                        const leftPct = (bar.startCol / 7) * 100;
+                        const widthPct = ((bar.endCol - bar.startCol + 1) / 7) * 100;
+                        const topPx = bar.row * (BAR_HEIGHT + BAR_GAP);
+                        const bgColor = bar.crop?.color_hex || bar.task.color_hex || '#10b981';
+                        const icon = PHASE_ICONS[bar.task.task_type] || '📋';
+
+                        // Rounded corners: rounded on left if NOT continuing from prev week, rounded on right if NOT continuing
+                        let borderRadius = '4px';
+                        if (bar.continuesFrom && bar.continuesTo) borderRadius = '0px';
+                        else if (bar.continuesFrom) borderRadius = '0 4px 4px 0';
+                        else if (bar.continuesTo) borderRadius = '4px 0 0 4px';
+
+                        return (
+                          <div
+                            key={`${bar.task.id}-w${weekIdx}`}
+                            className="absolute pointer-events-auto cursor-pointer hover:brightness-110 hover:shadow-md transition-all"
+                            style={{
+                              left: `calc(${leftPct}% + 2px)`,
+                              width: `calc(${widthPct}% - 4px)`,
+                              top: `${topPx}px`,
+                              height: `${BAR_HEIGHT}px`,
+                              backgroundColor: bgColor,
+                              borderRadius,
+                              zIndex: 10,
+                            }}
+                            onClick={(e) => { e.stopPropagation(); onTaskClick(bar.task); }}
+                            title={`${bar.crop?.label || 'Crop'}: ${bar.task.title}\n${bar.task.start_date}${bar.task.end_date ? ' → ' + bar.task.end_date : ''}`}
+                          >
+                            <div className="flex items-center h-full px-1.5 gap-0.5 overflow-hidden">
+                              <span className="text-[11px] flex-shrink-0 leading-none">{icon}</span>
+                              <span className="text-[11px] text-white font-semibold truncate leading-none">
+                                {bar.crop?.label || bar.task.title}
+                              </span>
+                              {bar.task.is_completed && (
+                                <span className="text-white text-[10px] ml-auto flex-shrink-0 opacity-80">✓</span>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
+                      
+                      {hiddenCount > 0 && (
+                        <div
+                          className="pointer-events-auto cursor-pointer text-[10px] text-gray-500 font-semibold pl-2 hover:text-emerald-600"
+                          style={{ marginTop: `${totalBarRows * (BAR_HEIGHT + BAR_GAP)}px` }}
+                          onClick={() => {/* could open day panel */}}
+                        >
+                          +{hiddenCount} more
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           );
         })}
       </div>
       
       {crops.length === 0 && (
-        <div className="p-8 text-center text-gray-500">
-          No crops planned yet. Click "Add Crop" to start planning.
-        </div>
+        <div className="p-8 text-center text-gray-500">No crops planned yet. Click "Add Crop" to start planning.</div>
       )}
     </div>
   );
 }
 
-// Timeline View - Horizontal bars
+
+/* ================================================================
+   TIMELINE VIEW - Proper Gantt chart with sticky sidebar
+   ================================================================ */
 function TimelineView({ tasks, crops, season, onTaskClick }) {
   if (!season) {
-    return (
-      <div className="p-8 text-center text-gray-500">
-        Select a season to view timeline
-      </div>
-    );
+    return <div className="p-8 text-center text-gray-500">Select a season to view timeline</div>;
   }
-  
-  const [draggingTask, setDraggingTask] = useState(null);
 
-  const viewStart = startOfYear(new Date(season.year, 0, 1));
-  const months = Array.from({ length: 12 }, (_, i) => addMonths(viewStart, i));
+  const year = season.year;
+  const viewStart = new Date(year, 0, 1);
+  const totalDays = (year % 4 === 0 && (year % 100 !== 0 || year % 400 === 0)) ? 366 : 365;
   
-  const handleTaskDragStart = (e, task) => {
-    e.dataTransfer.effectAllowed = 'move';
-    setDraggingTask(task);
-  };
-  
-  const handleTaskDrop = async (e, targetDate) => {
-    e.preventDefault();
-    if (!draggingTask) return;
-    
-    const oldDate = new Date(draggingTask.start_date);
-    const daysDiff = Math.floor((targetDate - oldDate) / (1000 * 60 * 60 * 24));
-    
-    if (daysDiff === 0) {
-      setDraggingTask(null);
-      return;
-    }
-    
-    try {
-      const newStartDate = addDays(new Date(draggingTask.start_date), daysDiff);
-      const newEndDate = draggingTask.end_date ? addDays(new Date(draggingTask.end_date), daysDiff) : null;
-      
-      await base44.entities.CropTask.update(draggingTask.id, {
-        start_date: newStartDate.toISOString().split('T')[0],
-        end_date: newEndDate ? newEndDate.toISOString().split('T')[0] : null
-      });
-      
-      toast.success('Task rescheduled');
-      window.location.reload();
-    } catch (error) {
-      console.error('Error updating task:', error);
-      toast.error('Failed to reschedule');
-    } finally {
-      setDraggingTask(null);
-    }
-  };
-  
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const todayOffset = Math.round((today - viewStart) / (1000 * 60 * 60 * 24));
+
+  const DAY_WIDTH = 5;
+  const SIDEBAR_W = 200;
+  const ROW_H = 50;
+  const BAR_H = 26;
+  const HEADER_H = 44;
+  const timelineWidth = totalDays * DAY_WIDTH;
+  const totalWidth = SIDEBAR_W + timelineWidth;
+
+  const months = Array.from({ length: 12 }, (_, i) => {
+    const d = new Date(year, i, 1);
+    const days = new Date(year, i + 1, 0).getDate();
+    const offset = Math.round((d - viewStart) / (1000 * 60 * 60 * 24));
+    return { date: d, days, offset, width: days * DAY_WIDTH };
+  });
+
   return (
-    <div className="min-w-[1400px] md:min-w-[1800px] relative">
-      {/* Month Headers - Sticky */}
-      <div className="flex sticky top-0 bg-white border-b z-30 shadow-sm">
-        <div className="w-32 md:w-40 flex-shrink-0 border-r p-2 font-semibold text-xs md:text-sm bg-white sticky left-0 z-40">
-          Crop
-        </div>
-        {months.map((month, idx) => (
-          <div key={idx} className="flex-1 min-w-[150px] md:min-w-[200px] border-r p-2 text-center bg-white">
-            <div className="font-semibold text-xs md:text-sm">{format(month, 'MMM yyyy')}</div>
-          </div>
-        ))}
-      </div>
-      
-      {/* Crop Rows */}
-      {crops.map(crop => {
-        const cropTasks = tasks.filter(t => t.crop_plan_id === crop.id);
-        
-        return (
-          <div key={crop.id} className="flex border-b hover:bg-gray-50">
-            <div className="w-32 md:w-40 flex-shrink-0 border-r p-2 flex items-center gap-2 bg-white sticky left-0 z-10">
-                    <div 
-                      className="w-2 md:w-3 h-2 md:h-3 rounded-full flex-shrink-0"
-                      style={{ backgroundColor: crop.color_hex || '#10b981' }}
-                    />
-                    <span className="text-xs md:text-sm truncate" style={{ color: 'var(--text-primary)' }}>{crop.label}</span>
-                  </div>
+    <div className="p-2 md:p-4">
+      <div className="border rounded-lg bg-white shadow-sm overflow-hidden">
+        {/* Scroll container */}
+        <div className="overflow-x-auto overflow-y-auto" style={{ maxHeight: 'calc(100vh - 16rem)' }}>
+          <div style={{ width: `${totalWidth}px`, position: 'relative' }}>
             
-            <div 
-              className="flex-1 relative" 
-              style={{ height: '40px' }}
-              onDragOver={(e) => e.preventDefault()}
-              onDrop={(e) => {
-                const rect = e.currentTarget.getBoundingClientRect();
-                const x = e.clientX - rect.left;
-                const totalWidth = rect.width;
-                const totalDays = 365;
-                const daysFromStart = Math.floor((x / totalWidth) * totalDays);
-                const targetDate = addDays(viewStart, daysFromStart);
-                handleTaskDrop(e, targetDate);
-              }}
-            >
-              {cropTasks.map((task, idx) => {
-                const taskStart = new Date(task.start_date);
-                const taskEnd = task.end_date ? new Date(task.end_date) : taskStart;
-                
-                const daysSinceStart = Math.floor((taskStart - viewStart) / (1000 * 60 * 60 * 24));
-                const duration = Math.floor((taskEnd - taskStart) / (1000 * 60 * 60 * 24)) + 1;
-                const leftPercent = (daysSinceStart / 365) * 100;
-                const widthPercent = (duration / 365) * 100;
-                
-                if (leftPercent < -widthPercent || leftPercent > 100) return null;
-                
-                const taskColor = task.color_hex || crop.color_hex || '#10b981';
-                
-                const verticalOffset = (idx % 2) * 18;
-                
-                return (
+            {/* Header */}
+            <div className="flex sticky top-0 z-30 border-b" style={{ height: `${HEADER_H}px` }}>
+              <div
+                className="flex-shrink-0 border-r bg-gray-50 font-bold text-sm flex items-center px-3 sticky left-0 z-40"
+                style={{ width: `${SIDEBAR_W}px`, minWidth: `${SIDEBAR_W}px` }}
+              >
+                Crop
+              </div>
+              <div className="flex" style={{ width: `${timelineWidth}px` }}>
+                {months.map((m, i) => (
                   <div
-                    key={task.id}
-                    draggable
-                    onDragStart={(e) => handleTaskDragStart(e, task)}
+                    key={i}
                     className={cn(
-                      "absolute rounded px-2 py-0.5 text-xs text-white cursor-move hover:opacity-90 hover:shadow-lg transition-all",
-                      draggingTask?.id === task.id && "opacity-50"
+                      "border-r text-center flex items-center justify-center text-xs font-semibold",
+                      i % 2 === 0 ? "bg-gray-50" : "bg-white"
                     )}
-                    style={{
-                      top: `${2 + verticalOffset}px`,
-                      left: `${Math.max(0, leftPercent)}%`,
-                      width: `${Math.min(100 - Math.max(0, leftPercent), widthPercent)}%`,
-                      backgroundColor: taskColor,
-                      minWidth: '80px',
-                      height: '16px'
-                    }}
-                    onClick={() => onTaskClick(task)}
-                    title={task.title || 'Task'}
+                    style={{ width: `${m.width}px`, minWidth: `${m.width}px` }}
                   >
-                    <div className="truncate font-medium leading-none">{task.title || 'Task'}</div>
+                    {format(m.date, 'MMM')}
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Crop rows */}
+            {crops.length === 0 ? (
+              <div className="p-8 text-center text-gray-500">No crops planned yet.</div>
+            ) : (
+              crops.map((crop, idx) => {
+                const cropTasks = tasks
+                  .filter(t => t.crop_plan_id === crop.id)
+                  .sort((a, b) => new Date(a.start_date) - new Date(b.start_date));
+
+                return (
+                  <div key={crop.id} className={cn("flex border-b", idx % 2 === 0 ? "bg-white" : "bg-gray-50/50")} style={{ height: `${ROW_H}px` }}>
+                    {/* Sticky crop name */}
+                    <div
+                      className={cn(
+                        "flex-shrink-0 border-r flex items-center gap-2 px-3 sticky left-0 z-10",
+                        idx % 2 === 0 ? "bg-white" : "bg-gray-50/50"
+                      )}
+                      style={{ width: `${SIDEBAR_W}px`, minWidth: `${SIDEBAR_W}px` }}
+                    >
+                      <div className="w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: crop.color_hex || '#10b981' }} />
+                      <span className="text-sm truncate font-medium">{crop.label}</span>
+                    </div>
+
+                    {/* Timeline bars */}
+                    <div className="relative" style={{ width: `${timelineWidth}px`, minWidth: `${timelineWidth}px` }}>
+                      {/* Month grid lines */}
+                      {months.map((m, i) => (
+                        <div key={i} className="absolute top-0 bottom-0 border-l border-gray-100" style={{ left: `${m.offset * DAY_WIDTH}px` }} />
+                      ))}
+
+                      {/* Task bars */}
+                      {cropTasks.map(task => {
+                        const tStart = parseLocalDate(task.start_date);
+                        const tEnd = task.end_date ? parseLocalDate(task.end_date) : new Date(tStart);
+                        if (!tStart) return null;
+                        
+                        const startOff = Math.max(0, Math.round((tStart - viewStart) / (1000*60*60*24)));
+                        const endOff = Math.min(totalDays, Math.round((tEnd - viewStart) / (1000*60*60*24)) + 1);
+                        const barW = Math.max(BAR_H, (endOff - startOff) * DAY_WIDTH);
+                        
+                        if (startOff >= totalDays || endOff <= 0) return null;
+
+                        const icon = PHASE_ICONS[task.task_type] || '📋';
+                        const bgColor = crop.color_hex || task.color_hex || '#10b981';
+
+                        return (
+                          <div
+                            key={task.id}
+                            className="absolute cursor-pointer hover:brightness-110 hover:shadow-lg transition-all group"
+                            style={{
+                              left: `${startOff * DAY_WIDTH}px`,
+                              width: `${barW}px`,
+                              top: `${(ROW_H - BAR_H) / 2}px`,
+                              height: `${BAR_H}px`,
+                              backgroundColor: bgColor,
+                              borderRadius: '5px',
+                              opacity: task.is_completed ? 0.5 : 1,
+                              zIndex: 5,
+                            }}
+                            onClick={() => onTaskClick(task)}
+                            title={`${crop.label}: ${task.title}\n${task.start_date}${task.end_date ? ' → ' + task.end_date : ''}`}
+                          >
+                            <div className="flex items-center h-full px-1.5 gap-1 overflow-hidden">
+                              <span className="text-xs flex-shrink-0">{icon}</span>
+                              {barW > 50 && (
+                                <span className="text-[11px] text-white font-semibold truncate">
+                                  {task.task_type === 'seed' ? 'Seeds' :
+                                   task.task_type === 'transplant' ? 'Transplant' :
+                                   task.task_type === 'harvest' ? 'Harvest' :
+                                   task.task_type === 'direct_seed' ? 'Sow' :
+                                   task.task_type === 'bed_prep' ? 'Prep' :
+                                   task.task_type === 'cultivate' ? 'Cultivate' : task.title}
+                                </span>
+                              )}
+                              {task.is_completed && barW > 30 && (
+                                <span className="text-white text-[10px] ml-auto opacity-70 flex-shrink-0">✓</span>
+                              )}
+                            </div>
+                            {/* Tooltip on hover */}
+                            <div className="hidden group-hover:block absolute bottom-full left-0 mb-1 bg-gray-900 text-white text-xs rounded px-2 py-1 whitespace-nowrap z-50 shadow-lg pointer-events-none">
+                              {crop.label}: {task.title}
+                              <br />
+                              {task.start_date}{task.end_date ? ` → ${task.end_date}` : ''}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
                   </div>
                 );
-              })}
-            </div>
+              })
+            )}
+
+            {/* Today marker - vertical red line */}
+            {todayOffset >= 0 && todayOffset < totalDays && (
+              <div
+                className="absolute pointer-events-none z-20"
+                style={{
+                  left: `${SIDEBAR_W + todayOffset * DAY_WIDTH}px`,
+                  top: 0,
+                  bottom: 0,
+                  width: '2px',
+                  backgroundColor: '#ef4444',
+                }}
+              >
+                <div className="absolute -top-0 left-1/2 -translate-x-1/2 bg-red-500 text-white text-[9px] px-1.5 py-0.5 rounded-b font-bold whitespace-nowrap">
+                  Today
+                </div>
+              </div>
+            )}
           </div>
-        );
-      })}
-      
-      {crops.length === 0 && (
-        <div className="p-8 text-center text-gray-500">
-          No crops planned yet. Click "Add Crop" to start planning.
         </div>
-      )}
+      </div>
     </div>
   );
 }
