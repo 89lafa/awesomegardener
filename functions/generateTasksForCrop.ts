@@ -102,14 +102,26 @@ Deno.serve(async (req) => {
     if (varietyData && plantTypeData) {
       varietyName = `${varietyData.variety_name} - ${plantTypeData.common_name}`;
     }
+
+    // ── Helpers ──
+    const fmt = (d) => d.toISOString().split('T')[0];
+    const addDays = (d, n) => { const r = new Date(d); r.setDate(r.getDate() + n); return r; };
     
     let seedDate = null;
     let transplantDate = null;
     let sowDate = null;
     
-    // LIFECYCLE TASKS
+    // ═══════════════════════════════════════════════════════════
+    // LIFECYCLE TASKS — with proper multi-day DURATIONS
+    //
+    // KEY CHANGE: Every task now has start_date ≠ end_date
+    // so calendar bars show realistic time windows instead of
+    // 1-pixel-wide single-day dots.
+    // ═══════════════════════════════════════════════════════════
+    
     if (crop.planting_method === 'transplant' || crop.planting_method === 'both') {
-      // Seed start - BEFORE frost
+      // ── SEED START ──
+      // Duration: uses start_indoors_weeks min/max for a seeding WINDOW
       seedDate = new Date(lastFrostDate);
       let seedOffsetDays = crop.seed_offset_days;
       if (seedOffsetDays === undefined || seedOffsetDays === null) {
@@ -118,20 +130,33 @@ Deno.serve(async (req) => {
       }
       seedDate.setDate(seedDate.getDate() + seedOffsetDays);
       
+      // Calculate end date from min/max weeks (if available)
+      const seedStartMin = timingData.start_indoors_weeks_min;
+      const seedStartMax = timingData.start_indoors_weeks_max;
+      let seedEndDate;
+      if (seedStartMin && seedStartMax && seedStartMin < seedStartMax) {
+        // End = frost minus MINIMUM weeks (the latest you'd still start seeds)
+        seedEndDate = addDays(lastFrostDate, -(seedStartMin * 7));
+      } else {
+        // Default: 5-day seeding window
+        seedEndDate = addDays(seedDate, 5);
+      }
+      
       tasksToCreate.push({
         garden_season_id: crop.garden_season_id,
         crop_plan_id: crop.id,
         task_type: 'seed',
         title: `Start ${varietyName} Seeds`,
-        start_date: seedDate.toISOString().split('T')[0],
-        end_date: seedDate.toISOString().split('T')[0],
+        start_date: fmt(seedDate),
+        end_date: fmt(seedEndDate),
         color_hex: crop.color_hex,
         quantity_target: crop.quantity_planned,
         quantity_completed: 0,
         created_by: user.email
       });
 
-      // Transplant - AFTER frost
+      // ── TRANSPLANT ──
+      // Duration: uses transplant_weeks min/max for a transplant WINDOW
       transplantDate = new Date(lastFrostDate);
       let transplantOffsetDays = crop.transplant_offset_days;
       if (transplantOffsetDays === undefined || transplantOffsetDays === null) {
@@ -140,13 +165,23 @@ Deno.serve(async (req) => {
       }
       transplantDate.setDate(transplantDate.getDate() + transplantOffsetDays);
 
+      const tpMin = timingData.transplant_weeks_after_last_frost_min;
+      const tpMax = timingData.transplant_weeks_after_last_frost_max;
+      let transplantEndDate;
+      if (tpMin !== undefined && tpMax !== undefined && tpMax > tpMin) {
+        transplantEndDate = addDays(lastFrostDate, tpMax * 7);
+      } else {
+        // Default: 5-day transplant window
+        transplantEndDate = addDays(transplantDate, 5);
+      }
+
       tasksToCreate.push({
         garden_season_id: crop.garden_season_id,
         crop_plan_id: crop.id,
         task_type: 'transplant',
         title: `Transplant ${varietyName}`,
-        start_date: transplantDate.toISOString().split('T')[0],
-        end_date: transplantDate.toISOString().split('T')[0],
+        start_date: fmt(transplantDate),
+        end_date: fmt(transplantEndDate),
         color_hex: crop.color_hex,
         quantity_target: crop.quantity_planned,
         quantity_completed: 0,
@@ -155,6 +190,8 @@ Deno.serve(async (req) => {
     }
 
     if (crop.planting_method === 'direct_seed' || crop.planting_method === 'both') {
+      // ── DIRECT SOW ──
+      // Duration: uses direct_sow_weeks min/max for a sowing WINDOW
       sowDate = new Date(lastFrostDate);
       let sowOffsetDays = crop.direct_seed_offset_days;
       if (sowOffsetDays === undefined || sowOffsetDays === null) {
@@ -163,13 +200,23 @@ Deno.serve(async (req) => {
       }
       sowDate.setDate(sowDate.getDate() + sowOffsetDays);
 
+      const dsMin = timingData.direct_sow_weeks_min;
+      const dsMax = timingData.direct_sow_weeks_max;
+      let sowEndDate;
+      if (dsMin !== undefined && dsMax !== undefined && dsMax > dsMin) {
+        sowEndDate = addDays(lastFrostDate, dsMax * 7);
+      } else {
+        // Default: 7-day sowing window
+        sowEndDate = addDays(sowDate, 7);
+      }
+
       tasksToCreate.push({
         garden_season_id: crop.garden_season_id,
         crop_plan_id: crop.id,
         task_type: 'direct_seed',
         title: `Direct Sow ${varietyName}`,
-        start_date: sowDate.toISOString().split('T')[0],
-        end_date: sowDate.toISOString().split('T')[0],
+        start_date: fmt(sowDate),
+        end_date: fmt(sowEndDate),
         color_hex: crop.color_hex,
         quantity_target: crop.quantity_planned,
         quantity_completed: 0,
@@ -177,49 +224,72 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Harvest
+    // ── HARVEST ──
+    // Duration: harvest window from DTM range or default 14 days
     let harvestBaseDate;
-    if (sowDate) {
-      harvestBaseDate = sowDate;
-    } else if (transplantDate) {
-      harvestBaseDate = transplantDate;
-    } else {
-      harvestBaseDate = new Date(lastFrostDate);
-    }
+    if (sowDate) harvestBaseDate = sowDate;
+    else if (transplantDate) harvestBaseDate = transplantDate;
+    else harvestBaseDate = new Date(lastFrostDate);
     
     const harvestDate = new Date(harvestBaseDate);
     const dtmDays = crop.dtm_days || timingData.days_to_maturity || 80;
     harvestDate.setDate(harvestDate.getDate() + dtmDays);
-    const harvestEndDate = new Date(harvestDate);
-    harvestEndDate.setDate(harvestEndDate.getDate() + (crop.harvest_window_days || 14));
+    
+    // Use DTM range for harvest window if available
+    const dtmMin = timingData.days_to_maturity_min;
+    const dtmMax = timingData.days_to_maturity_max;
+    let harvestWindow = crop.harvest_window_days || 14;
+    if (dtmMin && dtmMax && dtmMax > dtmMin) {
+      harvestWindow = Math.max(14, dtmMax - dtmMin);
+    }
+    const harvestEndDate = addDays(harvestDate, harvestWindow);
 
     tasksToCreate.push({
       garden_season_id: crop.garden_season_id,
       crop_plan_id: crop.id,
       task_type: 'harvest',
       title: `Harvest ${varietyName}`,
-      start_date: harvestDate.toISOString().split('T')[0],
-      end_date: harvestEndDate.toISOString().split('T')[0],
+      start_date: fmt(harvestDate),
+      end_date: fmt(harvestEndDate),
       color_hex: crop.color_hex,
       quantity_target: crop.quantity_planned,
       quantity_completed: 0,
       created_by: user.email
     });
     
-    // MAINTENANCE TASKS
+    // ═══════════════════════════════════════════════════════════
+    // MAINTENANCE TASKS — with multi-day durations
+    // ═══════════════════════════════════════════════════════════
+    
     const plantingDate = transplantDate || sowDate || new Date(lastFrostDate);
     
-    // Harden Off (transplants only, 7 days before transplant)
+    // ── BED PREP ── (7-14 days before planting → 7-day task)
+    const bedPrepStart = addDays(plantingDate, -14);
+    const bedPrepEnd = addDays(plantingDate, -7);
+    tasksToCreate.push({
+      garden_season_id: crop.garden_season_id,
+      crop_plan_id: crop.id,
+      task_type: 'bed_prep',
+      title: `Prepare Bed for ${varietyName}`,
+      start_date: fmt(bedPrepStart),
+      end_date: fmt(bedPrepEnd),
+      color_hex: crop.color_hex,
+      quantity_target: 1,
+      quantity_completed: 0,
+      created_by: user.email
+    });
+    
+    // ── HARDEN OFF ── (transplants only, 10 days before transplant → 9-day task!)
     if (transplantDate && seedDate) {
-      const hardenDate = new Date(transplantDate);
-      hardenDate.setDate(hardenDate.getDate() - 7);
+      const hardenStart = addDays(transplantDate, -10);
+      const hardenEnd = addDays(transplantDate, -1);
       tasksToCreate.push({
         garden_season_id: crop.garden_season_id,
         crop_plan_id: crop.id,
         task_type: 'cultivate',
         title: `Harden Off ${varietyName}`,
-        start_date: hardenDate.toISOString().split('T')[0],
-        end_date: hardenDate.toISOString().split('T')[0],
+        start_date: fmt(hardenStart),
+        end_date: fmt(hardenEnd),
         color_hex: crop.color_hex,
         quantity_target: crop.quantity_planned,
         quantity_completed: 0,
@@ -227,17 +297,16 @@ Deno.serve(async (req) => {
       });
     }
     
-    // Pot Up (3-4 weeks after seeding for transplants)
+    // ── POT UP ── (3-4 weeks after seeding for long-season transplants → 3-day window)
     if (seedDate && (timingData.start_indoors_weeks >= 6 || crop.seed_offset_days <= -42)) {
-      const potUpDate = new Date(seedDate);
-      potUpDate.setDate(potUpDate.getDate() + 24);
+      const potUpDate = addDays(seedDate, 24);
       tasksToCreate.push({
         garden_season_id: crop.garden_season_id,
         crop_plan_id: crop.id,
         task_type: 'cultivate',
         title: `Pot Up ${varietyName}`,
-        start_date: potUpDate.toISOString().split('T')[0],
-        end_date: potUpDate.toISOString().split('T')[0],
+        start_date: fmt(potUpDate),
+        end_date: fmt(addDays(potUpDate, 3)),
         color_hex: crop.color_hex,
         quantity_target: crop.quantity_planned,
         quantity_completed: 0,
@@ -245,15 +314,15 @@ Deno.serve(async (req) => {
       });
     }
     
-    // Support/Trellis (on planting day if needed)
+    // ── SUPPORT/TRELLIS ── (planting day → 3-day window)
     if (timingData.trellis_required || timingData.trellis_common) {
       tasksToCreate.push({
         garden_season_id: crop.garden_season_id,
         crop_plan_id: crop.id,
         task_type: 'cultivate',
         title: `Install Support for ${varietyName}`,
-        start_date: plantingDate.toISOString().split('T')[0],
-        end_date: plantingDate.toISOString().split('T')[0],
+        start_date: fmt(plantingDate),
+        end_date: fmt(addDays(plantingDate, 3)),
         color_hex: crop.color_hex,
         quantity_target: 1,
         quantity_completed: 0,
@@ -261,27 +330,34 @@ Deno.serve(async (req) => {
       });
     }
     
-    // Mulch (7 days after planting)
-    const mulchDate = new Date(plantingDate);
-    mulchDate.setDate(mulchDate.getDate() + 7);
+    // ── MULCH ── (7 days after planting → 3-day window)
+    const mulchDate = addDays(plantingDate, 7);
     tasksToCreate.push({
       garden_season_id: crop.garden_season_id,
       crop_plan_id: crop.id,
       task_type: 'cultivate',
       title: `Mulch ${varietyName}`,
-      start_date: mulchDate.toISOString().split('T')[0],
-      end_date: mulchDate.toISOString().split('T')[0],
+      start_date: fmt(mulchDate),
+      end_date: fmt(addDays(mulchDate, 3)),
       color_hex: crop.color_hex,
       quantity_target: 1,
       quantity_completed: 0,
       created_by: user.email
     });
     
-    // Fertilization (first at 14 days, then every 21 days until harvest)
-    const firstFertDate = new Date(plantingDate);
-    firstFertDate.setDate(firstFertDate.getDate() + 14);
-    
-    let fertDate = new Date(firstFertDate);
+    // ═══════════════════════════════════════════════════════════
+    // RECURRING MAINTENANCE — Multi-day blocks instead of spam
+    //
+    // OLD: Water every 3 days → up to 40 single-day tasks per crop!
+    //      With 5 crops = 200 water tasks alone = Kanban unusable
+    //
+    // NEW: Weekly water BLOCKS (7-day bars on calendar)
+    //      + grouped weeding + grouped scouting
+    //      → ~30 tasks total instead of ~70+
+    // ═══════════════════════════════════════════════════════════
+
+    // ── FERTILIZATION ── (every 3 weeks, single day — these are spot events)
+    let fertDate = addDays(plantingDate, 14);
     let fertCount = 0;
     while (fertDate < harvestDate && fertCount < 6) {
       tasksToCreate.push({
@@ -289,77 +365,76 @@ Deno.serve(async (req) => {
         crop_plan_id: crop.id,
         task_type: 'cultivate',
         title: `Fertilize ${varietyName}`,
-        start_date: fertDate.toISOString().split('T')[0],
-        end_date: fertDate.toISOString().split('T')[0],
+        start_date: fmt(fertDate),
+        end_date: fmt(fertDate),
         color_hex: crop.color_hex,
         quantity_target: 1,
         quantity_completed: 0,
         created_by: user.email
       });
-      fertDate.setDate(fertDate.getDate() + 21);
+      fertDate = addDays(fertDate, 21);
       fertCount++;
     }
     
-    // Watering (every 3 days from planting to harvest end)
-    let waterDate = new Date(plantingDate);
-    waterDate.setDate(waterDate.getDate() + 3);
+    // ── WATERING ── Weekly blocks (NOT every 3 days!)
+    // Shows as 7-day bars on calendar. Max 15 blocks.
+    let waterStart = addDays(plantingDate, 3);
     let waterCount = 0;
-    while (waterDate < harvestEndDate && waterCount < 40) {
+    while (waterStart < harvestEndDate && waterCount < 15) {
+      const waterEnd = addDays(waterStart, 6);
       tasksToCreate.push({
         garden_season_id: crop.garden_season_id,
         crop_plan_id: crop.id,
         task_type: 'cultivate',
         title: `Water ${varietyName}`,
-        start_date: waterDate.toISOString().split('T')[0],
-        end_date: waterDate.toISOString().split('T')[0],
+        start_date: fmt(waterStart),
+        end_date: fmt(waterEnd < harvestEndDate ? waterEnd : harvestEndDate),
         color_hex: crop.color_hex,
         quantity_target: 1,
         quantity_completed: 0,
         created_by: user.email
       });
-      waterDate.setDate(waterDate.getDate() + 3);
+      waterStart = addDays(waterStart, 7);
       waterCount++;
     }
     
-    // Weeding (every 7 days from 14 days after planting)
-    let weedDate = new Date(plantingDate);
-    weedDate.setDate(weedDate.getDate() + 14);
+    // ── WEEDING ── Weekly, shown as 2-day blocks
+    let weedDate = addDays(plantingDate, 14);
     let weedCount = 0;
-    while (weedDate < harvestDate && weedCount < 12) {
+    while (weedDate < harvestDate && weedCount < 10) {
       tasksToCreate.push({
         garden_season_id: crop.garden_season_id,
         crop_plan_id: crop.id,
         task_type: 'cultivate',
         title: `Weed/Cultivate ${varietyName}`,
-        start_date: weedDate.toISOString().split('T')[0],
-        end_date: weedDate.toISOString().split('T')[0],
+        start_date: fmt(weedDate),
+        end_date: fmt(addDays(weedDate, 1)),
         color_hex: crop.color_hex,
         quantity_target: 1,
         quantity_completed: 0,
         created_by: user.email
       });
-      weedDate.setDate(weedDate.getDate() + 7);
+      weedDate = addDays(weedDate, 7);
       weedCount++;
     }
     
-    // Pest & Disease Scouting (every 7 days from 21 days after planting)
-    let scoutDate = new Date(plantingDate);
-    scoutDate.setDate(scoutDate.getDate() + 21);
+    // ── PEST & DISEASE SCOUTING ── Weekly, shown as 2-day blocks
+    let scoutDate = addDays(plantingDate, 21);
     let scoutCount = 0;
-    while (scoutDate < harvestDate && scoutCount < 10) {
+    while (scoutDate < harvestDate && scoutCount < 8) {
       tasksToCreate.push({
         garden_season_id: crop.garden_season_id,
         crop_plan_id: crop.id,
         task_type: 'cultivate',
         title: `Pest/Disease Check ${varietyName}`,
-        start_date: scoutDate.toISOString().split('T')[0],
-        end_date: scoutDate.toISOString().split('T')[0],
+        start_date: fmt(scoutDate),
+        end_date: fmt(addDays(scoutDate, 1)),
         color_hex: crop.color_hex,
         quantity_target: 1,
         quantity_completed: 0,
         created_by: user.email
       });
-      scoutDate.setDate(scoutDate.getDate() + 7);
+      scoutDate = addDays(scoutDate, 7);
       scoutCount++;
     }
 
