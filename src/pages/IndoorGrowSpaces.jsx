@@ -30,6 +30,7 @@ import {
 import { toast } from 'sonner';
 import { createPageUrl } from '@/utils';
 import { useNavigate } from 'react-router-dom';
+import { smartQuery } from '@/components/utils/smartQuery';
 import AdBanner from '@/components/monetization/AdBanner';
 
 export default function IndoorGrowSpaces() {
@@ -52,81 +53,135 @@ export default function IndoorGrowSpaces() {
     loadSpaces();
   }, []);
 
-  const loadSpaces = async () => {
+  /* ═══════════════════════════════════════════════════════════════
+     WAVE-BASED LOADING — prevents 429 rate limit errors
+     
+     OLD CODE: 6 simultaneous queries in Promise.all
+       → Works in isolation but when you browse other pages first
+         (Dashboard, Calendar, Tasks), the rate budget is already
+         eaten → this page's 6 parallel calls hit 429
+     
+     NEW CODE: 2 waves of 3 queries each with 800ms gap
+       Wave 1: spaces + racks + shelves  → show page immediately
+       Wave 2: trays + containers + cells → complete the stats
+     ═══════════════════════════════════════════════════════════════ */
+  const loadSpaces = async (retryCount = 0) => {
     try {
       setLoading(true);
       const user = await base44.auth.me();
       
-      // Fetch all data in bulk (single query per entity type) - INCLUDES SHELVES
-      const [spacesData, allTrays, allContainers, allRacks, allShelves, allCells] = await Promise.all([
-        base44.entities.IndoorGrowSpace.filter({ created_by: user.email }, '-created_date'),
-        base44.entities.SeedTray.filter({ created_by: user.email }),
-        base44.entities.IndoorContainer.filter({ created_by: user.email }),
-        base44.entities.GrowRack.filter({ created_by: user.email }),
-        base44.entities.GrowShelf.filter({ created_by: user.email }),
-        base44.entities.TrayCell.filter({ created_by: user.email })
+      // WAVE 1: Core structure (3 calls with smartQuery caching)
+      const [spacesData, allRacks, allShelves] = await Promise.all([
+        smartQuery(base44, 'IndoorGrowSpace', { created_by: user.email }, '-created_date'),
+        smartQuery(base44, 'GrowRack', { created_by: user.email }),
+        smartQuery(base44, 'GrowShelf', { created_by: user.email })
       ]);
 
-      // Build lookup maps for O(1) access
+      // Build lookup maps immediately
+      const racksBySpaceId = {};
+      allRacks.forEach(rack => {
+        if (!racksBySpaceId[rack.indoor_space_id]) racksBySpaceId[rack.indoor_space_id] = [];
+        racksBySpaceId[rack.indoor_space_id].push(rack);
+      });
+
       const shelfsByRackId = {};
       allShelves.forEach(shelf => {
         if (!shelfsByRackId[shelf.rack_id]) shelfsByRackId[shelf.rack_id] = [];
         shelfsByRackId[shelf.rack_id].push(shelf.id);
       });
 
-      const racksBySpaceId = {};
-      allRacks.forEach(rack => {
-        if (!racksBySpaceId[rack.indoor_space_id]) racksBySpaceId[rack.indoor_space_id] = [];
-        racksBySpaceId[rack.indoor_space_id].push(rack);
-      });
-      
-      // Calculate stats in memory (no additional API calls)
-      const spacesWithStats = spacesData.map(space => {
-        const spaceRacks = racksBySpaceId[space.id] || [];
-        
-        // Get all shelf IDs belonging to racks in this space
-        const shelfIdsInSpace = new Set();
-        spaceRacks.forEach(rack => {
-          const shelves = shelfsByRackId[rack.id] || [];
-          shelves.forEach(shelfId => shelfIdsInSpace.add(shelfId));
-        });
+      // Show spaces immediately with partial stats (racks only)
+      const spacesWithPartialStats = spacesData.map(space => ({
+        ...space,
+        stats: {
+          racks: (racksBySpaceId[space.id] || []).length,
+          trays: '…',
+          containers: '…',
+          activeSeedlings: '…',
+          activePlants: '…'
+        }
+      }));
+      setSpaces(spacesWithPartialStats);
+      setLoading(false); // ← Page visible NOW with partial data
 
-        // Trays: directly in space OR on shelves in this space
-        const spaceTrays = allTrays.filter(t => 
-          t.indoor_space_id === space.id || 
-          (t.shelf_id && shelfIdsInSpace.has(t.shelf_id))
-        );
+      // WAVE 2: Detail data (800ms delay to avoid rate limit)
+      setTimeout(async () => {
+        try {
+          const [allTrays, allContainers, allCells] = await Promise.all([
+            smartQuery(base44, 'SeedTray', { created_by: user.email }),
+            smartQuery(base44, 'IndoorContainer', { created_by: user.email }),
+            smartQuery(base44, 'TrayCell', { created_by: user.email })
+          ]);
 
-        const spaceContainers = allContainers.filter(c => c.indoor_space_id === space.id);
-        
-        // Count active seedlings from tray cells
-        const trayIds = new Set(spaceTrays.map(t => t.id));
-        const activeSeedlings = allCells.filter(cell => 
-          trayIds.has(cell.tray_id) && 
-          ['seeded', 'germinated', 'growing'].includes(cell.status)
-        ).length;
-        
-        const activePlants = spaceContainers.filter(c => 
-          c.status === 'growing' || c.status === 'planted'
-        ).length;
-        
-        return {
-          ...space,
-          stats: {
-            racks: spaceRacks.length,
-            trays: spaceTrays.length,
-            containers: spaceContainers.length,
-            activeSeedlings,
-            activePlants
-          }
-        };
-      });
+          // Calculate complete stats in memory (zero additional API calls)
+          setSpaces(spacesData.map(space => {
+            const spaceRacks = racksBySpaceId[space.id] || [];
+            
+            // Get all shelf IDs belonging to racks in this space
+            const shelfIdsInSpace = new Set();
+            spaceRacks.forEach(rack => {
+              const shelves = shelfsByRackId[rack.id] || [];
+              shelves.forEach(shelfId => shelfIdsInSpace.add(shelfId));
+            });
 
-      setSpaces(spacesWithStats);
+            // Trays: directly in space OR on shelves in this space
+            const spaceTrays = allTrays.filter(t => 
+              t.indoor_space_id === space.id || 
+              (t.shelf_id && shelfIdsInSpace.has(t.shelf_id))
+            );
+
+            const spaceContainers = allContainers.filter(c => c.indoor_space_id === space.id);
+            
+            // Count active seedlings from tray cells
+            const trayIds = new Set(spaceTrays.map(t => t.id));
+            const activeSeedlings = allCells.filter(cell => 
+              trayIds.has(cell.tray_id) && 
+              ['seeded', 'germinated', 'growing'].includes(cell.status)
+            ).length;
+            
+            const activePlants = spaceContainers.filter(c => 
+              c.status === 'growing' || c.status === 'planted'
+            ).length;
+            
+            return {
+              ...space,
+              stats: {
+                racks: spaceRacks.length,
+                trays: spaceTrays.length,
+                containers: spaceContainers.length,
+                activeSeedlings,
+                activePlants
+              }
+            };
+          }));
+        } catch (wave2Error) {
+          console.warn('Wave 2 stats failed (non-critical):', wave2Error.message);
+          // Replace "…" with 0 so UI isn't stuck showing dots
+          setSpaces(prev => prev.map(s => ({
+            ...s,
+            stats: {
+              ...s.stats,
+              trays: typeof s.stats.trays === 'string' ? 0 : s.stats.trays,
+              containers: typeof s.stats.containers === 'string' ? 0 : s.stats.containers,
+              activeSeedlings: typeof s.stats.activeSeedlings === 'string' ? 0 : s.stats.activeSeedlings,
+              activePlants: typeof s.stats.activePlants === 'string' ? 0 : s.stats.activePlants,
+            }
+          })));
+        }
+      }, 800);
+
     } catch (error) {
       console.error('Error loading spaces:', error);
+      
+      // Auto-retry on rate limit (up to 2 retries with exponential backoff)
+      if (error.message?.includes('Rate limit') && retryCount < 2) {
+        const delay = (retryCount + 1) * 3000; // 3s, 6s
+        console.log(`[IndoorGrowSpaces] Rate limited, retrying in ${delay/1000}s (attempt ${retryCount + 1}/2)`);
+        setTimeout(() => loadSpaces(retryCount + 1), delay);
+        return; // Don't set loading=false yet
+      }
+      
       toast.error('Failed to load indoor spaces');
-    } finally {
       setLoading(false);
     }
   };
@@ -140,25 +195,12 @@ export default function IndoorGrowSpaces() {
     setCreating(true);
     try {
       const space = await base44.entities.IndoorGrowSpace.create(newSpace);
-      // Add empty stats to new space
       const spaceWithStats = {
         ...space,
-        stats: {
-          racks: 0,
-          trays: 0,
-          containers: 0,
-          activeSeedlings: 0,
-          activePlants: 0
-        }
+        stats: { racks: 0, trays: 0, containers: 0, activeSeedlings: 0, activePlants: 0 }
       };
       setSpaces([spaceWithStats, ...spaces]);
-      setNewSpace({
-        name: '',
-        space_type: 'room',
-        width_ft: 15,
-        length_ft: 30,
-        height_ft: 8
-      });
+      setNewSpace({ name: '', space_type: 'room', width_ft: 15, length_ft: 30, height_ft: 8 });
       setShowNewDialog(false);
       toast.success('Indoor grow space created!');
     } catch (error) {
@@ -194,7 +236,7 @@ export default function IndoorGrowSpaces() {
   }
 
   return (
-    <div className="space-y-6 max-w-6xl">
+    <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
