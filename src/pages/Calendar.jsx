@@ -628,8 +628,8 @@ const PHASE_ICONS = {
 };
 
 const PHASE_LABELS = {
-  seed: 'Seeds', direct_seed: 'Sow', transplant: 'Transplant',
-  bed_prep: 'Prep', cultivate: 'Cultivate', harvest: 'Harvest'
+  seed: 'Start Seeds', direct_seed: 'Direct Sow', transplant: 'Transplant',
+  bed_prep: 'Bed Prep', cultivate: 'Cultivate', harvest: 'Harvest'
 };
 
 /* Helper: parse date string safely as local date */
