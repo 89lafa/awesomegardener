@@ -24,6 +24,13 @@ function isRateLimitError(error) {
   );
 }
 
+function is400Error(error) {
+  if (!error) return false;
+  if (error?.response?.status === 400) return true;
+  const msg = (error?.message || error?.toString() || '').toLowerCase();
+  return msg.includes('400') || msg.includes('bad request');
+}
+
 async function safeApiCall(fn, label = '', maxRetries = 2) {
   let backoffMs = 2500;
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
@@ -41,7 +48,6 @@ async function safeApiCall(fn, label = '', maxRetries = 2) {
   }
 }
 
-// Cached user — avoid calling auth.me() on every scan
 let _cachedScannerUser = null;
 let _cachedScannerUserTime = 0;
 const SCANNER_USER_CACHE_TTL = 5 * 60 * 1000;
@@ -56,10 +62,6 @@ async function getCachedUser() {
   return _cachedScannerUser;
 }
 
-/**
- * Run an async function with a timeout.
- * If the function doesn't resolve in `ms`, rejects with a timeout error.
- */
 function withTimeout(promise, ms, label = 'Operation') {
   return Promise.race([
     promise,
@@ -70,9 +72,74 @@ function withTimeout(promise, ms, label = 'Operation') {
 }
 
 // ============================================================
+// VARIETY NAME NORMALIZATION
+// Strips plant type suffixes: "Straight Eight Cucumber" -> "Straight Eight"
+// ============================================================
+const PLANT_TYPE_NAMES = [
+  'Tomato','Cucumber','Pepper','Lettuce','Carrot','Onion','Basil',
+  'Kale','Broccoli','Eggplant','Zucchini','Spinach','Beet','Bean',
+  'Pea','Corn','Squash','Pumpkin','Watermelon','Cantaloupe','Radish',
+  'Turnip','Cabbage','Cauliflower','Celery','Garlic','Potato','Okra',
+  'Parsley','Cilantro','Dill','Oregano','Sage','Thyme','Rosemary',
+  'Mint','Chives','Fennel','Sunflower','Marigold','Calendula',
+  'Nasturtium','Strawberry','Raspberry','Blueberry','Blackberry',
+  'Asparagus','Rhubarb','Leek','Scallion','Parsnip','Kohlrabi',
+  'Arugula','Bok Choy','Swiss Chard','Collard Greens','Mustard Greens',
+  'Brussels Sprouts','Sweet Potato','Sweet Corn','Summer Squash',
+  'Winter Squash','Globe Artichoke','Jerusalem Artichoke','Tomatillo',
+  'Groundcherry','Borage','Rutabaga','Amaranth',
+  // Plurals
+  'Tomatoes','Cucumbers','Peppers','Carrots','Onions','Beans','Peas',
+  'Beets','Radishes','Turnips','Potatoes','Squashes','Pumpkins',
+  'Eggplants','Zucchinis',
+  // Common compound forms
+  'Hot Pepper','Sweet Pepper','Bell Pepper','Chile Pepper','Chili Pepper',
+  'Cherry Tomato','Grape Tomato','Slicing Tomato','Paste Tomato',
+  'Pickling Cucumber','Slicing Cucumber',
+];
+
+const SORTED_TYPE_NAMES = [...PLANT_TYPE_NAMES].sort((a, b) => b.length - a.length);
+
+function escapeRegex(str) {
+  return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+function normalizeVarietyName(rawName, plantTypeName) {
+  if (!rawName) return rawName;
+  let name = rawName.trim();
+
+  const typeNamesToCheck = [...SORTED_TYPE_NAMES];
+  if (plantTypeName && !typeNamesToCheck.some(t => t.toLowerCase() === plantTypeName.toLowerCase())) {
+    typeNamesToCheck.unshift(plantTypeName);
+  }
+
+  for (const typeName of typeNamesToCheck) {
+    // Strip trailing type: "Straight Eight Cucumber" -> "Straight Eight"
+    const trailingRe = new RegExp('\\s+' + escapeRegex(typeName) + '\\s*$', 'i');
+    if (trailingRe.test(name)) {
+      name = name.replace(trailingRe, '').trim();
+      break;
+    }
+    // Strip leading type: "Cucumber - Straight Eight" -> "Straight Eight"
+    const leadingRe = new RegExp('^' + escapeRegex(typeName) + '\\s*[-:,]\\s*', 'i');
+    if (leadingRe.test(name)) {
+      name = name.replace(leadingRe, '').trim();
+      break;
+    }
+  }
+
+  name = name.replace(/^[-:,\s]+|[-:,\s]+$/g, '').trim();
+  return name || rawName.trim();
+}
+
+function varietyDedupKey(name, plantTypeName) {
+  return normalizeVarietyName(name || '', plantTypeName || '').toLowerCase().trim();
+}
+
+
+// ============================================================
 // COMPONENT
 // ============================================================
-
 export default function UnifiedSeedScanner({ onScanComplete, onClose }) {
   const [step, setStep] = useState('choice');
   const [scannedBarcode, setScannedBarcode] = useState(null);
@@ -88,7 +155,7 @@ export default function UnifiedSeedScanner({ onScanComplete, onClose }) {
     year_acquired: new Date().getFullYear(),
     storage_location: ''
   });
-  
+
   const scannerRef = useRef(null);
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
@@ -120,27 +187,20 @@ export default function UnifiedSeedScanner({ onScanComplete, onClose }) {
     } else if (step === 'packet_capture') {
       setTimeout(() => startCamera(), 300);
     }
-
     return () => {
       if (step === 'barcode_scan') stopBarcodeScanner();
       if (step === 'packet_capture') stopCamera();
     };
   }, [step]);
 
-  // ==========================================================
-  // BARCODE SCANNER
-  // ==========================================================
+  // ---- BARCODE SCANNER ----
 
   const startBarcodeScanner = async () => {
     try {
       setError(null);
       const container = document.getElementById('barcode-scanner-container');
-      if (!container) {
-        setError('Scanner container not found');
-        return;
-      }
+      if (!container) { setError('Scanner container not found'); return; }
 
-      // FIX: Make sure old scanner is fully stopped before starting new one
       if (scannerRef.current) {
         try { await scannerRef.current.stop(); } catch (e) {}
         scannerRef.current = null;
@@ -170,10 +230,6 @@ export default function UnifiedSeedScanner({ onScanComplete, onClose }) {
     }
   };
 
-  // ==========================================================
-  // FIX: handleBarcode — cached user, rate limit protection,
-  // non-critical calls wrapped in try/catch so they don't block
-  // ==========================================================
   const handleBarcode = async (barcode) => {
     setScannedBarcode(barcode);
     setProcessing(true);
@@ -187,46 +243,28 @@ export default function UnifiedSeedScanner({ onScanComplete, onClose }) {
       if (results.length > 0) {
         setMatchedProduct(results[0]);
         setStep('found');
-        
-        // Non-critical: update scan count (fire-and-forget, don't block)
+
+        // Non-critical fire-and-forget
         safeApiCall(
           () => base44.entities.SeedVendorBarcode.update(results[0].id, {
             scan_count: (results[0].scan_count || 0) + 1,
             last_scanned_date: new Date().toISOString()
-          }),
-          'Update scan count'
-        ).catch(err => console.warn('[Scanner] Non-critical: scan count update failed', err.message));
+          }), 'Update scan count'
+        ).catch(() => {});
 
-        // Non-critical: log scan history (fire-and-forget)
         getCachedUser().then(user => {
-          safeApiCall(
-            () => base44.entities.ScanHistory.create({
-              user_id: user.id,
-              barcode: barcode,
-              scan_date: new Date().toISOString(),
-              product_found: true,
-              product_id: results[0].id,
-              added_to_stash: false
-            }),
-            'Log scan history'
-          ).catch(err => console.warn('[Scanner] Non-critical: scan history failed', err.message));
+          safeApiCall(() => base44.entities.ScanHistory.create({
+            user_id: user.id, barcode, scan_date: new Date().toISOString(),
+            product_found: true, product_id: results[0].id, added_to_stash: false
+          }), 'Log history').catch(() => {});
         });
       } else {
-        // Not found — log and transition to packet scan
-        // Non-critical: log scan history (fire-and-forget)
         getCachedUser().then(user => {
-          safeApiCall(
-            () => base44.entities.ScanHistory.create({
-              user_id: user.id,
-              barcode: barcode,
-              scan_date: new Date().toISOString(),
-              product_found: false,
-              added_to_stash: false
-            }),
-            'Log scan history (not found)'
-          ).catch(err => console.warn('[Scanner] Non-critical: scan history failed', err.message));
+          safeApiCall(() => base44.entities.ScanHistory.create({
+            user_id: user.id, barcode, scan_date: new Date().toISOString(),
+            product_found: false, added_to_stash: false
+          }), 'Log history').catch(() => {});
         });
-        
         setStep('not_found_transition');
       }
     } catch (error) {
@@ -242,9 +280,6 @@ export default function UnifiedSeedScanner({ onScanComplete, onClose }) {
     }
   };
 
-  // ==========================================================
-  // FIX: Full reset between scans — clears ALL state
-  // ==========================================================
   const resetForNewScan = () => {
     stopBarcodeScanner();
     stopCamera();
@@ -256,23 +291,15 @@ export default function UnifiedSeedScanner({ onScanComplete, onClose }) {
     setProcessing(false);
     setProgress(0);
     setProgressMessage('');
-    setStashData({
-      quantity: '',
-      year_acquired: new Date().getFullYear(),
-      storage_location: ''
-    });
+    setStashData({ quantity: '', year_acquired: new Date().getFullYear(), storage_location: '' });
     setStep('choice');
   };
 
-  // ==========================================================
-  // CAMERA
-  // ==========================================================
+  // ---- CAMERA ----
 
   const startCamera = async () => {
     try {
-      // FIX: Stop any existing stream before starting new one
       stopCamera();
-      
       const stream = await navigator.mediaDevices.getUserMedia({
         video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } }
       });
@@ -280,7 +307,6 @@ export default function UnifiedSeedScanner({ onScanComplete, onClose }) {
         videoRef.current.srcObject = stream;
         streamRef.current = stream;
       } else {
-        // Component unmounted, clean up
         stream.getTracks().forEach(track => track.stop());
       }
     } catch (error) {
@@ -294,9 +320,7 @@ export default function UnifiedSeedScanner({ onScanComplete, onClose }) {
       streamRef.current.getTracks().forEach(track => track.stop());
       streamRef.current = null;
     }
-    if (videoRef.current) {
-      videoRef.current.srcObject = null;
-    }
+    if (videoRef.current) videoRef.current.srcObject = null;
   };
 
   const capturePhoto = () => {
@@ -323,112 +347,82 @@ export default function UnifiedSeedScanner({ onScanComplete, onClose }) {
   const handleFileUpload = (e) => {
     const file = e.target.files[0];
     if (!file) return;
-
     const reader = new FileReader();
     reader.onload = (event) => {
-      const dataUrl = event.target.result;
-      setPacketImage(dataUrl);
+      setPacketImage(event.target.result);
       stopCamera();
-      processPacketImage(dataUrl);
+      processPacketImage(event.target.result);
     };
     reader.readAsDataURL(file);
   };
 
-  // ==========================================================
-  // AI PACKET PROCESSING — with rate limit protection + timeout
-  // ==========================================================
+  // ---- AI PACKET PROCESSING ----
+
   const processPacketImage = async (imageDataUrl) => {
     setStep('ai_processing');
     setProcessing(true);
     setProgress(0);
-    setProgressMessage('Uploading image...');
 
     try {
       setProgress(10);
       const blob = await (await fetch(imageDataUrl)).blob();
       const file = new File([blob], 'packet.jpg', { type: 'image/jpeg' });
-      
       const { file_url } = await safeApiCall(
-        () => base44.integrations.Core.UploadFile({ file }),
-        'Upload packet image'
+        () => base44.integrations.Core.UploadFile({ file }), 'Upload image'
       );
-      
+
       setProgress(30);
-      setProgressMessage('Reading packet text...');
-
-      // FIX: Add timeout — AI functions can hang indefinitely
       const enrichResult = await withTimeout(
-        safeApiCall(
-          () => base44.functions.invoke('enrichSeedFromPacketScan', {
-            packet_image_base64: file_url,
-            barcode: scannedBarcode
-          }),
-          'AI enrich'
-        ),
-        45000, // 45 second timeout
-        'AI packet analysis'
+        safeApiCall(() => base44.functions.invoke('enrichSeedFromPacketScan', {
+          packet_image_base64: file_url, barcode: scannedBarcode
+        }), 'AI enrich'),
+        45000, 'AI analysis'
       );
-      
-      setProgress(60);
-      setProgressMessage('Identifying variety & vendor...');
 
-      if (!enrichResult.data.success) {
-        throw new Error(enrichResult.data.error || 'AI processing failed');
-      }
+      setProgress(60);
+      if (!enrichResult.data.success) throw new Error(enrichResult.data.error || 'AI processing failed');
 
       const extracted = enrichResult.data.extracted_data;
-      
-      setProgress(80);
-      setProgressMessage('Checking Plant Catalog...');
 
-      await sleep(500); // Small delay before next API call
-
-      // FIX: Add timeout on catalog match too
-      const matchResult = await withTimeout(
-        safeApiCall(
-          () => base44.functions.invoke('findExistingVariety', {
-            variety_name: extracted.variety_name,
-            plant_type_name: extracted.plant_type_name
-          }),
-          'Catalog match'
-        ),
-        20000, // 20 second timeout
-        'Catalog matching'
-      );
-      
-      setProgress(95);
-      setProgressMessage('Preparing results...');
-
-      setExtractedData({
-        ...extracted,
-        packetImageUrl: file_url,
-        matchResult: matchResult.data
-      });
-
-      if (extracted.packet_size) {
-        const seedCount = parseInt(extracted.packet_size);
-        if (!isNaN(seedCount)) {
-          setStashData(prev => ({ ...prev, quantity: seedCount }));
+      // NORMALIZE variety name
+      if (extracted.variety_name && extracted.plant_type_name) {
+        const orig = extracted.variety_name;
+        extracted.variety_name = normalizeVarietyName(extracted.variety_name, extracted.plant_type_name);
+        if (orig !== extracted.variety_name) {
+          console.log(`[Scanner] Normalized: "${orig}" -> "${extracted.variety_name}"`);
         }
       }
 
-      setProgress(100);
-      setTimeout(() => {
-        if (mountedRef.current) setStep('review');
-      }, 300);
+      setProgress(80);
+      await sleep(500);
 
+      const matchResult = await withTimeout(
+        safeApiCall(() => base44.functions.invoke('findExistingVariety', {
+          variety_name: extracted.variety_name, plant_type_name: extracted.plant_type_name
+        }), 'Catalog match'),
+        20000, 'Catalog matching'
+      );
+
+      setProgress(95);
+      setExtractedData({ ...extracted, packetImageUrl: file_url, matchResult: matchResult.data });
+
+      if (extracted.packet_size) {
+        const n = parseInt(extracted.packet_size);
+        if (!isNaN(n)) setStashData(prev => ({ ...prev, quantity: n }));
+      }
+
+      setProgress(100);
+      setTimeout(() => { if (mountedRef.current) setStep('review'); }, 300);
     } catch (error) {
       console.error('Processing error:', error);
-      const msg = error?.message || 'Processing failed';
-      
       if (isRateLimitError(error)) {
-        setError('Rate limited — please wait 10 seconds and try again.');
-        toast.error('Rate limited. Please wait and retry.');
-      } else if (msg.includes('timed out')) {
-        setError('Processing took too long. Please try again.');
-        toast.error('Processing timed out. Try again.');
+        setError('Rate limited — wait 10 seconds and try again.');
+        toast.error('Rate limited.');
+      } else if ((error?.message || '').includes('timed out')) {
+        setError('Processing timed out. Please try again.');
+        toast.error('Timed out.');
       } else {
-        setError('Failed to process packet. Please try again.');
+        setError('Failed to process packet. Try again.');
         toast.error('Processing failed');
       }
       setStep('packet_capture');
@@ -437,169 +431,201 @@ export default function UnifiedSeedScanner({ onScanComplete, onClose }) {
     }
   };
 
-  // ==========================================================
-  // FIX: confirmAndSave — with timeout + retry + proper error handling
-  // Old code: no timeout, no retry — spinner spins forever on 429 or timeout
-  // ==========================================================
+  // ---- CONFIRM & SAVE with 400 FALLBACK ----
   const confirmAndSave = async () => {
     setProcessing(true);
     try {
-      const result = await withTimeout(
-        safeApiCall(
-          () => base44.functions.invoke('saveScannedSeed', {
-            scannedBarcode,
-            extractedData,
+      // Attempt 1: server function
+      let saved = false;
+      try {
+        const result = await withTimeout(
+          safeApiCall(() => base44.functions.invoke('saveScannedSeed', {
+            scannedBarcode, extractedData,
             matchResult: extractedData.matchResult,
             packetImageUrl: extractedData.packetImageUrl,
             addToStash: true
-          }),
-          'Save scanned seed',
-          3 // More retries for the critical save operation
-        ),
-        30000, // 30 second timeout
-        'Saving seed'
-      );
-
-      if (result.data.success) {
-        if (mountedRef.current) setStep('success');
-      } else {
-        throw new Error(result.data.error || 'Save returned unsuccessful');
+          }), 'Save seed', 1),
+          30000, 'Saving seed'
+        );
+        if (result.data.success) { saved = true; if (mountedRef.current) setStep('success'); }
+        else throw new Error(result.data.error || 'Server save unsuccessful');
+      } catch (serverErr) {
+        console.warn(`[Scanner] saveScannedSeed failed: ${serverErr.message}. Using client fallback...`);
+        if (isRateLimitError(serverErr)) await sleep(3000);
+        // Attempt 2: client-side fallback
+        await clientSideSave();
+        saved = true;
       }
+      if (!saved) throw new Error('All save attempts failed');
     } catch (error) {
       console.error('Save error:', error);
-      const msg = error?.message || 'Failed to save';
-      
-      if (isRateLimitError(error)) {
-        toast.error('Rate limited — wait a moment and tap Confirm again');
-      } else if (msg.includes('timed out')) {
-        toast.error('Save timed out. Please try again.');
-      } else {
-        toast.error('Failed to save: ' + msg);
-      }
+      if (isRateLimitError(error)) toast.error('Rate limited — wait and tap Confirm again');
+      else toast.error('Failed to save: ' + (error?.message || 'Unknown error'));
     } finally {
       if (mountedRef.current) setProcessing(false);
     }
   };
 
-  // ==========================================================
-  // FIX: addBarcodeMatchToStash — extracted from inline onClick,
-  // with rate limit protection + cached user
-  // ==========================================================
+  // ---- CLIENT-SIDE FALLBACK when saveScannedSeed returns 400 ----
+  const clientSideSave = async () => {
+    const user = await getCachedUser();
+    const data = extractedData;
+    const normalizedName = normalizeVarietyName(data.variety_name || '', data.plant_type_name || '');
+    const dedupKey = varietyDedupKey(data.variety_name || '', data.plant_type_name || '');
+
+    // Find existing profile with dedup
+    let profile = null;
+    try {
+      const existing = await safeApiCall(
+        () => base44.entities.PlantProfile.filter({ created_by: user.email }), 'Fetch profiles'
+      );
+      profile = existing.find(p => varietyDedupKey(p.variety_name || '', p.plant_type_name || '') === dedupKey);
+      if (profile) console.log(`[Scanner] Reusing existing profile "${normalizedName}" (${profile.id})`);
+    } catch (err) {
+      console.warn('[Scanner] Profile lookup failed:', err.message);
+    }
+
+    await sleep(500);
+
+    if (!profile) {
+      const profileData = {
+        variety_name: normalizedName,
+        plant_type_name: data.plant_type_name || 'Unknown',
+        common_name: data.plant_type_name || 'Unknown',
+        source_type: 'scanned',
+        is_custom: true,
+      };
+      if (data.days_to_maturity) profileData.days_to_maturity_seed = parseFloat(data.days_to_maturity) || undefined;
+      if (data.spacing_recommended) profileData.spacing_in_min = parseFloat(data.spacing_recommended) || undefined;
+      if (data.sun_requirement) profileData.sun_requirement = data.sun_requirement;
+      if (data.water_requirement) profileData.water_requirement = data.water_requirement;
+      if (data.description) profileData.description = data.description;
+      if (data.seed_line_type) profileData.seed_line_type = data.seed_line_type;
+      if (data.matchResult?.match?.id) {
+        profileData.variety_id = data.matchResult.match.id;
+        profileData.is_custom = false;
+      }
+      profile = await safeApiCall(() => base44.entities.PlantProfile.create(profileData), 'Create profile');
+      console.log(`[Scanner] Created profile "${normalizedName}" (${profile.id})`);
+    }
+
+    await sleep(500);
+
+    await safeApiCall(() => base44.entities.SeedLot.create({
+      plant_profile_id: profile.id,
+      custom_label: normalizedName,
+      source_vendor_name: data.vendor_name || 'Unknown',
+      quantity: parseInt(stashData.quantity) || 1,
+      year_acquired: parseInt(stashData.year_acquired) || new Date().getFullYear(),
+      storage_location: stashData.storage_location || null,
+      lot_notes: scannedBarcode ? `Barcode: ${scannedBarcode}` : 'Via packet photo scan',
+      from_catalog: !!data.matchResult?.match?.id,
+    }), 'Create seed lot');
+
+    // Save barcode to DB (fire-and-forget)
+    if (scannedBarcode) {
+      safeApiCall(() => base44.entities.SeedVendorBarcode.create({
+        barcode: scannedBarcode,
+        product_name: normalizedName,
+        vendor_name: data.vendor_name || 'Unknown',
+        plant_type_name: data.plant_type_name || 'Unknown',
+        variety_id: data.matchResult?.match?.id || null,
+        packet_image_url: data.packetImageUrl || null,
+        scan_count: 1,
+        last_scanned_date: new Date().toISOString(),
+      }), 'Save barcode').catch(() => {});
+    }
+
+    toast.success('Added to stash!');
+    if (mountedRef.current) setStep('success');
+  };
+
+  // ---- BARCODE MATCH ADD ----
   const addBarcodeMatchToStash = async () => {
     setProcessing(true);
     try {
-      if (!matchedProduct?.variety_id) {
-        toast.error('Missing variety data');
-        return;
-      }
+      if (!matchedProduct?.variety_id) { toast.error('Missing variety data'); return; }
 
       const variety = await safeApiCall(
-        () => base44.entities.Variety.filter({ id: matchedProduct.variety_id }),
-        'Fetch variety'
+        () => base44.entities.Variety.filter({ id: matchedProduct.variety_id }), 'Fetch variety'
       );
-      if (variety.length === 0) {
-        toast.error('Variety not found in catalog');
-        return;
-      }
+      if (variety.length === 0) { toast.error('Variety not found'); return; }
 
       await sleep(300);
 
-      // Try to find existing profile
+      const normalizedName = normalizeVarietyName(
+        variety[0].variety_name || matchedProduct.product_name || '',
+        variety[0].plant_type_name || matchedProduct.plant_type_name || ''
+      );
+      const dedupKey = varietyDedupKey(normalizedName, variety[0].plant_type_name || '');
+
       let profileId = null;
       try {
+        const user = await getCachedUser();
         const profiles = await safeApiCall(
-          () => base44.entities.PlantProfile.filter({ variety_name: variety[0].variety_name }),
-          'Find profile'
+          () => base44.entities.PlantProfile.filter({ created_by: user.email }), 'Find profiles'
         );
-        if (profiles.length > 0) {
-          profileId = profiles[0].id;
-        }
+        const match = profiles.find(p => varietyDedupKey(p.variety_name || '', p.plant_type_name || '') === dedupKey);
+        if (match) profileId = match.id;
       } catch (err) {
-        console.warn('[Scanner] Profile lookup failed (non-critical):', err.message);
+        console.warn('[Scanner] Profile lookup failed:', err.message);
       }
 
       await sleep(300);
 
-      await safeApiCall(
-        () => base44.entities.SeedLot.create({
-          plant_profile_id: profileId,
-          custom_label: variety[0].variety_name,
-          source_vendor_name: matchedProduct.vendor_name,
-          quantity: parseInt(stashData.quantity) || 1,
-          year_acquired: parseInt(stashData.year_acquired) || new Date().getFullYear(),
-          storage_location: stashData.storage_location || null,
-          lot_notes: `Added via barcode scan: ${matchedProduct.barcode}`,
-          from_catalog: true
-        }),
-        'Create seed lot'
-      );
-      
+      await safeApiCall(() => base44.entities.SeedLot.create({
+        plant_profile_id: profileId,
+        custom_label: normalizedName,
+        source_vendor_name: matchedProduct.vendor_name,
+        quantity: parseInt(stashData.quantity) || 1,
+        year_acquired: parseInt(stashData.year_acquired) || new Date().getFullYear(),
+        storage_location: stashData.storage_location || null,
+        lot_notes: `Barcode: ${matchedProduct.barcode}`,
+        from_catalog: true
+      }), 'Create seed lot');
+
       toast.success('Added to stash!');
       if (mountedRef.current) setStep('success');
     } catch (error) {
       console.error('Error adding to stash:', error);
-      if (isRateLimitError(error)) {
-        toast.error('Rate limited — wait a moment and try again');
-      } else {
-        toast.error('Failed to add to stash');
-      }
+      if (isRateLimitError(error)) toast.error('Rate limited — wait and try again');
+      else toast.error('Failed to add to stash');
     } finally {
       if (mountedRef.current) setProcessing(false);
     }
   };
 
-  const handleClose = () => {
-    stopBarcodeScanner();
-    stopCamera();
-    onClose();
-  };
+  const handleClose = () => { stopBarcodeScanner(); stopCamera(); onClose(); };
 
+  // ============================================================
+  // RENDER
+  // ============================================================
   return (
     <div className="fixed inset-0 bg-black/90 z-50 flex items-center justify-center p-4">
-      <button
-        onClick={handleClose}
-        className="absolute top-4 right-4 text-white p-2 hover:bg-white/20 rounded-full z-10"
-      >
+      <button onClick={handleClose} className="absolute top-4 right-4 text-white p-2 hover:bg-white/20 rounded-full z-10">
         <X size={24} />
       </button>
 
-      {/* ============================================ */}
-      {/* STEP: CHOICE */}
-      {/* ============================================ */}
       {step === 'choice' && (
         <div className="bg-white rounded-2xl w-full max-w-lg p-6">
           <h2 className="text-2xl font-bold mb-2">Scan Seed Packet</h2>
           <p className="text-gray-600 mb-6">How do you want to add this seed?</p>
-          
           <div className="grid grid-cols-2 gap-4">
-            <button
-              onClick={() => setStep('barcode_scan')}
-              className="p-6 border-2 border-gray-200 rounded-xl hover:border-emerald-500 hover:bg-emerald-50 transition-all"
-            >
+            <button onClick={() => setStep('barcode_scan')} className="p-6 border-2 border-gray-200 rounded-xl hover:border-emerald-500 hover:bg-emerald-50 transition-all">
               <div className="text-4xl mb-3">📱</div>
               <h3 className="font-bold mb-1">Scan Barcode</h3>
               <p className="text-sm text-gray-600">Quick lookup if known</p>
             </button>
-
-            <button
-              onClick={() => setStep('packet_capture')}
-              className="p-6 border-2 border-gray-200 rounded-xl hover:border-emerald-500 hover:bg-emerald-50 transition-all"
-            >
+            <button onClick={() => setStep('packet_capture')} className="p-6 border-2 border-gray-200 rounded-xl hover:border-emerald-500 hover:bg-emerald-50 transition-all">
               <div className="text-4xl mb-3">📸</div>
               <h3 className="font-bold mb-1">Photo Packet</h3>
               <p className="text-sm text-gray-600">AI reads & fills data</p>
             </button>
           </div>
-
-          <p className="text-center text-gray-500 text-sm mt-4">
-            Either way, we'll help you add it to your stash!
-          </p>
+          <p className="text-center text-gray-500 text-sm mt-4">Either way, we'll help you add it to your stash!</p>
         </div>
       )}
 
-      {/* ============================================ */}
-      {/* STEP: BARCODE SCAN */}
-      {/* ============================================ */}
       {step === 'barcode_scan' && (
         <div className="w-full max-w-lg">
           <div className="bg-white rounded-2xl overflow-hidden">
@@ -610,8 +636,7 @@ export default function UnifiedSeedScanner({ onScanComplete, onClose }) {
             <div id="barcode-scanner-container" className="w-full min-h-[300px] bg-gray-900" />
             {error && (
               <div className="p-4 bg-red-50 text-red-700 text-sm flex items-center gap-2">
-                <AlertCircle className="w-4 h-4" />
-                {error}
+                <AlertCircle className="w-4 h-4" />{error}
               </div>
             )}
             <div className="p-4 space-y-2">
@@ -624,9 +649,6 @@ export default function UnifiedSeedScanner({ onScanComplete, onClose }) {
         </div>
       )}
 
-      {/* ============================================ */}
-      {/* STEP: BARCODE FOUND */}
-      {/* ============================================ */}
       {step === 'found' && matchedProduct && (
         <div className="bg-white rounded-2xl w-full max-w-lg">
           <div className="p-4 border-b bg-emerald-50">
@@ -635,14 +657,10 @@ export default function UnifiedSeedScanner({ onScanComplete, onClose }) {
               <h3 className="text-xl font-bold">Barcode Match!</h3>
             </div>
           </div>
-          
           <div className="p-6">
             {matchedProduct.packet_image_url && (
-              <img 
-                src={matchedProduct.packet_image_url} 
-                alt={matchedProduct.product_name}
-                className="w-full h-48 object-contain mb-4 rounded-lg bg-gray-100"
-              />
+              <img src={matchedProduct.packet_image_url} alt={matchedProduct.product_name}
+                className="w-full h-48 object-contain mb-4 rounded-lg bg-gray-100" />
             )}
             <h3 className="text-2xl font-bold mb-1">{matchedProduct.product_name}</h3>
             <p className="text-emerald-600 font-medium mb-2">{matchedProduct.vendor_name}</p>
@@ -651,59 +669,36 @@ export default function UnifiedSeedScanner({ onScanComplete, onClose }) {
               {matchedProduct.packet_size && <p>Size: {matchedProduct.packet_size}</p>}
               <p className="text-xs text-gray-400">Barcode: {matchedProduct.barcode}</p>
             </div>
-
             <div className="space-y-3 bg-gray-50 rounded-lg p-4">
               <h4 className="font-semibold">Add to Your Stash</h4>
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <Label className="text-xs">Quantity</Label>
-                  <Input
-                    type="number"
-                    value={stashData.quantity}
-                    onChange={(e) => setStashData({...stashData, quantity: e.target.value})}
-                    placeholder="50"
-                  />
+                  <Input type="number" value={stashData.quantity}
+                    onChange={(e) => setStashData({...stashData, quantity: e.target.value})} placeholder="50" />
                 </div>
                 <div>
                   <Label className="text-xs">Year</Label>
-                  <Input
-                    type="number"
-                    value={stashData.year_acquired}
-                    onChange={(e) => setStashData({...stashData, year_acquired: parseInt(e.target.value)})}
-                  />
+                  <Input type="number" value={stashData.year_acquired}
+                    onChange={(e) => setStashData({...stashData, year_acquired: parseInt(e.target.value)})} />
                 </div>
               </div>
               <div>
                 <Label className="text-xs">Storage Location</Label>
-                <Input
-                  value={stashData.storage_location}
-                  onChange={(e) => setStashData({...stashData, storage_location: e.target.value})}
-                  placeholder="Seed Box A"
-                />
+                <Input value={stashData.storage_location}
+                  onChange={(e) => setStashData({...stashData, storage_location: e.target.value})} placeholder="Seed Box A" />
               </div>
             </div>
           </div>
-          
           <div className="p-4 border-t flex gap-3">
-            <Button variant="outline" onClick={resetForNewScan} className="flex-1">
-              📷 Scan Another
-            </Button>
-            {/* FIX: Extracted inline handler to proper function with rate limit protection */}
-            <Button 
-              onClick={addBarcodeMatchToStash} 
-              disabled={processing} 
-              className="flex-1 bg-emerald-600 hover:bg-emerald-700"
-            >
-              {processing && <Loader2 className="w-4 h-4 animate-spin mr-2" />}
-              Add to Stash
+            <Button variant="outline" onClick={resetForNewScan} className="flex-1">📷 Scan Another</Button>
+            <Button onClick={addBarcodeMatchToStash} disabled={processing} className="flex-1 bg-emerald-600 hover:bg-emerald-700">
+              {processing && <Loader2 className="w-4 h-4 animate-spin mr-2" />}Add to Stash
             </Button>
           </div>
         </div>
       )}
 
-      {/* ============================================ */}
-      {/* STEP: NOT FOUND TRANSITION */}
-      {/* ============================================ */}
       {step === 'not_found_transition' && (
         <div className="bg-white rounded-2xl w-full max-w-lg p-6">
           <div className="text-center">
@@ -712,30 +707,19 @@ export default function UnifiedSeedScanner({ onScanComplete, onClose }) {
             <p className="font-mono text-lg text-gray-700 mb-3">{scannedBarcode}</p>
             <p className="text-gray-600 mb-2">This barcode isn't in our database yet.</p>
             <p className="text-gray-500 mb-4">Let's scan the packet to identify it!</p>
-            
             <div className="w-full bg-gray-200 rounded-full h-2 mb-3">
               <div className="bg-emerald-500 h-2 rounded-full animate-pulse transition-all" style={{ width: '70%' }} />
             </div>
             <p className="text-sm text-gray-500 mb-4">Opening packet scanner...</p>
-            
             <div className="flex gap-2">
-              <Button onClick={() => setStep('packet_capture')} className="flex-1 bg-emerald-600 hover:bg-emerald-700">
-                📸 Scan Packet Now
-              </Button>
-              <Button variant="outline" onClick={handleClose} className="flex-1">
-                ✋ Add Manually
-              </Button>
+              <Button onClick={() => setStep('packet_capture')} className="flex-1 bg-emerald-600 hover:bg-emerald-700">📸 Scan Packet Now</Button>
+              <Button variant="outline" onClick={handleClose} className="flex-1">✋ Add Manually</Button>
             </div>
           </div>
         </div>
       )}
 
-      {/* ============================================ */}
-      {/* STEP: PACKET CAPTURE */}
-      {/* FIX: Removed DOUBLE dark overlay that made everything too dark */}
-      {/* Old code had bg-black/50 div AND boxShadow 9999px overlay = double darkness */}
-      {/* New code uses ONLY the boxShadow on the guide rectangle — one clean overlay */}
-      {/* ============================================ */}
+      {/* PACKET CAPTURE — FIX: removed double-dark overlay */}
       {step === 'packet_capture' && (
         <div className="w-full max-w-lg">
           <div className="bg-white rounded-2xl overflow-hidden">
@@ -744,38 +728,18 @@ export default function UnifiedSeedScanner({ onScanComplete, onClose }) {
               <p className="text-gray-600 text-sm">Center packet in frame with good lighting</p>
               {scannedBarcode && (
                 <p className="text-xs text-emerald-600 mt-1 flex items-center gap-1">
-                  <CheckCircle className="w-3 h-3" />
-                  Barcode saved: {scannedBarcode}
+                  <CheckCircle className="w-3 h-3" />Barcode saved: {scannedBarcode}
                 </p>
               )}
             </div>
-
             <div className="relative bg-black" style={{ aspectRatio: '3/4' }}>
               {!error && (
                 <>
-                  <video
-                    ref={videoRef}
-                    autoPlay
-                    playsInline
-                    muted
-                    className="w-full h-full object-cover"
-                  />
-                  
-                  {/* FIX: SINGLE overlay via boxShadow only — removed the bg-black/50 div
-                      Old code had TWO overlapping dark layers:
-                      1. <div className="absolute inset-0 bg-black/50" />
-                      2. boxShadow: '0 0 0 9999px rgba(0,0,0,0.5)' on guide rectangle
-                      Combined = 75% darkness, making buttons behind barely visible.
-                      Now: just the boxShadow at 40% opacity = clear, readable UI */}
+                  <video ref={videoRef} autoPlay playsInline muted className="w-full h-full object-cover" />
+                  {/* SINGLE overlay — removed bg-black/50 div, only boxShadow at 40% */}
                   <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                    <div 
-                      className="relative border-4 border-white rounded-lg" 
-                      style={{ 
-                        width: '75%', 
-                        aspectRatio: '2/3',
-                        boxShadow: '0 0 0 9999px rgba(0,0,0,0.4)'
-                      }}
-                    >
+                    <div className="relative border-4 border-white rounded-lg"
+                      style={{ width: '75%', aspectRatio: '2/3', boxShadow: '0 0 0 9999px rgba(0,0,0,0.4)' }}>
                       <span className="absolute -top-10 left-1/2 -translate-x-1/2 text-white text-sm font-medium bg-black/60 px-3 py-1 rounded whitespace-nowrap">
                         Center packet here
                       </span>
@@ -787,76 +751,49 @@ export default function UnifiedSeedScanner({ onScanComplete, onClose }) {
                   </div>
                 </>
               )}
-
               {error && (
                 <div className="flex items-center justify-center h-full bg-gray-800">
                   <div className="text-white text-center p-4">
                     <AlertCircle className="w-12 h-12 mx-auto mb-2" />
                     <p className="mb-4">{error}</p>
-                    <Button onClick={() => { setError(null); startCamera(); }} variant="outline" className="text-white border-white">
-                      Try Again
-                    </Button>
+                    <Button onClick={() => { setError(null); startCamera(); }} variant="outline" className="text-white border-white">Try Again</Button>
                   </div>
                 </div>
               )}
             </div>
-
             <div className="p-4 space-y-2 bg-white">
               <Button onClick={capturePhoto} disabled={!!error} className="w-full bg-emerald-600 hover:bg-emerald-700 py-6 text-lg">
-                <Camera className="w-5 h-5 mr-2" />
-                Capture Front
+                <Camera className="w-5 h-5 mr-2" />Capture Front
               </Button>
               <Button onClick={() => fileInputRef.current?.click()} variant="outline" className="w-full">
-                <Upload className="w-4 h-4 mr-2" />
-                Upload from Gallery
+                <Upload className="w-4 h-4 mr-2" />Upload from Gallery
               </Button>
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/*"
-                onChange={handleFileUpload}
-                className="hidden"
-              />
+              <input ref={fileInputRef} type="file" accept="image/*" onChange={handleFileUpload} className="hidden" />
             </div>
           </div>
         </div>
       )}
 
-      {/* ============================================ */}
-      {/* STEP: AI PROCESSING */}
-      {/* ============================================ */}
       {step === 'ai_processing' && (
         <div className="bg-white rounded-2xl p-8 max-w-md w-full">
           <div className="text-center">
-            {packetImage && (
-              <img src={packetImage} alt="Packet" className="w-32 h-32 object-cover rounded-lg mx-auto mb-4 border-2 border-gray-200" />
-            )}
+            {packetImage && <img src={packetImage} alt="Packet" className="w-32 h-32 object-cover rounded-lg mx-auto mb-4 border-2 border-gray-200" />}
             <Loader2 className="w-12 h-12 mx-auto text-emerald-500 animate-spin mb-4" />
             <h3 className="text-xl font-bold mb-2">Analyzing Packet...</h3>
-            
             <div className="space-y-2 text-sm text-left mb-4">
-              <div className="flex items-center gap-2">
-                {progress > 25 ? <CheckCircle className="w-4 h-4 text-emerald-600" /> : <Loader2 className="w-4 h-4 animate-spin text-gray-400" />}
-                <span className={progress > 25 ? 'text-emerald-600' : 'text-gray-500'}>Reading packet text...</span>
-              </div>
-              <div className="flex items-center gap-2">
-                {progress > 55 ? <CheckCircle className="w-4 h-4 text-emerald-600" /> : <Loader2 className="w-4 h-4 animate-spin text-gray-400" />}
-                <span className={progress > 55 ? 'text-emerald-600' : 'text-gray-500'}>Identifying variety & vendor...</span>
-              </div>
-              <div className="flex items-center gap-2">
-                {progress > 75 ? <CheckCircle className="w-4 h-4 text-emerald-600" /> : <Loader2 className="w-4 h-4 animate-spin text-gray-400" />}
-                <span className={progress > 75 ? 'text-emerald-600' : 'text-gray-500'}>Searching growing information...</span>
-              </div>
-              <div className="flex items-center gap-2">
-                {progress > 85 ? <CheckCircle className="w-4 h-4 text-emerald-600" /> : <Loader2 className="w-4 h-4 animate-spin text-gray-400" />}
-                <span className={progress > 85 ? 'text-emerald-600' : 'text-gray-500'}>Checking Plant Catalog...</span>
-              </div>
-              <div className="flex items-center gap-2">
-                {progress > 95 ? <CheckCircle className="w-4 h-4 text-emerald-600" /> : <Loader2 className="w-4 h-4 animate-spin text-gray-400" />}
-                <span className={progress > 95 ? 'text-emerald-600' : 'text-gray-500'}>Preparing record...</span>
-              </div>
+              {[
+                { threshold: 25, label: 'Reading packet text...' },
+                { threshold: 55, label: 'Identifying variety & vendor...' },
+                { threshold: 75, label: 'Searching growing information...' },
+                { threshold: 85, label: 'Checking Plant Catalog...' },
+                { threshold: 95, label: 'Preparing record...' },
+              ].map(({ threshold, label }) => (
+                <div key={threshold} className="flex items-center gap-2">
+                  {progress > threshold ? <CheckCircle className="w-4 h-4 text-emerald-600" /> : <Loader2 className="w-4 h-4 animate-spin text-gray-400" />}
+                  <span className={progress > threshold ? 'text-emerald-600' : 'text-gray-500'}>{label}</span>
+                </div>
+              ))}
             </div>
-
             <div className="w-full bg-gray-200 rounded-full h-3 mb-2">
               <div className="bg-emerald-500 h-3 rounded-full transition-all duration-500" style={{ width: `${progress}%` }} />
             </div>
@@ -866,42 +803,30 @@ export default function UnifiedSeedScanner({ onScanComplete, onClose }) {
         </div>
       )}
 
-      {/* ============================================ */}
-      {/* STEP: REVIEW */}
-      {/* ============================================ */}
       {step === 'review' && extractedData && (
         <div className="bg-white rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto pb-24 md:pb-0">
           <div className="p-6 border-b sticky top-0 bg-white z-10">
             <h2 className="text-2xl font-bold mb-2">Review Scanned Seed</h2>
             {extractedData.matchResult?.action === 'link_barcode' && (
               <p className="text-emerald-600 flex items-center gap-2">
-                <CheckCircle className="w-5 h-5" />
-                <span className="font-medium">Matched to existing catalog entry</span>
+                <CheckCircle className="w-5 h-5" /><span className="font-medium">Matched to existing catalog entry</span>
               </p>
             )}
             {extractedData.matchResult?.action === 'create_new' && (
               <p className="text-blue-600 flex items-center gap-2 font-medium">
-                <span className="text-xl">🆕</span>
-                New variety - will be added to catalog
+                <span className="text-xl">🆕</span>New variety - will be added to catalog
               </p>
             )}
-            {scannedBarcode && (
-              <p className="text-xs text-gray-500 mt-1">Barcode: {scannedBarcode}</p>
-            )}
+            {scannedBarcode && <p className="text-xs text-gray-500 mt-1">Barcode: {scannedBarcode}</p>}
           </div>
-
           <div className="p-6 space-y-4">
             {packetImage && (
               <div className="flex justify-center">
                 <img src={packetImage} alt="Packet" className="max-w-xs h-48 object-contain rounded-lg border-2 border-gray-200" />
               </div>
             )}
-
             <div className="bg-gray-50 rounded-lg p-4">
-              <h4 className="font-semibold mb-3 flex items-center gap-2">
-                <Package className="w-4 h-4" />
-                Extracted Data
-              </h4>
+              <h4 className="font-semibold mb-3 flex items-center gap-2"><Package className="w-4 h-4" />Extracted Data</h4>
               <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
                 <div><strong>Variety:</strong> {extractedData.variety_name || 'Unknown'}</div>
                 <div><strong>Type:</strong> {extractedData.plant_type_name || 'Unknown'}</div>
@@ -921,85 +846,55 @@ export default function UnifiedSeedScanner({ onScanComplete, onClose }) {
                 </div>
               )}
             </div>
-
             <div className="bg-blue-50 rounded-lg p-4 space-y-3">
               <h4 className="font-semibold">Add to Your Stash</h4>
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <Label className="text-xs">Quantity</Label>
-                  <Input
-                    type="number"
-                    value={stashData.quantity}
+                  <Input type="number" value={stashData.quantity}
                     onChange={(e) => setStashData({...stashData, quantity: e.target.value})}
-                    placeholder={extractedData.packet_size || '50'}
-                  />
+                    placeholder={extractedData.packet_size || '50'} />
                 </div>
                 <div>
                   <Label className="text-xs">Year</Label>
-                  <Input
-                    type="number"
-                    value={stashData.year_acquired}
-                    onChange={(e) => setStashData({...stashData, year_acquired: parseInt(e.target.value)})}
-                  />
+                  <Input type="number" value={stashData.year_acquired}
+                    onChange={(e) => setStashData({...stashData, year_acquired: parseInt(e.target.value)})} />
                 </div>
               </div>
               <div>
                 <Label className="text-xs">Storage Location</Label>
-                <Input
-                  value={stashData.storage_location}
-                  onChange={(e) => setStashData({...stashData, storage_location: e.target.value})}
-                  placeholder="Seed Box A"
-                />
+                <Input value={stashData.storage_location}
+                  onChange={(e) => setStashData({...stashData, storage_location: e.target.value})} placeholder="Seed Box A" />
               </div>
             </div>
           </div>
-
           <div className="p-4 border-t sticky bottom-0 bg-white flex gap-3 mb-16 md:mb-0">
-            <Button variant="outline" onClick={() => setStep('packet_capture')} className="flex-1">
-              🔄 Rescan
-            </Button>
+            <Button variant="outline" onClick={() => setStep('packet_capture')} className="flex-1">🔄 Rescan</Button>
             <Button onClick={confirmAndSave} disabled={processing} className="flex-1 bg-emerald-600 hover:bg-emerald-700">
-              {processing && <Loader2 className="w-4 h-4 animate-spin mr-2" />}
-              ✅ Confirm & Add
+              {processing && <Loader2 className="w-4 h-4 animate-spin mr-2" />}✅ Confirm & Add
             </Button>
           </div>
         </div>
       )}
 
-      {/* ============================================ */}
-      {/* STEP: SUCCESS */}
-      {/* ============================================ */}
       {step === 'success' && (
         <div className="bg-white rounded-2xl w-full max-w-md p-8 text-center">
           <div className="w-20 h-20 rounded-full bg-emerald-100 flex items-center justify-center mx-auto mb-4">
             <CheckCircle className="w-12 h-12 text-emerald-600" />
           </div>
           <h2 className="text-2xl font-bold mb-2">Added to Stash!</h2>
-          <p className="text-gray-600 mb-4">
-            {extractedData?.variety_name || matchedProduct?.product_name || 'Seed'} added successfully
-          </p>
-          
+          <p className="text-gray-600 mb-4">{extractedData?.variety_name || matchedProduct?.product_name || 'Seed'} added successfully</p>
           <div className="bg-emerald-50 border-2 border-emerald-200 rounded-lg p-4 mb-6">
             <p className="text-sm text-emerald-800">
               <span className="text-xl mr-2">🌱</span>
-              {scannedBarcode 
-                ? "This barcode is now in our database. Next time anyone scans it, they'll get an instant match. Thanks for contributing!"
+              {scannedBarcode
+                ? "This barcode is now in our database. Next time anyone scans it, they'll get an instant match!"
                 : "Your seed has been added to your stash!"}
             </p>
           </div>
-
           <div className="flex gap-3">
-            {/* FIX: Uses resetForNewScan which properly clears ALL state */}
-            <Button 
-              variant="outline" 
-              onClick={resetForNewScan}
-              className="flex-1"
-            >
-              📷 Scan Another
-            </Button>
-            <Button onClick={() => onScanComplete()} className="flex-1 bg-emerald-600 hover:bg-emerald-700">
-              ← Back to Stash
-            </Button>
+            <Button variant="outline" onClick={resetForNewScan} className="flex-1">📷 Scan Another</Button>
+            <Button onClick={() => onScanComplete()} className="flex-1 bg-emerald-600 hover:bg-emerald-700">← Back to Stash</Button>
           </div>
         </div>
       )}
