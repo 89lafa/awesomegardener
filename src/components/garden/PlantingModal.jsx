@@ -20,7 +20,7 @@ import {
 } from '@/components/ui/select';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Plus, X, Trash2, Move, Loader2 } from 'lucide-react';
+import { Plus, X, Trash2, Move, Loader2, ChevronDown, ChevronRight, Rows3, Columns3, Grid2X2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import StashTypeSelector from './StashTypeSelector';
@@ -38,7 +38,7 @@ export default function PlantingModal({
    onPlantingUpdate, 
    activeSeason, 
    seasonId,
-   sharedData // CRITICAL: Pre-loaded data from parent page to prevent rate limits
+   sharedData
  }) {
   const isMobile = useIsMobile();
   const [plantings, setPlantings] = useState([]);
@@ -59,6 +59,11 @@ export default function PlantingModal({
   const [cropPlans, setCropPlans] = useState([]);
   const [showCompanionSuggestions, setShowCompanionSuggestions] = useState(false);
   const [showSeedlingSelector, setShowSeedlingSelector] = useState(false);
+  // NEW: Bulk planting state
+  const [bulkPlanting, setBulkPlanting] = useState(false);
+  const [bulkProgress, setBulkProgress] = useState({ current: 0, total: 0 });
+  // NEW: Mobile plant picker collapsed state
+  const [pickerCollapsed, setPickerCollapsed] = useState(false);
   
   const [newPlant, setNewPlant] = useState({
     variety_id: '',
@@ -68,21 +73,22 @@ export default function PlantingModal({
     spacing_rows: 1
   });
 
-  // Calculate grid dimensions
   const metadata = item.metadata || {};
   const isSlotBased = !metadata.gridEnabled && metadata.capacity;
-  
-  // For slot-based (greenhouse/grow bag), use the actual capacity as slot count
   const totalSlots = isSlotBased ? metadata.capacity : null;
-  
-  // For grid-based, calculate grid dimensions
-  const gridCols = isSlotBased ? Math.ceil(Math.sqrt(metadata.capacity)) : Math.floor(item.width / 12); // 12" = 1 sqft
+  const gridCols = isSlotBased ? Math.ceil(Math.sqrt(metadata.capacity)) : Math.floor(item.width / 12);
   const gridRows = isSlotBased ? Math.ceil(metadata.capacity / gridCols) : Math.floor(item.height / 12);
   const plantingPattern = item.metadata?.planting_pattern || 'square_foot';
+
+  // Cell size: slightly larger on mobile for better touch targets
+  const CELL_SIZE = isMobile ? 44 : 40;
+  const ARROW_SIZE = isMobile ? 28 : 24;
 
   useEffect(() => {
      if (open && item) {
        loadData();
+       // Auto-collapse picker on mobile when returning to grid
+       if (isMobile) setPickerCollapsed(false);
      }
    }, [open, item, activeSeason]);
 
@@ -92,7 +98,6 @@ export default function PlantingModal({
     }
   }, [plantings]);
   
-  // ESC key and click-outside handler
   useEffect(() => {
     const handleEsc = (e) => {
       if (e.key === 'Escape' && (selectedPlanting || isMoving)) {
@@ -113,7 +118,6 @@ export default function PlantingModal({
       const user = await base44.auth.me();
       const seasonKey = activeSeason || `${new Date().getFullYear()}-Spring`;
 
-      // CRITICAL FIX: Use shared data from parent if available (GardenPlanting page pre-loads it)
       if (sharedData) {
         console.log('[PlantingModal] Using pre-loaded shared data from parent page');
         setVarieties(sharedData.varieties || []);
@@ -122,37 +126,29 @@ export default function PlantingModal({
         setStashPlants(sharedData.stashPlants || []);
         setProfiles(sharedData.profiles || {});
         
-        // Filter crop plans from shared data
         const filteredCropPlans = (sharedData.cropPlans || []).filter(p => 
           (p.quantity_planted || 0) < (p.quantity_planned || 0) &&
-          p.garden_season_id === seasonId // Ensure crop plans are for the current season
+          p.garden_season_id === seasonId
         );
         setCropPlans(filteredCropPlans);
         
-        // Only fetch plantings (user-specific to this bed)
         const allPlantings = await base44.entities.PlantInstance.filter({ bed_id: item.id });
         
-        // Filter by season
         let plantingsData = allPlantings;
         if (seasonKey) {
           const currentYear = new Date().getFullYear();
           const isCurrentYearSeason = seasonKey && seasonKey.startsWith(currentYear.toString());
-
           plantingsData = allPlantings.filter(p => {
-            if (!p.season_year) {
-              return isCurrentYearSeason;
-            }
+            if (!p.season_year) return isCurrentYearSeason;
             return p.season_year === seasonKey;
           });
         }
 
-        console.log('[PlantingModal] Loaded:', plantingsData.length, 'plantings for bed:', item.id);
         setPlantings(plantingsData);
         setLoading(false);
         return;
       }
 
-      // Fallback: Load everything (for modals opened from MyGarden/PlotCanvas without sharedData)
       console.log('[PlantingModal] No shared data, loading all data...');
       
       const [allPlantings, stashData, varietiesData, typesData, rulesData] = await Promise.all([
@@ -163,7 +159,6 @@ export default function PlantingModal({
         base44.entities.PlantingRule.list()
       ]);
       
-      // Extract unique profile IDs
       const uniqueProfileIds = [...new Set(stashData.map(s => s.plant_profile_id).filter(Boolean))];
       const profilesData = uniqueProfileIds.length > 0
         ? await base44.entities.PlantProfile.filter({ id: { $in: uniqueProfileIds } })
@@ -178,28 +173,21 @@ export default function PlantingModal({
         setCropPlans(cropPlansData.filter(p => (p.quantity_planted || 0) < (p.quantity_planned || 0)));
       }
 
-      // Filter by season
       let plantingsData = allPlantings;
       if (seasonKey) {
         const currentYear = new Date().getFullYear();
         const isCurrentYearSeason = seasonKey && seasonKey.startsWith(currentYear.toString());
-
         plantingsData = allPlantings.filter(p => {
-          if (!p.season_year) {
-            return isCurrentYearSeason;
-          }
+          if (!p.season_year) return isCurrentYearSeason;
           return p.season_year === seasonKey;
         });
       }
 
-      console.log('[PlantingModal] Loaded:', plantingsData.length, 'plantings (filtered from', allPlantings.length, 'total) for season:', seasonKey);
       setPlantings(plantingsData);
       setStashPlants(stashData);
       
       const profilesMap = {};
-      profilesData.forEach(p => {
-        profilesMap[p.id] = p;
-      });
+      profilesData.forEach(p => { profilesMap[p.id] = p; });
       setProfiles(profilesMap);
       
       setVarieties(varietiesData);
@@ -214,7 +202,6 @@ export default function PlantingModal({
   };
 
   const getSpacingForPlant = (plantTypeId, varietySpacing) => {
-    // First, check if there's a PlantingRule for this plant type and container
     const containerType = itemType || item.item_type;
     const rule = plantingRules.find(r => 
       r.plant_type_id === plantTypeId && 
@@ -222,14 +209,9 @@ export default function PlantingModal({
     );
     
     if (rule) {
-      return { 
-        cols: rule.grid_cols, 
-        rows: rule.grid_rows,
-        plantsPerSlot: rule.plants_per_grid_slot 
-      };
+      return { cols: rule.grid_cols, rows: rule.grid_rows, plantsPerSlot: rule.plants_per_grid_slot };
     }
     
-    // Fallback to old logic if no rule exists
     const method = garden.planting_method || 'STANDARD';
     
     if (method === 'SQUARE_FOOT') {
@@ -243,53 +225,217 @@ export default function PlantingModal({
     }
   };
 
-  const checkCollision = (col, row, spanCols, spanRows, excludeId = null) => {
-    // CONTAINERS: No collision check for standalone containers
-    const isContainer = item.type === 'container' || item.type === 'grow_bag';
-    if (isContainer) {
-      return false; // Containers allow any size plant
-    }
+  // ===========================================================
+  // Collision detection — accepts a plantings list for bulk use
+  // ===========================================================
+  const checkCollisionWithList = (col, row, spanCols, spanRows, plantingsList, excludeId = null) => {
+    const isContainer = item.item_type === 'GROW_BAG' || item.item_type === 'CONTAINER';
+    if (isContainer) return plantingsList.length > 0;
     
     for (let r = row; r < row + spanRows; r++) {
       for (let c = col; c < col + spanCols; c++) {
-        if (c >= gridCols || r >= gridRows) return true; // Out of bounds
-        
-        const existing = plantings.find(p => 
+        if (c >= gridCols || r >= gridRows) return true;
+        const existing = plantingsList.find(p => 
           p.id !== excludeId &&
           c >= p.cell_col && 
           c < p.cell_col + (p.cell_span_cols || 1) &&
-          r >= p.cell_row && 
-          r < p.cell_row + (p.cell_span_rows || 1)
+          r >= (p.cell_row || 0) && 
+          r < (p.cell_row || 0) + (p.cell_span_rows || 1)
         );
-        
         if (existing) return true;
       }
     }
     return false;
   };
 
+  const checkCollision = (col, row, spanCols, spanRows, excludeId = null) => {
+    return checkCollisionWithList(col, row, spanCols, spanRows, plantings, excludeId);
+  };
+
+  // ===========================================================
+  // BULK PLANTING — core function that places multiple plants
+  // ===========================================================
+  const handleBulkPlant = async (positions) => {
+    if (!selectedPlant || positions.length === 0) return;
+    
+    const confirmed = positions.length > 5 
+      ? confirm(`Plant ${positions.length} ${selectedPlant.variety_name} plants?`)
+      : true;
+    if (!confirmed) return;
+    
+    setBulkPlanting(true);
+    setBulkProgress({ current: 0, total: positions.length });
+    
+    const spanCols = selectedPlant.spacing_cols || 1;
+    const spanRows = selectedPlant.spacing_rows || 1;
+    const displayName = selectedPlant.variety_name !== selectedPlant.plant_type_name 
+      ? `${selectedPlant.plant_type_name} - ${selectedPlant.variety_name}`
+      : selectedPlant.variety_name;
+    const plantType = plantTypes.find(t => t.id === selectedPlant.plant_type_id || t.common_name === selectedPlant.plant_type_name);
+    const icon = plantType?.icon || '🌱';
+    const plantFamily = plantType?.plant_family_id || selectedPlant.plant_family;
+    
+    const newPlantings = [];
+    let localPlantings = [...plantings]; // Track locally for collision during batch
+    
+    for (let i = 0; i < positions.length; i++) {
+      const { col, row } = positions[i];
+      
+      // Re-check collision with local tracking (in case prior items changed positions)
+      if (checkCollisionWithList(col, row, spanCols, spanRows, localPlantings)) {
+        continue;
+      }
+      
+      try {
+        const seedlingData = selectedPlant.seedling_source_id ? {
+          growing_method: 'SEEDLING_TRANSPLANT',
+          seedling_source_id: selectedPlant.seedling_source_id,
+          seedling_source_type: selectedPlant.seedling_source_type,
+          seedling_age_days: selectedPlant.seedling_age_days,
+          seedling_location: selectedPlant.seedling_location,
+          actual_transplant_date: new Date().toISOString().split('T')[0]
+        } : {};
+
+        const planting = await base44.entities.PlantInstance.create({
+          garden_id: garden.id,
+          bed_id: item.id,
+          space_id: item.id,
+          cell_x: col,
+          cell_y: row,
+          plant_type_id: selectedPlant.plant_type_id,
+          plant_type_icon: icon,
+          plant_family: plantFamily,
+          variety_id: selectedPlant.variety_id,
+          display_name: displayName,
+          placement_mode: 'grid_cell',
+          cell_col: col,
+          cell_row: row,
+          cell_span_cols: spanCols,
+          cell_span_rows: spanRows,
+          season_year: activeSeason || `${new Date().getFullYear()}-Spring`,
+          status: 'planned',
+          ...seedlingData
+        });
+        
+        localPlantings.push(planting);
+        newPlantings.push(planting);
+        setBulkProgress({ current: i + 1, total: positions.length });
+        
+        // Rate limit protection: 150ms between API calls
+        if (i < positions.length - 1) {
+          await new Promise(r => setTimeout(r, 150));
+        }
+      } catch (error) {
+        console.error(`Error planting at (${col}, ${row}):`, error);
+      }
+    }
+    
+    // Update state with all new plantings
+    const updatedPlantings = [...plantings, ...newPlantings];
+    setPlantings(updatedPlantings);
+    
+    // Update crop plan quantities in bulk
+    if (selectedPlant.crop_plan_id && newPlantings.length > 0) {
+      try {
+        const plantsAdded = newPlantings.length * (selectedPlant.plantsPerSlot || 1);
+        await base44.functions.invoke('updateCropPlantedQuantity', { 
+          crop_plan_id: selectedPlant.crop_plan_id,
+          quantity_to_add: plantsAdded
+        });
+        if (!sharedData && seasonId) {
+          const updatedPlans = await base44.entities.CropPlan.filter({ garden_season_id: seasonId });
+          setCropPlans(updatedPlans.filter(p => (p.quantity_planted || 0) < (p.quantity_planned || 0)));
+        }
+      } catch (error) {
+        console.error('Error updating crop quantities:', error);
+      }
+    }
+    
+    setBulkPlanting(false);
+    setBulkProgress({ current: 0, total: 0 });
+    onPlantingUpdate?.(updatedPlantings);
+    analyzeCompanionsWithPlantings(updatedPlantings);
+    
+    if (newPlantings.length > 0) {
+      toast.success(`Planted ${newPlantings.length} plants!`);
+    } else {
+      toast.info('No empty spaces found');
+    }
+  };
+
+  // ===========================================================
+  // FILL ROW / COLUMN / ALL helpers
+  // ===========================================================
+  const handleFillRow = (rowIdx) => {
+    if (!selectedPlant) { toast.error('Select a plant first'); return; }
+    const spanCols = selectedPlant.spacing_cols || 1;
+    const spanRows = selectedPlant.spacing_rows || 1;
+    
+    if (rowIdx + spanRows > gridRows) { toast.error('Plant too tall for this row'); return; }
+    
+    const positions = [];
+    for (let col = 0; col <= gridCols - spanCols; col += spanCols) {
+      if (!checkCollisionWithList(col, rowIdx, spanCols, spanRows, plantings)) {
+        positions.push({ col, row: rowIdx });
+      }
+    }
+    
+    if (positions.length === 0) { toast.info('Row is full'); return; }
+    handleBulkPlant(positions);
+  };
+
+  const handleFillColumn = (colIdx) => {
+    if (!selectedPlant) { toast.error('Select a plant first'); return; }
+    const spanCols = selectedPlant.spacing_cols || 1;
+    const spanRows = selectedPlant.spacing_rows || 1;
+    
+    if (colIdx + spanCols > gridCols) { toast.error('Plant too wide for this column'); return; }
+    
+    const positions = [];
+    for (let row = 0; row <= gridRows - spanRows; row += spanRows) {
+      if (!checkCollisionWithList(colIdx, row, spanCols, spanRows, plantings)) {
+        positions.push({ col: colIdx, row });
+      }
+    }
+    
+    if (positions.length === 0) { toast.info('Column is full'); return; }
+    handleBulkPlant(positions);
+  };
+
+  const handleFillAll = () => {
+    if (!selectedPlant) { toast.error('Select a plant first'); return; }
+    const spanCols = selectedPlant.spacing_cols || 1;
+    const spanRows = selectedPlant.spacing_rows || 1;
+    
+    const positions = [];
+    for (let row = 0; row <= gridRows - spanRows; row += spanRows) {
+      for (let col = 0; col <= gridCols - spanCols; col += spanCols) {
+        if (!checkCollisionWithList(col, row, spanCols, spanRows, plantings)) {
+          positions.push({ col, row });
+        }
+      }
+    }
+    
+    if (positions.length === 0) { toast.info('Bed is full!'); return; }
+    handleBulkPlant(positions);
+  };
+
+  // ===========================================================
+  // Existing single-cell handlers (unchanged logic)
+  // ===========================================================
   const handleSlotClick = async (slotIdx) => {
     if (!selectedPlant) return;
-    
-    // Check if slot is occupied
     const existingPlanting = plantings.find(p => p.cell_col === slotIdx);
-    if (existingPlanting) {
-      toast.error('This slot is already occupied');
-      return;
-    }
+    if (existingPlanting) { toast.error('This slot is already occupied'); return; }
     
     try {
       const displayName = selectedPlant.variety_name !== selectedPlant.plant_type_name 
         ? `${selectedPlant.plant_type_name} - ${selectedPlant.variety_name}`
         : selectedPlant.variety_name;
-
       const plantType = plantTypes.find(t => t.id === selectedPlant.plant_type_id || t.common_name === selectedPlant.plant_type_name);
       const icon = plantType?.icon || '🌱';
       const plantFamily = plantType?.plant_family_id || selectedPlant.plant_family;
 
-      console.log('[PlantingModal] Creating PlantInstance in slot', slotIdx, 'for bed', item.id);
-
-      // Build seedling metadata if from seedling
       const seedlingData = selectedPlant.seedling_source_id ? {
         growing_method: 'SEEDLING_TRANSPLANT',
         seedling_source_id: selectedPlant.seedling_source_id,
@@ -316,11 +462,8 @@ export default function PlantingModal({
         season_year: activeSeason || `${new Date().getFullYear()}-Spring`,
         status: 'planned',
         ...seedlingData
-        });
+      });
 
-      console.log('[PlantingModal] Created PlantInstance:', planting.id);
-
-      // Mark seedling as transplanted
       if (selectedPlant.seedling_source_id) {
         try {
           const entityName = selectedPlant.seedling_source_type === 'tray_cell' ? 'TrayCell' : 
@@ -334,7 +477,6 @@ export default function PlantingModal({
         }
       }
       
-      // If from crop plan, update quantities - count actual plants, not grid slots
       if (selectedPlant.crop_plan_id) {
         try {
           const plantsAdded = selectedPlant.plantsPerSlot || 1;
@@ -342,12 +484,10 @@ export default function PlantingModal({
             crop_plan_id: selectedPlant.crop_plan_id,
             quantity_to_add: plantsAdded
           });
-          // Reload crop plans if not using sharedData, or update sharedData if it's mutable
           if (!sharedData && seasonId) {
             const updatedPlans = await base44.entities.CropPlan.filter({ garden_season_id: seasonId });
             setCropPlans(updatedPlans.filter(p => (p.quantity_planted || 0) < (p.quantity_planned || 0)));
           } else if (sharedData && onPlantingUpdate) {
-            // Signal parent to update shared data or crop plan if it manages that state
             onPlantingUpdate();
           }
         } catch (error) {
@@ -355,15 +495,10 @@ export default function PlantingModal({
         }
       }
       
-      // Optimistic UI update
       const updatedPlantings = [...plantings, planting];
       setPlantings(updatedPlantings);
-      toast.success('Plant added - click more cells to keep planting');
-
-      // Trigger parent update immediately for UI responsiveness
+      toast.success('Plant added');
       onPlantingUpdate?.(updatedPlantings);
-
-      // Re-run companion analysis with new plantings state
       analyzeCompanionsWithPlantings(updatedPlantings);
     } catch (error) {
       console.error('[PlantingModal] Error adding plant:', error);
@@ -373,32 +508,12 @@ export default function PlantingModal({
 
   const handleCellClick = async (col, row) => {
     if (isMoving && selectedPlanting) {
-      // Moving existing plant
-      const hasCollision = checkCollision(
-        col, 
-        row, 
-        selectedPlanting.cell_span_cols || 1,
-        selectedPlanting.cell_span_rows || 1,
-        selectedPlanting.id
-      );
-      
-      if (hasCollision) {
-        toast.error('Cannot place here - space occupied or out of bounds');
-        return;
-      }
+      const hasCollision = checkCollision(col, row, selectedPlanting.cell_span_cols || 1, selectedPlanting.cell_span_rows || 1, selectedPlanting.id);
+      if (hasCollision) { toast.error('Cannot place here - space occupied or out of bounds'); return; }
       
       try {
-        await base44.entities.PlantInstance.update(selectedPlanting.id, {
-          cell_col: col,
-          cell_row: row
-        });
-        
-        setPlantings(plantings.map(p => 
-          p.id === selectedPlanting.id 
-            ? { ...p, cell_col: col, cell_row: row }
-            : p
-        ));
-        
+        await base44.entities.PlantInstance.update(selectedPlanting.id, { cell_col: col, cell_row: row });
+        setPlantings(plantings.map(p => p.id === selectedPlanting.id ? { ...p, cell_col: col, cell_row: row } : p));
         setIsMoving(false);
         setSelectedPlanting(null);
         toast.success('Plant moved');
@@ -407,64 +522,37 @@ export default function PlantingModal({
         toast.error('Failed to move plant');
       }
     } else if (selectedPlant) {
-      // Placing new plant
-      // CONTAINERS: Allow any size plant (single occupancy only)
-      const ITEM_TYPES = [
-        { value: 'GROW_BAG', usesGallons: true },
-        { value: 'CONTAINER', usesGallons: true }
-      ];
-      const itemType = ITEM_TYPES.find(t => t.value === item.item_type);
-      const isContainer = itemType?.usesGallons;
+      const ITEM_TYPES_CONTAINERS = [{ value: 'GROW_BAG', usesGallons: true }, { value: 'CONTAINER', usesGallons: true }];
+      const containerType = ITEM_TYPES_CONTAINERS.find(t => t.value === item.item_type);
+      const isContainer = containerType?.usesGallons;
       
       let hasCollision = false;
       if (isContainer) {
-        // Containers: Only check if already occupied (ignore grid bounds)
         hasCollision = plantings.length > 0;
-        if (hasCollision) {
-          toast.error('Container already occupied');
-          return;
-        }
+        if (hasCollision) { toast.error('Container already occupied'); return; }
       } else {
-        // Regular beds: Check grid collision
         for (let r = row; r < row + selectedPlant.spacing_rows; r++) {
           for (let c = col; c < col + selectedPlant.spacing_cols; c++) {
-            if (c >= gridCols || r >= gridRows) {
-              hasCollision = true;
-              break;
-            }
+            if (c >= gridCols || r >= gridRows) { hasCollision = true; break; }
             const existing = plantings.find(p => 
-              c >= p.cell_col && 
-              c < p.cell_col + (p.cell_span_cols || 1) &&
-              r >= (p.cell_row || 0) && 
-              r < (p.cell_row || 0) + (p.cell_span_rows || 1)
+              c >= p.cell_col && c < p.cell_col + (p.cell_span_cols || 1) &&
+              r >= (p.cell_row || 0) && r < (p.cell_row || 0) + (p.cell_span_rows || 1)
             );
-            if (existing) {
-              hasCollision = true;
-              break;
-            }
+            if (existing) { hasCollision = true; break; }
           }
           if (hasCollision) break;
         }
-        
-        if (hasCollision) {
-          toast.error('Cannot place here - space occupied or out of bounds');
-          return;
-        }
+        if (hasCollision) { toast.error('Cannot place here - space occupied or out of bounds'); return; }
       }
       
       try {
         const displayName = selectedPlant.variety_name !== selectedPlant.plant_type_name 
           ? `${selectedPlant.plant_type_name} - ${selectedPlant.variety_name}`
           : selectedPlant.variety_name;
-
-        // Get icon from PlantType
         const plantType = plantTypes.find(t => t.id === selectedPlant.plant_type_id || t.common_name === selectedPlant.plant_type_name);
         const icon = plantType?.icon || '🌱';
         const plantFamily = plantType?.plant_family_id || selectedPlant.plant_family;
 
-        console.log('[PlantingModal] Creating PlantInstance at', col, row, 'for bed', item.id);
-
-        // Build seedling metadata if from seedling
         const seedlingData = selectedPlant.seedling_source_id ? {
           growing_method: 'SEEDLING_TRANSPLANT',
           seedling_source_id: selectedPlant.seedling_source_id,
@@ -495,9 +583,6 @@ export default function PlantingModal({
           ...seedlingData
         });
 
-        console.log('[PlantingModal] Created PlantInstance:', planting.id);
-
-        // Mark seedling as transplanted
         if (selectedPlant.seedling_source_id) {
           try {
             const entityName = selectedPlant.seedling_source_type === 'tray_cell' ? 'TrayCell' : 
@@ -511,7 +596,6 @@ export default function PlantingModal({
           }
         }
 
-        // If from crop plan, update quantities - count actual plants, not grid slots
         if (selectedPlant.crop_plan_id) {
           try {
             const plantsAdded = selectedPlant.plantsPerSlot || 1;
@@ -519,7 +603,6 @@ export default function PlantingModal({
               crop_plan_id: selectedPlant.crop_plan_id,
               quantity_to_add: plantsAdded
             });
-            // Reload crop plans to show updated counts
             if (!sharedData && seasonId) {
               const updatedPlans = await base44.entities.CropPlan.filter({ garden_season_id: seasonId });
               setCropPlans(updatedPlans.filter(p => (p.quantity_planted || 0) < (p.quantity_planned || 0)));
@@ -531,12 +614,9 @@ export default function PlantingModal({
           }
         }
 
-        // Optimistic UI update
         const updatedPlantings = [...plantings, planting];
         setPlantings(updatedPlantings);
         toast.success('Plant added - click more cells to keep planting');
-        
-        // Trigger parent update immediately for UI responsiveness
         onPlantingUpdate?.(updatedPlantings);
       } catch (error) {
         console.error('[PlantingModal] Error adding plant:', error);
@@ -555,18 +635,13 @@ export default function PlantingModal({
       setSelectedPlanting(null);
       toast.success('Plant removed');
       onPlantingUpdate?.(updatedPlantings);
-      
-      // Re-run companion analysis with updated plantings
       analyzeCompanionsWithPlantings(updatedPlantings);
       
-      // Update crop plan quantities
-      // Note: selectedPlant might not be the deleted one if multiple plants were placed.
-      // This logic should probably be based on the deleted `planting`'s crop_plan_id.
       if (planting.crop_plan_id) {
         try {
           await base44.functions.invoke('updateCropPlantedQuantity', { 
             crop_plan_id: planting.crop_plan_id,
-            quantity_to_add: -1 // Decrement by one
+            quantity_to_add: -1
           });
           if (!sharedData && seasonId) {
             const updatedPlans = await base44.entities.CropPlan.filter({ garden_season_id: seasonId });
@@ -586,28 +661,18 @@ export default function PlantingModal({
 
   const getDefaultSpacing = (plantTypeName) => {
     const name = plantTypeName?.toLowerCase() || '';
-    // Common spacing defaults in 12" cells
     if (name.includes('lettuce') || name.includes('radish') || name.includes('carrot')) return { cols: 1, rows: 1 };
     if (name.includes('tomato') || name.includes('pepper') || name.includes('cucumber')) return { cols: 2, rows: 2 };
     if (name.includes('squash') || name.includes('melon') || name.includes('pumpkin')) return { cols: 3, rows: 3 };
     if (name.includes('bean') || name.includes('pea')) return { cols: 1, rows: 1 };
-    return { cols: 2, rows: 2 }; // Default
+    return { cols: 2, rows: 2 };
   };
 
   const handleSelectStashPlant = (stashItem) => {
     const profile = profiles[stashItem.plant_profile_id];
+    if (!profile) { toast.error('This seed has no profile data'); return; }
     
-    if (!profile) {
-      toast.error('This seed has no profile data');
-      return;
-    }
-    
-    // Try to find variety from catalog for spacing info
-    const variety = varieties.find(v => 
-      v.variety_name === profile.variety_name && 
-      v.plant_type_id === profile.plant_type_id
-    );
-    
+    const variety = varieties.find(v => v.variety_name === profile.variety_name && v.plant_type_id === profile.plant_type_id);
     const spacing = variety 
       ? getSpacingForPlant(profile.plant_type_id, variety.spacing_recommended) 
       : getDefaultSpacing(profile.common_name);
@@ -626,6 +691,8 @@ export default function PlantingModal({
     setSelectedPlant(plantData);
     checkCompanionAndRotation(plantData);
     setShowCompanionSuggestions(true);
+    // Auto-collapse picker on mobile after selection
+    if (isMobile) setPickerCollapsed(true);
   };
 
   const checkCompanionAndRotation = async (plantData) => {
@@ -636,23 +703,14 @@ export default function PlantingModal({
     }
     
     try {
-      // Use shared data if available to prevent rate limits
       const companionRules = sharedData?.companionRules || 
-        await base44.entities.CompanionRule.filter({
-          plant_type_id: plantData.plant_type_id
-        });
+        await base44.entities.CompanionRule.filter({ plant_type_id: plantData.plant_type_id });
       
-      // Check companions - look for existing plantings in this bed
       const bedPlantings = plantings.filter(p => p.bed_id === item.id && p.id !== selectedPlanting?.id);
       
       let hasCompanionIssue = false;
       for (const existing of bedPlantings) {
-        // Check if there's a BAD companion rule
-        const badRule = companionRules.find(r => 
-          r.companion_type === 'BAD' && 
-          r.companion_plant_type_id === existing.plant_type_id
-        );
-        
+        const badRule = companionRules.find(r => r.companion_type === 'BAD' && r.companion_plant_type_id === existing.plant_type_id);
         if (badRule) {
           hasCompanionIssue = true;
           setCompanionWarning(`⚠️ ${plantData.plant_type_name} should not be planted near ${existing.display_name}`);
@@ -660,19 +718,14 @@ export default function PlantingModal({
         }
       }
       
-      if (!hasCompanionIssue) {
-        setCompanionWarning(null);
-      }
+      if (!hasCompanionIssue) setCompanionWarning(null);
       
-      // Check rotation - look for same family in this bed from previous year
       const currentYear = new Date().getFullYear();
       const lastYearPlantings = plantings.filter(p => 
         p.bed_id === item.id && 
-        p.plant_family && 
-        plantData.plant_family &&
+        p.plant_family && plantData.plant_family &&
         p.plant_family === plantData.plant_family &&
-        p.season_year && 
-        !p.season_year.startsWith(currentYear.toString())
+        p.season_year && !p.season_year.startsWith(currentYear.toString())
       );
       
       if (lastYearPlantings.length > 0) {
@@ -686,27 +739,18 @@ export default function PlantingModal({
   };
 
   const analyzeCompanionsWithPlantings = async (currentPlantings) => {
-    if (currentPlantings.length === 0 || !item?.id) {
-      setCompanionResults([]);
-      return;
-    }
+    if (currentPlantings.length === 0 || !item?.id) { setCompanionResults([]); return; }
 
     try {
-      // Use shared data if available to prevent rate limits
-      const companionRules = sharedData?.companionRules || 
-        await base44.entities.CompanionRule.list();
+      const companionRules = sharedData?.companionRules || await base44.entities.CompanionRule.list();
       const results = [];
 
-      // Check ALL pairs of plantings for companion relationships
       for (let i = 0; i < currentPlantings.length; i++) {
         for (let j = i + 1; j < currentPlantings.length; j++) {
           const plantA = currentPlantings[i];
           const plantB = currentPlantings[j];
-
           if (!plantA.plant_type_id || !plantB.plant_type_id) continue;
 
-          // FIXED: Check adjacency more reliably
-          // For multi-cell plants, check if ANY cells are adjacent
           const aCols = Array.from({ length: plantA.cell_span_cols || 1 }, (_, i) => plantA.cell_col + i);
           const aRows = Array.from({ length: plantA.cell_span_rows || 1 }, (_, i) => (plantA.cell_row || 0) + i);
           const bCols = Array.from({ length: plantB.cell_span_cols || 1 }, (_, i) => plantB.cell_col + i);
@@ -715,21 +759,16 @@ export default function PlantingModal({
           let isAdjacent = false;
           
           if (isSlotBased) {
-            // For slots, always adjacent
             isAdjacent = true;
           } else {
-            // For grid: check if any cell of A is within 1 cell of any cell of B
             for (const aCol of aCols) {
               for (const aRow of aRows) {
                 for (const bCol of bCols) {
                   for (const bRow of bRows) {
                     const colDist = Math.abs(aCol - bCol);
                     const rowDist = Math.abs(aRow - bRow);
-                    
-                    // Adjacent if within 1 cell (including diagonals), but not same cell
                     if ((colDist <= 1 && rowDist <= 1) && !(colDist === 0 && rowDist === 0)) {
-                      isAdjacent = true;
-                      break;
+                      isAdjacent = true; break;
                     }
                   }
                   if (isAdjacent) break;
@@ -740,7 +779,6 @@ export default function PlantingModal({
             }
           }
 
-          // Look for companion rule (bidirectional)
           const rule = companionRules.find(r =>
             (r.plant_type_id === plantA.plant_type_id && r.companion_plant_type_id === plantB.plant_type_id) ||
             (r.plant_type_id === plantB.plant_type_id && r.companion_plant_type_id === plantA.plant_type_id)
@@ -748,18 +786,14 @@ export default function PlantingModal({
 
           if (rule && isAdjacent) {
             results.push({
-              plantA: plantA.display_name,
-              plantB: plantB.display_name,
-              type: rule.companion_type,
-              notes: rule.notes,
+              plantA: plantA.display_name, plantB: plantB.display_name,
+              type: rule.companion_type, notes: rule.notes,
               cellA: { col: plantA.cell_col, row: plantA.cell_row || 0 },
               cellB: { col: plantB.cell_col, row: plantB.cell_row || 0 }
             });
           }
         }
       }
-
-      console.log('[PlantingModal] Companion analysis found', results.length, 'relationships from', currentPlantings.length, 'plants');
       setCompanionResults(results);
     } catch (error) {
       console.error('Error analyzing companions:', error);
@@ -767,32 +801,14 @@ export default function PlantingModal({
   };
 
   const analyzeCompanions = () => analyzeCompanionsWithPlantings(plantings);
-  
-  const handleCreateNewPlant = async () => {
-    // This function is not used but kept for compatibility.
-    // The "Add New" tab now uses CatalogTypeSelector which handles selection and potential creation
-    // of seed lots/profiles implicitly through its onSelect callback.
-    // If future UI elements need to directly trigger new plant creation,
-    // this logic can be re-enabled or modified.
-    console.warn("handleCreateNewPlant was called but is currently a no-op as its functionality is handled elsewhere.");
-    toast.info("Functionality to directly create new plants is handled by the Catalog Selector.");
-    return;
-  };
 
   const getCellContent = (col, row) => {
     const planting = plantings.find(p => 
-      col >= p.cell_col && 
-      col < p.cell_col + (p.cell_span_cols || 1) &&
-      row >= p.cell_row && 
-      row < p.cell_row + (p.cell_span_rows || 1)
+      col >= p.cell_col && col < p.cell_col + (p.cell_span_cols || 1) &&
+      row >= p.cell_row && row < p.cell_row + (p.cell_span_rows || 1)
     );
-    
-    if (planting && col === planting.cell_col && row === planting.cell_row) {
-      return { planting, isOrigin: true };
-    } else if (planting) {
-      return { planting, isOrigin: false };
-    }
-    
+    if (planting && col === planting.cell_col && row === planting.cell_row) return { planting, isOrigin: true };
+    if (planting) return { planting, isOrigin: false };
     return null;
   };
 
@@ -815,84 +831,143 @@ export default function PlantingModal({
     setCompanionWarning(null);
     setRotationWarning(null);
     onOpenChange(false);
-    if (onPlantingUpdate) {
-      onPlantingUpdate();
+    if (onPlantingUpdate) onPlantingUpdate();
+  };
+
+  // Count empty cells for the "Fill All" button label
+  const countEmptyCells = () => {
+    if (!selectedPlant) return 0;
+    const spanCols = selectedPlant.spacing_cols || 1;
+    const spanRows = selectedPlant.spacing_rows || 1;
+    let count = 0;
+    for (let row = 0; row <= gridRows - spanRows; row += spanRows) {
+      for (let col = 0; col <= gridCols - spanCols; col += spanCols) {
+        if (!checkCollisionWithList(col, row, spanCols, spanRows, plantings)) count++;
+      }
     }
+    return count;
   };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-6xl max-h-[90vh] lg:max-h-[90vh] max-h-screen p-0 overflow-hidden flex flex-col">
-        <DialogHeader className="p-4 lg:p-6 pb-3 lg:pb-4 border-b flex flex-row items-center justify-between flex-shrink-0">
-          <div className="flex-1">
-            <DialogTitle className="text-base lg:text-lg">Plant in {item.label}</DialogTitle>
-            <p className="text-xs lg:text-sm text-gray-600 mt-1">
-              {gridCols} × {gridRows} grid • {garden.planting_method === 'SQUARE_FOOT' ? 'Square Foot' : 'Standard'}
+      <DialogContent className={cn(
+        "max-w-6xl p-0 overflow-hidden flex flex-col",
+        isMobile 
+          ? "max-h-[100dvh] h-[100dvh] rounded-none m-0 w-full" 
+          : "max-h-[90vh]"
+      )}>
+        {/* Header */}
+        <DialogHeader className="p-3 lg:p-6 pb-2 lg:pb-4 border-b flex flex-row items-center justify-between flex-shrink-0">
+          <div className="flex-1 min-w-0">
+            <DialogTitle className="text-base lg:text-lg truncate">Plant in {item.label}</DialogTitle>
+            <p className="text-xs lg:text-sm text-gray-600 mt-0.5">
+              {gridCols}×{gridRows} grid • {plantings.length} planted
               {plantingPattern === 'diagonal' && ' • Diagonal'}
             </p>
           </div>
-          {!isMobile && (
-            <Button 
-              onClick={handleDone}
-              className="bg-emerald-600 hover:bg-emerald-700 text-white h-9 lg:h-11 px-4 lg:px-8 text-sm lg:text-base font-semibold ml-2 lg:ml-4 flex-shrink-0"
-            >
-              ✓ Done
-            </Button>
-          )}
+          <div className="flex items-center gap-2 flex-shrink-0 ml-2">
+            {!isMobile && (
+              <Button 
+                onClick={handleDone}
+                className="bg-emerald-600 hover:bg-emerald-700 text-white h-9 lg:h-11 px-4 lg:px-8 text-sm lg:text-base font-semibold"
+              >
+                ✓ Done
+              </Button>
+            )}
+          </div>
         </DialogHeader>
 
+        {/* Bulk Progress Overlay */}
+        {bulkPlanting && (
+          <div className="absolute inset-0 bg-black/50 z-[100] flex items-center justify-center">
+            <div className="bg-white rounded-xl p-6 shadow-2xl text-center max-w-xs">
+              <Loader2 className="w-8 h-8 animate-spin text-emerald-600 mx-auto mb-3" />
+              <p className="font-semibold text-gray-900">Planting...</p>
+              <p className="text-sm text-gray-600 mt-1">
+                {bulkProgress.current} of {bulkProgress.total}
+              </p>
+              <div className="w-full bg-gray-200 rounded-full h-2 mt-3">
+                <div 
+                  className="bg-emerald-500 h-2 rounded-full transition-all"
+                  style={{ width: `${(bulkProgress.current / bulkProgress.total) * 100}%` }}
+                />
+              </div>
+            </div>
+          </div>
+        )}
+
         <div className={cn(
-          "flex flex-col lg:flex-row gap-3 lg:gap-6 p-3 lg:p-6 overflow-hidden flex-1 min-h-0",
+          "flex flex-col lg:flex-row gap-2 lg:gap-6 p-3 lg:p-6 overflow-hidden flex-1 min-h-0",
           isMobile && "pb-20"
         )}>
-          {/* Left Panel - Plant Picker - Compact on mobile */}
-          <div className={cn("w-full lg:w-80 flex-shrink-0 flex flex-col min-h-0 relative", isMobile ? "max-h-[30vh]" : "max-h-none")}
-            style={{ zIndex: 60 }}
-          >
-            {showCompanionSuggestions && selectedPlant?.plant_type_id && (
+          {/* Left Panel - Plant Picker */}
+          <div className={cn(
+            "w-full lg:w-80 flex-shrink-0 flex flex-col min-h-0 relative",
+            isMobile && pickerCollapsed ? "max-h-[56px]" : isMobile ? "max-h-[35vh]" : "max-h-none"
+          )} style={{ zIndex: 60 }}>
+            
+            {/* Mobile: Collapsible header for plant picker */}
+            {isMobile && (
+              <button
+                onClick={() => setPickerCollapsed(!pickerCollapsed)}
+                className="flex items-center justify-between w-full px-3 py-2 bg-gray-50 rounded-t-lg border border-gray-200 flex-shrink-0"
+              >
+                <span className="text-sm font-semibold text-gray-700">
+                  {selectedPlant 
+                    ? `🌱 ${selectedPlant.variety_name} (${selectedPlant.spacing_cols}×${selectedPlant.spacing_rows})`
+                    : '🌱 Select a plant to place'
+                  }
+                </span>
+                <ChevronDown className={cn("w-4 h-4 text-gray-500 transition-transform", pickerCollapsed && "-rotate-90")} />
+              </button>
+            )}
+
+            {showCompanionSuggestions && selectedPlant?.plant_type_id && !pickerCollapsed && (
               <CompanionSuggestions 
                 plantTypeId={selectedPlant.plant_type_id}
                 onClose={() => setShowCompanionSuggestions(false)}
               />
             )}
-            <Tabs defaultValue="stash" className="flex-1 flex flex-col min-h-0 bg-white rounded-lg shadow-md border-2 border-gray-200 lg:shadow-none lg:border-0">
-              <TabsList className="w-full flex-shrink-0 grid grid-cols-4 h-10 lg:h-auto">
-                <TabsTrigger value="stash" className="text-xs lg:text-sm py-1.5 lg:py-2">From Stash</TabsTrigger>
-                <TabsTrigger value="plan" className="text-xs lg:text-sm py-1.5 lg:py-2">From Plan</TabsTrigger>
-                <TabsTrigger value="seedlings" className="text-xs lg:text-sm py-1.5 lg:py-2">Seedlings</TabsTrigger>
-                <TabsTrigger value="new" className="text-xs lg:text-sm py-1.5 lg:py-2">Add New</TabsTrigger>
-              </TabsList>
-              
-              <TabsContent value="stash" className="mt-2 lg:mt-4 flex-1 min-h-0 overflow-auto p-2 lg:p-0">
-                <StashTypeSelector
-                  onSelect={(plantData) => {
-                    setSelectedPlant(plantData);
-                    checkCompanionAndRotation(plantData);
-                  }}
-                  selectedPlant={selectedPlant}
-                  getSpacingForPlant={getSpacingForPlant}
-                  getDefaultSpacing={getDefaultSpacing}
-                  stashPlants={stashPlants}
-                  profiles={profiles}
-                  varieties={varieties}
-                  plantTypes={plantTypes}
-                />
-              </TabsContent>
-              
-              <TabsContent value="plan" className="mt-2 lg:mt-4 flex-1 min-h-0 overflow-auto p-2 lg:p-0">
-                {seasonId && cropPlans.length > 0 ? (
-                  <div className="space-y-2 h-full overflow-auto">
+
+            {/* Plant picker tabs - hidden when collapsed on mobile */}
+            <div className={cn(
+              "flex-1 flex flex-col min-h-0 bg-white rounded-lg shadow-md border-2 border-gray-200 lg:shadow-none lg:border-0 overflow-hidden",
+              isMobile && pickerCollapsed && "hidden"
+            )}>
+              <Tabs defaultValue="stash" className="flex-1 flex flex-col min-h-0">
+                <TabsList className="w-full flex-shrink-0 grid grid-cols-4 h-10 lg:h-auto">
+                  <TabsTrigger value="stash" className="text-xs lg:text-sm py-1.5">Stash</TabsTrigger>
+                  <TabsTrigger value="plan" className="text-xs lg:text-sm py-1.5">Plan</TabsTrigger>
+                  <TabsTrigger value="seedlings" className="text-xs lg:text-sm py-1.5">Seedlings</TabsTrigger>
+                  <TabsTrigger value="new" className="text-xs lg:text-sm py-1.5">Catalog</TabsTrigger>
+                </TabsList>
+                
+                <TabsContent value="stash" className="mt-2 flex-1 min-h-0 overflow-auto p-2 lg:p-0">
+                  <StashTypeSelector
+                    onSelect={(plantData) => {
+                      setSelectedPlant(plantData);
+                      checkCompanionAndRotation(plantData);
+                      if (isMobile) setPickerCollapsed(true);
+                    }}
+                    selectedPlant={selectedPlant}
+                    getSpacingForPlant={getSpacingForPlant}
+                    getDefaultSpacing={getDefaultSpacing}
+                    stashPlants={stashPlants}
+                    profiles={profiles}
+                    varieties={varieties}
+                    plantTypes={plantTypes}
+                  />
+                </TabsContent>
+                
+                <TabsContent value="plan" className="mt-2 flex-1 min-h-0 overflow-auto p-2 lg:p-0">
+                  {seasonId && cropPlans.length > 0 ? (
+                    <div className="space-y-2 h-full overflow-auto">
                       {cropPlans.map(plan => {
                         const remaining = (plan.quantity_planned || 0) - (plan.quantity_planted || 0);
-
-                        // Get variety details for proper display
                         const variety = varieties.find(v => v.id === plan.variety_id);
                         const plantType = plantTypes.find(pt => pt.id === plan.plant_type_id);
-
-                        // Format: "Variety - PlantType" or just label if no variety
                         const displayName = variety && plantType 
-                          ? `${variety.variety_name} - ${plantType.common_name}`
-                          : plan.label;
+                          ? `${variety.variety_name} - ${plantType.common_name}` : plan.label;
 
                         return (
                           <button
@@ -911,6 +986,7 @@ export default function PlantingModal({
                               setSelectedPlanItem(plan);
                               setSelectedPlant(plantData);
                               checkCompanionAndRotation(plantData);
+                              if (isMobile) setPickerCollapsed(true);
                             }}
                             className={cn(
                               "w-full p-3 rounded-lg border-2 text-left transition-colors",
@@ -920,101 +996,72 @@ export default function PlantingModal({
                             )}
                           >
                             <p className="font-medium text-sm">{displayName}</p>
-                            <p className="text-xs text-gray-500 mt-0.5">
-                              {remaining} of {plan.quantity_planned} remaining
-                            </p>
+                            <p className="text-xs text-gray-500 mt-0.5">{remaining} of {plan.quantity_planned} remaining</p>
                           </button>
                         );
                       })}
                     </div>
-                ) : (
-                  <div className="text-center py-8 text-gray-500 text-sm">
-                    No calendar crops available to plant
-                  </div>
-                )}
-              </TabsContent>
+                  ) : (
+                    <div className="text-center py-8 text-gray-500 text-sm">No calendar crops available</div>
+                  )}
+                </TabsContent>
 
-              <TabsContent value="seedlings" className="mt-2 lg:mt-4 flex-1 min-h-0 overflow-auto p-2 lg:p-0">
-                <Button
-                  onClick={() => setShowSeedlingSelector(true)}
-                  className="w-full bg-emerald-600 hover:bg-emerald-700 mb-3"
-                >
-                  <Plus className="w-4 h-4 mr-2" />
-                  Select Seedling
-                </Button>
-                {selectedPlant?.seedling_source_id && (
-                  <div className="p-3 bg-emerald-50 rounded-lg border border-emerald-200">
-                    <p className="text-xs text-emerald-600 mb-1">Selected Seedling:</p>
-                    <p className="font-medium text-sm text-emerald-900">{selectedPlant.display_name}</p>
-                    <p className="text-xs text-emerald-700 mt-1">📍 {selectedPlant.seedling_location}</p>
-                    <p className="text-xs text-emerald-700">📅 Age: {selectedPlant.seedling_age_days}d</p>
-                    {selectedPlant.max_quantity > 1 && (
-                      <div className="mt-2">
-                        <Label className="text-xs">Quantity to plant (max {selectedPlant.max_quantity})</Label>
-                        <Input
-                          type="number"
-                          min="1"
-                          max={selectedPlant.max_quantity}
-                          value={selectedPlant.quantity_to_plant || 1}
-                          onChange={(e) => {
-                            const val = Math.min(parseInt(e.target.value) || 1, selectedPlant.max_quantity);
-                            setSelectedPlant({...selectedPlant, quantity_to_plant: val});
-                          }}
-                          className="mt-1"
-                        />
-                      </div>
-                    )}
-                  </div>
-                )}
-              </TabsContent>
+                <TabsContent value="seedlings" className="mt-2 flex-1 min-h-0 overflow-auto p-2 lg:p-0">
+                  <Button onClick={() => setShowSeedlingSelector(true)} className="w-full bg-emerald-600 hover:bg-emerald-700 mb-3">
+                    <Plus className="w-4 h-4 mr-2" />Select Seedling
+                  </Button>
+                  {selectedPlant?.seedling_source_id && (
+                    <div className="p-3 bg-emerald-50 rounded-lg border border-emerald-200">
+                      <p className="text-xs text-emerald-600 mb-1">Selected:</p>
+                      <p className="font-medium text-sm text-emerald-900">{selectedPlant.display_name}</p>
+                      <p className="text-xs text-emerald-700 mt-1">📍 {selectedPlant.seedling_location}</p>
+                      <p className="text-xs text-emerald-700">📅 Age: {selectedPlant.seedling_age_days}d</p>
+                    </div>
+                  )}
+                </TabsContent>
 
-              <TabsContent value="new" className="mt-2 lg:mt-4 flex-1 overflow-auto p-2 lg:p-0">
-                <CatalogTypeSelector
-                  onSelect={(plantData) => {
-                    setSelectedPlant(plantData);
-                    checkCompanionAndRotation(plantData);
-                  }}
-                  selectedPlant={selectedPlant}
-                  getSpacingForPlant={getSpacingForPlant}
-                  plantTypes={plantTypes}
-                  varieties={varieties}
-                  profiles={profiles}
-                />
-              </TabsContent>
-            </Tabs>
+                <TabsContent value="new" className="mt-2 flex-1 overflow-auto p-2 lg:p-0">
+                  <CatalogTypeSelector
+                    onSelect={(plantData) => {
+                      setSelectedPlant(plantData);
+                      checkCompanionAndRotation(plantData);
+                      if (isMobile) setPickerCollapsed(true);
+                    }}
+                    selectedPlant={selectedPlant}
+                    getSpacingForPlant={getSpacingForPlant}
+                    plantTypes={plantTypes}
+                    varieties={varieties}
+                    profiles={profiles}
+                  />
+                </TabsContent>
+              </Tabs>
+            </div>
             
-            {/* Desktop: Selected plant card in left panel */}
+            {/* Desktop: Selected plant info */}
             {!isMobile && selectedPlant && (
-              <div className="mt-2 lg:mt-4 space-y-2 flex-shrink-0">
-                <div className="p-2 lg:p-3 bg-emerald-50 rounded-lg border border-emerald-200">
-                  <p className="text-xs lg:text-sm font-medium text-emerald-900">Selected:</p>
-                  <p className="text-xs lg:text-sm text-emerald-700 truncate">{selectedPlant.variety_name}</p>
+              <div className="mt-4 space-y-2 flex-shrink-0">
+                <div className="p-3 bg-emerald-50 rounded-lg border border-emerald-200">
+                  <p className="text-sm font-medium text-emerald-900">Selected:</p>
+                  <p className="text-sm text-emerald-700 truncate">{selectedPlant.variety_name}</p>
                   <p className="text-xs text-emerald-600 mt-1">
                     Takes {selectedPlant.spacing_cols}×{selectedPlant.spacing_rows} cells
                     {selectedPlant.plantsPerSlot > 1 && ` (${selectedPlant.plantsPerSlot} plants)`}
                   </p>
                   <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => {
-                      setSelectedPlant(null);
-                      setCompanionWarning(null);
-                      setRotationWarning(null);
-                    }}
-                    className="w-full mt-2 text-xs lg:text-sm"
+                    size="sm" variant="outline"
+                    onClick={() => { setSelectedPlant(null); setCompanionWarning(null); setRotationWarning(null); }}
+                    className="w-full mt-2 text-sm"
                   >
                     Cancel
                   </Button>
                 </div>
-
                 {companionWarning && (
-                  <div className="p-2 lg:p-3 bg-amber-50 rounded-lg border border-amber-300">
+                  <div className="p-3 bg-amber-50 rounded-lg border border-amber-300">
                     <p className="text-xs text-amber-800">{companionWarning}</p>
                   </div>
                 )}
-
                 {rotationWarning && (
-                  <div className="p-2 lg:p-3 bg-orange-50 rounded-lg border border-orange-300">
+                  <div className="p-3 bg-orange-50 rounded-lg border border-orange-300">
                     <p className="text-xs text-orange-800">{rotationWarning}</p>
                   </div>
                 )}
@@ -1022,19 +1069,40 @@ export default function PlantingModal({
             )}
           </div>
 
-          {/* Right Panel - Grid or Slots */}
+          {/* ============================================================
+              RIGHT PANEL - GRID with BULK FILL ARROWS
+              ============================================================ */}
           <div 
-           className="flex-1 overflow-auto"
-           onClick={(e) => {
-             // Dismiss overlay when clicking grid background
-             if (e.target === e.currentTarget || e.target.closest('.grid-container')) {
-               setSelectedPlanting(null);
-               setIsMoving(false);
-             }
-           }}
+            className="flex-1 overflow-auto"
+            onClick={(e) => {
+              if (e.target === e.currentTarget || e.target.closest('.grid-container')) {
+                setSelectedPlanting(null);
+                setIsMoving(false);
+              }
+            }}
           >
-           {isSlotBased ? (
-              // Slot-based layout for greenhouses/containers
+            {/* BULK FILL TOOLBAR — shows when a plant is selected */}
+            {selectedPlant && !isSlotBased && plantingPattern !== 'diagonal' && (
+              <div className="flex flex-wrap items-center gap-2 mb-3 p-2 bg-emerald-50 border border-emerald-200 rounded-lg">
+                <span className="text-xs font-semibold text-emerald-800">Quick Fill:</span>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={handleFillAll}
+                  disabled={bulkPlanting}
+                  className="gap-1.5 bg-white hover:bg-emerald-100 border-emerald-300 text-emerald-700 font-semibold"
+                >
+                  <Grid2X2 className="w-3.5 h-3.5" />
+                  Fill All ({countEmptyCells()})
+                </Button>
+                <p className="text-[10px] text-emerald-600 w-full">
+                  Or click ↓ arrows above columns / → arrows left of rows to fill one at a time
+                </p>
+              </div>
+            )}
+
+            {isSlotBased ? (
+              /* Slot-based layout for greenhouses/containers */
               <div className="grid gap-2 p-4 bg-amber-50 border-2 border-amber-200 rounded-lg grid-container" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(48px, 1fr))', maxWidth: '600px' }}>
                 {Array.from({ length: totalSlots }).map((_, slotIdx) => {
                   const planting = plantings.find(p => p.cell_col === slotIdx);
@@ -1043,12 +1111,8 @@ export default function PlantingModal({
                       key={slotIdx}
                       onClick={() => {
                         if (planting) {
-                          if (selectedPlanting?.id === planting.id) {
-                            setSelectedPlanting(null);
-                          } else {
-                            setSelectedPlanting(planting);
-                            setSelectedPlant(null);
-                          }
+                          if (selectedPlanting?.id === planting.id) setSelectedPlanting(null);
+                          else { setSelectedPlanting(planting); setSelectedPlant(null); }
                         } else if (selectedPlant) {
                           handleSlotClick(slotIdx);
                         }
@@ -1066,15 +1130,7 @@ export default function PlantingModal({
                       {planting && <span>{planting.plant_type_icon || '🌱'}</span>}
                       {selectedPlanting?.id === planting?.id && planting && (
                         <div className="absolute -bottom-16 left-1/2 -translate-x-1/2 flex gap-1 z-10 bg-white rounded-lg shadow-lg p-1">
-                          <Button
-                            size="sm"
-                            variant="destructive"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleDeletePlanting(planting);
-                              setSelectedPlanting(null);
-                            }}
-                          >
+                          <Button size="sm" variant="destructive" onClick={(e) => { e.stopPropagation(); handleDeletePlanting(planting); setSelectedPlanting(null); }}>
                             <Trash2 className="w-3 h-3" />
                           </Button>
                         </div>
@@ -1084,162 +1140,165 @@ export default function PlantingModal({
                 })}
               </div>
             ) : (
-              // Grid-based layout for raised beds
+              /* Grid-based layout for raised beds */
               <div className="space-y-2">
-              {plantingPattern === 'diagonal' ? (
-                <DiagonalPlantingPattern
-                  rows={gridRows}
-                  columns={gridCols}
-                  plantings={plantings}
-                  onCellClick={handleCellClick}
-                  readOnly={!(selectedPlant || isMoving)}
-                  selectedPlanting={selectedPlanting}
-                  onSelectPlanting={(p) => {
-                    if (selectedPlanting?.id === p.id) {
-                      setSelectedPlanting(null);
-                    } else {
-                      setSelectedPlanting(p);
-                      setSelectedPlant(null);
-                    }
-                  }}
-                  onMove={(p) => {
-                    setSelectedPlanting(p);
-                    setIsMoving(true);
-                  }}
-                  onDelete={handleDeletePlanting}
-                  companionResults={companionResults}
-                />
-              ) : (
-                <div 
-                  className="grid gap-1 p-4 bg-amber-50 border-2 border-amber-200 rounded-lg inline-block grid-container"
-                  style={{
-                    gridTemplateColumns: `repeat(${gridCols}, 40px)`,
-                    gridTemplateRows: `repeat(${gridRows}, 40px)`
-                  }}
-                >
-                  {Array.from({ length: gridRows }).map((_, rowIdx) =>
-                    Array.from({ length: gridCols }).map((_, colIdx) => {
-                    const cellContent = getCellContent(colIdx, rowIdx);
-                    
-                    if (cellContent?.isOrigin) {
-                      const p = cellContent.planting;
-
-                      // Check if this plant has companion relationships
-                      const companionBorders = companionResults
-                        .filter(cr => 
-                          (cr.cellA.col === p.cell_col && cr.cellA.row === p.cell_row) ||
-                          (cr.cellB.col === p.cell_col && cr.cellB.row === p.cell_row)
-                        )
-                        .map(cr => cr.type);
-
-                      const hasBad = companionBorders.includes('BAD');
-                      const hasGood = companionBorders.includes('GOOD');
-                      const hasConditional = companionBorders.includes('GOOD_CONDITIONAL');
-
-                      const borderColor = hasBad ? 'border-red-500' : 
-                                         hasGood ? 'border-green-500' : 
-                                         hasConditional ? 'border-amber-500' : 'border-emerald-600';
-
-                      return (
-                        <div
-                          key={`${colIdx}-${rowIdx}`}
-                          className={`relative bg-emerald-500 border-4 rounded flex items-center justify-center text-white font-medium cursor-pointer hover:bg-emerald-600 transition-colors group ${borderColor}`}
-                          style={{
-                            gridColumn: `span ${p.cell_span_cols || 1}`,
-                            gridRow: `span ${p.cell_span_rows || 1}`
-                          }}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            // Toggle selection
-                            if (selectedPlanting?.id === p.id) {
-                              setSelectedPlanting(null);
-                            } else {
-                              setSelectedPlanting(p);
-                              setSelectedPlant(null);
-                            }
-                          }}
-                        >
-                          <span className="text-2xl">{p.plant_type_icon || '🌱'}</span>
-                          {selectedPlanting?.id === p.id && (
-                            <div className="absolute -bottom-12 left-0 right-0 flex gap-1 z-10">
-                              <Button
-                                size="sm"
-                                variant="secondary"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setIsMoving(true);
-                                }}
-                                className="flex-1"
-                              >
-                                <Move className="w-3 h-3" />
-                              </Button>
-                              <Button
-                                size="sm"
-                                variant="destructive"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleDeletePlanting(p);
-                                }}
-                                className="flex-1"
-                              >
-                                <Trash2 className="w-3 h-3" />
-                              </Button>
-                            </div>
-                          )}
-                        </div>
-                      );
-                    } else if (cellContent?.planting) {
-                      // Part of multi-cell plant, skip rendering
-                      return null;
-                    } else {
-                      return (
+                {plantingPattern === 'diagonal' ? (
+                  <DiagonalPlantingPattern
+                    rows={gridRows} columns={gridCols} plantings={plantings}
+                    onCellClick={handleCellClick}
+                    readOnly={!(selectedPlant || isMoving)}
+                    selectedPlanting={selectedPlanting}
+                    onSelectPlanting={(p) => {
+                      if (selectedPlanting?.id === p.id) setSelectedPlanting(null);
+                      else { setSelectedPlanting(p); setSelectedPlant(null); }
+                    }}
+                    onMove={(p) => { setSelectedPlanting(p); setIsMoving(true); }}
+                    onDelete={handleDeletePlanting}
+                    companionResults={companionResults}
+                  />
+                ) : (
+                  /* ====================================================
+                     GRID WITH BULK FILL ARROWS
+                     Column arrows on top (↓), Row arrows on left (→)
+                     ==================================================== */
+                  <div className="inline-flex grid-container">
+                    {/* Row arrows column (left side) */}
+                    <div className="flex flex-col gap-1 mr-1" style={{ paddingTop: selectedPlant ? `${ARROW_SIZE + 4}px` : '0px' }}>
+                      {Array.from({ length: gridRows }).map((_, rowIdx) => (
                         <button
-                          key={`${colIdx}-${rowIdx}`}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleCellClick(colIdx, rowIdx);
-                          }}
+                          key={`row-${rowIdx}`}
+                          onClick={() => handleFillRow(rowIdx)}
+                          disabled={!selectedPlant || bulkPlanting}
+                          title={selectedPlant ? `Fill row ${rowIdx + 1}` : 'Select a plant first'}
                           className={cn(
-                            "w-10 h-10 border-2 rounded transition-colors",
-                            (selectedPlant || isMoving)
-                              ? "bg-white border-amber-300 hover:bg-emerald-100 hover:border-emerald-400 cursor-pointer"
-                              : "bg-white border-gray-300 cursor-default"
+                            "flex items-center justify-center rounded transition-all",
+                            selectedPlant 
+                              ? "bg-emerald-100 hover:bg-emerald-500 hover:text-white text-emerald-600 border border-emerald-300 cursor-pointer"
+                              : "bg-gray-50 text-gray-300 border border-gray-200 cursor-default"
+                          )}
+                          style={{ width: `${ARROW_SIZE}px`, height: `${CELL_SIZE}px` }}
+                        >
+                          <ChevronRight className="w-3 h-3" />
+                        </button>
+                      ))}
+                    </div>
+                    
+                    <div>
+                      {/* Column arrows row (top) */}
+                      {selectedPlant && (
+                        <div className="flex gap-1 mb-1">
+                          {Array.from({ length: gridCols }).map((_, colIdx) => (
+                            <button
+                              key={`col-${colIdx}`}
+                              onClick={() => handleFillColumn(colIdx)}
+                              disabled={bulkPlanting}
+                              title={`Fill column ${colIdx + 1}`}
+                              className="flex items-center justify-center rounded bg-emerald-100 hover:bg-emerald-500 hover:text-white text-emerald-600 border border-emerald-300 cursor-pointer transition-all"
+                              style={{ width: `${CELL_SIZE}px`, height: `${ARROW_SIZE}px` }}
+                            >
+                              <ChevronDown className="w-3 h-3" />
+                            </button>
+                          ))}
+                        </div>
+                      )}
+
+                      {/* The actual planting grid */}
+                      <div 
+                        className="grid gap-1 p-4 bg-amber-50 border-2 border-amber-200 rounded-lg"
+                        style={{
+                          gridTemplateColumns: `repeat(${gridCols}, ${CELL_SIZE}px)`,
+                          gridTemplateRows: `repeat(${gridRows}, ${CELL_SIZE}px)`
+                        }}
+                      >
+                        {Array.from({ length: gridRows }).map((_, rowIdx) =>
+                          Array.from({ length: gridCols }).map((_, colIdx) => {
+                            const cellContent = getCellContent(colIdx, rowIdx);
+                            
+                            if (cellContent?.isOrigin) {
+                              const p = cellContent.planting;
+                              const companionBorders = companionResults
+                                .filter(cr => 
+                                  (cr.cellA.col === p.cell_col && cr.cellA.row === p.cell_row) ||
+                                  (cr.cellB.col === p.cell_col && cr.cellB.row === p.cell_row)
+                                )
+                                .map(cr => cr.type);
+
+                              const hasBad = companionBorders.includes('BAD');
+                              const hasGood = companionBorders.includes('GOOD');
+                              const hasConditional = companionBorders.includes('GOOD_CONDITIONAL');
+
+                              const borderColor = hasBad ? 'border-red-500' : 
+                                                 hasGood ? 'border-green-500' : 
+                                                 hasConditional ? 'border-amber-500' : 'border-emerald-600';
+
+                              return (
+                                <div
+                                  key={`${colIdx}-${rowIdx}`}
+                                  className={`relative bg-emerald-500 border-4 rounded flex items-center justify-center text-white font-medium cursor-pointer hover:bg-emerald-600 transition-colors group ${borderColor}`}
+                                  style={{
+                                    gridColumn: `span ${p.cell_span_cols || 1}`,
+                                    gridRow: `span ${p.cell_span_rows || 1}`
+                                  }}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    if (selectedPlanting?.id === p.id) setSelectedPlanting(null);
+                                    else { setSelectedPlanting(p); setSelectedPlant(null); }
+                                  }}
+                                >
+                                  <span className="text-xl lg:text-2xl">{p.plant_type_icon || '🌱'}</span>
+                                  {selectedPlanting?.id === p.id && (
+                                    <div className="absolute -bottom-12 left-0 right-0 flex gap-1 z-10">
+                                      <Button size="sm" variant="secondary" onClick={(e) => { e.stopPropagation(); setIsMoving(true); }} className="flex-1">
+                                        <Move className="w-3 h-3" />
+                                      </Button>
+                                      <Button size="sm" variant="destructive" onClick={(e) => { e.stopPropagation(); handleDeletePlanting(p); }} className="flex-1">
+                                        <Trash2 className="w-3 h-3" />
+                                      </Button>
+                                    </div>
+                                  )}
+                                </div>
+                              );
+                            } else if (cellContent?.planting) {
+                              return null; // Part of multi-cell plant
+                            } else {
+                              return (
+                                <button
+                                  key={`${colIdx}-${rowIdx}`}
+                                  onClick={(e) => { e.stopPropagation(); handleCellClick(colIdx, rowIdx); }}
+                                  className={cn(
+                                    "border-2 rounded transition-colors",
+                                    (selectedPlant || isMoving)
+                                      ? "bg-white border-amber-300 hover:bg-emerald-100 hover:border-emerald-400 cursor-pointer"
+                                      : "bg-white border-gray-300 cursor-default"
+                                  )}
+                                  style={{ width: `${CELL_SIZE}px`, height: `${CELL_SIZE}px` }}
+                                  title={`Cell ${colIdx}, ${rowIdx}`}
+                                />
+                              );
+                            }
+                          })
                         )}
-                        title={`Cell ${colIdx}, ${rowIdx}`}
-                      />
-                    );
-                  }
-                  })
-                  )}
+                      </div>
+                    </div>
                   </div>
-                  )}
-                  </div>
-                  )}
+                )}
+              </div>
+            )}
 
             {isMoving && (
               <div className="mt-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
-                <p className="text-sm font-medium text-blue-900">
-                  Moving {selectedPlanting?.display_name}
-                </p>
+                <p className="text-sm font-medium text-blue-900">Moving {selectedPlanting?.display_name}</p>
                 <p className="text-xs text-blue-700 mt-1">Click a cell to place it</p>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => {
-                    setIsMoving(false);
-                    setSelectedPlanting(null);
-                  }}
-                  className="w-full mt-2"
-                >
+                <Button size="sm" variant="outline" onClick={() => { setIsMoving(false); setSelectedPlanting(null); }} className="w-full mt-2">
                   Cancel Move
                 </Button>
               </div>
             )}
 
-            {/* Companion Analysis - Below Grid */}
+            {/* Companion Analysis */}
             {companionResults.length > 0 && (
               <div className="mt-4 p-4 bg-gray-50 rounded-lg border">
-                <h4 className="font-semibold text-sm mb-2">🌱 Companion Planting in This Bed</h4>
+                <h4 className="font-semibold text-sm mb-2">🌱 Companion Planting</h4>
                 <div className="space-y-2">
                   {companionResults.map((result, idx) => (
                     <div 
@@ -1251,19 +1310,13 @@ export default function PlantingModal({
                       }`}
                     >
                       <p className={`font-semibold ${
-                        result.type === 'GOOD' ? 'text-green-800' :
-                        result.type === 'BAD' ? 'text-red-800' :
-                        'text-amber-800'
+                        result.type === 'GOOD' ? 'text-green-800' : result.type === 'BAD' ? 'text-red-800' : 'text-amber-800'
                       }`}>
                         {result.plantA} + {result.plantB}: {
-                          result.type === 'GOOD' ? '✓ Good Companions' :
-                          result.type === 'BAD' ? '✗ Bad Companions' :
-                          '⚠ Conditional'
+                          result.type === 'GOOD' ? '✓ Good' : result.type === 'BAD' ? '✗ Bad' : '⚠ Conditional'
                         }
                       </p>
-                      {result.notes && (
-                        <p className="text-gray-600 mt-1">{result.notes}</p>
-                      )}
+                      {result.notes && <p className="text-gray-600 mt-1">{result.notes}</p>}
                     </div>
                   ))}
                 </div>
@@ -1272,31 +1325,29 @@ export default function PlantingModal({
           </div>
         </div>
 
-        {/* Mobile: Selected plant card - compact, fixed bottom right */}
+        {/* Mobile: Selected plant card + cancel */}
         {isMobile && selectedPlant && (
-          <div className="fixed bottom-20 right-4 z-[70] max-w-[200px] p-2 bg-emerald-50 rounded-lg border-2 border-emerald-300 shadow-xl">
+          <div className="fixed bottom-20 right-3 z-[70] max-w-[200px] p-2 bg-emerald-50 rounded-lg border-2 border-emerald-300 shadow-xl">
             <div className="flex items-center justify-between gap-2">
               <div className="flex-1 min-w-0">
                 <p className="text-xs font-medium text-emerald-900 truncate">{selectedPlant.variety_name}</p>
                 <p className="text-[10px] text-emerald-600">{selectedPlant.spacing_cols}×{selectedPlant.spacing_rows}</p>
               </div>
               <Button
-                size="icon"
-                variant="ghost"
-                onClick={() => {
-                  setSelectedPlant(null);
-                  setCompanionWarning(null);
-                  setRotationWarning(null);
-                }}
+                size="icon" variant="ghost"
+                onClick={() => { setSelectedPlant(null); setCompanionWarning(null); setRotationWarning(null); setPickerCollapsed(false); }}
                 className="h-6 w-6 text-emerald-700 hover:bg-emerald-100 flex-shrink-0"
               >
                 <X className="w-3 h-3" />
               </Button>
             </div>
+            {companionWarning && (
+              <p className="text-[10px] text-amber-700 mt-1 leading-tight">{companionWarning}</p>
+            )}
           </div>
         )}
 
-        {/* Mobile: Done button - fixed bottom bar */}
+        {/* Mobile: Done button */}
         {isMobile && (
           <DialogFooter className="fixed bottom-0 left-0 right-0 p-3 bg-white border-t z-[65] shadow-[0_-4px_6px_-1px_rgb(0_0_0_/_0.1)]">
             <Button 
@@ -1309,7 +1360,6 @@ export default function PlantingModal({
         )}
       </DialogContent>
 
-      {/* Seedling Selector Modal */}
       <SeedlingSelector 
         isOpen={showSeedlingSelector}
         onClose={() => setShowSeedlingSelector(false)}
@@ -1335,6 +1385,7 @@ export default function PlantingModal({
             plant_type_id: seedlingData.plant_type_id,
             plant_type_name: seedlingData.display_name?.split(' - ')[1] || 'Seedling'
           });
+          if (isMobile) setPickerCollapsed(true);
         }}
       />
     </Dialog>
