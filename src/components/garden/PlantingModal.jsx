@@ -1162,8 +1162,8 @@ export default function PlantingModal({
                      Column arrows on top (↓), Row arrows on left (→)
                      ==================================================== */
                   <div className="inline-flex grid-container">
-                    {/* Row arrows column (left side) */}
-                    <div className="flex flex-col gap-1 mr-1" style={{ paddingTop: selectedPlant ? `${ARROW_SIZE + 4}px` : '0px' }}>
+                    {/* Row arrows column (left side) — offset for grid padding (p-4=16px) + border (2px) */}
+                    <div className="flex flex-col gap-1 mr-1" style={{ paddingTop: selectedPlant ? `${ARROW_SIZE + 4 + 16 + 2}px` : `${16 + 2}px` }}>
                       {Array.from({ length: gridRows }).map((_, rowIdx) => (
                         <button
                           key={`row-${rowIdx}`}
@@ -1184,9 +1184,9 @@ export default function PlantingModal({
                     </div>
                     
                     <div>
-                      {/* Column arrows row (top) */}
+                      {/* Column arrows row (top) — offset for grid padding (p-4=16px) + border (2px) */}
                       {selectedPlant && (
-                        <div className="flex gap-1 mb-1">
+                        <div className="flex gap-1 mb-1" style={{ paddingLeft: '18px' }}>
                           {Array.from({ length: gridCols }).map((_, colIdx) => (
                             <button
                               key={`col-${colIdx}`}
