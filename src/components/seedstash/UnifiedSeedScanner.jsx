@@ -9,6 +9,70 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 
+// ============================================================
+// RATE LIMIT PROTECTION
+// ============================================================
+const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+
+function isRateLimitError(error) {
+  if (!error) return false;
+  const msg = (error?.message || error?.toString() || '').toLowerCase();
+  return (
+    msg.includes('rate limit') || msg.includes('rate_limit') ||
+    msg.includes('too many requests') || msg.includes('429') ||
+    msg.includes('quota') || msg.includes('throttl')
+  );
+}
+
+async function safeApiCall(fn, label = '', maxRetries = 2) {
+  let backoffMs = 2500;
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      return await fn();
+    } catch (error) {
+      if (isRateLimitError(error) && attempt < maxRetries) {
+        console.warn(`[Scanner] ${label} rate limited, attempt ${attempt + 1}. Waiting ${backoffMs}ms...`);
+        await sleep(backoffMs);
+        backoffMs = Math.min(backoffMs * 2, 15000);
+        continue;
+      }
+      throw error;
+    }
+  }
+}
+
+// Cached user — avoid calling auth.me() on every scan
+let _cachedScannerUser = null;
+let _cachedScannerUserTime = 0;
+const SCANNER_USER_CACHE_TTL = 5 * 60 * 1000;
+
+async function getCachedUser() {
+  const now = Date.now();
+  if (_cachedScannerUser && (now - _cachedScannerUserTime) < SCANNER_USER_CACHE_TTL) {
+    return _cachedScannerUser;
+  }
+  _cachedScannerUser = await base44.auth.me();
+  _cachedScannerUserTime = now;
+  return _cachedScannerUser;
+}
+
+/**
+ * Run an async function with a timeout.
+ * If the function doesn't resolve in `ms`, rejects with a timeout error.
+ */
+function withTimeout(promise, ms, label = 'Operation') {
+  return Promise.race([
+    promise,
+    new Promise((_, reject) =>
+      setTimeout(() => reject(new Error(`${label} timed out after ${ms / 1000}s`)), ms)
+    )
+  ]);
+}
+
+// ============================================================
+// COMPONENT
+// ============================================================
+
 export default function UnifiedSeedScanner({ onScanComplete, onClose }) {
   const [step, setStep] = useState('choice');
   const [scannedBarcode, setScannedBarcode] = useState(null);
@@ -30,9 +94,12 @@ export default function UnifiedSeedScanner({ onScanComplete, onClose }) {
   const canvasRef = useRef(null);
   const streamRef = useRef(null);
   const fileInputRef = useRef(null);
+  const mountedRef = useRef(true);
 
   useEffect(() => {
+    mountedRef.current = true;
     return () => {
+      mountedRef.current = false;
       stopBarcodeScanner();
       stopCamera();
     };
@@ -41,7 +108,7 @@ export default function UnifiedSeedScanner({ onScanComplete, onClose }) {
   useEffect(() => {
     if (step === 'not_found_transition') {
       const timer = setTimeout(() => {
-        setStep('packet_capture');
+        if (mountedRef.current) setStep('packet_capture');
       }, 2500);
       return () => clearTimeout(timer);
     }
@@ -60,6 +127,10 @@ export default function UnifiedSeedScanner({ onScanComplete, onClose }) {
     };
   }, [step]);
 
+  // ==========================================================
+  // BARCODE SCANNER
+  // ==========================================================
+
   const startBarcodeScanner = async () => {
     try {
       setError(null);
@@ -67,6 +138,12 @@ export default function UnifiedSeedScanner({ onScanComplete, onClose }) {
       if (!container) {
         setError('Scanner container not found');
         return;
+      }
+
+      // FIX: Make sure old scanner is fully stopped before starting new one
+      if (scannerRef.current) {
+        try { await scannerRef.current.stop(); } catch (e) {}
+        scannerRef.current = null;
       }
 
       const scanner = new Html5Qrcode('barcode-scanner-container');
@@ -93,69 +170,118 @@ export default function UnifiedSeedScanner({ onScanComplete, onClose }) {
     }
   };
 
+  // ==========================================================
+  // FIX: handleBarcode — cached user, rate limit protection,
+  // non-critical calls wrapped in try/catch so they don't block
+  // ==========================================================
   const handleBarcode = async (barcode) => {
     setScannedBarcode(barcode);
     setProcessing(true);
 
     try {
-      const results = await base44.entities.SeedVendorBarcode.filter({ barcode });
+      const results = await safeApiCall(
+        () => base44.entities.SeedVendorBarcode.filter({ barcode }),
+        'Barcode lookup'
+      );
 
       if (results.length > 0) {
         setMatchedProduct(results[0]);
         setStep('found');
         
-        await base44.entities.SeedVendorBarcode.update(results[0].id, {
-          scan_count: (results[0].scan_count || 0) + 1,
-          last_scanned_date: new Date().toISOString()
-        });
+        // Non-critical: update scan count (fire-and-forget, don't block)
+        safeApiCall(
+          () => base44.entities.SeedVendorBarcode.update(results[0].id, {
+            scan_count: (results[0].scan_count || 0) + 1,
+            last_scanned_date: new Date().toISOString()
+          }),
+          'Update scan count'
+        ).catch(err => console.warn('[Scanner] Non-critical: scan count update failed', err.message));
 
-        const user = await base44.auth.me();
-        await base44.entities.ScanHistory.create({
-          user_id: user.id,
-          barcode: barcode,
-          scan_date: new Date().toISOString(),
-          product_found: true,
-          product_id: results[0].id,
-          added_to_stash: false
+        // Non-critical: log scan history (fire-and-forget)
+        getCachedUser().then(user => {
+          safeApiCall(
+            () => base44.entities.ScanHistory.create({
+              user_id: user.id,
+              barcode: barcode,
+              scan_date: new Date().toISOString(),
+              product_found: true,
+              product_id: results[0].id,
+              added_to_stash: false
+            }),
+            'Log scan history'
+          ).catch(err => console.warn('[Scanner] Non-critical: scan history failed', err.message));
         });
       } else {
-        const user = await base44.auth.me();
-        await base44.entities.ScanHistory.create({
-          user_id: user.id,
-          barcode: barcode,
-          scan_date: new Date().toISOString(),
-          product_found: false,
-          added_to_stash: false
+        // Not found — log and transition to packet scan
+        // Non-critical: log scan history (fire-and-forget)
+        getCachedUser().then(user => {
+          safeApiCall(
+            () => base44.entities.ScanHistory.create({
+              user_id: user.id,
+              barcode: barcode,
+              scan_date: new Date().toISOString(),
+              product_found: false,
+              added_to_stash: false
+            }),
+            'Log scan history (not found)'
+          ).catch(err => console.warn('[Scanner] Non-critical: scan history failed', err.message));
         });
         
         setStep('not_found_transition');
       }
     } catch (error) {
       console.error('Barcode lookup error:', error);
-      toast.error('Error looking up barcode');
+      if (isRateLimitError(error)) {
+        toast.error('Rate limited — please wait a moment and try again');
+        await sleep(3000);
+      } else {
+        toast.error('Error looking up barcode');
+      }
     } finally {
       setProcessing(false);
     }
   };
 
-  const rescanBarcode = () => {
+  // ==========================================================
+  // FIX: Full reset between scans — clears ALL state
+  // ==========================================================
+  const resetForNewScan = () => {
     stopBarcodeScanner();
+    stopCamera();
     setScannedBarcode(null);
     setMatchedProduct(null);
     setExtractedData(null);
     setPacketImage(null);
     setError(null);
+    setProcessing(false);
+    setProgress(0);
+    setProgressMessage('');
+    setStashData({
+      quantity: '',
+      year_acquired: new Date().getFullYear(),
+      storage_location: ''
+    });
     setStep('choice');
   };
 
+  // ==========================================================
+  // CAMERA
+  // ==========================================================
+
   const startCamera = async () => {
     try {
+      // FIX: Stop any existing stream before starting new one
+      stopCamera();
+      
       const stream = await navigator.mediaDevices.getUserMedia({
         video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } }
       });
-      if (videoRef.current) {
+      if (videoRef.current && mountedRef.current) {
         videoRef.current.srcObject = stream;
         streamRef.current = stream;
+      } else {
+        // Component unmounted, clean up
+        stream.getTracks().forEach(track => track.stop());
       }
     } catch (error) {
       console.error('Camera error:', error);
@@ -167,6 +293,9 @@ export default function UnifiedSeedScanner({ onScanComplete, onClose }) {
     if (streamRef.current) {
       streamRef.current.getTracks().forEach(track => track.stop());
       streamRef.current = null;
+    }
+    if (videoRef.current) {
+      videoRef.current.srcObject = null;
     }
   };
 
@@ -205,6 +334,9 @@ export default function UnifiedSeedScanner({ onScanComplete, onClose }) {
     reader.readAsDataURL(file);
   };
 
+  // ==========================================================
+  // AI PACKET PROCESSING — with rate limit protection + timeout
+  // ==========================================================
   const processPacketImage = async (imageDataUrl) => {
     setStep('ai_processing');
     setProcessing(true);
@@ -215,15 +347,27 @@ export default function UnifiedSeedScanner({ onScanComplete, onClose }) {
       setProgress(10);
       const blob = await (await fetch(imageDataUrl)).blob();
       const file = new File([blob], 'packet.jpg', { type: 'image/jpeg' });
-      const { file_url } = await base44.integrations.Core.UploadFile({ file });
+      
+      const { file_url } = await safeApiCall(
+        () => base44.integrations.Core.UploadFile({ file }),
+        'Upload packet image'
+      );
       
       setProgress(30);
       setProgressMessage('Reading packet text...');
 
-      const enrichResult = await base44.functions.invoke('enrichSeedFromPacketScan', {
-        packet_image_base64: file_url,
-        barcode: scannedBarcode
-      });
+      // FIX: Add timeout — AI functions can hang indefinitely
+      const enrichResult = await withTimeout(
+        safeApiCall(
+          () => base44.functions.invoke('enrichSeedFromPacketScan', {
+            packet_image_base64: file_url,
+            barcode: scannedBarcode
+          }),
+          'AI enrich'
+        ),
+        45000, // 45 second timeout
+        'AI packet analysis'
+      );
       
       setProgress(60);
       setProgressMessage('Identifying variety & vendor...');
@@ -237,10 +381,20 @@ export default function UnifiedSeedScanner({ onScanComplete, onClose }) {
       setProgress(80);
       setProgressMessage('Checking Plant Catalog...');
 
-      const matchResult = await base44.functions.invoke('findExistingVariety', {
-        variety_name: extracted.variety_name,
-        plant_type_name: extracted.plant_type_name
-      });
+      await sleep(500); // Small delay before next API call
+
+      // FIX: Add timeout on catalog match too
+      const matchResult = await withTimeout(
+        safeApiCall(
+          () => base44.functions.invoke('findExistingVariety', {
+            variety_name: extracted.variety_name,
+            plant_type_name: extracted.plant_type_name
+          }),
+          'Catalog match'
+        ),
+        20000, // 20 second timeout
+        'Catalog matching'
+      );
       
       setProgress(95);
       setProgressMessage('Preparing results...');
@@ -259,39 +413,138 @@ export default function UnifiedSeedScanner({ onScanComplete, onClose }) {
       }
 
       setProgress(100);
-      setTimeout(() => setStep('review'), 300);
+      setTimeout(() => {
+        if (mountedRef.current) setStep('review');
+      }, 300);
 
     } catch (error) {
       console.error('Processing error:', error);
-      setError('Failed to process packet. Please try again.');
-      toast.error('Processing failed');
+      const msg = error?.message || 'Processing failed';
+      
+      if (isRateLimitError(error)) {
+        setError('Rate limited — please wait 10 seconds and try again.');
+        toast.error('Rate limited. Please wait and retry.');
+      } else if (msg.includes('timed out')) {
+        setError('Processing took too long. Please try again.');
+        toast.error('Processing timed out. Try again.');
+      } else {
+        setError('Failed to process packet. Please try again.');
+        toast.error('Processing failed');
+      }
       setStep('packet_capture');
     } finally {
       setProcessing(false);
     }
   };
 
+  // ==========================================================
+  // FIX: confirmAndSave — with timeout + retry + proper error handling
+  // Old code: no timeout, no retry — spinner spins forever on 429 or timeout
+  // ==========================================================
   const confirmAndSave = async () => {
     setProcessing(true);
     try {
-      const result = await base44.functions.invoke('saveScannedSeed', {
-        scannedBarcode,
-        extractedData,
-        matchResult: extractedData.matchResult,
-        packetImageUrl: extractedData.packetImageUrl,
-        addToStash: true
-      });
+      const result = await withTimeout(
+        safeApiCall(
+          () => base44.functions.invoke('saveScannedSeed', {
+            scannedBarcode,
+            extractedData,
+            matchResult: extractedData.matchResult,
+            packetImageUrl: extractedData.packetImageUrl,
+            addToStash: true
+          }),
+          'Save scanned seed',
+          3 // More retries for the critical save operation
+        ),
+        30000, // 30 second timeout
+        'Saving seed'
+      );
 
       if (result.data.success) {
-        setStep('success');
+        if (mountedRef.current) setStep('success');
       } else {
-        throw new Error(result.data.error);
+        throw new Error(result.data.error || 'Save returned unsuccessful');
       }
     } catch (error) {
       console.error('Save error:', error);
-      toast.error('Failed to save: ' + error.message);
+      const msg = error?.message || 'Failed to save';
+      
+      if (isRateLimitError(error)) {
+        toast.error('Rate limited — wait a moment and tap Confirm again');
+      } else if (msg.includes('timed out')) {
+        toast.error('Save timed out. Please try again.');
+      } else {
+        toast.error('Failed to save: ' + msg);
+      }
     } finally {
-      setProcessing(false);
+      if (mountedRef.current) setProcessing(false);
+    }
+  };
+
+  // ==========================================================
+  // FIX: addBarcodeMatchToStash — extracted from inline onClick,
+  // with rate limit protection + cached user
+  // ==========================================================
+  const addBarcodeMatchToStash = async () => {
+    setProcessing(true);
+    try {
+      if (!matchedProduct?.variety_id) {
+        toast.error('Missing variety data');
+        return;
+      }
+
+      const variety = await safeApiCall(
+        () => base44.entities.Variety.filter({ id: matchedProduct.variety_id }),
+        'Fetch variety'
+      );
+      if (variety.length === 0) {
+        toast.error('Variety not found in catalog');
+        return;
+      }
+
+      await sleep(300);
+
+      // Try to find existing profile
+      let profileId = null;
+      try {
+        const profiles = await safeApiCall(
+          () => base44.entities.PlantProfile.filter({ variety_name: variety[0].variety_name }),
+          'Find profile'
+        );
+        if (profiles.length > 0) {
+          profileId = profiles[0].id;
+        }
+      } catch (err) {
+        console.warn('[Scanner] Profile lookup failed (non-critical):', err.message);
+      }
+
+      await sleep(300);
+
+      await safeApiCall(
+        () => base44.entities.SeedLot.create({
+          plant_profile_id: profileId,
+          custom_label: variety[0].variety_name,
+          source_vendor_name: matchedProduct.vendor_name,
+          quantity: parseInt(stashData.quantity) || 1,
+          year_acquired: parseInt(stashData.year_acquired) || new Date().getFullYear(),
+          storage_location: stashData.storage_location || null,
+          lot_notes: `Added via barcode scan: ${matchedProduct.barcode}`,
+          from_catalog: true
+        }),
+        'Create seed lot'
+      );
+      
+      toast.success('Added to stash!');
+      if (mountedRef.current) setStep('success');
+    } catch (error) {
+      console.error('Error adding to stash:', error);
+      if (isRateLimitError(error)) {
+        toast.error('Rate limited — wait a moment and try again');
+      } else {
+        toast.error('Failed to add to stash');
+      }
+    } finally {
+      if (mountedRef.current) setProcessing(false);
     }
   };
 
@@ -310,6 +563,9 @@ export default function UnifiedSeedScanner({ onScanComplete, onClose }) {
         <X size={24} />
       </button>
 
+      {/* ============================================ */}
+      {/* STEP: CHOICE */}
+      {/* ============================================ */}
       {step === 'choice' && (
         <div className="bg-white rounded-2xl w-full max-w-lg p-6">
           <h2 className="text-2xl font-bold mb-2">Scan Seed Packet</h2>
@@ -341,6 +597,9 @@ export default function UnifiedSeedScanner({ onScanComplete, onClose }) {
         </div>
       )}
 
+      {/* ============================================ */}
+      {/* STEP: BARCODE SCAN */}
+      {/* ============================================ */}
       {step === 'barcode_scan' && (
         <div className="w-full max-w-lg">
           <div className="bg-white rounded-2xl overflow-hidden">
@@ -365,6 +624,9 @@ export default function UnifiedSeedScanner({ onScanComplete, onClose }) {
         </div>
       )}
 
+      {/* ============================================ */}
+      {/* STEP: BARCODE FOUND */}
+      {/* ============================================ */}
       {step === 'found' && matchedProduct && (
         <div className="bg-white rounded-2xl w-full max-w-lg">
           <div className="p-4 border-b bg-emerald-50">
@@ -423,49 +685,15 @@ export default function UnifiedSeedScanner({ onScanComplete, onClose }) {
           </div>
           
           <div className="p-4 border-t flex gap-3">
-            <Button variant="outline" onClick={rescanBarcode} className="flex-1">
+            <Button variant="outline" onClick={resetForNewScan} className="flex-1">
               📷 Scan Another
             </Button>
-            <Button onClick={async () => {
-              setProcessing(true);
-              try {
-                if (!matchedProduct?.variety_id) {
-                  toast.error('Missing variety data');
-                  return;
-                }
-                
-                const variety = await base44.entities.Variety.filter({ id: matchedProduct.variety_id });
-                if (variety.length === 0) {
-                  toast.error('Variety not found');
-                  return;
-                }
-                
-                const profiles = await base44.entities.PlantProfile.filter({ variety_name: variety[0].variety_name });
-                let profileId = null;
-                if (profiles.length > 0) {
-                  profileId = profiles[0].id;
-                }
-                
-                await base44.entities.SeedLot.create({
-                  plant_profile_id: profileId,
-                  custom_label: variety[0].variety_name,
-                  source_vendor_name: matchedProduct.vendor_name,
-                  quantity: parseInt(stashData.quantity) || 1,
-                  year_acquired: parseInt(stashData.year_acquired) || new Date().getFullYear(),
-                  storage_location: stashData.storage_location || null,
-                  lot_notes: `Added via barcode scan: ${matchedProduct.barcode}`,
-                  from_catalog: true
-                });
-                
-                toast.success('Added to stash!');
-                setStep('success');
-              } catch (error) {
-                console.error('Error adding to stash:', error);
-                toast.error('Failed to add to stash');
-              } finally {
-                setProcessing(false);
-              }
-            }} disabled={processing} className="flex-1 bg-emerald-600 hover:bg-emerald-700">
+            {/* FIX: Extracted inline handler to proper function with rate limit protection */}
+            <Button 
+              onClick={addBarcodeMatchToStash} 
+              disabled={processing} 
+              className="flex-1 bg-emerald-600 hover:bg-emerald-700"
+            >
               {processing && <Loader2 className="w-4 h-4 animate-spin mr-2" />}
               Add to Stash
             </Button>
@@ -473,6 +701,9 @@ export default function UnifiedSeedScanner({ onScanComplete, onClose }) {
         </div>
       )}
 
+      {/* ============================================ */}
+      {/* STEP: NOT FOUND TRANSITION */}
+      {/* ============================================ */}
       {step === 'not_found_transition' && (
         <div className="bg-white rounded-2xl w-full max-w-lg p-6">
           <div className="text-center">
@@ -499,6 +730,12 @@ export default function UnifiedSeedScanner({ onScanComplete, onClose }) {
         </div>
       )}
 
+      {/* ============================================ */}
+      {/* STEP: PACKET CAPTURE */}
+      {/* FIX: Removed DOUBLE dark overlay that made everything too dark */}
+      {/* Old code had bg-black/50 div AND boxShadow 9999px overlay = double darkness */}
+      {/* New code uses ONLY the boxShadow on the guide rectangle — one clean overlay */}
+      {/* ============================================ */}
       {step === 'packet_capture' && (
         <div className="w-full max-w-lg">
           <div className="bg-white rounded-2xl overflow-hidden">
@@ -524,17 +761,22 @@ export default function UnifiedSeedScanner({ onScanComplete, onClose }) {
                     className="w-full h-full object-cover"
                   />
                   
+                  {/* FIX: SINGLE overlay via boxShadow only — removed the bg-black/50 div
+                      Old code had TWO overlapping dark layers:
+                      1. <div className="absolute inset-0 bg-black/50" />
+                      2. boxShadow: '0 0 0 9999px rgba(0,0,0,0.5)' on guide rectangle
+                      Combined = 75% darkness, making buttons behind barely visible.
+                      Now: just the boxShadow at 40% opacity = clear, readable UI */}
                   <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                    <div className="absolute inset-0 bg-black/50" />
                     <div 
                       className="relative border-4 border-white rounded-lg" 
                       style={{ 
                         width: '75%', 
                         aspectRatio: '2/3',
-                        boxShadow: '0 0 0 9999px rgba(0,0,0,0.5)'
+                        boxShadow: '0 0 0 9999px rgba(0,0,0,0.4)'
                       }}
                     >
-                      <span className="absolute -top-10 left-1/2 -translate-x-1/2 text-white text-sm font-medium bg-black/50 px-3 py-1 rounded">
+                      <span className="absolute -top-10 left-1/2 -translate-x-1/2 text-white text-sm font-medium bg-black/60 px-3 py-1 rounded whitespace-nowrap">
                         Center packet here
                       </span>
                       <div className="absolute top-2 left-2 w-8 h-8 border-t-4 border-l-4 border-emerald-400"></div>
@@ -551,7 +793,7 @@ export default function UnifiedSeedScanner({ onScanComplete, onClose }) {
                   <div className="text-white text-center p-4">
                     <AlertCircle className="w-12 h-12 mx-auto mb-2" />
                     <p className="mb-4">{error}</p>
-                    <Button onClick={() => setError(null)} variant="outline" className="text-white border-white">
+                    <Button onClick={() => { setError(null); startCamera(); }} variant="outline" className="text-white border-white">
                       Try Again
                     </Button>
                   </div>
@@ -580,6 +822,9 @@ export default function UnifiedSeedScanner({ onScanComplete, onClose }) {
         </div>
       )}
 
+      {/* ============================================ */}
+      {/* STEP: AI PROCESSING */}
+      {/* ============================================ */}
       {step === 'ai_processing' && (
         <div className="bg-white rounded-2xl p-8 max-w-md w-full">
           <div className="text-center">
@@ -616,11 +861,14 @@ export default function UnifiedSeedScanner({ onScanComplete, onClose }) {
               <div className="bg-emerald-500 h-3 rounded-full transition-all duration-500" style={{ width: `${progress}%` }} />
             </div>
             <p className="text-sm text-gray-500">{progress}%</p>
-            <p className="text-xs text-gray-400 mt-2">This usually takes 5-10 seconds</p>
+            <p className="text-xs text-gray-400 mt-2">This usually takes 5-15 seconds</p>
           </div>
         </div>
       )}
 
+      {/* ============================================ */}
+      {/* STEP: REVIEW */}
+      {/* ============================================ */}
       {step === 'review' && extractedData && (
         <div className="bg-white rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto pb-24 md:pb-0">
           <div className="p-6 border-b sticky top-0 bg-white z-10">
@@ -718,30 +966,33 @@ export default function UnifiedSeedScanner({ onScanComplete, onClose }) {
         </div>
       )}
 
+      {/* ============================================ */}
+      {/* STEP: SUCCESS */}
+      {/* ============================================ */}
       {step === 'success' && (
         <div className="bg-white rounded-2xl w-full max-w-md p-8 text-center">
           <div className="w-20 h-20 rounded-full bg-emerald-100 flex items-center justify-center mx-auto mb-4">
             <CheckCircle className="w-12 h-12 text-emerald-600" />
           </div>
           <h2 className="text-2xl font-bold mb-2">Added to Stash!</h2>
-          <p className="text-gray-600 mb-4">{extractedData?.variety_name} added successfully</p>
+          <p className="text-gray-600 mb-4">
+            {extractedData?.variety_name || matchedProduct?.product_name || 'Seed'} added successfully
+          </p>
           
           <div className="bg-emerald-50 border-2 border-emerald-200 rounded-lg p-4 mb-6">
             <p className="text-sm text-emerald-800">
               <span className="text-xl mr-2">🌱</span>
-              This barcode is now in our database. Next time anyone scans it, they'll get an instant match. Thanks for contributing!
+              {scannedBarcode 
+                ? "This barcode is now in our database. Next time anyone scans it, they'll get an instant match. Thanks for contributing!"
+                : "Your seed has been added to your stash!"}
             </p>
           </div>
 
           <div className="flex gap-3">
+            {/* FIX: Uses resetForNewScan which properly clears ALL state */}
             <Button 
               variant="outline" 
-              onClick={() => { 
-                setStep('choice'); 
-                setScannedBarcode(null); 
-                setExtractedData(null);
-                setPacketImage(null);
-              }} 
+              onClick={resetForNewScan}
               className="flex-1"
             >
               📷 Scan Another
