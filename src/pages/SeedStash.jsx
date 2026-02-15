@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
 import { base44 } from '@/api/base44Client';
@@ -78,6 +78,92 @@ import SeedPacketScanner from '@/components/seedstash/SeedPacketScanner';
 import BarcodeScanner from '@/components/seedstash/BarcodeScanner';
 import UnifiedSeedScanner from '@/components/seedstash/UnifiedSeedScanner';
 
+// ============================================================
+// RATE LIMIT PROTECTION UTILITIES
+// ============================================================
+const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+
+/**
+ * Detect if an error is a rate limit (429) error.
+ * Base44 can surface these in many different formats.
+ */
+function isRateLimitError(error) {
+  if (!error) return false;
+  if (error.code === 'RATE_LIMIT') return true;
+  if (error.status === 429) return true;
+  const msg = (error?.message || error?.toString() || '').toLowerCase();
+  return (
+    msg.includes('rate limit') ||
+    msg.includes('rate_limit') ||
+    msg.includes('too many requests') ||
+    msg.includes('429') ||
+    msg.includes('quota') ||
+    msg.includes('throttl')
+  );
+}
+
+/**
+ * Execute an API call with automatic retry on rate limit errors.
+ * Retries up to maxRetries times with exponential backoff.
+ */
+async function safeApiCall(fn, label = 'API call', maxRetries = 2) {
+  let lastError;
+  let backoffMs = 2000;
+
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      return await fn();
+    } catch (error) {
+      lastError = error;
+      if (isRateLimitError(error) && attempt < maxRetries) {
+        console.warn(`[SeedStash] ${label} rate limited (attempt ${attempt + 1}/${maxRetries + 1}). Waiting ${backoffMs}ms...`);
+        await sleep(backoffMs);
+        backoffMs = Math.min(backoffMs * 2, 15000);
+        continue;
+      }
+      throw error;
+    }
+  }
+  throw lastError;
+}
+
+// In-memory cache for user object to avoid repeated auth.me() calls
+let _cachedUser = null;
+let _cachedUserTime = 0;
+const USER_CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+
+async function getCachedUser() {
+  const now = Date.now();
+  if (_cachedUser && (now - _cachedUserTime) < USER_CACHE_TTL) {
+    return _cachedUser;
+  }
+  _cachedUser = await base44.auth.me();
+  _cachedUserTime = now;
+  return _cachedUser;
+}
+
+// In-memory cache for varieties by plant_type_id
+const _varietyCache = new Map();
+const VARIETY_CACHE_TTL = 10 * 60 * 1000; // 10 minutes
+
+async function getCachedVarieties(plantTypeId) {
+  const cacheKey = `var_${plantTypeId}`;
+  const cached = _varietyCache.get(cacheKey);
+  if (cached && (Date.now() - cached.time) < VARIETY_CACHE_TTL) {
+    return cached.data;
+  }
+  const vars = await safeApiCall(
+    () => base44.entities.Variety.filter({ plant_type_id: plantTypeId, status: 'active' }, 'variety_name'),
+    `Varieties for ${plantTypeId}`
+  );
+  _varietyCache.set(cacheKey, { data: vars, time: Date.now() });
+  return vars;
+}
+
+// ============================================================
+// COMPONENT
+// ============================================================
+
 const TAGS = [
   { value: 'favorite', label: 'Favorite', icon: Star, color: 'text-yellow-500' },
   { value: 'low_stock', label: 'Low Stock', icon: AlertTriangle, color: 'text-orange-500' },
@@ -127,6 +213,9 @@ export default function SeedStash() {
   const [rateLimitError, setRateLimitError] = useState(null);
   const [retrying, setRetrying] = useState(false);
 
+  // Prevent double-loading
+  const loadingRef = useRef(false);
+
   const [formData, setFormData] = useState({
     plant_profile_id: '',
     quantity: '',
@@ -149,41 +238,122 @@ export default function SeedStash() {
 
   useEffect(() => {
     loadData();
-    loadViewPreference();
+    // NOTE: loadViewPreference is now MERGED into loadData() to avoid duplicate auth.me() calls
   }, []);
 
-  const loadViewPreference = async () => {
+  // ==========================================================
+  // FIX: MERGED loadViewPreference INTO loadData
+  // Old code called loadData() AND loadViewPreference() simultaneously,
+  // both calling base44.auth.me() — instant double API hit on every page load.
+  // Now loadData() handles settings loading too, sequentially with delays.
+  // ==========================================================
+
+  const loadData = async (isRetry = false) => {
+    // Prevent concurrent loads
+    if (loadingRef.current && !isRetry) return;
+    loadingRef.current = true;
+
+    if (isRetry) setRetrying(true);
+    
     try {
-      const user = await base44.auth.me();
-      const userSettings = await base44.entities.UserSettings.filter({ created_by: user.email });
-      if (userSettings.length > 0) {
-        const s = userSettings[0];
-        if (s.seed_stash_view_mode) setViewMode(s.seed_stash_view_mode);
-        if (s.aging_threshold_years) setSettings({ 
-          aging_threshold_years: s.aging_threshold_years,
-          old_threshold_years: s.old_threshold_years || 3
-        });
+      console.log('[SeedStash] Loading data...');
+
+      // STEP 1: Get user (cached — avoids redundant auth.me() calls)
+      const user = await getCachedUser();
+      
+      // STEP 2: Load seeds
+      const seedsData = await safeApiCall(
+        () => smartQuery(base44, 'SeedLot', { created_by: user.email }, '-created_date'),
+        'Load seeds'
+      );
+      
+      // Small delay before next API call to stay under rate limit
+      await sleep(300);
+      
+      // STEP 3: Extract unique profile IDs and batch fetch
+      const uniqueProfileIds = [...new Set(seedsData.map(s => s.plant_profile_id).filter(Boolean))];
+      
+      let profilesData = [];
+      if (uniqueProfileIds.length > 0) {
+        profilesData = await safeApiCall(
+          () => base44.entities.PlantProfile.filter({ id: { $in: uniqueProfileIds } }),
+          'Load profiles'
+        );
       }
+      
+      await sleep(300);
+      
+      // STEP 4: Use cached plant types (from dataCache utility)
+      const typesData = await getPlantTypesCached(() => 
+        smartQuery(base44, 'PlantType', {}, 'common_name')
+      );
+      
+      await sleep(300);
+
+      // STEP 5: Load user settings (view pref + aging thresholds)
+      // This was previously a SEPARATE loadViewPreference() call that duplicated auth.me()
+      try {
+        const userSettings = await safeApiCall(
+          () => base44.entities.UserSettings.filter({ created_by: user.email }),
+          'Load settings'
+        );
+        if (userSettings.length > 0) {
+          const s = userSettings[0];
+          if (s.seed_stash_view_mode) setViewMode(s.seed_stash_view_mode);
+          if (s.aging_threshold_years) setSettings({ 
+            aging_threshold_years: s.aging_threshold_years,
+            old_threshold_years: s.old_threshold_years || 3
+          });
+        }
+      } catch (settingsErr) {
+        // Non-critical — use defaults silently
+        console.warn('[SeedStash] Settings load failed (non-critical):', settingsErr.message);
+      }
+
+      console.log('[SeedStash] Loaded:', seedsData.length, 'lots,', profilesData.length, 'profiles');
+      setSeeds(seedsData);
+      setPlantTypes(typesData.filter(t => t.common_name && t.common_name.trim()));
+      
+      const profilesMap = {};
+      profilesData.forEach(p => {
+        profilesMap[p.id] = p;
+      });
+      setProfiles(profilesMap);
+      setRateLimitError(null);
     } catch (error) {
-      console.error('Error loading view preference:', error);
+      console.error('[SeedStash] Error loading seed stash:', error);
+      if (isRateLimitError(error)) {
+        setRateLimitError(error);
+        // Auto-retry after delay
+        setTimeout(() => loadData(true), 5000);
+      }
+    } finally {
+      setLoading(false);
+      setRetrying(false);
+      loadingRef.current = false;
     }
   };
 
   const saveViewPreference = async (mode) => {
     try {
-      const user = await base44.auth.me();
-      const userSettings = await base44.entities.UserSettings.filter({ created_by: user.email });
+      const user = await getCachedUser(); // FIX: was base44.auth.me() — uses cache now
+      const userSettings = await safeApiCall(
+        () => base44.entities.UserSettings.filter({ created_by: user.email }),
+        'Save view pref - filter'
+      );
       if (userSettings.length > 0) {
-        await base44.entities.UserSettings.update(userSettings[0].id, {
-          seed_stash_view_mode: mode
-        });
+        await safeApiCall(
+          () => base44.entities.UserSettings.update(userSettings[0].id, { seed_stash_view_mode: mode }),
+          'Save view pref - update'
+        );
       } else {
-        await base44.entities.UserSettings.create({
-          seed_stash_view_mode: mode
-        });
+        await safeApiCall(
+          () => base44.entities.UserSettings.create({ seed_stash_view_mode: mode }),
+          'Save view pref - create'
+        );
       }
     } catch (error) {
-      console.error('Error saving view preference:', error);
+      console.warn('[SeedStash] Error saving view preference (non-critical):', error.message);
     }
   };
 
@@ -205,51 +375,6 @@ export default function SeedStash() {
     return { status: 'OK', color: 'green', icon: null };
   };
 
-  const loadData = async (isRetry = false) => {
-    if (isRetry) setRetrying(true);
-    
-    try {
-      console.log('[SeedStash] Loading data...');
-      const user = await base44.auth.me();
-      
-      // V1B-2: Batch query optimization - load seeds first, then only needed profiles
-      const seedsData = await smartQuery(base44, 'SeedLot', { created_by: user.email }, '-created_date');
-      
-      // Extract unique profile IDs from seeds
-      const uniqueProfileIds = [...new Set(seedsData.map(s => s.plant_profile_id).filter(Boolean))];
-      
-      // Batch fetch only needed profiles
-      const profilesData = uniqueProfileIds.length > 0 
-        ? await base44.entities.PlantProfile.filter({ id: { $in: uniqueProfileIds } })
-        : [];
-      
-      // Use cached plant types
-      const typesData = await getPlantTypesCached(() => 
-        smartQuery(base44, 'PlantType', {}, 'common_name')
-      );
-      
-      console.log('[SeedStash] Loaded:', seedsData.length, 'lots,', profilesData.length, 'profiles');
-      setSeeds(seedsData);
-      setPlantTypes(typesData.filter(t => t.common_name && t.common_name.trim()));
-      
-      const profilesMap = {};
-      profilesData.forEach(p => {
-        profilesMap[p.id] = p;
-      });
-      setProfiles(profilesMap);
-      setRateLimitError(null);
-    } catch (error) {
-      console.error('Error loading seed stash:', error);
-      if (error.code === 'RATE_LIMIT') {
-        setRateLimitError(error);
-        setTimeout(() => loadData(true), error.retryInMs || 5000);
-      }
-    } finally {
-      setLoading(false);
-      setRetrying(false);
-    }
-  };
-
   const handlePlantTypeChange = async (plantTypeId) => {
     const type = plantTypes.find(t => t.id === plantTypeId);
     setSelectedPlantType(type);
@@ -261,13 +386,11 @@ export default function SeedStash() {
 
     if (plantTypeId) {
       try {
-        const vars = await base44.entities.Variety.filter({ 
-          plant_type_id: plantTypeId,
-          status: 'active'
-        }, 'variety_name');
+        // FIX: Use cached varieties with rate limit protection
+        const vars = await getCachedVarieties(plantTypeId);
         setVarieties(vars);
       } catch (error) {
-        console.error('Error loading varieties:', error);
+        console.error('[SeedStash] Error loading varieties:', error);
         setVarieties([]);
       }
     } else {
@@ -277,35 +400,45 @@ export default function SeedStash() {
 
   const handleVarietyChange = async (varietyId) => {
     const variety = varieties.find(v => v.id === varietyId);
-    
-    // Find or create PlantProfile for this variety
-    const existingProfiles = await base44.entities.PlantProfile.filter({
-      variety_name: variety.variety_name,
-      plant_type_id: variety.plant_type_id
-    });
-    
-    let profileId;
-    if (existingProfiles.length > 0) {
-      profileId = existingProfiles[0].id;
-    } else {
-      const plantType = plantTypes.find(t => t.id === variety.plant_type_id);
-      const newProfile = await base44.entities.PlantProfile.create({
-        plant_type_id: variety.plant_type_id,
-        common_name: plantType?.common_name,
-        variety_name: variety.variety_name,
-        days_to_maturity_seed: variety.days_to_maturity,
-        spacing_in_min: variety.spacing_recommended,
-        spacing_in_max: variety.spacing_recommended,
-        source_type: 'user_private'
-      });
-      profileId = newProfile.id;
-      setProfiles({ ...profiles, [profileId]: newProfile });
+    if (!variety) return;
+
+    try {
+      // FIX: Wrapped in safeApiCall with delay between calls
+      const existingProfiles = await safeApiCall(
+        () => base44.entities.PlantProfile.filter({
+          variety_name: variety.variety_name,
+          plant_type_id: variety.plant_type_id
+        }),
+        'Find profile for variety'
+      );
+      
+      let profileId;
+      if (existingProfiles.length > 0) {
+        profileId = existingProfiles[0].id;
+      } else {
+        await sleep(500); // Delay before create
+        const plantType = plantTypes.find(t => t.id === variety.plant_type_id);
+        const newProfile = await safeApiCall(
+          () => base44.entities.PlantProfile.create({
+            plant_type_id: variety.plant_type_id,
+            common_name: plantType?.common_name,
+            variety_name: variety.variety_name,
+            days_to_maturity_seed: variety.days_to_maturity,
+            spacing_in_min: variety.spacing_recommended,
+            spacing_in_max: variety.spacing_recommended,
+            source_type: 'user_private'
+          }),
+          'Create profile for variety'
+        );
+        profileId = newProfile.id;
+        setProfiles(prev => ({ ...prev, [profileId]: newProfile }));
+      }
+      
+      setFormData(prev => ({ ...prev, plant_profile_id: profileId }));
+    } catch (error) {
+      console.error('[SeedStash] Error in handleVarietyChange:', error);
+      toast.error('Error selecting variety. Please try again.');
     }
-    
-    setFormData({ 
-      ...formData, 
-      plant_profile_id: profileId
-    });
   };
 
   const [submitting, setSubmitting] = useState(false);
@@ -316,75 +449,71 @@ export default function SeedStash() {
       return;
     }
     
-    if (submitting) return; // V1B-11: Prevent double-submit
+    if (submitting) return;
     setSubmitting(true);
 
     try {
       if (editingSeed) {
-        await base44.entities.SeedLot.update(editingSeed.id, formData);
-        await loadData(); // Reload to get updated profiles
+        await safeApiCall(
+          () => base44.entities.SeedLot.update(editingSeed.id, formData),
+          'Update seed'
+        );
+        await sleep(500);
+        await loadData();
         toast.success('Seed updated!');
       } else {
-        const seed = await base44.entities.SeedLot.create(formData);
-        await loadData(); // Reload to get updated profiles
+        await safeApiCall(
+          () => base44.entities.SeedLot.create(formData),
+          'Create seed'
+        );
+        await sleep(500);
+        await loadData();
         toast.success(formData.is_wishlist ? 'Added to wishlist!' : 'Seed added to stash!');
       }
       closeDialog();
     } catch (error) {
-      console.error('Error saving seed:', error);
+      console.error('[SeedStash] Error saving seed:', error);
       toast.error('Failed to save seed');
     } finally {
       setSubmitting(false);
     }
   };
 
+  // ==========================================================
+  // FIX: Simplified handleDelete to avoid unnecessary API calls
+  // Old code called base44.auth.me() + PlantInstance.filter() on EVERY delete
+  // just to show a slightly different confirm message. Not worth 2 extra API calls.
+  // ==========================================================
   const handleDelete = async (seed) => {
+    const profile = profiles[seed.plant_profile_id];
+    const seedName = profile?.variety_name || seed.custom_label || 'this seed';
+    
+    if (!confirm(`Delete "${seedName}" from your seed stash?`)) return;
+    
     try {
-      // Check if this seed is currently planted
-      const profile = profiles[seed.plant_profile_id];
-      if (profile) {
-        const user = await base44.auth.me();
-        const currentYear = new Date().getFullYear();
-        const plantings = await base44.entities.PlantInstance.filter({
-          plant_profile_id: seed.plant_profile_id,
-          created_by: user.email
-        });
-        
-        // Check if any plantings are for current season
-        const currentSeasonPlantings = plantings.filter(p => {
-          if (!p.season_year) {
-            // Old data without season - consider it current
-            return true;
-          }
-          return p.season_year.startsWith(currentYear.toString());
-        });
-        
-        if (currentSeasonPlantings.length > 0) {
-          const confirmMsg = `⚠️ These seeds are currently planted in this season's garden.\n\nAre you sure you want to delete "${profile.variety_name || seed.custom_label}"?\n\nThis will NOT remove the plants from your garden.`;
-          if (!confirm(confirmMsg)) return;
-        } else {
-          if (!confirm(`Delete "${profile.variety_name || seed.custom_label}"?`)) return;
-        }
-      } else {
-        if (!confirm(`Delete this seed?`)) return;
-      }
-      
-      await base44.entities.SeedLot.delete(seed.id);
-      setSeeds(seeds.filter(s => s.id !== seed.id));
+      await safeApiCall(
+        () => base44.entities.SeedLot.delete(seed.id),
+        'Delete seed'
+      );
+      setSeeds(prev => prev.filter(s => s.id !== seed.id));
       toast.success('Seed deleted');
     } catch (error) {
-      console.error('Error deleting seed:', error);
+      console.error('[SeedStash] Error deleting seed:', error);
       toast.error('Failed to delete seed');
     }
   };
 
   const handleToggleWishlist = async (seed) => {
     try {
-      await base44.entities.SeedLot.update(seed.id, { is_wishlist: !seed.is_wishlist });
-      setSeeds(seeds.map(s => s.id === seed.id ? { ...s, is_wishlist: !s.is_wishlist } : s));
+      await safeApiCall(
+        () => base44.entities.SeedLot.update(seed.id, { is_wishlist: !seed.is_wishlist }),
+        'Toggle wishlist'
+      );
+      setSeeds(prev => prev.map(s => s.id === seed.id ? { ...s, is_wishlist: !s.is_wishlist } : s));
       toast.success(seed.is_wishlist ? 'Moved to stash' : 'Moved to wishlist');
     } catch (error) {
-      console.error('Error updating seed:', error);
+      console.error('[SeedStash] Error updating seed:', error);
+      toast.error('Failed to update');
     }
   };
 
@@ -394,10 +523,13 @@ export default function SeedStash() {
       : [...(seed.tags || []), tag];
     
     try {
-      await base44.entities.SeedLot.update(seed.id, { tags: newTags });
-      setSeeds(seeds.map(s => s.id === seed.id ? { ...s, tags: newTags } : s));
+      await safeApiCall(
+        () => base44.entities.SeedLot.update(seed.id, { tags: newTags }),
+        'Update tags'
+      );
+      setSeeds(prev => prev.map(s => s.id === seed.id ? { ...s, tags: newTags } : s));
     } catch (error) {
-      console.error('Error updating tags:', error);
+      console.error('[SeedStash] Error updating tags:', error);
     }
   };
 
@@ -425,13 +557,11 @@ export default function SeedStash() {
       try {
         const type = plantTypes.find(t => t.id === profile.plant_type_id);
         setSelectedPlantType(type);
-        const vars = await base44.entities.Variety.filter({ 
-          plant_type_id: profile.plant_type_id,
-          status: 'active'
-        }, 'variety_name');
+        // FIX: Use cached varieties with rate limit protection
+        const vars = await getCachedVarieties(profile.plant_type_id);
         setVarieties(vars);
       } catch (error) {
-        console.error('Error loading varieties:', error);
+        console.error('[SeedStash] Error loading varieties for edit:', error);
       }
     }
 
@@ -444,21 +574,24 @@ export default function SeedStash() {
 
     setUploadingPhoto(true);
     try {
-      const { file_url } = await base44.integrations.Core.UploadFile({ file });
-      setFormData({ 
-        ...formData, 
-        lot_images: [...(formData.lot_images || []), file_url] 
-      });
+      const { file_url } = await safeApiCall(
+        () => base44.integrations.Core.UploadFile({ file }),
+        'Upload photo'
+      );
+      setFormData(prev => ({ 
+        ...prev, 
+        lot_images: [...(prev.lot_images || []), file_url] 
+      }));
       toast.success('Photo added');
     } catch (error) {
-      console.error('Error uploading photo:', error);
+      console.error('[SeedStash] Error uploading photo:', error);
       toast.error('Failed to upload photo');
     } finally {
       setUploadingPhoto(false);
     }
   };
 
-  // V1B-11: Escape closes modal
+  // Escape closes modal
   useEffect(() => {
     const handleEscape = (e) => {
       if (e.key === 'Escape' && showAddDialog) closeDialog();
@@ -496,12 +629,9 @@ export default function SeedStash() {
       if (filterTab === 'wishlist' && !seed.is_wishlist) return false;
 
       const profile = profiles[seed.plant_profile_id];
-      if (!profile && seed.plant_profile_id) {
-        console.warn('[SeedStash] Filtering out seed without profile:', seed.id);
-        return false;
-      }
+      if (!profile && seed.plant_profile_id) return false;
 
-      // Search filter - search across multiple fields
+      // Search filter
       const searchLower = debouncedSearchQuery.toLowerCase();
       if (debouncedSearchQuery) {
         const varietyName = (profile?.variety_name || '').toLowerCase();
@@ -517,10 +647,7 @@ export default function SeedStash() {
         if (!matchesSearch) return false;
       }
 
-      // Type filter
       if (filterType !== 'all' && profile?.common_name !== filterType) return false;
-
-      // Tag filter
       if (filterTag !== 'all' && !seed.tags?.includes(filterTag)) return false;
 
       return true;
@@ -546,7 +673,7 @@ export default function SeedStash() {
       } else if (sortBy === 'year') {
         result = (a.year_acquired || 0) - (b.year_acquired || 0);
       } else if (sortBy === 'age') {
-        result = getAge(b) - getAge(a); // Oldest first by default
+        result = getAge(b) - getAge(a);
       } else if (sortBy === 'maturity') {
         const matA = profileA?.days_to_maturity_seed || 999;
         const matB = profileB?.days_to_maturity_seed || 999;
@@ -897,7 +1024,7 @@ export default function SeedStash() {
                       {TAGS.map((tag) => (
                         <button
                           key={tag.value}
-                          onClick={() => handleToggleTag(seed, tag.value)}
+                          onClick={(e) => { e.preventDefault(); handleToggleTag(seed, tag.value); }}
                           className={`p-1.5 rounded-lg transition-colors ${
                             seed.tags?.includes(tag.value)
                               ? 'bg-gray-100 ' + tag.color
@@ -926,9 +1053,6 @@ export default function SeedStash() {
                     className="cursor-pointer group"
                     style={{
                       transition: 'background-color 0.2s',
-                      '&:hover': {
-                        backgroundColor: 'var(--surface-hover)'
-                      }
                     }}
                     onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--surface-hover)'}
                     onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
@@ -1198,17 +1322,17 @@ export default function SeedStash() {
                   )}
                   <TableCell>
                     <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
+                      <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
                         <Button variant="ghost" size="icon" className="h-8 w-8">
                           <MoreVertical className="w-4 h-4" />
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
-                        <DropdownMenuItem onClick={() => openEditDialog(seed)}>
+                        <DropdownMenuItem onClick={(e) => { e.stopPropagation(); openEditDialog(seed); }}>
                           <Edit className="w-4 h-4 mr-2" />
                           Edit
                         </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => handleDelete(seed)}>
+                        <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleDelete(seed); }} className="text-red-600">
                           <Trash2 className="w-4 h-4 mr-2" />
                           Delete
                         </DropdownMenuItem>
@@ -1473,8 +1597,6 @@ export default function SeedStash() {
         onOpenChange={setShowImportDialog}
         onSuccess={loadData}
       />
-
-
 
       {/* Packet Scanner */}
       {showPacketScanner && (
