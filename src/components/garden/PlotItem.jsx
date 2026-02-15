@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useRef, useCallback } from 'react';
 import { cn } from '@/lib/utils';
 
 const PlotItem = React.memo(({ 
@@ -14,14 +14,82 @@ const PlotItem = React.memo(({
   zoom, 
   isMobile, 
   getItemColor,
-  onDoubleClick 
+  onTap,
+  onLongPress,
+  onDoubleClick // kept for backward compat but onTap/onLongPress preferred on mobile
 }) => {
+  // ─── Mobile long-press detection ───
+  const longPressTimer = useRef(null);
+  const pressStartPos = useRef({ x: 0, y: 0 });
+  const didLongPress = useRef(false);
+  const didMove = useRef(false);
+
+  const handlePointerDown = useCallback((e) => {
+    if (!isMobile) return; // Desktop uses canvas-level handlers
+    
+    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+    const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+    pressStartPos.current = { x: clientX, y: clientY };
+    didLongPress.current = false;
+    didMove.current = false;
+
+    longPressTimer.current = setTimeout(() => {
+      didLongPress.current = true;
+      if (onLongPress) onLongPress(item);
+    }, 500);
+  }, [isMobile, item, onLongPress]);
+
+  const handlePointerMove = useCallback((e) => {
+    if (!isMobile || !longPressTimer.current) return;
+    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+    const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+    const dx = clientX - pressStartPos.current.x;
+    const dy = clientY - pressStartPos.current.y;
+    if (Math.sqrt(dx * dx + dy * dy) > 10) {
+      clearTimeout(longPressTimer.current);
+      longPressTimer.current = null;
+      didMove.current = true;
+    }
+  }, [isMobile]);
+
+  const handlePointerUp = useCallback((e) => {
+    if (!isMobile) return;
+    clearTimeout(longPressTimer.current);
+    longPressTimer.current = null;
+
+    // If it was a long press or a drag, don't fire tap
+    if (didLongPress.current || didMove.current) return;
+
+    // Short tap → select
+    if (onTap) {
+      e.stopPropagation();
+      onTap(item);
+    }
+  }, [isMobile, item, onTap]);
+
+  const handlePointerCancel = useCallback(() => {
+    clearTimeout(longPressTimer.current);
+    longPressTimer.current = null;
+  }, []);
+
+  // Minimum touch target size on mobile (44px per Apple HIG)
+  const minTouchSize = isMobile ? 44 : 0;
+  const renderedW = item.width * zoom;
+  const renderedH = item.height * zoom;
+  const needsExpander = isMobile && (renderedW < minTouchSize || renderedH < minTouchSize);
+
   return (
     <div
-      onDoubleClick={isMobile ? onDoubleClick : undefined}
+      // Desktop: double-click for context menu
+      onDoubleClick={!isMobile ? onDoubleClick : undefined}
+      // Mobile: custom pointer handlers for tap + long-press
+      onTouchStart={isMobile ? handlePointerDown : undefined}
+      onTouchMove={isMobile ? handlePointerMove : undefined}
+      onTouchEnd={isMobile ? handlePointerUp : undefined}
+      onTouchCancel={isMobile ? handlePointerCancel : undefined}
       className={cn(
         "absolute border-4 rounded-lg flex items-center justify-center text-sm font-medium overflow-hidden plot-item group",
-        selectedItem?.id === item.id && "ring-4 ring-emerald-300",
+        selectedItem?.id === item.id && "ring-4 ring-emerald-300 z-10",
         !status && "border-gray-400",
         status?.status === 'empty' && "border-gray-400",
         status?.status === 'partial' && "border-amber-500 bg-amber-500/5",
@@ -31,10 +99,12 @@ const PlotItem = React.memo(({
       style={{
         left: item.x * zoom,
         top: item.y * zoom,
-        width: item.width * zoom,
-        height: item.height * zoom,
+        width: Math.max(renderedW, needsExpander ? minTouchSize : 0),
+        height: Math.max(renderedH, needsExpander ? minTouchSize : 0),
         backgroundColor: isGrowBagOrContainer && isFull ? '#10b981' : getItemColor(item),
-        cursor: isDragging && draggingItem?.id === item.id ? 'grabbing' : 'grab'
+        cursor: isDragging && draggingItem?.id === item.id ? 'grabbing' : 'grab',
+        // Ensure items are above grid lines
+        zIndex: selectedItem?.id === item.id ? 5 : 1
       }}
     >
       {/* Enhanced status overlay */}
@@ -53,7 +123,8 @@ const PlotItem = React.memo(({
       {/* Status badge - top left corner */}
       {status && status.status !== 'empty' && (
         <div className={cn(
-          "absolute top-2 left-2 px-2 py-0.5 rounded-full text-[10px] font-bold shadow-sm pointer-events-none",
+          "absolute top-1 left-1 px-1.5 py-0.5 rounded-full font-bold shadow-sm pointer-events-none",
+          isMobile ? "text-[8px]" : "text-[10px]",
           status.status === 'partial' && "bg-amber-500 text-white",
           status.status === 'full' && "bg-emerald-600 text-white"
         )}>
@@ -61,12 +132,16 @@ const PlotItem = React.memo(({
         </div>
       )}
       
-      {/* Badge with pointer-events: none */}
+      {/* Capacity badge - top right */}
       {counts && counts.capacity > 0 && (
-        <div className="absolute top-1 right-1 bg-white/90 backdrop-blur-sm px-2 py-0.5 rounded-full text-[10px] font-bold border shadow-sm pointer-events-none">
+        <div className={cn(
+          "absolute top-1 right-1 bg-white/90 backdrop-blur-sm px-1.5 py-0.5 rounded-full font-bold border shadow-sm pointer-events-none",
+          isMobile ? "text-[8px]" : "text-[10px]"
+        )}>
           {counts.filled}/{counts.capacity}
         </div>
       )}
+
       {/* Row lines for row-based items */}
       {item.metadata?.rowCount && (
         <svg className="absolute inset-0 pointer-events-none" width="100%" height="100%">
@@ -84,7 +159,8 @@ const PlotItem = React.memo(({
           ))}
         </svg>
       )}
-      {/* Rotated container */}
+
+      {/* Rotated label container */}
       <div 
         className="absolute inset-0 flex items-center justify-center pointer-events-none"
         style={{
@@ -92,12 +168,19 @@ const PlotItem = React.memo(({
           transformOrigin: 'center'
         }}
       >
-        {/* Label counter-rotated to stay horizontal */}
         <span 
-          className="text-white text-shadow font-semibold plot-item-label"
+          className={cn(
+            "text-white text-shadow font-semibold plot-item-label text-center leading-tight",
+            isMobile && renderedW < 60 && "text-[9px]",
+            isMobile && renderedW >= 60 && renderedW < 100 && "text-[11px]"
+          )}
           style={{
             transform: `rotate(${-item.rotation}deg)`,
-            display: 'inline-block'
+            display: 'inline-block',
+            maxWidth: '90%',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            whiteSpace: 'nowrap'
           }}
         >
           {item.label}
@@ -108,5 +191,4 @@ const PlotItem = React.memo(({
 });
 
 PlotItem.displayName = 'PlotItem';
-
 export default PlotItem;
