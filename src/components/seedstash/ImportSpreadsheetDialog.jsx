@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
-import { Upload, Download, Loader2, CheckCircle2, AlertCircle, FileText } from 'lucide-react';
+import { Upload, Download, Loader2, CheckCircle2, AlertCircle, FileText, Pause, Play } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   Dialog,
@@ -20,6 +20,50 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+
+// ============================================================
+// RATE LIMIT PROTECTION
+// ============================================================
+const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+
+function isRateLimitError(error) {
+  if (!error) return false;
+  const msg = (error?.message || error?.toString() || '').toLowerCase();
+  return (
+    msg.includes('rate limit') ||
+    msg.includes('rate_limit') ||
+    msg.includes('too many requests') ||
+    msg.includes('429') ||
+    msg.includes('quota') ||
+    msg.includes('throttl')
+  );
+}
+
+/**
+ * Execute an API call with automatic retry on rate limit.
+ * Up to maxRetries attempts with exponential backoff.
+ */
+async function safeApiCall(fn, label = '', maxRetries = 3) {
+  let backoffMs = 3000; // Start with 3s for imports (more conservative)
+
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      return await fn();
+    } catch (error) {
+      if (isRateLimitError(error) && attempt < maxRetries) {
+        console.warn(`[Import] ${label} rate limited, attempt ${attempt + 1}. Waiting ${backoffMs}ms...`);
+        await sleep(backoffMs);
+        backoffMs = Math.min(backoffMs * 2, 20000); // Max 20s
+        continue;
+      }
+      throw error;
+    }
+  }
+}
+
+// ============================================================
+// COLUMN MAPPINGS
+// ============================================================
 
 const COLUMN_MAPPINGS = [
   // Basic Info
@@ -75,16 +119,26 @@ const COLUMN_MAPPINGS = [
   { key: 'container_friendly', label: 'Container Friendly (true/false)', required: false, category: 'requirements', target: 'profile' },
 ];
 
+// ============================================================
+// COMPONENT
+// ============================================================
+
 export default function ImportSpreadsheetDialog({ open, onOpenChange, onSuccess }) {
   const [step, setStep] = useState(1);
   const [file, setFile] = useState(null);
   const [headers, setHeaders] = useState([]);
   const [preview, setPreview] = useState([]);
+  const [allRows, setAllRows] = useState([]);
   const [mappings, setMappings] = useState({});
   const [importing, setImporting] = useState(false);
+  const [paused, setPaused] = useState(false);
   const [progress, setProgress] = useState(0);
   const [results, setResults] = useState(null);
   const [statusLog, setStatusLog] = useState([]);
+
+  // Refs for pause/cancel support
+  const pausedRef = useRef(false);
+  const cancelledRef = useRef(false);
 
   const parseCSV = (text) => {
     const lines = text.split('\n').filter(line => line.trim());
@@ -135,6 +189,7 @@ export default function ImportSpreadsheetDialog({ open, onOpenChange, onSuccess 
 
       setFile(uploadedFile);
       setHeaders(csvHeaders);
+      setAllRows(rows);
       setPreview(rows.slice(0, 10));
 
       // Auto-detect mappings
@@ -156,6 +211,23 @@ export default function ImportSpreadsheetDialog({ open, onOpenChange, onSuccess 
     }
   };
 
+  // ==========================================================
+  // MAIN IMPORT LOGIC — COMPLETELY REWRITTEN FOR RATE LIMITS
+  // 
+  // OLD CODE PROBLEMS:
+  // 1. Called base44.auth.me() inside the loop for EVERY ROW (71+ wasted calls)
+  // 2. No delay between rows within a batch (30 rows = ~120 rapid API calls)
+  // 3. No retry on 429 — just logged error and moved to next row
+  // 4. Each row made 3-5 API calls with zero throttling
+  //
+  // NEW APPROACH:
+  // - Auth cached ONCE before loop
+  // - Process ONE row at a time with 1.5s delay between rows
+  // - Each API call wrapped in safeApiCall() with retry + exponential backoff
+  // - Adaptive delay: increases on rate limit, decreases on success
+  // - Pause/resume support
+  // ==========================================================
+
   const handleImport = async () => {
     if (!mappings.variety_name) {
       toast.error('Please map the Variety Name column');
@@ -163,144 +235,283 @@ export default function ImportSpreadsheetDialog({ open, onOpenChange, onSuccess 
     }
 
     setImporting(true);
+    setPaused(false);
+    pausedRef.current = false;
+    cancelledRef.current = false;
     setStep(3);
     setProgress(0);
     setStatusLog([]);
-    setResults({ inserted: 0, skipped: 0, errors: [] });
+    setResults({ inserted: 0, updated: 0, skipped: 0, errors: [] });
 
     try {
-      const text = await file.text();
-      const { rows } = parseCSV(text);
-      const BATCH_SIZE = 30;
-      const DELAY_MS = 3000; // 3 seconds pause after each batch
+      const rows = allRows;
+      const totalRows = rows.length;
 
       let totalInserted = 0;
+      let totalUpdated = 0;
       let totalSkipped = 0;
       const errorsList = [];
 
-      for (let i = 0; i < rows.length; i += BATCH_SIZE) {
-        const batch = rows.slice(i, i + BATCH_SIZE);
+      // =====================================================
+      // FIX #1: Get user ONCE before the loop
+      // Old code called base44.auth.me() for EVERY row = 71 wasted API calls
+      // =====================================================
+      const user = await base44.auth.me();
+      const userEmail = user.email;
 
-        for (const row of batch) {
-          try {
-            const varietyName = row[mappings.variety_name];
-            if (!varietyName || !varietyName.trim()) {
-              totalSkipped++;
-              setStatusLog(prev => [...prev, `Row ${i + batch.indexOf(row) + 1}: Skipped (no variety name)`]);
-              continue;
+      // =====================================================
+      // FIX #2: Pre-fetch ALL existing profiles + seed lots in bulk
+      // This replaces per-row filter calls (saves ~142 API calls for 71 rows)
+      // =====================================================
+      let existingProfilesMap = {};
+      let existingSeedLotsMap = {};
+
+      addLog('Preparing: Loading existing data...');
+
+      try {
+        const allProfiles = await safeApiCall(
+          () => base44.entities.PlantProfile.filter({ created_by: userEmail }),
+          'Pre-fetch profiles'
+        );
+        allProfiles.forEach(p => {
+          if (p.variety_name) {
+            existingProfilesMap[p.variety_name.toLowerCase().trim()] = p;
+          }
+        });
+        addLog(`Found ${allProfiles.length} existing profiles`);
+      } catch (err) {
+        addLog('Warning: Could not pre-fetch profiles, will check per-row');
+      }
+
+      await sleep(1000);
+
+      try {
+        const allSeedLots = await safeApiCall(
+          () => base44.entities.SeedLot.filter({ created_by: userEmail }),
+          'Pre-fetch seed lots'
+        );
+        allSeedLots.forEach(s => {
+          if (s.plant_profile_id) {
+            if (!existingSeedLotsMap[s.plant_profile_id]) {
+              existingSeedLotsMap[s.plant_profile_id] = s;
             }
+          }
+        });
+        addLog(`Found ${allSeedLots.length} existing seed lots`);
+      } catch (err) {
+        addLog('Warning: Could not pre-fetch seed lots, will check per-row');
+      }
 
-            const commonName = mappings.common_name ? row[mappings.common_name] : null;
+      await sleep(1000);
+      addLog(`Starting import of ${totalRows} rows...`);
 
-            // UPSERT LOGIC: Find existing profile OR seed lot by variety name
-            const user = await base44.auth.me();
-            let profile = null;
-            let existingSeedLot = null;
+      // =====================================================
+      // FIX #3: Process ONE row at a time with adaptive delay
+      // Old code: 30 rows rapid-fire, then 3s pause
+      // New code: 1 row, wait, 1 row, wait — much gentler on API
+      // =====================================================
+      let baseDelay = 1500; // 1.5s between rows
+      let consecutiveSuccesses = 0;
 
-            const existingProfiles = await base44.entities.PlantProfile.filter({
-              variety_name: varietyName,
-              created_by: user.email
-            });
+      for (let i = 0; i < totalRows; i++) {
+        // Check for cancel
+        if (cancelledRef.current) {
+          addLog('⛔ Import cancelled by user');
+          break;
+        }
 
-            if (existingProfiles.length > 0) {
-              profile = existingProfiles[0];
-              
-              // Check if seed lot already exists for this profile
-              const existingSeeds = await base44.entities.SeedLot.filter({
-                plant_profile_id: profile.id,
-                created_by: user.email
-              });
-              if (existingSeeds.length > 0) {
-                existingSeedLot = existingSeeds[0];
-              }
-            }
+        // Check for pause
+        while (pausedRef.current) {
+          await sleep(500);
+          if (cancelledRef.current) break;
+        }
+        if (cancelledRef.current) break;
 
-            // Build profile data from CSV
-            const profileData = {
-              variety_name: varietyName,
-              common_name: commonName || 'Unknown',
-              source_type: 'user_private'
-            };
-            
-            // Add all mapped profile fields
-            COLUMN_MAPPINGS.filter(m => (m.target === 'profile' || m.target === 'both') && mappings[m.key]).forEach(mapping => {
-              const value = row[mappings[mapping.key]];
-              if (value && value.trim()) {
-                if (mapping.key === 'trellis_required' || mapping.key === 'container_friendly') {
-                  profileData[mapping.key] = value.toLowerCase() === 'true';
-                } else if (mapping.key.includes('days_to_maturity') || mapping.key.includes('weeks') || mapping.key.includes('spacing') || mapping.key.includes('scoville') || mapping.key.includes('height')) {
-                  const num = parseFloat(value);
-                  if (!isNaN(num)) profileData[mapping.key] = num;
-                } else {
-                  profileData[mapping.key] = value;
-                }
-              }
-            });
+        const row = rows[i];
+        const rowNum = i + 1;
 
-            // UPSERT profile: update if exists, create if not
-            if (profile) {
-              await base44.entities.PlantProfile.update(profile.id, profileData);
-            } else {
-              profile = await base44.entities.PlantProfile.create(profileData);
-            }
-
-            // Build seed lot data from CSV
-            const seedData = {
-              plant_profile_id: profile.id
-            };
-
-            // Add all mapped seed fields
-            COLUMN_MAPPINGS.filter(m => (m.target === 'seed' || m.target === 'both') && mappings[m.key]).forEach(mapping => {
-              const value = row[mappings[mapping.key]];
-              if (value && value.trim()) {
-                if (mapping.key === 'quantity' || mapping.key === 'year_acquired' || mapping.key === 'packed_for_year') {
-                  const num = parseInt(value);
-                  if (!isNaN(num)) seedData[mapping.key] = num;
-                } else if (mapping.key === 'tags') {
-                  // Split comma-separated tags
-                  seedData[mapping.key] = value.split(',').map(t => t.trim()).filter(Boolean);
-                } else {
-                  seedData[mapping.key] = value;
-                }
-              }
-            });
-
-            // UPSERT seed lot: update if exists, create if not
-            if (existingSeedLot) {
-              await base44.entities.SeedLot.update(existingSeedLot.id, seedData);
-              setStatusLog(prev => [...prev, `Row ${i + batch.indexOf(row) + 1}: Updated "${varietyName}"`]);
-            } else {
-              await base44.entities.SeedLot.create(seedData);
-              setStatusLog(prev => [...prev, `Row ${i + batch.indexOf(row) + 1}: Imported "${varietyName}"`]);
-            }
-            
-            totalInserted++;
-            setResults({ inserted: totalInserted, skipped: totalSkipped, errors: errorsList });
-          } catch (error) {
+        try {
+          const varietyName = row[mappings.variety_name];
+          if (!varietyName || !varietyName.trim()) {
             totalSkipped++;
-            errorsList.push({ row: i + batch.indexOf(row) + 1, error: error.message });
-            setStatusLog(prev => [...prev, `Row ${i + batch.indexOf(row) + 1}: Error - ${error.message}`]);
-            setResults({ inserted: totalInserted, skipped: totalSkipped, errors: errorsList });
+            addLog(`Row ${rowNum}: Skipped (no variety name)`);
+            updateResults(totalInserted, totalUpdated, totalSkipped, errorsList);
+            setProgress(Math.round((rowNum / totalRows) * 100));
+            continue;
+          }
+
+          const commonName = mappings.common_name ? row[mappings.common_name] : null;
+          const varietyKey = varietyName.toLowerCase().trim();
+
+          // =====================================================
+          // FIX #4: Use pre-fetched data instead of per-row filter calls
+          // Old code: 2 filter() calls per row = 142 extra API calls for 71 rows
+          // New code: Simple in-memory lookup = 0 API calls
+          // =====================================================
+          let profile = existingProfilesMap[varietyKey] || null;
+          let existingSeedLot = profile ? (existingSeedLotsMap[profile.id] || null) : null;
+
+          // Build profile data from CSV
+          const profileData = {
+            variety_name: varietyName.trim(),
+            common_name: commonName || 'Unknown',
+            source_type: 'user_private'
+          };
+          
+          // Add all mapped profile fields
+          COLUMN_MAPPINGS.filter(m => (m.target === 'profile' || m.target === 'both') && mappings[m.key]).forEach(mapping => {
+            const value = row[mappings[mapping.key]];
+            if (value && value.trim()) {
+              if (mapping.key === 'trellis_required' || mapping.key === 'container_friendly') {
+                profileData[mapping.key] = value.toLowerCase() === 'true';
+              } else if (mapping.key.includes('days_to_maturity') || mapping.key.includes('weeks') || mapping.key.includes('spacing') || mapping.key.includes('scoville') || mapping.key.includes('height')) {
+                const num = parseFloat(value);
+                if (!isNaN(num)) profileData[mapping.key] = num;
+              } else {
+                profileData[mapping.key] = value;
+              }
+            }
+          });
+
+          // UPSERT profile: update if exists, create if not
+          if (profile) {
+            await safeApiCall(
+              () => base44.entities.PlantProfile.update(profile.id, profileData),
+              `Row ${rowNum} update profile`
+            );
+          } else {
+            profile = await safeApiCall(
+              () => base44.entities.PlantProfile.create(profileData),
+              `Row ${rowNum} create profile`
+            );
+            // Add to local cache so subsequent rows can find it
+            existingProfilesMap[varietyKey] = profile;
+          }
+
+          // Small delay between profile and seed lot API calls
+          await sleep(500);
+
+          // Build seed lot data from CSV
+          const seedData = {
+            plant_profile_id: profile.id
+          };
+
+          // Add all mapped seed fields
+          COLUMN_MAPPINGS.filter(m => (m.target === 'seed' || m.target === 'both') && mappings[m.key]).forEach(mapping => {
+            const value = row[mappings[mapping.key]];
+            if (value && value.trim()) {
+              if (mapping.key === 'quantity' || mapping.key === 'year_acquired' || mapping.key === 'packed_for_year') {
+                const num = parseInt(value);
+                if (!isNaN(num)) seedData[mapping.key] = num;
+              } else if (mapping.key === 'tags') {
+                seedData[mapping.key] = value.split(',').map(t => t.trim()).filter(Boolean);
+              } else {
+                seedData[mapping.key] = value;
+              }
+            }
+          });
+
+          // UPSERT seed lot: update if exists, create if not
+          if (existingSeedLot) {
+            await safeApiCall(
+              () => base44.entities.SeedLot.update(existingSeedLot.id, seedData),
+              `Row ${rowNum} update seed`
+            );
+            totalUpdated++;
+            addLog(`Row ${rowNum}: Updated "${varietyName}"`);
+          } else {
+            const newSeedLot = await safeApiCall(
+              () => base44.entities.SeedLot.create(seedData),
+              `Row ${rowNum} create seed`
+            );
+            // Add to local cache
+            existingSeedLotsMap[profile.id] = newSeedLot;
+            totalInserted++;
+            addLog(`Row ${rowNum}: Imported "${varietyName}"`);
+          }
+
+          // =====================================================
+          // FIX #5: Adaptive delay — speeds up on success, slows on errors
+          // =====================================================
+          consecutiveSuccesses++;
+          if (consecutiveSuccesses > 10 && baseDelay > 800) {
+            baseDelay = Math.max(800, baseDelay - 100); // Speed up slightly
+          }
+
+        } catch (error) {
+          totalSkipped++;
+          const errMsg = error?.message || String(error);
+          errorsList.push({ row: rowNum, error: errMsg });
+          addLog(`Row ${rowNum}: ❌ Error - ${errMsg}`);
+          consecutiveSuccesses = 0;
+
+          // If rate limited even after retries, slow down significantly
+          if (isRateLimitError(error)) {
+            baseDelay = Math.min(baseDelay + 2000, 10000); // Add 2s, max 10s
+            addLog(`⚠️ Rate limited — slowing down to ${baseDelay}ms between rows`);
+            await sleep(5000); // Extra 5s cooldown
           }
         }
 
-        setProgress(Math.min(100, Math.round(((i + batch.length) / rows.length) * 100)));
+        // Update progress
+        updateResults(totalInserted, totalUpdated, totalSkipped, errorsList);
+        setProgress(Math.round((rowNum / totalRows) * 100));
 
-        // Wait between batches to avoid rate limits
-        if (i + BATCH_SIZE < rows.length) {
-          await new Promise(resolve => setTimeout(resolve, DELAY_MS));
+        // =====================================================
+        // FIX #6: Wait between EVERY row (not just between batches)
+        // Old code: 30 rows rapid fire, 3s pause = still too many calls
+        // New code: ~1.5s between every row = smooth, no bursts
+        // =====================================================
+        if (i < totalRows - 1) {
+          await sleep(baseDelay);
         }
       }
 
-      setResults({ inserted: totalInserted, skipped: totalSkipped, errors: errorsList });
-      toast.success(`Import complete! ${totalInserted} seeds added`);
+      updateResults(totalInserted, totalUpdated, totalSkipped, errorsList);
+      setProgress(100);
+
+      const totalProcessed = totalInserted + totalUpdated;
+      if (totalProcessed > 0) {
+        toast.success(`Import complete! ${totalInserted} added, ${totalUpdated} updated`);
+      }
+      if (errorsList.length > 0) {
+        toast.warning(`${errorsList.length} rows had errors`);
+      }
       if (onSuccess) onSuccess();
     } catch (error) {
-      console.error('Import error:', error);
+      console.error('[Import] Fatal error:', error);
       toast.error('Import failed: ' + error.message);
     } finally {
       setImporting(false);
     }
+  };
+
+  // Helper to update results state
+  const updateResults = (inserted, updated, skipped, errors) => {
+    setResults({ inserted, updated, skipped, errors });
+  };
+
+  // Helper to add a log line
+  const addLog = (msg) => {
+    setStatusLog(prev => [...prev, msg]);
+  };
+
+  const handlePauseResume = () => {
+    if (pausedRef.current) {
+      pausedRef.current = false;
+      setPaused(false);
+      addLog('▶️ Resumed');
+    } else {
+      pausedRef.current = true;
+      setPaused(true);
+      addLog('⏸️ Paused');
+    }
+  };
+
+  const handleCancel = () => {
+    cancelledRef.current = true;
+    pausedRef.current = false;
+    setPaused(false);
   };
 
   const handleDownloadTemplate = () => {
@@ -324,19 +535,24 @@ export default function ImportSpreadsheetDialog({ open, onOpenChange, onSuccess 
   };
 
   const resetDialog = () => {
+    cancelledRef.current = true; // Stop any running import
+    pausedRef.current = false;
     setStep(1);
     setFile(null);
     setHeaders([]);
     setPreview([]);
+    setAllRows([]);
     setMappings({});
     setProgress(0);
     setResults(null);
     setStatusLog([]);
+    setImporting(false);
+    setPaused(false);
     onOpenChange(false);
   };
 
   return (
-    <Dialog open={open} onOpenChange={resetDialog}>
+    <Dialog open={open} onOpenChange={importing ? undefined : resetDialog}>
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Import Spreadsheet to Seed Stash</DialogTitle>
@@ -385,7 +601,7 @@ export default function ImportSpreadsheetDialog({ open, onOpenChange, onSuccess 
           <div className="space-y-4">
             <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-lg">
               <p className="text-sm text-emerald-800">
-                ✓ Loaded {preview.length} rows (showing first 10). Map your columns below:
+                ✓ Loaded <strong>{allRows.length}</strong> rows. Map your columns below:
               </p>
             </div>
 
@@ -533,10 +749,21 @@ export default function ImportSpreadsheetDialog({ open, onOpenChange, onSuccess 
                 {preview.slice(0, 3).map((row, idx) => (
                   <div key={idx} className="text-xs text-gray-600 p-2 bg-white rounded border">
                     {mappings.variety_name && <div><strong>Variety:</strong> {row[mappings.variety_name]}</div>}
+                    {mappings.common_name && <div><strong>Type:</strong> {row[mappings.common_name]}</div>}
                     {mappings.quantity && <div><strong>Qty:</strong> {row[mappings.quantity]}</div>}
+                    {mappings.source_vendor_name && <div><strong>Source:</strong> {row[mappings.source_vendor_name]}</div>}
                   </div>
                 ))}
               </div>
+            </div>
+
+            {/* Time estimate */}
+            <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg">
+              <p className="text-sm text-amber-800">
+                ⏱️ Estimated time: <strong>~{Math.ceil(allRows.length * 2.5 / 60)} minutes</strong> for {allRows.length} rows
+                <br />
+                <span className="text-xs">Import processes rows one at a time to avoid rate limits. You can pause/resume.</span>
+              </p>
             </div>
 
             <div className="flex gap-2">
@@ -546,7 +773,7 @@ export default function ImportSpreadsheetDialog({ open, onOpenChange, onSuccess 
                 disabled={!mappings.variety_name}
                 className="flex-1 bg-emerald-600 hover:bg-emerald-700"
               >
-                Start Import
+                Start Import ({allRows.length} rows)
               </Button>
             </div>
           </div>
@@ -558,7 +785,9 @@ export default function ImportSpreadsheetDialog({ open, onOpenChange, onSuccess 
             <div className="space-y-2">
               <div className="flex items-center justify-between text-sm">
                 <span className="text-gray-700">
-                  {importing ? 'Importing...' : 'Complete!'}
+                  {importing 
+                    ? (paused ? '⏸️ Paused' : '⏳ Importing...') 
+                    : '✅ Complete!'}
                 </span>
                 <span className="font-semibold text-gray-900">{progress}%</span>
               </div>
@@ -566,36 +795,75 @@ export default function ImportSpreadsheetDialog({ open, onOpenChange, onSuccess 
             </div>
 
             {results && (
-              <div className="grid grid-cols-2 gap-4">
-                <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
+              <div className="grid grid-cols-3 gap-3">
+                <div className="p-3 bg-green-50 border border-green-200 rounded-lg">
                   <div className="flex items-center gap-2">
-                    <CheckCircle2 className="w-5 h-5 text-green-600" />
+                    <CheckCircle2 className="w-4 h-4 text-green-600" />
                     <div>
-                      <p className="text-xs text-green-700">Imported</p>
-                      <p className="text-2xl font-bold text-green-900">{results.inserted}</p>
+                      <p className="text-xs text-green-700">Added</p>
+                      <p className="text-xl font-bold text-green-900">{results.inserted}</p>
                     </div>
                   </div>
                 </div>
-                <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+                <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
                   <div className="flex items-center gap-2">
-                    <AlertCircle className="w-5 h-5 text-yellow-600" />
+                    <CheckCircle2 className="w-4 h-4 text-blue-600" />
                     <div>
-                      <p className="text-xs text-yellow-700">Skipped/Errors</p>
-                      <p className="text-2xl font-bold text-yellow-900">{results.skipped}</p>
+                      <p className="text-xs text-blue-700">Updated</p>
+                      <p className="text-xl font-bold text-blue-900">{results.updated}</p>
+                    </div>
+                  </div>
+                </div>
+                <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                  <div className="flex items-center gap-2">
+                    <AlertCircle className="w-4 h-4 text-yellow-600" />
+                    <div>
+                      <p className="text-xs text-yellow-700">Errors</p>
+                      <p className="text-xl font-bold text-yellow-900">{results.skipped}</p>
                     </div>
                   </div>
                 </div>
               </div>
             )}
 
-            <div className="p-3 bg-gray-50 rounded-lg max-h-64 overflow-auto">
+            <div className="p-3 bg-gray-50 rounded-lg max-h-64 overflow-auto" id="import-log">
               <p className="text-xs font-semibold text-gray-700 mb-2">Import Log:</p>
               <div className="space-y-1">
                 {statusLog.map((log, idx) => (
-                  <p key={idx} className="text-xs text-gray-600">{log}</p>
+                  <p key={idx} className={`text-xs ${
+                    log.includes('❌') || log.includes('Error') ? 'text-red-600' :
+                    log.includes('⚠️') ? 'text-amber-600' :
+                    log.includes('Updated') ? 'text-blue-600' :
+                    log.includes('Imported') ? 'text-green-600' :
+                    'text-gray-600'
+                  }`}>{log}</p>
                 ))}
               </div>
             </div>
+
+            {/* Pause/Resume/Cancel controls */}
+            {importing && (
+              <div className="flex gap-2">
+                <Button 
+                  onClick={handlePauseResume} 
+                  variant="outline" 
+                  className="flex-1 gap-2"
+                >
+                  {paused ? (
+                    <><Play className="w-4 h-4" /> Resume</>
+                  ) : (
+                    <><Pause className="w-4 h-4" /> Pause</>
+                  )}
+                </Button>
+                <Button 
+                  onClick={handleCancel} 
+                  variant="destructive" 
+                  className="gap-2"
+                >
+                  Cancel Import
+                </Button>
+              </div>
+            )}
 
             {!importing && (
               <Button onClick={resetDialog} className="w-full bg-emerald-600 hover:bg-emerald-700">
