@@ -14,7 +14,9 @@ import {
   Trash2,
   RefreshCw,
   Download,
-  ShoppingCart
+  ShoppingCart,
+  List,
+  LayoutGrid
 } from 'lucide-react';
 import { useSwipe } from '@/components/utils/useTouch';
 import { Link } from 'react-router-dom';
@@ -79,6 +81,15 @@ export default function Calendar() {
   const [retrying, setRetrying] = useState(false);
   const [showAIWizard, setShowAIWizard] = useState(false);
   const [currentMonth, setCurrentMonth] = useState(new Date());
+
+  // =================================================================
+  // FIX: Mobile tab state
+  // On phones (< lg), the sidebar and calendar can't both fit.
+  // This toggles which one is visible. Default to 'calendar' so
+  // users see their events first (the bug was: only sidebar showed).
+  // On desktop (lg+), both panels always show side-by-side.
+  // =================================================================
+  const [mobileTab, setMobileTab] = useState('calendar');
   
   const swipeHandlers = useSwipe({
     onSwipeLeft: () => setCurrentMonth(m => addMonths(m, 1)),
@@ -307,7 +318,7 @@ export default function Calendar() {
   }
   
   return (
-    <div className="flex h-[calc(100vh-8rem)] flex-col lg:flex-row">
+    <div className="flex flex-col h-[calc(100vh-4rem)] lg:h-[calc(100vh-8rem)]">
       {rateLimitError && (
         <RateLimitBanner 
           retryInMs={rateLimitError.retryInMs || 5000} 
@@ -315,267 +326,314 @@ export default function Calendar() {
           retrying={retrying}
         />
       )}
-      
-      {/* Left Sidebar - My Crops */}
-      <div className={cn(
-        "w-full lg:w-80 border-r bg-white flex flex-col",
-        viewMode === 'timeline' && "hidden lg:flex"
-      )}>
-        <div className="p-4 border-b space-y-2">
-          <h2 className="font-semibold text-lg">My Crops</h2>
-          <Input
-            placeholder="Search crops..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-          />
-          <Button 
-            onClick={() => setShowAddCrop(true)}
-            className="w-full bg-emerald-600 hover:bg-emerald-700 interactive-button"
-            disabled={syncing}
-          >
-            {syncing ? (
-              <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Syncing...</>
-            ) : (
-              <><Plus className="w-4 h-4 mr-2" />Add Crop</>
-            )}
-          </Button>
-          <Button
-            onClick={async () => {
-              if (!activeSeasonId) { toast.error('Please select a season first'); return; }
-              if (syncing) return;
-              try {
-                const userLists = await base44.entities.GrowList.filter({ created_by: user.email }, '-updated_date');
-                if (userLists.length === 0) { toast.error('No grow lists found. Create one first!'); return; }
-                const matchingLists = userLists.filter(l => l.garden_season_id === activeSeasonId || !l.garden_season_id);
-                if (matchingLists.length === 0) { toast.error('No grow lists for this season.'); return; }
-                if (matchingLists.length === 1) {
-                  await handleSyncGrowList(matchingLists[0].id, activeSeasonId);
-                } else {
-                  const listNum = prompt(
-                    `Select grow list to import:\n\n${matchingLists.map((l, i) => 
-                      `${i+1}. ${l.name} (${l.items?.length || 0} items)`
-                    ).join('\n')}\n\nEnter number:`
-                  );
-                  if (listNum) {
-                    const list = matchingLists[parseInt(listNum) - 1];
-                    if (list) await handleSyncGrowList(list.id, activeSeasonId);
-                  }
-                }
-              } catch (error) {
-                console.error('[Calendar] Import error:', error);
-                toast.error('Import failed: ' + error.message);
-              }
-            }}
-            variant="outline"
-            className="w-full gap-2 interactive-button"
-            disabled={syncing || !activeSeasonId}
-          >
-            <Download className="w-4 h-4" />
-            Import from Grow List
-          </Button>
-          <Button
-            onClick={() => setShowAIWizard(true)}
-            variant="outline" size="sm"
-            className="w-full gap-2 bg-purple-50 hover:bg-purple-100 text-purple-700 border-purple-300"
-          >
-            ✨ AI Build My Calendar
-          </Button>
-          <Link to={createPageUrl('NeedToBuy')} className="w-full">
-            <Button variant="outline" size="sm" className="w-full gap-2 bg-blue-50 hover:bg-blue-100 text-blue-700 border-blue-300">
-              <ShoppingCart className="w-4 h-4" />Need to Buy
-            </Button>
-          </Link>
-          <Button onClick={() => setShowGuide(true)} variant="outline" size="sm" className="w-full">📖 User Guide</Button>
-          <Button
-            onClick={async () => {
-              if (filteredCrops.length === 0) { toast.error('No crops to generate tasks for'); return; }
-              try {
-                toast.loading(`Regenerating tasks for ${filteredCrops.length} crops...`, { id: 'regen-all' });
-                setSyncing(true);
-                let totalCreated = 0;
-                let failedCount = 0;
-                for (let i = 0; i < filteredCrops.length; i++) {
-                  const crop = filteredCrops[i];
-                  try {
-                    const response = await base44.functions.invoke('generateTasksForCrop', { crop_plan_id: crop.id });
-                    totalCreated += response.data.tasks_created || 0;
-                    if (i < filteredCrops.length - 1) await new Promise(r => setTimeout(r, 800));
-                  } catch (error) {
-                    console.error(`Failed to generate tasks for ${crop.label}:`, error);
-                    failedCount++;
-                  }
-                }
-                await new Promise(r => setTimeout(r, 500));
-                await loadPlansAndTasks(true);
-                setSyncing(false);
-                if (failedCount > 0) {
-                  toast.warning(`Created ${totalCreated} tasks. ${failedCount} crops failed.`, { id: 'regen-all', duration: 6000 });
-                } else {
-                  toast.success(`Created ${totalCreated} tasks across ${filteredCrops.length} crops`, { id: 'regen-all' });
-                }
-              } catch (error) {
-                console.error('Error regenerating all tasks:', error);
-                toast.error(`Failed: ${error.message}`, { id: 'regen-all' });
-                setSyncing(false);
-              }
-            }}
-            variant="outline" size="sm"
-            className="w-full gap-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border-emerald-200 interactive-button"
-            disabled={syncing || filteredCrops.length === 0}
-          >
-            {syncing ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
-            Regenerate All Tasks
-          </Button>
-        </div>
-        
-        <div className="flex-1 overflow-y-auto p-2">
-          {syncing ? (
-            <div className="text-center py-8">
-              <Loader2 className="w-6 h-6 animate-spin text-emerald-600 mx-auto mb-2" />
-              <p className="text-sm text-gray-500">Loading crops...</p>
-            </div>
-          ) : filteredCrops.length === 0 ? (
-            <p className="text-sm text-gray-500 text-center py-8">No crops planned yet</p>
-          ) : (
-            <div className="space-y-1">
-              {filteredCrops.map(crop => (
-                <div
-                  key={crop.id}
-                  className={cn(
-                    "flex items-center gap-2 p-3 rounded-lg cursor-pointer transition-colors hover:bg-gray-50",
-                    selectedCrop?.id === crop.id && "bg-emerald-50 border border-emerald-200"
-                  )}
-                  onClick={() => setSelectedCrop(crop)}
-                >
-                  <div className="w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: crop.color_hex || '#10b981' }} />
-                  <div className="flex-1 min-w-0">
-                    <p className="font-medium text-sm truncate" title={crop.label || 'Unnamed Crop'}>{crop.label || 'Unnamed Crop'}</p>
-                    <p className="text-xs text-gray-500">Qty: {crop.quantity_planted || crop.quantity_scheduled || 0}/{crop.quantity_planned}</p>
-                  </div>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-                      <Button variant="ghost" size="icon" className="h-8 w-8"><MoreVertical className="w-4 h-4" /></Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuItem onClick={() => { setSelectedCrop(crop); setShowEditCrop(true); }}>
-                        <Edit className="w-4 h-4 mr-2" />Edit
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => handleDuplicateCrop(crop, true)}>
-                        <Copy className="w-4 h-4 mr-2" />Succession Planting
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => handleDuplicateCrop(crop, false)}>
-                        <Copy className="w-4 h-4 mr-2" />Duplicate
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onClick={async () => {
-                        try {
-                          toast.loading('Generating tasks...', { id: 'gen-tasks' });
-                          const response = await base44.functions.invoke('generateTasksForCrop', { crop_plan_id: crop.id });
-                          await new Promise(r => setTimeout(r, 500));
-                          await loadPlansAndTasks(true);
-                          toast.success(`Created ${response.data.tasks_created || 0} tasks for ${crop.label}`, { id: 'gen-tasks' });
-                        } catch (error) {
-                          console.error('Error generating tasks:', error);
-                          toast.error(`Failed: ${error.message}`, { id: 'gen-tasks' });
-                        }
-                      }}>
-                        <RefreshCw className="w-4 h-4 mr-2" />Regenerate Tasks
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => handleDeleteCrop(crop)}>
-                        <Trash2 className="w-4 h-4 mr-2" />Delete
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </div>
-              ))}
-            </div>
+
+      {/* =============================================================
+          MOBILE TAB BAR — only visible on phones (< lg breakpoint)
+          Lets users switch between the calendar view and the crops sidebar.
+          Without this, the sidebar fills the entire mobile viewport
+          and the actual calendar is completely invisible below the fold.
+          ============================================================= */}
+      <div className="lg:hidden flex border-b bg-white flex-shrink-0">
+        <button
+          onClick={() => setMobileTab('calendar')}
+          className={cn(
+            "flex-1 flex items-center justify-center gap-2 py-3 text-sm font-semibold border-b-2 transition-colors",
+            mobileTab === 'calendar'
+              ? "border-emerald-600 text-emerald-700 bg-emerald-50/50"
+              : "border-transparent text-gray-500 hover:text-gray-700"
           )}
-        </div>
+        >
+          <LayoutGrid className="w-4 h-4" />
+          {viewMode === 'calendar' ? 'Calendar' : viewMode === 'kanban' ? 'Kanban' : 'Timeline'}
+        </button>
+        <button
+          onClick={() => setMobileTab('crops')}
+          className={cn(
+            "flex-1 flex items-center justify-center gap-2 py-3 text-sm font-semibold border-b-2 transition-colors",
+            mobileTab === 'crops'
+              ? "border-emerald-600 text-emerald-700 bg-emerald-50/50"
+              : "border-transparent text-gray-500 hover:text-gray-700"
+          )}
+        >
+          <List className="w-4 h-4" />
+          My Crops {cropPlans.length > 0 && `(${cropPlans.length})`}
+        </button>
       </div>
-      
-      {/* Main Calendar/Timeline Area */}
-      <div className="flex-1 flex flex-col overflow-hidden">
-        {/* Top Controls */}
-        <div className="p-4 border-b bg-white flex flex-wrap items-center gap-3">
-          <Select value={activeGarden?.id} onValueChange={async (id) => {
-            const garden = gardens.find(g => g.id === id);
-            setActiveGarden(garden);
-            localStorage.setItem('calendar_active_garden', id);
-            const currentUser = await base44.auth.me();
-            const seasonsData = await base44.entities.GardenSeason.filter({ garden_id: id, created_by: currentUser.email }, '-year');
-            setSeasons(seasonsData);
-            if (seasonsData.length > 0) {
-              setActiveSeasonId(seasonsData[0].id);
-              localStorage.setItem('calendar_active_season', seasonsData[0].id);
-            }
-          }}>
-            <SelectTrigger className="w-48"><SelectValue placeholder="Select garden" /></SelectTrigger>
-            <SelectContent>
-              {gardens.map(g => <SelectItem key={g.id} value={g.id}>{g.name}</SelectItem>)}
-            </SelectContent>
-          </Select>
+
+      {/* Main two-panel layout */}
+      <div className="flex flex-1 flex-col lg:flex-row overflow-hidden">
+
+        {/* ===================== LEFT SIDEBAR — My Crops =====================
+            MOBILE: only visible when mobileTab === 'crops'
+            DESKTOP: always visible (except timeline mode hides it)
+            =================================================================== */}
+        <div className={cn(
+          "w-full lg:w-80 border-r bg-white flex flex-col overflow-hidden",
+          viewMode === 'timeline' && "lg:hidden",
+          mobileTab !== 'crops' ? "hidden lg:flex" : "flex"
+        )}>
+          <div className="p-4 border-b space-y-2">
+            <h2 className="font-semibold text-lg hidden lg:block">My Crops</h2>
+            <Input
+              placeholder="Search crops..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
+            <Button 
+              onClick={() => setShowAddCrop(true)}
+              className="w-full bg-emerald-600 hover:bg-emerald-700 interactive-button"
+              disabled={syncing}
+            >
+              {syncing ? (
+                <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Syncing...</>
+              ) : (
+                <><Plus className="w-4 h-4 mr-2" />Add Crop</>
+              )}
+            </Button>
+            <Button
+              onClick={async () => {
+                if (!activeSeasonId) { toast.error('Please select a season first'); return; }
+                if (syncing) return;
+                try {
+                  const userLists = await base44.entities.GrowList.filter({ created_by: user.email }, '-updated_date');
+                  if (userLists.length === 0) { toast.error('No grow lists found. Create one first!'); return; }
+                  const matchingLists = userLists.filter(l => l.garden_season_id === activeSeasonId || !l.garden_season_id);
+                  if (matchingLists.length === 0) { toast.error('No grow lists for this season.'); return; }
+                  if (matchingLists.length === 1) {
+                    await handleSyncGrowList(matchingLists[0].id, activeSeasonId);
+                  } else {
+                    const listNum = prompt(
+                      `Select grow list to import:\n\n${matchingLists.map((l, i) => 
+                        `${i+1}. ${l.name} (${l.items?.length || 0} items)`
+                      ).join('\n')}\n\nEnter number:`
+                    );
+                    if (listNum) {
+                      const list = matchingLists[parseInt(listNum) - 1];
+                      if (list) await handleSyncGrowList(list.id, activeSeasonId);
+                    }
+                  }
+                } catch (error) {
+                  console.error('[Calendar] Import error:', error);
+                  toast.error('Import failed: ' + error.message);
+                }
+              }}
+              variant="outline"
+              className="w-full gap-2 interactive-button"
+              disabled={syncing || !activeSeasonId}
+            >
+              <Download className="w-4 h-4" />
+              Import from Grow List
+            </Button>
+            <Button
+              onClick={() => setShowAIWizard(true)}
+              variant="outline" size="sm"
+              className="w-full gap-2 bg-purple-50 hover:bg-purple-100 text-purple-700 border-purple-300"
+            >
+              ✨ AI Build My Calendar
+            </Button>
+            <Link to={createPageUrl('NeedToBuy')} className="w-full">
+              <Button variant="outline" size="sm" className="w-full gap-2 bg-blue-50 hover:bg-blue-100 text-blue-700 border-blue-300">
+                <ShoppingCart className="w-4 h-4" />Need to Buy
+              </Button>
+            </Link>
+            <Button onClick={() => setShowGuide(true)} variant="outline" size="sm" className="w-full">📖 User Guide</Button>
+            <Button
+              onClick={async () => {
+                if (filteredCrops.length === 0) { toast.error('No crops to generate tasks for'); return; }
+                try {
+                  toast.loading(`Regenerating tasks for ${filteredCrops.length} crops...`, { id: 'regen-all' });
+                  setSyncing(true);
+                  let totalCreated = 0;
+                  let failedCount = 0;
+                  for (let i = 0; i < filteredCrops.length; i++) {
+                    const crop = filteredCrops[i];
+                    try {
+                      const response = await base44.functions.invoke('generateTasksForCrop', { crop_plan_id: crop.id });
+                      totalCreated += response.data.tasks_created || 0;
+                      if (i < filteredCrops.length - 1) await new Promise(r => setTimeout(r, 800));
+                    } catch (error) {
+                      console.error(`Failed to generate tasks for ${crop.label}:`, error);
+                      failedCount++;
+                    }
+                  }
+                  await new Promise(r => setTimeout(r, 500));
+                  await loadPlansAndTasks(true);
+                  setSyncing(false);
+                  if (failedCount > 0) {
+                    toast.warning(`Created ${totalCreated} tasks. ${failedCount} crops failed.`, { id: 'regen-all', duration: 6000 });
+                  } else {
+                    toast.success(`Created ${totalCreated} tasks across ${filteredCrops.length} crops`, { id: 'regen-all' });
+                  }
+                } catch (error) {
+                  console.error('Error regenerating all tasks:', error);
+                  toast.error(`Failed: ${error.message}`, { id: 'regen-all' });
+                  setSyncing(false);
+                }
+              }}
+              variant="outline" size="sm"
+              className="w-full gap-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border-emerald-200 interactive-button"
+              disabled={syncing || filteredCrops.length === 0}
+            >
+              {syncing ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
+              Regenerate All Tasks
+            </Button>
+          </div>
           
-          <Select value={activeSeasonId} onValueChange={(seasonId) => {
-            setActiveSeasonId(seasonId);
-            localStorage.setItem('calendar_active_season', seasonId);
-          }}>
-            <SelectTrigger className="w-40"><SelectValue placeholder="Season" /></SelectTrigger>
-            <SelectContent>
-              {seasons.map(s => <SelectItem key={s.id} value={s.id}>{s.year} {s.season}</SelectItem>)}
-            </SelectContent>
-          </Select>
-          
-          <Select value={viewMode} onValueChange={setViewMode}>
-            <SelectTrigger className="w-32"><SelectValue /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="calendar">Calendar</SelectItem>
-              <SelectItem value="timeline">Timeline</SelectItem>
-              <SelectItem value="kanban">Kanban</SelectItem>
-            </SelectContent>
-          </Select>
-          
-          <Select value={taskFilter} onValueChange={setTaskFilter}>
-            <SelectTrigger className="w-40"><SelectValue placeholder="Filter tasks" /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Tasks</SelectItem>
-              <SelectItem value="bed_prep">Bed Prep</SelectItem>
-              <SelectItem value="seed">Seeding</SelectItem>
-              <SelectItem value="direct_seed">Direct Seed</SelectItem>
-              <SelectItem value="transplant">Transplant</SelectItem>
-              <SelectItem value="cultivate">Cultivate</SelectItem>
-              <SelectItem value="harvest">Harvest</SelectItem>
-            </SelectContent>
-          </Select>
+          <div className="flex-1 overflow-y-auto p-2">
+            {syncing ? (
+              <div className="text-center py-8">
+                <Loader2 className="w-6 h-6 animate-spin text-emerald-600 mx-auto mb-2" />
+                <p className="text-sm text-gray-500">Loading crops...</p>
+              </div>
+            ) : filteredCrops.length === 0 ? (
+              <p className="text-sm text-gray-500 text-center py-8">No crops planned yet</p>
+            ) : (
+              <div className="space-y-1">
+                {filteredCrops.map(crop => (
+                  <div
+                    key={crop.id}
+                    className={cn(
+                      "flex items-center gap-2 p-3 rounded-lg cursor-pointer transition-colors hover:bg-gray-50",
+                      selectedCrop?.id === crop.id && "bg-emerald-50 border border-emerald-200"
+                    )}
+                    onClick={() => setSelectedCrop(crop)}
+                  >
+                    <div className="w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: crop.color_hex || '#10b981' }} />
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium text-sm truncate" title={crop.label || 'Unnamed Crop'}>{crop.label || 'Unnamed Crop'}</p>
+                      <p className="text-xs text-gray-500">Qty: {crop.quantity_planted || crop.quantity_scheduled || 0}/{crop.quantity_planned}</p>
+                    </div>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+                        <Button variant="ghost" size="icon" className="h-8 w-8"><MoreVertical className="w-4 h-4" /></Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem onClick={() => { setSelectedCrop(crop); setShowEditCrop(true); }}>
+                          <Edit className="w-4 h-4 mr-2" />Edit
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => handleDuplicateCrop(crop, true)}>
+                          <Copy className="w-4 h-4 mr-2" />Succession Planting
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => handleDuplicateCrop(crop, false)}>
+                          <Copy className="w-4 h-4 mr-2" />Duplicate
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={async () => {
+                          try {
+                            toast.loading('Generating tasks...', { id: 'gen-tasks' });
+                            const response = await base44.functions.invoke('generateTasksForCrop', { crop_plan_id: crop.id });
+                            await new Promise(r => setTimeout(r, 500));
+                            await loadPlansAndTasks(true);
+                            toast.success(`Created ${response.data.tasks_created || 0} tasks for ${crop.label}`, { id: 'gen-tasks' });
+                          } catch (error) {
+                            console.error('Error generating tasks:', error);
+                            toast.error(`Failed: ${error.message}`, { id: 'gen-tasks' });
+                          }
+                        }}>
+                          <RefreshCw className="w-4 h-4 mr-2" />Regenerate Tasks
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => handleDeleteCrop(crop)}>
+                          <Trash2 className="w-4 h-4 mr-2" />Delete
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
         
-        {/* View Area */}
-        <div className="flex-1 overflow-auto bg-gray-50">
-          {viewMode === 'calendar' ? (
-            <CalendarGridView
-              tasks={filteredTasks}
-              crops={cropPlans}
-              season={getCurrentSeason()}
-              onTaskClick={setSelectedTask}
-              onDayClick={(date) => {
-                setSelectedDate(date);
-                setShowDayPanel(true);
-              }}
-            />
-          ) : viewMode === 'kanban' ? (
-            <div className="p-4">
-              <KanbanBoard 
+        {/* ===================== MAIN CALENDAR AREA =====================
+            MOBILE: only visible when mobileTab === 'calendar'
+            DESKTOP: always visible
+            ============================================================= */}
+        <div className={cn(
+          "flex-1 flex flex-col overflow-hidden",
+          mobileTab !== 'calendar' ? "hidden lg:flex" : "flex"
+        )}>
+          {/* Top Controls */}
+          <div className="p-3 lg:p-4 border-b bg-white flex flex-wrap items-center gap-2 lg:gap-3 flex-shrink-0">
+            <Select value={activeGarden?.id} onValueChange={async (id) => {
+              const garden = gardens.find(g => g.id === id);
+              setActiveGarden(garden);
+              localStorage.setItem('calendar_active_garden', id);
+              const currentUser = await base44.auth.me();
+              const seasonsData = await base44.entities.GardenSeason.filter({ garden_id: id, created_by: currentUser.email }, '-year');
+              setSeasons(seasonsData);
+              if (seasonsData.length > 0) {
+                setActiveSeasonId(seasonsData[0].id);
+                localStorage.setItem('calendar_active_season', seasonsData[0].id);
+              }
+            }}>
+              <SelectTrigger className="w-36 lg:w-48 text-sm"><SelectValue placeholder="Select garden" /></SelectTrigger>
+              <SelectContent>
+                {gardens.map(g => <SelectItem key={g.id} value={g.id}>{g.name}</SelectItem>)}
+              </SelectContent>
+            </Select>
+            
+            <Select value={activeSeasonId} onValueChange={(seasonId) => {
+              setActiveSeasonId(seasonId);
+              localStorage.setItem('calendar_active_season', seasonId);
+            }}>
+              <SelectTrigger className="w-32 lg:w-40 text-sm"><SelectValue placeholder="Season" /></SelectTrigger>
+              <SelectContent>
+                {seasons.map(s => <SelectItem key={s.id} value={s.id}>{s.year} {s.season}</SelectItem>)}
+              </SelectContent>
+            </Select>
+            
+            <Select value={viewMode} onValueChange={setViewMode}>
+              <SelectTrigger className="w-28 lg:w-32 text-sm"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="calendar">Calendar</SelectItem>
+                <SelectItem value="timeline">Timeline</SelectItem>
+                <SelectItem value="kanban">Kanban</SelectItem>
+              </SelectContent>
+            </Select>
+            
+            <Select value={taskFilter} onValueChange={setTaskFilter}>
+              <SelectTrigger className="w-28 lg:w-40 text-sm"><SelectValue placeholder="Filter" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Tasks</SelectItem>
+                <SelectItem value="bed_prep">Bed Prep</SelectItem>
+                <SelectItem value="seed">Seeding</SelectItem>
+                <SelectItem value="direct_seed">Direct Seed</SelectItem>
+                <SelectItem value="transplant">Transplant</SelectItem>
+                <SelectItem value="cultivate">Cultivate</SelectItem>
+                <SelectItem value="harvest">Harvest</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          
+          {/* View Area */}
+          <div className="flex-1 overflow-auto bg-gray-50" {...swipeHandlers}>
+            {viewMode === 'calendar' ? (
+              <CalendarGridView
                 tasks={filteredTasks}
-                cropPlans={cropPlans}
-                onTaskUpdate={() => loadPlansAndTasks(true)}
+                crops={cropPlans}
+                season={getCurrentSeason()}
+                onTaskClick={setSelectedTask}
+                onDayClick={(date) => {
+                  setSelectedDate(date);
+                  setShowDayPanel(true);
+                }}
               />
-            </div>
-          ) : (
-            <TimelineView 
-              tasks={filteredTasks}
-              crops={cropPlans}
-              season={getCurrentSeason()}
-              onTaskClick={setSelectedTask}
-            />
-          )}
+            ) : viewMode === 'kanban' ? (
+              <div className="p-4">
+                <KanbanBoard 
+                  tasks={filteredTasks}
+                  cropPlans={cropPlans}
+                  onTaskUpdate={() => loadPlansAndTasks(true)}
+                />
+              </div>
+            ) : (
+              <TimelineView 
+                tasks={filteredTasks}
+                crops={cropPlans}
+                season={getCurrentSeason()}
+                onTaskClick={setSelectedTask}
+              />
+            )}
+          </div>
         </div>
       </div>
       
@@ -632,21 +690,19 @@ const PHASE_LABELS = {
   bed_prep: 'Bed Prep', cultivate: 'Cultivate', harvest: 'Harvest'
 };
 
-/* Helper: parse date string safely as local date */
 function parseLocalDate(str) {
   if (!str) return null;
   const [y, m, d] = str.split('T')[0].split('-').map(Number);
   return new Date(y, m - 1, d);
 }
 
-/* Helper: are two dates the same calendar day? */
 function sameDay(a, b) {
   return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
 }
 
 
 /* ================================================================
-   CALENDAR GRID VIEW - SeedTime-style continuous spanning bars
+   CALENDAR GRID VIEW
    ================================================================ */
 function CalendarGridView({ tasks, crops, season, onTaskClick, onDayClick }) {
   if (!season) {
@@ -662,15 +718,11 @@ function CalendarGridView({ tasks, crops, season, onTaskClick, onDayClick }) {
   const DAY_NUM_HEIGHT = 18;
   const MAX_BARS = 3;
 
-  /* Build week rows for a month. Each week = array of 7 Date objects */
   function getWeeksForMonth(monthIndex) {
     const firstOfMonth = new Date(year, monthIndex, 1);
     const lastOfMonth = new Date(year, monthIndex + 1, 0);
     const weeks = [];
-
-    // Start from Sunday of the week containing the 1st
     const firstSunday = new Date(year, monthIndex, 1 - firstOfMonth.getDay());
-    
     let weekStart = new Date(firstSunday);
     while (weekStart <= lastOfMonth) {
       const days = [];
@@ -683,10 +735,9 @@ function CalendarGridView({ tasks, crops, season, onTaskClick, onDayClick }) {
     return weeks;
   }
 
-  /* Find tasks overlapping a week and assign bar positions */
   function getTaskBars(weekDays) {
-    const wkStart = weekDays[0];
-    const wkEnd = weekDays[6];
+    const wkStart = new Date(weekDays[0]);
+    const wkEnd = new Date(weekDays[6]);
     wkStart.setHours(0,0,0,0);
     wkEnd.setHours(23,59,59,999);
 
@@ -708,7 +759,6 @@ function CalendarGridView({ tasks, crops, season, onTaskClick, onDayClick }) {
       }
     });
 
-    // Sort by span length (longest first) then start col
     overlapping.sort((a, b) => {
       const aLen = a.endCol - a.startCol;
       const bLen = b.endCol - b.startCol;
@@ -716,7 +766,6 @@ function CalendarGridView({ tasks, crops, season, onTaskClick, onDayClick }) {
       return a.startCol - b.startCol;
     });
 
-    // Assign rows to avoid overlap
     const rowEnds = [];
     overlapping.forEach(bar => {
       let placed = false;
@@ -740,24 +789,20 @@ function CalendarGridView({ tasks, crops, season, onTaskClick, onDayClick }) {
   return (
     <div className="p-2 md:p-4">
       <div className="border rounded-lg bg-white overflow-hidden shadow-sm">
-        {/* Day-of-week header */}
         <div className="grid grid-cols-7 border-b bg-gray-50">
           {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(d => (
             <div key={d} className="text-center text-[11px] font-semibold py-2 text-gray-500 border-r last:border-r-0 uppercase tracking-wide">{d}</div>
           ))}
         </div>
 
-        {/* Months */}
         {Array.from({ length: 12 }, (_, monthIdx) => {
           const weeks = getWeeksForMonth(monthIdx);
           return (
             <div key={monthIdx}>
-              {/* Month label */}
               <div className="bg-gray-100 border-b border-t px-4 py-1.5 font-bold text-sm text-gray-700 sticky top-0 z-20">
                 {format(new Date(year, monthIdx, 1), 'MMMM yyyy')}
               </div>
               
-              {/* Week rows */}
               {weeks.map((weekDays, weekIdx) => {
                 const bars = getTaskBars(weekDays);
                 const visibleBars = bars.filter(b => b.row < MAX_BARS);
@@ -767,7 +812,6 @@ function CalendarGridView({ tasks, crops, season, onTaskClick, onDayClick }) {
 
                 return (
                   <div key={weekIdx} className="relative border-b last:border-b-0" style={{ minHeight: `${Math.max(rowHeight, 52)}px` }}>
-                    {/* Day cells (background + numbers) */}
                     <div className="grid grid-cols-7 absolute inset-0">
                       {weekDays.map((day, dayIdx) => {
                         const isCurrentMonth = day.getMonth() === monthIdx;
@@ -798,7 +842,6 @@ function CalendarGridView({ tasks, crops, season, onTaskClick, onDayClick }) {
                       })}
                     </div>
 
-                    {/* Task bars - absolutely positioned, spanning across columns */}
                     <div className="relative pointer-events-none" style={{ paddingTop: `${DAY_NUM_HEIGHT}px` }}>
                       {visibleBars.map((bar) => {
                         const leftPct = (bar.startCol / 7) * 100;
@@ -807,7 +850,6 @@ function CalendarGridView({ tasks, crops, season, onTaskClick, onDayClick }) {
                         const bgColor = bar.crop?.color_hex || bar.task.color_hex || '#10b981';
                         const icon = PHASE_ICONS[bar.task.task_type] || '📋';
 
-                        // Rounded corners: rounded on left if NOT continuing from prev week, rounded on right if NOT continuing
                         let borderRadius = '4px';
                         if (bar.continuesFrom && bar.continuesTo) borderRadius = '0px';
                         else if (bar.continuesFrom) borderRadius = '0 4px 4px 0';
@@ -846,7 +888,6 @@ function CalendarGridView({ tasks, crops, season, onTaskClick, onDayClick }) {
                         <div
                           className="pointer-events-auto cursor-pointer text-[10px] text-gray-500 font-semibold pl-2 hover:text-emerald-600"
                           style={{ marginTop: `${totalBarRows * (BAR_HEIGHT + BAR_GAP)}px` }}
-                          onClick={() => {/* could open day panel */}}
                         >
                           +{hiddenCount} more
                         </div>
@@ -869,7 +910,7 @@ function CalendarGridView({ tasks, crops, season, onTaskClick, onDayClick }) {
 
 
 /* ================================================================
-   TIMELINE VIEW - Proper Gantt chart with sticky sidebar
+   TIMELINE VIEW
    ================================================================ */
 function TimelineView({ tasks, crops, season, onTaskClick }) {
   if (!season) {
@@ -902,11 +943,9 @@ function TimelineView({ tasks, crops, season, onTaskClick }) {
   return (
     <div className="p-2 md:p-4">
       <div className="border rounded-lg bg-white shadow-sm overflow-hidden">
-        {/* Scroll container */}
         <div className="overflow-x-auto overflow-y-auto" style={{ maxHeight: 'calc(100vh - 16rem)' }}>
           <div style={{ width: `${totalWidth}px`, position: 'relative' }}>
             
-            {/* Header */}
             <div className="flex sticky top-0 z-30 border-b" style={{ height: `${HEADER_H}px` }}>
               <div
                 className="flex-shrink-0 border-r bg-gray-50 font-bold text-sm flex items-center px-3 sticky left-0 z-40"
@@ -930,7 +969,6 @@ function TimelineView({ tasks, crops, season, onTaskClick }) {
               </div>
             </div>
 
-            {/* Crop rows */}
             {crops.length === 0 ? (
               <div className="p-8 text-center text-gray-500">No crops planned yet.</div>
             ) : (
@@ -941,7 +979,6 @@ function TimelineView({ tasks, crops, season, onTaskClick }) {
 
                 return (
                   <div key={crop.id} className={cn("flex border-b relative hover:z-[35]", idx % 2 === 0 ? "bg-white" : "bg-gray-50/50")} style={{ height: `${ROW_H}px` }}>
-                    {/* Sticky crop name */}
                     <div
                       className={cn(
                         "flex-shrink-0 border-r flex items-center gap-2 px-3 sticky left-0 z-10",
@@ -953,14 +990,11 @@ function TimelineView({ tasks, crops, season, onTaskClick }) {
                       <span className="text-sm truncate font-medium">{crop.label}</span>
                     </div>
 
-                    {/* Timeline bars */}
                     <div className="relative" style={{ width: `${timelineWidth}px`, minWidth: `${timelineWidth}px` }}>
-                      {/* Month grid lines */}
                       {months.map((m, i) => (
                         <div key={i} className="absolute top-0 bottom-0 border-l border-gray-100" style={{ left: `${m.offset * DAY_WIDTH}px` }} />
                       ))}
 
-                      {/* Task bars */}
                       {cropTasks.map(task => {
                         const tStart = parseLocalDate(task.start_date);
                         const tEnd = task.end_date ? parseLocalDate(task.end_date) : new Date(tStart);
@@ -1003,7 +1037,6 @@ function TimelineView({ tasks, crops, season, onTaskClick }) {
                                 <span className="text-white text-[10px] ml-auto opacity-70 flex-shrink-0">✓</span>
                               )}
                             </div>
-                            {/* Tooltip on hover */}
                             <div className="hidden group-hover:block absolute top-full left-0 mt-1 bg-gray-900 text-white text-xs rounded px-2 py-1 whitespace-nowrap z-[100] shadow-lg pointer-events-none">
                               {crop.label}: {task.title}
                               <br />
@@ -1018,7 +1051,6 @@ function TimelineView({ tasks, crops, season, onTaskClick }) {
               })
             )}
 
-            {/* Today marker - vertical red line */}
             {todayOffset >= 0 && todayOffset < totalDays && (
               <div
                 className="absolute pointer-events-none z-20"
