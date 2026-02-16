@@ -18,7 +18,11 @@ import {
   Plus,
   TrendingUp,
   Droplets,
-  Share2
+  Share2,
+  Sprout,
+  Clock,
+  Scissors,
+  Leaf
 } from 'lucide-react';
 import SuggestVarietyButton from '@/components/seedstash/SuggestVarietyButton';
 import { Button } from '@/components/ui/button';
@@ -45,6 +49,18 @@ import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import ShareButton from '@/components/common/ShareButton';
 import { smartQuery } from '@/components/utils/smartQuery';
+
+/* ═══════════════════════════════════════════════════════════════
+   HELPER: Resolve a field from profile first, then variety fallback
+   This is the KEY change — profile data is always the primary source.
+   ═══════════════════════════════════════════════════════════════ */
+function resolve(profile, variety, ...keys) {
+  for (const k of keys) {
+    if (profile?.[k] != null && profile[k] !== '') return profile[k];
+    if (variety?.[k] != null && variety[k] !== '') return variety[k];
+  }
+  return null;
+}
 
 export default function SeedStashDetail() {
   const [searchParams] = useSearchParams();
@@ -121,45 +137,27 @@ export default function SeedStashDetail() {
             plant_type_id: prof.plant_type_id
           });
           
-          // Fetch linked Variety data for rich catalog info
           if (prof.variety_id) {
             const varietyData = await smartQuery(base44, 'Variety', { id: prof.variety_id });
             if (varietyData.length > 0) {
               const varietyRecord = varietyData[0];
               setVariety(varietyRecord);
-              console.debug('[SeedStashDetail] Variety loaded', { id: varietyRecord.id, name: varietyRecord.variety_name });
               
-              // Fetch PlantType
               if (varietyRecord.plant_type_id) {
                 const typeData = await smartQuery(base44, 'PlantType', { id: varietyRecord.plant_type_id });
-                if (typeData.length > 0) {
-                  setPlantType(typeData[0]);
-                  console.debug('[SeedStashDetail] PlantType loaded', typeData[0].common_name);
-                }
+                if (typeData.length > 0) setPlantType(typeData[0]);
               }
               
-              // Fetch SubCategory
               if (varietyRecord.plant_subcategory_id) {
                 const subcatData = await smartQuery(base44, 'PlantSubCategory', { id: varietyRecord.plant_subcategory_id });
-                if (subcatData.length > 0) {
-                  setSubCategory(subcatData[0]);
-                  console.debug('[SeedStashDetail] SubCategory loaded', subcatData[0].name);
-                }
+                if (subcatData.length > 0) setSubCategory(subcatData[0]);
               }
             }
           } else if (prof.plant_type_id) {
-            // Fallback: fetch PlantType directly from profile
             const typeData = await smartQuery(base44, 'PlantType', { id: prof.plant_type_id });
-            if (typeData.length > 0) {
-              setPlantType(typeData[0]);
-              console.debug('[SeedStashDetail] PlantType loaded (fallback)', typeData[0].common_name);
-            }
+            if (typeData.length > 0) setPlantType(typeData[0]);
           }
-        } else {
-          console.warn('[SeedStashDetail] PlantProfile not found for id', seedLot.plant_profile_id);
         }
-      } else {
-        console.warn('[SeedStashDetail] No plant_profile_id on SeedLot', seedLot.id);
       }
     } catch (error) {
       console.error('Error loading seed:', error);
@@ -283,15 +281,68 @@ export default function SeedStashDetail() {
   const ageStatus = getAgeStatus();
   const age = getAge();
 
-  const catalogData = variety || plantType || {};
-  const hasRichData = variety || plantType;
+  /* ═══════════════════════════════════════════════════════════════
+     KEY FIX: Resolve display data from profile FIRST, variety second.
+     This means imported CSV data shows up even without catalog link.
+     ═══════════════════════════════════════════════════════════════ */
+  const r = (key) => resolve(profile, variety, key);
+  const isFromCatalog = !!variety;
+  
+  // Resolved display values — profile takes priority
+  const daysToMaturity = r('days_to_maturity_seed') || r('days_to_maturity');
+  const sunReq = r('sun_requirement');
+  const waterReq = r('water_requirement');
+  const spacingMin = r('spacing_in_min') || r('spacing_min');
+  const spacingMax = r('spacing_in_max') || r('spacing_max');
+  const spacingRec = r('spacing_recommended');
+  const heightMin = r('height_in_min') || r('height_min');
+  const heightMax = r('height_in_max') || r('height_max');
+  const description = r('description');
+  const flavorProfile = r('flavor_profile');
+  const fruitColor = r('color_notes') || r('fruit_color');
+  const fruitShape = r('fruit_shape');
+  const fruitSize = r('fruit_size');
+  const podColor = r('pod_color');
+  const podShape = r('pod_shape');
+  const podSize = r('pod_size');
+  const growthHabit = r('growth_habit');
+  const uses = resolve(variety, profile, 'uses');
+  const breeder = r('breeder') || r('breeder_or_origin');
+  const countryOfOrigin = r('country_of_origin');
+  const scovilleMin = r('heat_scoville_min') || r('scoville_min');
+  const scovilleMax = r('heat_scoville_max') || r('scoville_max');
+  const containerFriendly = r('container_friendly');
+  const trellisRequired = r('trellis_required');
+  const perennial = r('perennial') || plantType?.is_perennial;
+  const growingNotes = r('notes_public') || resolve(variety, null, 'grower_notes');
+  const seedLineType = resolve(variety, profile, 'seed_line_type');
+  const startIndoorsWeeks = r('start_indoors_weeks_before_last_frost_min') || r('start_indoors_weeks');
+  const transplantMin = r('transplant_weeks_after_last_frost_min');
+  const transplantMax = r('transplant_weeks_after_last_frost_max');
+  const directSowMin = r('direct_sow_weeks_relative_to_last_frost_min');
+  const directSowMax = r('direct_sow_weeks_relative_to_last_frost_max');
+  const tomatoSize = r('tomato_size');
+  const tomatoColor = r('tomato_color');
+  const plantGrowth = r('plant_growth');
+  const leafChar = r('leaf_characteristics');
+  const diseaseResistance = resolve(variety, profile, 'disease_resistance');
+  const traits = profile?.traits || (variety?.traits ? (typeof variety.traits === 'string' ? variety.traits.split(',').map(t => t.trim()) : variety.traits) : null);
+
+  // ★ FIX: hasRichData is true if PROFILE has any data — not just catalog
+  const hasAnyDisplayData = !!(
+    daysToMaturity || sunReq || waterReq || spacingMin || spacingMax || spacingRec ||
+    description || flavorProfile || fruitColor || growthHabit || scovilleMin || scovilleMax ||
+    heightMin || heightMax || breeder || countryOfOrigin || startIndoorsWeeks ||
+    containerFriendly || trellisRequired || perennial
+  );
 
   return (
     <div className="space-y-6 max-w-6xl mx-auto">
-      {!hasRichData && seed && (
+      {/* Only show "not linked" notice if profile truly has NO data */}
+      {!hasAnyDisplayData && !isFromCatalog && seed && (
         <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
           <p className="text-sm text-yellow-800">
-            <strong>Note:</strong> This seed isn't linked to a catalog variety yet. You can still track it here, but catalog details are unavailable.
+            <strong>Note:</strong> This seed doesn't have variety details yet. Use "Edit Details" to add description, maturity, spacing, etc.
           </p>
         </div>
       )}
@@ -324,8 +375,25 @@ export default function SeedStashDetail() {
           {profile?.common_name && (
             <p className="mt-1 text-lg" style={{ color: 'var(--text-secondary)' }}>{profile.common_name}</p>
           )}
+          {/* Tag badges row */}
+          <div className="flex flex-wrap gap-2 mt-2">
+            {isFromCatalog && (
+              <Badge className="bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400">📚 Catalog Linked</Badge>
+            )}
+            {!isFromCatalog && profile && (
+              <Badge className="bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400">📝 Custom / Imported</Badge>
+            )}
+            {seedLineType && (
+              <Badge className="bg-violet-100 text-violet-800 dark:bg-violet-900/30 dark:text-violet-400 capitalize">
+                {seedLineType === 'open_pollinated' ? '🌿 Open-Pollinated' : seedLineType === 'hybrid' ? '🔬 Hybrid (F1)' : `🌱 ${seedLineType.replace(/_/g, ' ')}`}
+              </Badge>
+            )}
+            {scovilleMax && parseInt(scovilleMax) > 100000 && (
+              <Badge className="bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400">🔥 Extreme Heat</Badge>
+            )}
+          </div>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap">
           {variety && (
             <Link to={createPageUrl('ViewVariety') + `?id=${variety.id}`}>
               <Button variant="outline" className="gap-2">
@@ -402,7 +470,9 @@ export default function SeedStashDetail() {
       )}
 
       <div className="grid lg:grid-cols-3 gap-6">
-        {/* Catalog Data Section */}
+        {/* ═══════════════════════════════════════════════
+            LEFT: Variety Profile — ALWAYS shows rich data
+            ═══════════════════════════════════════════════ */}
         <Card 
           className="lg:col-span-2 hover:shadow-lg transition-all duration-300"
           style={{
@@ -415,8 +485,8 @@ export default function SeedStashDetail() {
           <CardHeader className="flex flex-row items-center justify-between">
             <CardTitle className="text-xl" style={{ color: 'var(--text-primary)' }}>
               📖 Variety Profile 
-              {variety && <span className="text-sm font-normal text-gray-500 ml-2">(Catalog)</span>}
-              {!variety && profile && <span className="text-sm font-normal text-gray-500 ml-2">(Custom)</span>}
+              {isFromCatalog && <span className="text-sm font-normal text-gray-500 ml-2">(Catalog)</span>}
+              {!isFromCatalog && profile && <span className="text-sm font-normal text-gray-500 ml-2">(Custom)</span>}
             </CardTitle>
             <Button variant="outline" size="sm" onClick={() => setShowEditProfile(true)}>
               <Edit className="w-4 h-4 mr-2" />
@@ -424,218 +494,293 @@ export default function SeedStashDetail() {
             </Button>
           </CardHeader>
           <CardContent className="space-y-6">
-            {hasRichData ? (
+            {hasAnyDisplayData ? (
               <>
-              {/* Variety Info Banner */}
-              {variety && (
-                <div className="p-4 bg-gradient-to-r from-emerald-50 to-green-50 dark:from-emerald-900/30 dark:to-green-900/30 rounded-lg border border-emerald-200 dark:border-emerald-700/50">
-                  <div className="grid sm:grid-cols-2 gap-4 text-sm">
-                    {variety.variety_name && (
-                      <div>
-                        <span className="text-emerald-700 dark:text-emerald-400 font-medium">Variety:</span>
-                        <span className="ml-2 text-emerald-900 dark:text-emerald-200 font-semibold">{variety.variety_name}</span>
-                      </div>
-                    )}
-                    {plantType?.common_name && (
-                      <div>
-                        <span className="text-emerald-700 dark:text-emerald-400 font-medium">Type:</span>
-                        <span className="ml-2 text-emerald-900 dark:text-emerald-200">{plantType.common_name}</span>
-                      </div>
-                    )}
-                    {subCategory?.name && (
-                      <div>
-                        <span className="text-emerald-700 dark:text-emerald-400 font-medium">Category:</span>
-                        <span className="ml-2 text-emerald-900 dark:text-emerald-200">{subCategory.name}</span>
-                      </div>
-                    )}
-                    {variety.seed_line_type && (
-                      <div>
-                        <span className="text-emerald-700 dark:text-emerald-400 font-medium">Seed Type:</span>
-                        <span className="ml-2 text-emerald-900 dark:text-emerald-200 capitalize">{variety.seed_line_type.replace(/_/g, ' ')}</span>
-                      </div>
-                    )}
+                {/* Variety Info Banner */}
+                {(variety || plantType || subCategory || seedLineType || profile?.common_name) && (
+                  <div className="p-4 bg-gradient-to-r from-emerald-50 to-green-50 dark:from-emerald-900/30 dark:to-green-900/30 rounded-lg border border-emerald-200 dark:border-emerald-700/50">
+                    <div className="grid sm:grid-cols-2 gap-3 text-sm">
+                      {(variety?.variety_name || profile?.variety_name) && (
+                        <div>
+                          <span className="text-emerald-700 dark:text-emerald-400 font-medium">Variety:</span>
+                          <span className="ml-2 text-emerald-900 dark:text-emerald-200 font-semibold">{variety?.variety_name || profile?.variety_name}</span>
+                        </div>
+                      )}
+                      {(plantType?.common_name || profile?.common_name) && (
+                        <div>
+                          <span className="text-emerald-700 dark:text-emerald-400 font-medium">Type:</span>
+                          <span className="ml-2 text-emerald-900 dark:text-emerald-200">{plantType?.common_name || profile?.common_name}</span>
+                        </div>
+                      )}
+                      {subCategory?.name && (
+                        <div>
+                          <span className="text-emerald-700 dark:text-emerald-400 font-medium">Category:</span>
+                          <span className="ml-2 text-emerald-900 dark:text-emerald-200">{subCategory.name}</span>
+                        </div>
+                      )}
+                      {seedLineType && (
+                        <div>
+                          <span className="text-emerald-700 dark:text-emerald-400 font-medium">Seed Type:</span>
+                          <span className="ml-2 text-emerald-900 dark:text-emerald-200 capitalize">{seedLineType.replace(/_/g, ' ')}</span>
+                        </div>
+                      )}
+                    </div>
                   </div>
-                </div>
-              )}
+                )}
               
-              {/* Key Growing Stats - Hero Section */}
-              <div className="grid sm:grid-cols-2 md:grid-cols-4 gap-3">
-                {(profile?.days_to_maturity_seed || variety?.days_to_maturity) && (
-                  <div className="flex flex-col items-center p-4 bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/30 dark:to-blue-800/30 rounded-xl border border-blue-200 dark:border-blue-700/50">
-                    <Calendar className="w-6 h-6 text-blue-600 dark:text-blue-400 mb-2" />
-                    <p className="text-xs text-blue-700 dark:text-blue-400 mb-1">Days to Maturity</p>
-                    <p className="text-2xl font-bold text-blue-900 dark:text-blue-200">{profile?.days_to_maturity_seed || variety?.days_to_maturity}</p>
-                  </div>
-                )}
-                {(profile?.sun_requirement || variety?.sun_requirement) && (
-                  <div className="flex flex-col items-center p-4 bg-gradient-to-br from-yellow-50 to-amber-100 dark:from-yellow-900/30 dark:to-amber-800/30 rounded-xl border border-yellow-200 dark:border-yellow-700/50">
-                    <Sun className="w-6 h-6 text-yellow-600 dark:text-yellow-400 mb-2" />
-                    <p className="text-xs text-yellow-700 dark:text-yellow-400 mb-1">Sun Exposure</p>
-                    <p className="text-sm font-bold text-yellow-900 dark:text-yellow-200 capitalize">
-                      {(profile?.sun_requirement || variety?.sun_requirement).replace(/_/g, ' ')}
-                    </p>
-                  </div>
-                )}
-                {(profile?.spacing_in_min || profile?.spacing_in_max || variety?.spacing_recommended) && (
-                  <div className="flex flex-col items-center p-4 bg-gradient-to-br from-green-50 to-emerald-100 dark:from-green-900/30 dark:to-emerald-800/30 rounded-xl border border-green-200 dark:border-green-700/50">
-                    <Ruler className="w-6 h-6 text-green-600 dark:text-green-400 mb-2" />
-                    <p className="text-xs text-green-700 dark:text-green-400 mb-1">Spacing</p>
-                    <p className="text-lg font-bold text-green-900 dark:text-green-200">
-                      {profile?.spacing_in_min && profile?.spacing_in_max
-                        ? `${profile.spacing_in_min}-${profile.spacing_in_max}"`
-                        : variety?.spacing_recommended 
-                          ? `${variety.spacing_recommended}"`
-                          : `${profile?.spacing_in_min || profile?.spacing_in_max}"`}
-                    </p>
-                  </div>
-                )}
-                {(profile?.water_requirement || variety?.water_requirement) && (
-                  <div className="flex flex-col items-center p-4 bg-gradient-to-br from-cyan-50 to-blue-100 dark:from-cyan-900/30 dark:to-blue-800/30 rounded-xl border border-cyan-200 dark:border-cyan-700/50">
-                    <Droplets className="w-6 h-6 text-cyan-600 dark:text-cyan-400 mb-2" />
-                    <p className="text-xs text-cyan-700 dark:text-cyan-400 mb-1">Water Needs</p>
-                    <p className="text-sm font-bold text-cyan-900 dark:text-cyan-200 capitalize">
-                      {profile?.water_requirement || variety?.water_requirement}
-                    </p>
-                  </div>
-                )}
-              </div>
-
-              {/* Extended Variety Data from Catalog */}
-              {variety && (
-                <div className="space-y-4">
-                  {(profile?.description || variety?.description) && (
-                    <div className="p-4 bg-gray-50 dark:bg-gray-900/20 rounded-lg border dark:border-gray-700/50">
-                      <p className="font-semibold mb-2" style={{ color: 'var(--text-primary)' }}>Description</p>
-                      <p className="leading-relaxed" style={{ color: 'var(--text-secondary)' }}>{profile?.description || variety?.description}</p>
+                {/* Key Growing Stats — Hero Cards */}
+                <div className="grid sm:grid-cols-2 md:grid-cols-4 gap-3">
+                  {daysToMaturity && (
+                    <div className="flex flex-col items-center p-4 bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/30 dark:to-blue-800/30 rounded-xl border border-blue-200 dark:border-blue-700/50">
+                      <Calendar className="w-6 h-6 text-blue-600 dark:text-blue-400 mb-2" />
+                      <p className="text-xs text-blue-700 dark:text-blue-400 mb-1">Days to Maturity</p>
+                      <p className="text-2xl font-bold text-blue-900 dark:text-blue-200">{daysToMaturity}</p>
                     </div>
                   )}
-                  
-                  {((profile?.flavor_profile || variety?.flavor_profile) || (profile?.color_notes || variety?.fruit_color) || (profile?.growth_habit || variety?.growth_habit)) && (
-                    <div className="grid sm:grid-cols-2 gap-4">
-                      {(profile?.flavor_profile || variety?.flavor_profile) && (
-                        <div className="p-3 bg-purple-50 dark:bg-purple-900/20 rounded-lg border border-purple-200 dark:border-purple-700/50">
-                          <p className="text-xs font-semibold text-purple-700 dark:text-purple-400 mb-1">Flavor</p>
-                          <p className="text-sm text-purple-900 dark:text-purple-300">{profile?.flavor_profile || variety?.flavor_profile}</p>
-                        </div>
-                      )}
-                      {variety?.uses && (
-                        <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-700/50">
-                          <p className="text-xs font-semibold text-blue-700 dark:text-blue-400 mb-1">Uses</p>
-                          <p className="text-sm text-blue-900 dark:text-blue-300">{variety.uses}</p>
-                        </div>
-                      )}
-                      {(profile?.color_notes || variety?.fruit_color) && (
-                        <div className="p-3 bg-pink-50 dark:bg-pink-900/20 rounded-lg border border-pink-200 dark:border-pink-700/50">
-                          <p className="text-xs font-semibold text-pink-700 dark:text-pink-400 mb-1">Fruit/Pod Color</p>
-                          <p className="text-sm text-pink-900 dark:text-pink-300">{profile?.color_notes || variety?.fruit_color}</p>
-                        </div>
-                      )}
-                      {(profile?.growth_habit || variety?.growth_habit) && (
-                        <div className="p-3 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-700/50">
-                          <p className="text-xs font-semibold text-green-700 dark:text-green-400 mb-1">Growth Habit</p>
-                          <p className="text-sm text-green-900 dark:text-green-300 capitalize">{profile?.growth_habit || variety?.growth_habit}</p>
-                        </div>
-                      )}
-                    </div>
-                  )}
-                  
-                  {variety.breeder_or_origin && (
-                    <div className="p-4 bg-amber-50 dark:bg-amber-900/20 rounded-lg border border-amber-200 dark:border-amber-700/50">
-                      <p className="text-xs font-semibold text-amber-700 dark:text-amber-400 mb-1">Breeder / Origin</p>
-                      <p className="text-sm text-amber-900 dark:text-amber-300">{variety.breeder_or_origin}</p>
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {/* Additional Details */}
-              {(profile?.height_in_min || profile?.height_in_max || variety?.scoville_min || variety?.scoville_max) && (
-                <div className="grid sm:grid-cols-2 gap-4">
-                  {(profile?.height_in_min || profile?.height_in_max) && (
-                    <div className="p-4 bg-gray-50 dark:bg-gray-900/20 rounded-lg border dark:border-gray-700/50">
-                      <div className="flex items-center gap-2 mb-2">
-                        <TrendingUp className="w-5 h-5 text-gray-600 dark:text-gray-400" />
-                        <p className="font-semibold" style={{ color: 'var(--text-primary)' }}>Plant Height</p>
-                      </div>
-                      <p className="text-lg" style={{ color: 'var(--text-secondary)' }}>
-                        {profile.height_in_min && profile.height_in_max
-                          ? `${profile.height_in_min}-${profile.height_in_max} inches`
-                          : `${profile.height_in_min || profile.height_in_max} inches`}
+                  {sunReq && (
+                    <div className="flex flex-col items-center p-4 bg-gradient-to-br from-yellow-50 to-amber-100 dark:from-yellow-900/30 dark:to-amber-800/30 rounded-xl border border-yellow-200 dark:border-yellow-700/50">
+                      <Sun className="w-6 h-6 text-yellow-600 dark:text-yellow-400 mb-2" />
+                      <p className="text-xs text-yellow-700 dark:text-yellow-400 mb-1">Sun Exposure</p>
+                      <p className="text-sm font-bold text-yellow-900 dark:text-yellow-200 capitalize">
+                        {sunReq.replace(/_/g, ' ')}
                       </p>
                     </div>
                   )}
-                  {(variety?.scoville_min || variety?.scoville_max) && (
-                    <div className="p-4 bg-gradient-to-br from-red-50 to-orange-50 dark:from-red-900/30 dark:to-orange-900/30 rounded-lg border border-red-200 dark:border-red-700/50">
-                      <div className="flex items-center gap-2 mb-2">
-                        <div className="text-2xl">🌶️</div>
-                        <p className="font-semibold text-red-900 dark:text-red-200">Heat Level</p>
-                      </div>
-                      <p className="text-lg font-bold text-red-700 dark:text-red-400">
-                        {variety.scoville_min && variety.scoville_max
-                          ? `${variety.scoville_min.toLocaleString()}-${variety.scoville_max.toLocaleString()}`
-                          : (variety.scoville_min || variety.scoville_max).toLocaleString()} SHU
+                  {(spacingMin || spacingMax || spacingRec) && (
+                    <div className="flex flex-col items-center p-4 bg-gradient-to-br from-green-50 to-emerald-100 dark:from-green-900/30 dark:to-emerald-800/30 rounded-xl border border-green-200 dark:border-green-700/50">
+                      <Ruler className="w-6 h-6 text-green-600 dark:text-green-400 mb-2" />
+                      <p className="text-xs text-green-700 dark:text-green-400 mb-1">Spacing</p>
+                      <p className="text-lg font-bold text-green-900 dark:text-green-200">
+                        {spacingMin && spacingMax
+                          ? `${spacingMin}-${spacingMax}"`
+                          : spacingRec 
+                            ? `${spacingRec}"`
+                            : `${spacingMin || spacingMax}"`}
+                      </p>
+                    </div>
+                  )}
+                  {waterReq && (
+                    <div className="flex flex-col items-center p-4 bg-gradient-to-br from-cyan-50 to-blue-100 dark:from-cyan-900/30 dark:to-blue-800/30 rounded-xl border border-cyan-200 dark:border-cyan-700/50">
+                      <Droplets className="w-6 h-6 text-cyan-600 dark:text-cyan-400 mb-2" />
+                      <p className="text-xs text-cyan-700 dark:text-cyan-400 mb-1">Water Needs</p>
+                      <p className="text-sm font-bold text-cyan-900 dark:text-cyan-200 capitalize">
+                        {waterReq}
                       </p>
                     </div>
                   )}
                 </div>
-              )}
 
-              {/* Growing Characteristics */}
-              {(profile?.container_friendly || profile?.trellis_required || profile?.perennial || variety?.container_friendly || variety?.trellis_required) && (
-                <div>
-                  <p className="text-sm font-semibold text-gray-700 mb-3">Growing Characteristics</p>
-                  <div className="flex flex-wrap gap-2">
-                    {(profile?.container_friendly || variety?.container_friendly) && (
-                      <Badge className="bg-blue-100 text-blue-800 px-3 py-1">📦 Container Friendly</Badge>
+                {/* Growth Habit + Plant Growth + Leaf Characteristics */}
+                {(growthHabit || plantGrowth || leafChar) && (
+                  <div className="grid sm:grid-cols-2 md:grid-cols-3 gap-3">
+                    {growthHabit && (
+                      <div className="p-3 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-700/50">
+                        <p className="text-xs font-semibold text-green-700 dark:text-green-400 mb-1">Growth Habit</p>
+                        <p className="text-sm font-medium text-green-900 dark:text-green-300 capitalize">{growthHabit}</p>
+                      </div>
                     )}
-                    {(profile?.trellis_required || variety?.trellis_required) && (
-                      <Badge className="bg-green-100 text-green-800 px-3 py-1">🌿 Needs Trellis</Badge>
+                    {plantGrowth && (
+                      <div className="p-3 bg-lime-50 dark:bg-lime-900/20 rounded-lg border border-lime-200 dark:border-lime-700/50">
+                        <p className="text-xs font-semibold text-lime-700 dark:text-lime-400 mb-1">Plant Growth</p>
+                        <p className="text-sm font-medium text-lime-900 dark:text-lime-300 capitalize">{plantGrowth}</p>
+                      </div>
                     )}
-                    {(profile?.perennial || plantType?.is_perennial) && (
-                      <Badge className="bg-purple-100 text-purple-800 px-3 py-1">🔄 Perennial</Badge>
+                    {leafChar && (
+                      <div className="p-3 bg-teal-50 dark:bg-teal-900/20 rounded-lg border border-teal-200 dark:border-teal-700/50">
+                        <p className="text-xs font-semibold text-teal-700 dark:text-teal-400 mb-1">Leaf Type</p>
+                        <p className="text-sm font-medium text-teal-900 dark:text-teal-300 capitalize">{leafChar}</p>
+                      </div>
                     )}
                   </div>
-                </div>
-              )}
+                )}
 
-              {/* Traits */}
-              {((profile?.traits && Array.isArray(profile.traits) && profile.traits.length > 0) || variety?.traits) && (
-                <div className="p-4 bg-emerald-50 dark:bg-emerald-900/30 rounded-lg border border-emerald-200 dark:border-emerald-700/50">
-                  <p className="font-semibold text-emerald-900 dark:text-emerald-200 mb-3">Variety Traits</p>
-                  <div className="flex flex-wrap gap-2">
-                    {(profile?.traits || []).map((trait, idx) => (
-                      <Badge key={idx} className="bg-emerald-600 text-white px-3 py-1">
-                        {typeof trait === 'string' ? trait : trait.name || trait}
-                      </Badge>
-                    ))}
+                {/* Scoville / Heat Level */}
+                {(scovilleMin || scovilleMax) && (
+                  <div className="p-4 bg-gradient-to-br from-red-50 to-orange-50 dark:from-red-900/30 dark:to-orange-900/30 rounded-xl border border-red-200 dark:border-red-700/50">
+                    <div className="flex items-center gap-2 mb-2">
+                      <div className="text-2xl">🌶️</div>
+                      <p className="font-semibold text-red-900 dark:text-red-200">Heat Level</p>
+                    </div>
+                    <p className="text-lg font-bold text-red-700 dark:text-red-400">
+                      {scovilleMin && scovilleMax
+                        ? `${Number(scovilleMin).toLocaleString()}-${Number(scovilleMax).toLocaleString()}`
+                        : Number(scovilleMin || scovilleMax).toLocaleString()} SHU
+                    </p>
                   </div>
-                </div>
-              )}
+                )}
 
-              {/* Growing Notes */}
-              {(profile?.notes_public || variety?.grower_notes) && (
-                <div className="p-4 bg-gray-50 dark:bg-gray-900/20 rounded-lg border dark:border-gray-700/50">
-                  <p className="font-semibold mb-2" style={{ color: 'var(--text-primary)' }}>Growing Notes</p>
-                  <p className="whitespace-pre-wrap leading-relaxed" style={{ color: 'var(--text-secondary)' }}>{profile?.notes_public || variety?.grower_notes}</p>
-                </div>
+                {/* Planting Timeline */}
+                {(startIndoorsWeeks || transplantMin || directSowMin) && (
+                  <div className="grid sm:grid-cols-3 gap-3">
+                    {startIndoorsWeeks && (
+                      <div className="p-3 bg-indigo-50 dark:bg-indigo-900/20 rounded-lg border border-indigo-200 dark:border-indigo-700/50">
+                        <p className="text-xs font-semibold text-indigo-700 dark:text-indigo-400 mb-1">Start Indoors</p>
+                        <p className="text-sm font-medium text-indigo-900 dark:text-indigo-300">{startIndoorsWeeks} weeks before frost</p>
+                      </div>
+                    )}
+                    {(transplantMin || transplantMax) && (
+                      <div className="p-3 bg-violet-50 dark:bg-violet-900/20 rounded-lg border border-violet-200 dark:border-violet-700/50">
+                        <p className="text-xs font-semibold text-violet-700 dark:text-violet-400 mb-1">Transplant</p>
+                        <p className="text-sm font-medium text-violet-900 dark:text-violet-300">
+                          {transplantMin && transplantMax ? `${transplantMin}-${transplantMax}` : transplantMin || transplantMax} weeks after frost
+                        </p>
+                      </div>
+                    )}
+                    {(directSowMin || directSowMax) && (
+                      <div className="p-3 bg-amber-50 dark:bg-amber-900/20 rounded-lg border border-amber-200 dark:border-amber-700/50">
+                        <p className="text-xs font-semibold text-amber-700 dark:text-amber-400 mb-1">Direct Sow</p>
+                        <p className="text-sm font-medium text-amber-900 dark:text-amber-300">
+                          {directSowMin && directSowMax ? `${directSowMin}-${directSowMax}` : directSowMin || directSowMax} weeks after frost
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Description */}
+                {description && (
+                  <div className="p-4 bg-gray-50 dark:bg-gray-900/20 rounded-lg border dark:border-gray-700/50">
+                    <p className="font-semibold mb-2" style={{ color: 'var(--text-primary)' }}>Description</p>
+                    <p className="leading-relaxed" style={{ color: 'var(--text-secondary)' }}>{description}</p>
+                  </div>
+                )}
+                
+                {/* Flavor / Uses / Color / Fruit details */}
+                {(flavorProfile || uses || fruitColor || fruitShape || fruitSize || tomatoSize || tomatoColor || podColor || podShape || podSize) && (
+                  <div className="grid sm:grid-cols-2 gap-3">
+                    {flavorProfile && (
+                      <div className="p-3 bg-purple-50 dark:bg-purple-900/20 rounded-lg border border-purple-200 dark:border-purple-700/50">
+                        <p className="text-xs font-semibold text-purple-700 dark:text-purple-400 mb-1">Flavor</p>
+                        <p className="text-sm text-purple-900 dark:text-purple-300 capitalize">{flavorProfile}</p>
+                      </div>
+                    )}
+                    {uses && (
+                      <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-700/50">
+                        <p className="text-xs font-semibold text-blue-700 dark:text-blue-400 mb-1">Uses</p>
+                        <p className="text-sm text-blue-900 dark:text-blue-300">{uses}</p>
+                      </div>
+                    )}
+                    {(fruitColor || tomatoColor) && (
+                      <div className="p-3 bg-pink-50 dark:bg-pink-900/20 rounded-lg border border-pink-200 dark:border-pink-700/50">
+                        <p className="text-xs font-semibold text-pink-700 dark:text-pink-400 mb-1">Fruit/Pod Color</p>
+                        <p className="text-sm text-pink-900 dark:text-pink-300 capitalize">{fruitColor || tomatoColor}</p>
+                      </div>
+                    )}
+                    {(fruitShape || podShape) && (
+                      <div className="p-3 bg-orange-50 dark:bg-orange-900/20 rounded-lg border border-orange-200 dark:border-orange-700/50">
+                        <p className="text-xs font-semibold text-orange-700 dark:text-orange-400 mb-1">Shape</p>
+                        <p className="text-sm text-orange-900 dark:text-orange-300 capitalize">{fruitShape || podShape}</p>
+                      </div>
+                    )}
+                    {(fruitSize || tomatoSize || podSize) && (
+                      <div className="p-3 bg-rose-50 dark:bg-rose-900/20 rounded-lg border border-rose-200 dark:border-rose-700/50">
+                        <p className="text-xs font-semibold text-rose-700 dark:text-rose-400 mb-1">Size</p>
+                        <p className="text-sm text-rose-900 dark:text-rose-300 capitalize">{fruitSize || tomatoSize || podSize}</p>
+                      </div>
+                    )}
+                    {(podColor && podColor !== fruitColor) && (
+                      <div className="p-3 bg-red-50 dark:bg-red-900/20 rounded-lg border border-red-200 dark:border-red-700/50">
+                        <p className="text-xs font-semibold text-red-700 dark:text-red-400 mb-1">Pod Color</p>
+                        <p className="text-sm text-red-900 dark:text-red-300 capitalize">{podColor}</p>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Plant Height */}
+                {(heightMin || heightMax) && (
+                  <div className="p-4 bg-gray-50 dark:bg-gray-900/20 rounded-lg border dark:border-gray-700/50">
+                    <div className="flex items-center gap-2 mb-2">
+                      <TrendingUp className="w-5 h-5 text-gray-600 dark:text-gray-400" />
+                      <p className="font-semibold" style={{ color: 'var(--text-primary)' }}>Plant Height</p>
+                    </div>
+                    <p className="text-lg" style={{ color: 'var(--text-secondary)' }}>
+                      {heightMin && heightMax
+                        ? `${heightMin}-${heightMax} inches`
+                        : `${heightMin || heightMax} inches`}
+                    </p>
+                  </div>
+                )}
+
+                {/* Breeder / Origin */}
+                {(breeder || countryOfOrigin) && (
+                  <div className="p-4 bg-amber-50 dark:bg-amber-900/20 rounded-lg border border-amber-200 dark:border-amber-700/50">
+                    <p className="text-xs font-semibold text-amber-700 dark:text-amber-400 mb-1">Breeder / Origin</p>
+                    <p className="text-sm text-amber-900 dark:text-amber-300">
+                      {[breeder, countryOfOrigin].filter(Boolean).join(' — ')}
+                    </p>
+                  </div>
+                )}
+
+                {/* Disease Resistance */}
+                {diseaseResistance && (
+                  <div className="p-4 bg-sky-50 dark:bg-sky-900/20 rounded-lg border border-sky-200 dark:border-sky-700/50">
+                    <p className="text-xs font-semibold text-sky-700 dark:text-sky-400 mb-1">Disease Resistance</p>
+                    <p className="text-sm text-sky-900 dark:text-sky-300">{diseaseResistance}</p>
+                  </div>
+                )}
+
+                {/* Growing Characteristics Badges */}
+                {(containerFriendly || trellisRequired || perennial) && (
+                  <div>
+                    <p className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">Growing Characteristics</p>
+                    <div className="flex flex-wrap gap-2">
+                      {containerFriendly && (
+                        <Badge className="bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400 px-3 py-1">📦 Container Friendly</Badge>
+                      )}
+                      {trellisRequired && (
+                        <Badge className="bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400 px-3 py-1">🌿 Needs Trellis</Badge>
+                      )}
+                      {perennial && (
+                        <Badge className="bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400 px-3 py-1">🔄 Perennial</Badge>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Traits */}
+                {traits && Array.isArray(traits) && traits.length > 0 && (
+                  <div className="p-4 bg-emerald-50 dark:bg-emerald-900/30 rounded-lg border border-emerald-200 dark:border-emerald-700/50">
+                    <p className="font-semibold text-emerald-900 dark:text-emerald-200 mb-3">Variety Traits</p>
+                    <div className="flex flex-wrap gap-2">
+                      {traits.map((trait, idx) => (
+                        <Badge key={idx} className="bg-emerald-600 text-white px-3 py-1">
+                          {typeof trait === 'string' ? trait : trait.name || trait}
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Growing Notes */}
+                {growingNotes && (
+                  <div className="p-4 bg-gray-50 dark:bg-gray-900/20 rounded-lg border dark:border-gray-700/50">
+                    <p className="font-semibold mb-2" style={{ color: 'var(--text-primary)' }}>Growing Notes</p>
+                    <p className="whitespace-pre-wrap leading-relaxed" style={{ color: 'var(--text-secondary)' }}>{growingNotes}</p>
+                  </div>
                 )}
               </>
             ) : (
-              <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+              /* Only shown when profile has truly NO displayable data */
+              <div className="p-6 bg-yellow-50 border border-yellow-200 rounded-lg text-center">
+                <Sprout className="w-10 h-10 text-yellow-400 mx-auto mb-3" />
                 <p className="text-sm font-medium text-yellow-900 mb-2">
-                  This is a custom variety without catalog data. Add details using "Edit Details" above.
+                  No variety details yet
                 </p>
-                <div className="text-xs text-yellow-700 space-y-1">
-                  <p>• Add description, days to maturity, spacing, etc.</p>
-                  <p>• Your edits are private to your stash</p>
-                  <p>• You can suggest this variety to the public catalog later</p>
-                </div>
+                <p className="text-xs text-yellow-700 mb-4">
+                  Add description, days to maturity, spacing, and more using the Edit button above.
+                </p>
+                <Button variant="outline" size="sm" onClick={() => setShowEditProfile(true)} className="gap-2">
+                  <Edit className="w-4 h-4" /> Add Details
+                </Button>
               </div>
             )}
           </CardContent>
         </Card>
 
-        {/* Lot Details Card */}
+        {/* ═══════════════════════════════════════════════
+            RIGHT: Lot Details Card (unchanged logic)
+            ═══════════════════════════════════════════════ */}
         <Card 
           className="hover:shadow-lg transition-all duration-300"
           style={{
@@ -722,9 +867,6 @@ export default function SeedStashDetail() {
             )}
           </CardContent>
         </Card>
-
-
-
       </div>
 
       {/* Notes */}
@@ -930,8 +1072,8 @@ export default function SeedStashDetail() {
                 rows={3}
               />
             </div>
-            </div>
-            <DialogFooter>
+          </div>
+          <DialogFooter>
             <Button variant="outline" onClick={() => setShowEditProfile(false)}>Cancel</Button>
             <Button onClick={handleSaveProfile} className="bg-emerald-600 hover:bg-emerald-700">
               Save Changes
