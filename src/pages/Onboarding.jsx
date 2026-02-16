@@ -140,6 +140,16 @@ export default function Onboarding() {
 
   const handleBack = () => { if (currentStep > 0) setCurrentStep(currentStep - 1); };
 
+  // ═══════════════════════════════════════════════════════════════
+  // ★★★ CRITICAL FIX: ONBOARDING DOUBLE-LOOP BUG ★★★
+  //
+  // ROOT CAUSE: navigate() does a client-side route change.
+  // Layout.jsx still has OLD user object (onboarding_completed=false).
+  // Layout's check sees false → hard-redirects BACK to /Onboarding.
+  //
+  // FIX: window.location.href forces FULL PAGE RELOAD so Layout
+  // fetches fresh user data (onboarding_completed=true) from server.
+  // ═══════════════════════════════════════════════════════════════
   const handleComplete = async () => {
     if (loading) return;
     setLoading(true);
@@ -159,7 +169,6 @@ export default function Onboarding() {
         onboarding_completed: true
       });
 
-      // Broadcast so useUnits hook picks it up immediately app-wide
       broadcastUnits(formData.units);
 
       const garden = await base44.entities.Garden.create({
@@ -177,7 +186,8 @@ export default function Onboarding() {
       });
 
       await new Promise(r => setTimeout(r, 500));
-      navigate(createPageUrl('Dashboard'));
+      // ★★★ THE FIX — hard nav instead of navigate() ★★★
+      window.location.href = createPageUrl('Dashboard');
     } catch (error) {
       console.error('Error completing onboarding:', error);
       toast.error('Failed to complete setup. Please try again.');
@@ -189,9 +199,6 @@ export default function Onboarding() {
   const renderStep = () => {
     switch (steps[currentStep].id) {
 
-      // ═══════════════════════════
-      // STEP 1 — Profile
-      // ═══════════════════════════
       case 'profile':
         return (
           <div className="space-y-6">
@@ -226,7 +233,6 @@ export default function Onboarding() {
               )}
             </div>
 
-            {/* Country */}
             <div>
               <Label>Country</Label>
               <Select value={formData.country} onValueChange={handleCountryChange}>
@@ -238,7 +244,6 @@ export default function Onboarding() {
               <p className="text-sm text-gray-500 mt-1">Sets labels, default units, and zone system for your region</p>
             </div>
 
-            {/* Units */}
             <div>
               <Label>Preferred Units</Label>
               <Select value={formData.units} onValueChange={(v) => { set('units', v); broadcastUnits(v); }}>
@@ -257,13 +262,9 @@ export default function Onboarding() {
           </div>
         );
 
-      // ═══════════════════════════
-      // STEP 2 — Location
-      // ═══════════════════════════
       case 'location':
         return (
           <div className="space-y-6">
-            {/* Country badge */}
             <div className="flex items-center gap-2 px-3 py-2.5 bg-gray-50 rounded-lg border">
               <Globe className="w-4 h-4 text-gray-400 flex-shrink-0" />
               <span className="text-sm text-gray-600">Country: <strong className="text-gray-900">{cfg.name}</strong></span>
@@ -271,7 +272,6 @@ export default function Onboarding() {
                 className="text-xs text-emerald-600 hover:underline ml-auto">Change</button>
             </div>
 
-            {/* Postal code — label adapts per country */}
             <div>
               <Label htmlFor="zip">{cfg.postalLabel}</Label>
               <Input id="zip" placeholder={cfg.postalHint}
@@ -279,7 +279,6 @@ export default function Onboarding() {
               <p className="text-sm text-gray-500 mt-1">Used to estimate your growing zone and frost dates</p>
             </div>
 
-            {/* City + Region */}
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <Label htmlFor="city">City</Label>
@@ -293,7 +292,6 @@ export default function Onboarding() {
               </div>
             </div>
 
-            {/* Hardiness Zone */}
             <div>
               <Label>{isUSDA ? 'USDA Hardiness Zone' : 'Hardiness Zone'}</Label>
 
@@ -334,13 +332,9 @@ export default function Onboarding() {
           </div>
         );
 
-      // ═══════════════════════════
-      // STEP 3 — Frost Dates
-      // ═══════════════════════════
       case 'frost':
         return (
           <div className="space-y-6">
-            {/* AI Lookup */}
             <div className="p-4 bg-purple-50 rounded-xl border border-purple-200">
               <h4 className="font-semibold text-purple-900 mb-2 flex items-center gap-2">
                 <Sparkles className="w-4 h-4" />
@@ -374,7 +368,6 @@ export default function Onboarding() {
               />
             </div>
 
-            {/* Manual */}
             <div className="p-4 bg-blue-50 rounded-xl border border-blue-200">
               <h4 className="font-semibold text-blue-900 mb-2 flex items-center gap-2">
                 <Thermometer className="w-4 h-4" />
@@ -416,9 +409,6 @@ export default function Onboarding() {
           </div>
         );
 
-      // ═══════════════════════════
-      // STEP 4 — First Garden
-      // ═══════════════════════════
       case 'garden':
         return (
           <div className="space-y-6">
@@ -434,7 +424,6 @@ export default function Onboarding() {
                 value={formData.garden_name} onChange={(e) => set('garden_name', e.target.value)} className="mt-2" />
             </div>
 
-            {/* Settings summary */}
             <div className="p-4 bg-gray-50 rounded-xl border space-y-2">
               <h4 className="font-semibold text-sm text-gray-700">Your Settings Summary</h4>
               <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-sm">
@@ -480,7 +469,6 @@ export default function Onboarding() {
           <p className="text-gray-600 mt-2">Let's set up your garden planning experience</p>
         </div>
 
-        {/* Progress */}
         <div className="flex items-center justify-between mb-8">
           {steps.map((step, index) => (
             <React.Fragment key={step.id}>
