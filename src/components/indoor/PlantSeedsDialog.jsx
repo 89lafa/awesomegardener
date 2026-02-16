@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
 import { base44 } from '@/api/base44Client';
 import { toast } from 'sonner';
-import { Search, Loader2, Plus } from 'lucide-react';
+import { Search, Loader2, Plus, ArrowDown, ArrowRight, Grid } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 export function PlantSeedsDialog({ isOpen, onClose, trayId, trayName, onSeedPlanted }) {
@@ -56,7 +56,6 @@ export function PlantSeedsDialog({ isOpen, onClose, trayId, trayName, onSeedPlan
             const key = item.variety_id || item.plant_profile_id || item.variety_name;
             if (key && !seen.has(key)) {
               seen.add(key);
-              // Add unique ID for grow list items
               allItems.push({ ...item, id: key, source_list: list.name });
             }
           }
@@ -84,7 +83,6 @@ export function PlantSeedsDialog({ isOpen, onClose, trayId, trayName, onSeedPlan
   const loadDisplayNames = async (items) => {
     const names = {};
     
-    // Collect all unique IDs we need to fetch
     const varietyIds = new Set();
     const profileIds = new Set();
     
@@ -93,7 +91,6 @@ export function PlantSeedsDialog({ isOpen, onClose, trayId, trayName, onSeedPlan
       if (item.plant_profile_id) profileIds.add(item.plant_profile_id);
     }
     
-    // Batch fetch ONLY varieties and profiles with filters - ONE CALL EACH
     const [varieties, profiles] = await Promise.all([
       varietyIds.size > 0 ? base44.entities.Variety.filter({ id: { $in: Array.from(varietyIds) } }) : Promise.resolve([]),
       profileIds.size > 0 ? base44.entities.PlantProfile.filter({ id: { $in: Array.from(profileIds) } }) : Promise.resolve([])
@@ -102,16 +99,13 @@ export function PlantSeedsDialog({ isOpen, onClose, trayId, trayName, onSeedPlan
     const varietyMap = new Map(varieties.map(v => [v.id, v]));
     const profileMap = new Map(profiles.map(p => [p.id, p]));
     
-    // Collect plant type IDs from varieties and profiles
     const plantTypeIds = new Set();
     varieties.forEach(v => { if (v.plant_type_id) plantTypeIds.add(v.plant_type_id); });
     profiles.forEach(p => { if (p.plant_type_id) plantTypeIds.add(p.plant_type_id); });
     
-    // Batch fetch plant types with filter - ONE CALL ONLY
     const plantTypes = plantTypeIds.size > 0 ? await base44.entities.PlantType.filter({ id: { $in: Array.from(plantTypeIds) } }) : [];
     const plantTypeMap = new Map(plantTypes.map(pt => [pt.id, pt]));
     
-    // Build display names from cached data
     for (const item of items) {
       try {
         let varietyName = null;
@@ -132,7 +126,6 @@ export function PlantSeedsDialog({ isOpen, onClose, trayId, trayName, onSeedPlan
           }
         }
         
-        // Fallback to item properties if not found in related entities
         if (!varietyName) {
           varietyName = item.variety_name || item.custom_label || item.name;
         }
@@ -140,7 +133,6 @@ export function PlantSeedsDialog({ isOpen, onClose, trayId, trayName, onSeedPlan
           plantTypeName = item.plant_type_name;
         }
         
-        // ALWAYS show both variety and type when possible
         if (!varietyName && plantTypeName) {
           const fallbackName = item.lot_number || item.custom_label || 'Unknown';
           names[item.id] = `${fallbackName} - ${plantTypeName}`;
@@ -171,10 +163,8 @@ export function PlantSeedsDialog({ isOpen, onClose, trayId, trayName, onSeedPlan
 
     setLoading(true);
     try {
-      // Get all cells first to avoid multiple queries
       const allCells = await base44.entities.TrayCell.filter({ tray_id: trayId });
       
-      // Load variety/plant type names for caching
       let varietyName = null;
       let plantTypeName = null;
       let plantTypeId = null;
@@ -206,7 +196,6 @@ export function PlantSeedsDialog({ isOpen, onClose, trayId, trayName, onSeedPlan
         }
       }
       
-      // CRITICAL: Ensure we always have valid names - use fallbacks
       if (!varietyName) {
         varietyName = selectedLot.variety_name || selectedLot.custom_label || selectedLot.lot_number || 'Unknown';
       }
@@ -214,12 +203,10 @@ export function PlantSeedsDialog({ isOpen, onClose, trayId, trayName, onSeedPlan
         plantTypeName = selectedLot.plant_type_name || 'Unknown';
       }
       
-      // Adjust for timezone (-5 hours)
       const now = new Date();
       now.setHours(now.getHours() - 5);
       const adjustedDate = now.toISOString().split('T')[0];
 
-      // Update selected cells with cached names
       for (const cellNum of selectedCells) {
         const cell = allCells.find(c => c.cell_number === cellNum);
         if (cell) {
@@ -236,7 +223,6 @@ export function PlantSeedsDialog({ isOpen, onClose, trayId, trayName, onSeedPlan
         }
       }
 
-      // Add to planted summary (track multiple plantings in session)
       const summaryKey = `${selectedLot.id}-${varietyName}`;
       setPlantedSummary(prev => {
         const existing = prev.find(p => p.key === summaryKey);
@@ -248,11 +234,9 @@ export function PlantSeedsDialog({ isOpen, onClose, trayId, trayName, onSeedPlan
 
       toast.success(`Planted ${selectedCells.length} ${varietyName} cells!`);
       
-      // Clear selection for next planting WITHOUT closing dialog
       setSelectedCells([]);
       setSelectedLot(null);
       
-      // Update tray status only once (on final close)
       onSeedPlanted?.();
     } catch (error) {
       console.error('Error planting seeds:', error);
@@ -382,7 +366,7 @@ export function PlantSeedsDialog({ isOpen, onClose, trayId, trayName, onSeedPlan
                 </div>
               </TabsContent>
 
-              {/* Seedlings Tab - Ready to transplant from indoor grow */}
+              {/* Seedlings Tab */}
               <TabsContent value="seedlings" className="space-y-4">
                 <div className="relative">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
@@ -450,7 +434,7 @@ export function PlantSeedsDialog({ isOpen, onClose, trayId, trayName, onSeedPlan
               </label>
               <div className="bg-gray-50 border rounded-lg p-4">
                 <div className="text-sm text-gray-600 mb-3">
-                  Click cells to select. Red = selected, Green = already planted.
+                  Click cells to select, or use arrows to select entire rows/columns. Green = already planted.
                 </div>
                 <TrayCellGrid
                   trayId={trayId}
@@ -462,6 +446,32 @@ export function PlantSeedsDialog({ isOpen, onClose, trayId, trayName, onSeedPlan
                         : [...prev, cellNum]
                     );
                   }}
+                  onBulkToggle={(cellNums) => {
+                    setSelectedCells(prev => {
+                      const allSelected = cellNums.every(n => prev.includes(n));
+                      if (allSelected) {
+                        // Deselect all in this group
+                        return prev.filter(n => !cellNums.includes(n));
+                      } else {
+                        // Select all in this group that aren't already selected
+                        const newSet = new Set(prev);
+                        cellNums.forEach(n => newSet.add(n));
+                        return Array.from(newSet);
+                      }
+                    });
+                  }}
+                  onSelectAllEmpty={(emptyCellNums) => {
+                    setSelectedCells(prev => {
+                      const allSelected = emptyCellNums.every(n => prev.includes(n));
+                      if (allSelected) {
+                        return prev.filter(n => !emptyCellNums.includes(n));
+                      } else {
+                        const newSet = new Set(prev);
+                        emptyCellNums.forEach(n => newSet.add(n));
+                        return Array.from(newSet);
+                      }
+                    });
+                  }}
                 />
               </div>
             </div>
@@ -469,7 +479,6 @@ export function PlantSeedsDialog({ isOpen, onClose, trayId, trayName, onSeedPlan
             <div className="flex gap-2 pt-4">
               <Button 
                 onClick={() => {
-                  // Update tray status before closing
                   const updateTray = async () => {
                     try {
                       const now = new Date();
@@ -507,7 +516,7 @@ export function PlantSeedsDialog({ isOpen, onClose, trayId, trayName, onSeedPlan
   );
 }
 
-function TrayCellGrid({ trayId, selectedCells, onCellToggle }) {
+function TrayCellGrid({ trayId, selectedCells, onCellToggle, onBulkToggle, onSelectAllEmpty }) {
   const [cells, setCells] = useState([]);
   const [tray, setTray] = useState(null);
 
@@ -536,38 +545,161 @@ function TrayCellGrid({ trayId, selectedCells, onCellToggle }) {
   const cols = tray.cells_cols;
   const rows = tray.cells_rows;
 
+  // Helper: check if a cell is plantable (empty or failed)
+  const isPlantable = (cell) => {
+    return cell && !['seeded', 'germinated', 'growing'].includes(cell.status);
+  };
+
+  // Get plantable cell numbers for a row
+  const getRowPlantableCells = (rowIdx) => {
+    const rowCells = [];
+    for (let c = 0; c < cols; c++) {
+      const cell = cells.find(cl => cl.row === rowIdx && cl.col === c);
+      if (cell && isPlantable(cell)) {
+        rowCells.push(cell.cell_number);
+      }
+    }
+    return rowCells;
+  };
+
+  // Get plantable cell numbers for a column
+  const getColPlantableCells = (colIdx) => {
+    const colCells = [];
+    for (let r = 0; r < rows; r++) {
+      const cell = cells.find(cl => cl.row === r && cl.col === colIdx);
+      if (cell && isPlantable(cell)) {
+        colCells.push(cell.cell_number);
+      }
+    }
+    return colCells;
+  };
+
+  // Get all plantable cells
+  const getAllPlantableCells = () => {
+    return cells.filter(c => isPlantable(c)).map(c => c.cell_number);
+  };
+
   return (
-    <div className="inline-block border border-gray-300 rounded bg-white overflow-auto max-h-80">
-      {Array.from({ length: rows }).map((_, row) => (
-        <div key={row} className="flex">
-          {Array.from({ length: cols }).map((_, col) => {
-            const cell = cells.find(c => c.row === row && c.col === col);
-            const isSelected = cell && selectedCells.includes(cell.cell_number);
+    <div className="space-y-2">
+      {/* Select All Empty button */}
+      <div className="flex items-center gap-2 mb-2">
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={() => {
+            const allEmpty = getAllPlantableCells();
+            if (allEmpty.length > 0) {
+              onSelectAllEmpty?.(allEmpty);
+            }
+          }}
+          className="text-xs gap-1 h-7"
+        >
+          <Grid className="w-3 h-3" />
+          {(() => {
+            const allEmpty = getAllPlantableCells();
+            const allSelected = allEmpty.length > 0 && allEmpty.every(n => selectedCells.includes(n));
+            return allSelected ? `Deselect All Empty (${allEmpty.length})` : `Select All Empty (${allEmpty.length})`;
+          })()}
+        </Button>
+        {selectedCells.length > 0 && (
+          <span className="text-xs text-emerald-700 font-medium">
+            {selectedCells.length} selected
+          </span>
+        )}
+      </div>
+
+      <div className="inline-block border border-gray-300 rounded bg-white overflow-auto max-h-80">
+        {/* Column arrows at top */}
+        <div className="flex" style={{ paddingLeft: '32px' }}>
+          {Array.from({ length: cols }).map((_, colIdx) => {
+            const plantableCells = getColPlantableCells(colIdx);
+            const allSelected = plantableCells.length > 0 && plantableCells.every(n => selectedCells.includes(n));
+            const hasPlantable = plantableCells.length > 0;
 
             return (
               <button
-                key={`${row}-${col}`}
+                key={`col-arrow-${colIdx}`}
                 onClick={() => {
-                  if (cell && !['seeded', 'germinated', 'growing'].includes(cell.status)) {
-                    onCellToggle(cell.cell_number);
+                  if (hasPlantable) {
+                    onBulkToggle?.(plantableCells);
                   }
                 }}
-                disabled={!cell || ['seeded', 'germinated', 'growing'].includes(cell?.status)}
-                className={`w-8 h-8 border border-gray-200 flex items-center justify-center text-[10px] font-bold transition ${
-                  isSelected
-                    ? 'bg-red-500 text-white'
-                    : cell && ['seeded', 'germinated', 'growing'].includes(cell.status)
-                    ? 'bg-green-100 text-green-700 cursor-not-allowed'
-                    : 'bg-white hover:bg-gray-100'
+                disabled={!hasPlantable}
+                className={`w-8 h-5 flex items-center justify-center transition-colors ${
+                  !hasPlantable
+                    ? 'bg-gray-100 text-gray-300 cursor-not-allowed'
+                    : allSelected 
+                      ? 'bg-emerald-500 text-white hover:bg-emerald-600' 
+                      : 'bg-gray-200 text-gray-600 hover:bg-emerald-200 hover:text-emerald-700'
                 }`}
-                title={cell ? `Cell ${cell.cell_number} - ${cell.status === 'empty' ? 'Empty' : 'Already planted'}` : ''}
+                title={hasPlantable ? `Select column ${colIdx + 1} (${plantableCells.length} empty)` : `Column ${colIdx + 1} is full`}
               >
-                {cell?.cell_number}
+                <ArrowDown className="w-2.5 h-2.5" />
               </button>
             );
           })}
         </div>
-      ))}
+
+        {/* Rows with arrow on left */}
+        {Array.from({ length: rows }).map((_, row) => {
+          const plantableCells = getRowPlantableCells(row);
+          const allSelected = plantableCells.length > 0 && plantableCells.every(n => selectedCells.includes(n));
+          const hasPlantable = plantableCells.length > 0;
+
+          return (
+            <div key={row} className="flex">
+              {/* Row arrow */}
+              <button
+                onClick={() => {
+                  if (hasPlantable) {
+                    onBulkToggle?.(plantableCells);
+                  }
+                }}
+                disabled={!hasPlantable}
+                className={`w-8 h-8 flex items-center justify-center flex-shrink-0 transition-colors ${
+                  !hasPlantable
+                    ? 'bg-gray-100 text-gray-300 cursor-not-allowed'
+                    : allSelected 
+                      ? 'bg-emerald-500 text-white hover:bg-emerald-600' 
+                      : 'bg-gray-200 text-gray-600 hover:bg-emerald-200 hover:text-emerald-700'
+                }`}
+                title={hasPlantable ? `Select row ${row + 1} (${plantableCells.length} empty)` : `Row ${row + 1} is full`}
+              >
+                <ArrowRight className="w-2.5 h-2.5" />
+              </button>
+
+              {/* Cells */}
+              {Array.from({ length: cols }).map((_, col) => {
+                const cell = cells.find(c => c.row === row && c.col === col);
+                const isSelected = cell && selectedCells.includes(cell.cell_number);
+                const planted = cell && ['seeded', 'germinated', 'growing'].includes(cell.status);
+
+                return (
+                  <button
+                    key={`${row}-${col}`}
+                    onClick={() => {
+                      if (cell && !planted) {
+                        onCellToggle(cell.cell_number);
+                      }
+                    }}
+                    disabled={!cell || planted}
+                    className={`w-8 h-8 border border-gray-200 flex items-center justify-center text-[10px] font-bold transition ${
+                      isSelected
+                        ? 'bg-red-500 text-white'
+                        : planted
+                        ? 'bg-green-100 text-green-700 cursor-not-allowed'
+                        : 'bg-white hover:bg-gray-100'
+                    }`}
+                    title={cell ? `Cell ${cell.cell_number} - ${planted ? `Planted: ${cell.variety_name || cell.status}` : 'Empty (click to select)'}` : ''}
+                  >
+                    {planted ? '🌱' : cell?.cell_number}
+                  </button>
+                );
+              })}
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }
