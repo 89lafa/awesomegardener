@@ -41,9 +41,16 @@ export default function Layout({ children, currentPageName }) {
   const isPublicPage = publicPages.includes(currentPageName);
   const isLandingPage = currentPageName === 'Landing';
 
+  // ═══════════════════════════════════════════════════════════════
+  // ★ FIX: Added currentPageName as dependency so user data is
+  // refreshed on page transitions. This is the safety-net half of
+  // the onboarding loop fix. Primary fix is in Onboarding.jsx
+  // (window.location.href instead of navigate()), but this ensures
+  // Layout always has fresh user data after any page change.
+  // ═══════════════════════════════════════════════════════════════
   useEffect(() => {
     loadUser();
-  }, []);
+  }, [currentPageName]);
 
   // Lock body scroll when mobile menu is open
   useEffect(() => {
