@@ -30,9 +30,27 @@ import { motion, AnimatePresence } from 'framer-motion';
 import FrostDateLookup from '@/components/ai/FrostDateLookup';
 
 // ─── Broadcast units change so useUnits hook (if present) picks it up ───
-// This works whether or not useUnits.js is deployed — it's just a DOM event.
 function broadcastUnits(units) {
   try { window.dispatchEvent(new CustomEvent('units-changed', { detail: { units } })); } catch {}
+}
+
+// ═══════════════════════════════════════════════════════════════
+// ★ FIX #2: Safe date helpers to prevent "Invalid time value"
+// crash when AI Auto-Detect returns malformed or empty dates.
+// ═══════════════════════════════════════════════════════════════
+function isValidDateStr(str) {
+  if (!str || typeof str !== 'string' || str.length < 8) return false;
+  const d = new Date(str + 'T12:00:00');
+  return !isNaN(d.getTime());
+}
+
+function safeFormatDate(dateStr) {
+  if (!isValidDateStr(dateStr)) return null;
+  try {
+    return new Date(dateStr + 'T12:00:00').toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+  } catch {
+    return dateStr;
+  }
 }
 
 // ─── USDA Zones ───
@@ -132,7 +150,7 @@ export default function Onboarding() {
     if (currentStep === 0 && !formData.nickname.trim()) {
       toast.error('Please enter a nickname to continue'); return;
     }
-    if (currentStep === 2 && (!formData.last_frost_date || !formData.first_frost_date)) {
+    if (currentStep === 2 && (!isValidDateStr(formData.last_frost_date) || !isValidDateStr(formData.first_frost_date))) {
       toast.error('Please enter both frost dates to continue'); return;
     }
     if (currentStep < steps.length - 1) setCurrentStep(currentStep + 1);
@@ -141,14 +159,10 @@ export default function Onboarding() {
   const handleBack = () => { if (currentStep > 0) setCurrentStep(currentStep - 1); };
 
   // ═══════════════════════════════════════════════════════════════
-  // ★★★ CRITICAL FIX: ONBOARDING DOUBLE-LOOP BUG ★★★
-  //
-  // ROOT CAUSE: navigate() does a client-side route change.
-  // Layout.jsx still has OLD user object (onboarding_completed=false).
-  // Layout's check sees false → hard-redirects BACK to /Onboarding.
-  //
-  // FIX: window.location.href forces FULL PAGE RELOAD so Layout
-  // fetches fresh user data (onboarding_completed=true) from server.
+  // ★ FIX #1: ONBOARDING DOUBLE-LOOP BUG
+  // navigate() does client-side route change → Layout still has
+  // OLD user (onboarding_completed=false) → redirects BACK.
+  // window.location.href forces FULL reload → fresh user data.
   // ═══════════════════════════════════════════════════════════════
   const handleComplete = async () => {
     if (loading) return;
@@ -186,7 +200,7 @@ export default function Onboarding() {
       });
 
       await new Promise(r => setTimeout(r, 500));
-      // ★★★ THE FIX — hard nav instead of navigate() ★★★
+      // ★ FIX #1: hard nav instead of navigate()
       window.location.href = createPageUrl('Dashboard');
     } catch (error) {
       console.error('Error completing onboarding:', error);
@@ -357,13 +371,39 @@ export default function Onboarding() {
                 autoSave={true}
                 onApply={async (values) => {
                   console.debug('[Onboarding] AI frost applied', values);
-                  const refreshed = await base44.auth.me();
-                  setFormData(prev => ({
-                    ...prev,
-                    usda_zone: refreshed.usda_zone || values.usda_zone,
-                    last_frost_date: refreshed.last_frost_date || values.last_frost_date,
-                    first_frost_date: refreshed.first_frost_date || values.first_frost_date
-                  }));
+                  try {
+                    const refreshed = await base44.auth.me();
+                    // ★ FIX #2: Validate dates before setting state
+                    // AI may return empty/malformed strings that crash
+                    // Date rendering with "Invalid time value"
+                    const newZone = refreshed.usda_zone || values.usda_zone || '';
+                    const newLastFrost = isValidDateStr(refreshed.last_frost_date)
+                      ? refreshed.last_frost_date
+                      : isValidDateStr(values.last_frost_date)
+                        ? values.last_frost_date
+                        : '';
+                    const newFirstFrost = isValidDateStr(refreshed.first_frost_date)
+                      ? refreshed.first_frost_date
+                      : isValidDateStr(values.first_frost_date)
+                        ? values.first_frost_date
+                        : '';
+
+                    setFormData(prev => ({
+                      ...prev,
+                      usda_zone: newZone,
+                      last_frost_date: newLastFrost,
+                      first_frost_date: newFirstFrost
+                    }));
+                  } catch (err) {
+                    console.error('[Onboarding] Error refreshing after AI frost:', err);
+                    // Fallback: use values directly if refresh fails
+                    setFormData(prev => ({
+                      ...prev,
+                      usda_zone: values.usda_zone || prev.usda_zone,
+                      last_frost_date: isValidDateStr(values.last_frost_date) ? values.last_frost_date : prev.last_frost_date,
+                      first_frost_date: isValidDateStr(values.first_frost_date) ? values.first_frost_date : prev.first_frost_date
+                    }));
+                  }
                 }}
               />
             </div>
@@ -424,6 +464,7 @@ export default function Onboarding() {
                 value={formData.garden_name} onChange={(e) => set('garden_name', e.target.value)} className="mt-2" />
             </div>
 
+            {/* Settings summary — uses safeFormatDate to prevent crashes */}
             <div className="p-4 bg-gray-50 rounded-xl border space-y-2">
               <h4 className="font-semibold text-sm text-gray-700">Your Settings Summary</h4>
               <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-sm">
@@ -435,13 +476,14 @@ export default function Onboarding() {
                   <span className="text-gray-500">Zone:</span>
                   <span className="font-medium text-gray-900">{formData.usda_zone.startsWith('H') ? formData.usda_zone : `Zone ${formData.usda_zone}`}</span>
                 </>)}
-                {formData.last_frost_date && (<>
+                {/* ★ FIX #2: safeFormatDate prevents crash on invalid dates */}
+                {safeFormatDate(formData.last_frost_date) && (<>
                   <span className="text-gray-500">Last Frost:</span>
-                  <span className="font-medium text-gray-900">{new Date(formData.last_frost_date + 'T12:00:00').toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}</span>
+                  <span className="font-medium text-gray-900">{safeFormatDate(formData.last_frost_date)}</span>
                 </>)}
-                {formData.first_frost_date && (<>
+                {safeFormatDate(formData.first_frost_date) && (<>
                   <span className="text-gray-500">First Frost:</span>
-                  <span className="font-medium text-gray-900">{new Date(formData.first_frost_date + 'T12:00:00').toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}</span>
+                  <span className="font-medium text-gray-900">{safeFormatDate(formData.first_frost_date)}</span>
                 </>)}
               </div>
             </div>
