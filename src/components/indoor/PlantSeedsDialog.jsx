@@ -13,7 +13,6 @@ import { cn } from '@/lib/utils';
 export function PlantSeedsDialog({ isOpen, onClose, trayId, trayName, onSeedPlanted }) {
   const [seedLots, setSeedLots] = useState([]);
   const [growListItems, setGrowListItems] = useState([]);
-  const [seedlings, setSeedlings] = useState([]);
   const [loadingSeeds, setLoadingSeeds] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedLot, setSelectedLot] = useState(null);
@@ -37,12 +36,9 @@ export function PlantSeedsDialog({ isOpen, onClose, trayId, trayName, onSeedPlan
       setLoadingSeeds(true);
       const user = await base44.auth.me();
       
-      // Load all sources
-      const [lots, lists, containers, trayCells] = await Promise.all([
+      const [lots, lists] = await Promise.all([
         base44.entities.SeedLot.filter({ created_by: user.email }, '-updated_date'),
-        base44.entities.GrowList.filter({ created_by: user.email }),
-        base44.entities.IndoorContainer.filter({ created_by: user.email, status: 'ready_to_transplant' }),
-        base44.entities.TrayCell.filter({ created_by: user.email, status: 'ready_to_transplant' })
+        base44.entities.GrowList.filter({ created_by: user.email })
       ]);
       
       setSeedLots(lots);
@@ -63,15 +59,8 @@ export function PlantSeedsDialog({ isOpen, onClose, trayId, trayName, onSeedPlan
       }
       setGrowListItems(allItems);
       
-      // Combine seedlings
-      const allSeedlings = [
-        ...containers.map(c => ({ ...c, source: 'container', type: 'container' })),
-        ...trayCells.map(c => ({ ...c, source: 'tray', type: 'cell' }))
-      ];
-      setSeedlings(allSeedlings);
-      
       // Load display names
-      await loadDisplayNames([...lots, ...allItems, ...allSeedlings]);
+      await loadDisplayNames([...lots, ...allItems]);
     } catch (error) {
       console.error('Error loading data:', error);
       toast.error('Failed to load data');
@@ -275,12 +264,11 @@ export function PlantSeedsDialog({ isOpen, onClose, trayId, trayName, onSeedPlan
           </div>
         ) : (
           <div className="space-y-6">
-            {/* Tabs for Seed Source */}
+            {/* Tabs for Seed Source — only Seed Stash and Grow Lists */}
             <Tabs value={activeTab} onValueChange={setActiveTab}>
-              <TabsList className="grid w-full grid-cols-3">
+              <TabsList className="grid w-full grid-cols-2">
                 <TabsTrigger value="stash">Seed Stash</TabsTrigger>
                 <TabsTrigger value="grow-list">Grow Lists</TabsTrigger>
-                <TabsTrigger value="seedlings">Seedlings</TabsTrigger>
               </TabsList>
 
               {/* Seed Stash Tab */}
@@ -329,7 +317,7 @@ export function PlantSeedsDialog({ isOpen, onClose, trayId, trayName, onSeedPlan
                 <div>
                   <label className="block text-sm font-medium mb-2">Search Grow List Items</label>
                   <div className="relative mb-2">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4" />
                     <Input
                       placeholder="Search by variety or plant type..."
                       value={searchTerm}
@@ -363,52 +351,6 @@ export function PlantSeedsDialog({ isOpen, onClose, trayId, trayName, onSeedPlan
                       ))
                     )}
                   </div>
-                </div>
-              </TabsContent>
-
-              {/* Seedlings Tab */}
-              <TabsContent value="seedlings" className="space-y-4">
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                  <Input
-                    placeholder="Search seedlings..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="pl-10"
-                  />
-                </div>
-
-                <div className="space-y-2 max-h-64 overflow-y-auto border rounded-lg p-2">
-                  {seedlings.filter(s => 
-                    !searchTerm || 
-                    s.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                    displayNames[s.id]?.toLowerCase().includes(searchTerm.toLowerCase())
-                  ).map((seedling, idx) => (
-                    <button
-                      key={seedling.id || idx}
-                      onClick={() => setSelectedLot({ ...seedling, source: 'seedling' })}
-                      className={cn(
-                        "w-full p-3 border rounded-lg text-left transition",
-                        selectedLot?.id === seedling.id && selectedLot?.source === 'seedling'
-                          ? "border-emerald-600 bg-emerald-50"
-                          : "border-gray-300 hover:border-emerald-400"
-                      )}
-                    >
-                      <p className="font-medium text-sm">
-                        {displayNames[seedling.id] || seedling.name}
-                      </p>
-                      <p className="text-xs text-gray-600">
-                        {seedling.source === 'container' ? `Container: ${seedling.container_type}` : 'From tray cell'}
-                      </p>
-                      <Badge variant="outline" className="text-[10px] mt-1">Ready to Transplant</Badge>
-                    </button>
-                  ))}
-
-                  {seedlings.length === 0 && (
-                    <p className="text-sm text-gray-500 text-center py-6">
-                      No seedlings ready to transplant yet
-                    </p>
-                  )}
                 </div>
               </TabsContent>
             </Tabs>
@@ -450,10 +392,8 @@ export function PlantSeedsDialog({ isOpen, onClose, trayId, trayName, onSeedPlan
                     setSelectedCells(prev => {
                       const allSelected = cellNums.every(n => prev.includes(n));
                       if (allSelected) {
-                        // Deselect all in this group
                         return prev.filter(n => !cellNums.includes(n));
                       } else {
-                        // Select all in this group that aren't already selected
                         const newSet = new Set(prev);
                         cellNums.forEach(n => newSet.add(n));
                         return Array.from(newSet);
@@ -545,12 +485,10 @@ function TrayCellGrid({ trayId, selectedCells, onCellToggle, onBulkToggle, onSel
   const cols = tray.cells_cols;
   const rows = tray.cells_rows;
 
-  // Helper: check if a cell is plantable (empty or failed)
   const isPlantable = (cell) => {
     return cell && !['seeded', 'germinated', 'growing'].includes(cell.status);
   };
 
-  // Get plantable cell numbers for a row
   const getRowPlantableCells = (rowIdx) => {
     const rowCells = [];
     for (let c = 0; c < cols; c++) {
@@ -562,7 +500,6 @@ function TrayCellGrid({ trayId, selectedCells, onCellToggle, onBulkToggle, onSel
     return rowCells;
   };
 
-  // Get plantable cell numbers for a column
   const getColPlantableCells = (colIdx) => {
     const colCells = [];
     for (let r = 0; r < rows; r++) {
@@ -574,10 +511,13 @@ function TrayCellGrid({ trayId, selectedCells, onCellToggle, onBulkToggle, onSel
     return colCells;
   };
 
-  // Get all plantable cells
   const getAllPlantableCells = () => {
     return cells.filter(c => isPlantable(c)).map(c => c.cell_number);
   };
+
+  // Determine cell size based on column count for proper alignment
+  const cellSize = cols > 10 ? 28 : cols > 6 ? 32 : 36;
+  const arrowSize = cellSize;
 
   return (
     <div className="space-y-2">
@@ -608,97 +548,98 @@ function TrayCellGrid({ trayId, selectedCells, onCellToggle, onBulkToggle, onSel
         )}
       </div>
 
-      <div className="inline-block border border-gray-300 rounded bg-white overflow-auto max-h-80">
-        {/* Column arrows at top */}
-        <div className="flex" style={{ paddingLeft: '32px' }}>
-          {Array.from({ length: cols }).map((_, colIdx) => {
-            const plantableCells = getColPlantableCells(colIdx);
+      <div className="overflow-auto max-h-80">
+        <div className="inline-block">
+          {/* Column arrows at top - aligned with cells using same sizing */}
+          <div className="flex" style={{ paddingLeft: `${arrowSize}px` }}>
+            {Array.from({ length: cols }).map((_, colIdx) => {
+              const plantableCells = getColPlantableCells(colIdx);
+              const allSelected = plantableCells.length > 0 && plantableCells.every(n => selectedCells.includes(n));
+              const hasPlantable = plantableCells.length > 0;
+
+              return (
+                <button
+                  key={`col-arrow-${colIdx}`}
+                  onClick={() => {
+                    if (hasPlantable) onBulkToggle?.(plantableCells);
+                  }}
+                  disabled={!hasPlantable}
+                  className={`flex items-center justify-center border border-gray-200 transition-colors ${
+                    !hasPlantable
+                      ? 'bg-gray-100 text-gray-300 cursor-not-allowed'
+                      : allSelected 
+                        ? 'bg-emerald-500 text-white hover:bg-emerald-600' 
+                        : 'bg-gray-200 text-gray-600 hover:bg-emerald-200 hover:text-emerald-700'
+                  }`}
+                  style={{ width: `${cellSize}px`, height: '20px', fontSize: '9px' }}
+                  title={hasPlantable ? `Col ${colIdx + 1} (${plantableCells.length} empty)` : `Col ${colIdx + 1} full`}
+                >
+                  <ArrowDown className="w-2.5 h-2.5" />
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Rows: arrow + cells */}
+          {Array.from({ length: rows }).map((_, rowIdx) => {
+            const plantableCells = getRowPlantableCells(rowIdx);
             const allSelected = plantableCells.length > 0 && plantableCells.every(n => selectedCells.includes(n));
             const hasPlantable = plantableCells.length > 0;
 
             return (
-              <button
-                key={`col-arrow-${colIdx}`}
-                onClick={() => {
-                  if (hasPlantable) {
-                    onBulkToggle?.(plantableCells);
-                  }
-                }}
-                disabled={!hasPlantable}
-                className={`w-8 h-5 flex items-center justify-center transition-colors ${
-                  !hasPlantable
-                    ? 'bg-gray-100 text-gray-300 cursor-not-allowed'
-                    : allSelected 
-                      ? 'bg-emerald-500 text-white hover:bg-emerald-600' 
-                      : 'bg-gray-200 text-gray-600 hover:bg-emerald-200 hover:text-emerald-700'
-                }`}
-                title={hasPlantable ? `Select column ${colIdx + 1} (${plantableCells.length} empty)` : `Column ${colIdx + 1} is full`}
-              >
-                <ArrowDown className="w-2.5 h-2.5" />
-              </button>
+              <div key={rowIdx} className="flex">
+                {/* Row arrow */}
+                <button
+                  onClick={() => {
+                    if (hasPlantable) onBulkToggle?.(plantableCells);
+                  }}
+                  disabled={!hasPlantable}
+                  className={`flex items-center justify-center border border-gray-200 flex-shrink-0 transition-colors ${
+                    !hasPlantable
+                      ? 'bg-gray-100 text-gray-300 cursor-not-allowed'
+                      : allSelected 
+                        ? 'bg-emerald-500 text-white hover:bg-emerald-600' 
+                        : 'bg-gray-200 text-gray-600 hover:bg-emerald-200 hover:text-emerald-700'
+                  }`}
+                  style={{ width: `${arrowSize}px`, height: `${cellSize}px`, fontSize: '9px' }}
+                  title={hasPlantable ? `Row ${rowIdx + 1} (${plantableCells.length} empty)` : `Row ${rowIdx + 1} full`}
+                >
+                  <ArrowRight className="w-2.5 h-2.5" />
+                </button>
+
+                {/* Cells */}
+                {Array.from({ length: cols }).map((_, col) => {
+                  const cell = cells.find(c => c.row === rowIdx && c.col === col);
+                  const isSelected = cell && selectedCells.includes(cell.cell_number);
+                  const planted = cell && ['seeded', 'germinated', 'growing'].includes(cell.status);
+
+                  return (
+                    <button
+                      key={`${rowIdx}-${col}`}
+                      onClick={() => {
+                        if (cell && !planted) {
+                          onCellToggle(cell.cell_number);
+                        }
+                      }}
+                      disabled={!cell || planted}
+                      className={`border border-gray-200 flex items-center justify-center font-bold transition ${
+                        isSelected
+                          ? 'bg-red-500 text-white'
+                          : planted
+                          ? 'bg-green-100 text-green-700 cursor-not-allowed'
+                          : 'bg-white hover:bg-gray-100'
+                      }`}
+                      style={{ width: `${cellSize}px`, height: `${cellSize}px`, fontSize: '10px' }}
+                      title={cell ? `Cell ${cell.cell_number} - ${planted ? `Planted: ${cell.variety_name || cell.status}` : 'Empty'}` : ''}
+                    >
+                      {planted ? '🌱' : cell?.cell_number}
+                    </button>
+                  );
+                })}
+              </div>
             );
           })}
         </div>
-
-        {/* Rows with arrow on left */}
-        {Array.from({ length: rows }).map((_, row) => {
-          const plantableCells = getRowPlantableCells(row);
-          const allSelected = plantableCells.length > 0 && plantableCells.every(n => selectedCells.includes(n));
-          const hasPlantable = plantableCells.length > 0;
-
-          return (
-            <div key={row} className="flex">
-              {/* Row arrow */}
-              <button
-                onClick={() => {
-                  if (hasPlantable) {
-                    onBulkToggle?.(plantableCells);
-                  }
-                }}
-                disabled={!hasPlantable}
-                className={`w-8 h-8 flex items-center justify-center flex-shrink-0 transition-colors ${
-                  !hasPlantable
-                    ? 'bg-gray-100 text-gray-300 cursor-not-allowed'
-                    : allSelected 
-                      ? 'bg-emerald-500 text-white hover:bg-emerald-600' 
-                      : 'bg-gray-200 text-gray-600 hover:bg-emerald-200 hover:text-emerald-700'
-                }`}
-                title={hasPlantable ? `Select row ${row + 1} (${plantableCells.length} empty)` : `Row ${row + 1} is full`}
-              >
-                <ArrowRight className="w-2.5 h-2.5" />
-              </button>
-
-              {/* Cells */}
-              {Array.from({ length: cols }).map((_, col) => {
-                const cell = cells.find(c => c.row === row && c.col === col);
-                const isSelected = cell && selectedCells.includes(cell.cell_number);
-                const planted = cell && ['seeded', 'germinated', 'growing'].includes(cell.status);
-
-                return (
-                  <button
-                    key={`${row}-${col}`}
-                    onClick={() => {
-                      if (cell && !planted) {
-                        onCellToggle(cell.cell_number);
-                      }
-                    }}
-                    disabled={!cell || planted}
-                    className={`w-8 h-8 border border-gray-200 flex items-center justify-center text-[10px] font-bold transition ${
-                      isSelected
-                        ? 'bg-red-500 text-white'
-                        : planted
-                        ? 'bg-green-100 text-green-700 cursor-not-allowed'
-                        : 'bg-white hover:bg-gray-100'
-                    }`}
-                    title={cell ? `Cell ${cell.cell_number} - ${planted ? `Planted: ${cell.variety_name || cell.status}` : 'Empty (click to select)'}` : ''}
-                  >
-                    {planted ? '🌱' : cell?.cell_number}
-                  </button>
-                );
-              })}
-            </div>
-          );
-        })}
       </div>
     </div>
   );
