@@ -11,7 +11,8 @@ import {
   BookOpen,
   AlertTriangle,
   Apple,
-  Share2
+  Share2,
+  Home
 } from 'lucide-react';
 import ShareButton from '@/components/common/ShareButton';
 import DiseaseIdentifier from '@/components/myplants/DiseaseIdentifier';
@@ -48,6 +49,7 @@ export default function PlantDetailModal({ plantId, open, onOpenChange, onUpdate
   const [issues, setIssues] = useState([]);
   const [showDiseaseId, setShowDiseaseId] = useState(false);
   const [diseaseIdImage, setDiseaseIdImage] = useState(null);
+  const [indoorContainer, setIndoorContainer] = useState(null);
 
   useEffect(() => {
     if (open && plantId) {
@@ -58,6 +60,7 @@ export default function PlantDetailModal({ plantId, open, onOpenChange, onUpdate
 
   const loadPlantData = async () => {
     setLoading(true);
+    setIndoorContainer(null);
     try {
       // Fetch fresh data by ID
       const plants = await base44.entities.MyPlant.filter({ id: plantId });
@@ -89,6 +92,22 @@ export default function PlantDetailModal({ plantId, open, onOpenChange, onUpdate
       if (freshPlant.crop_plan_id) {
         const plans = await base44.entities.CropPlan.filter({ id: freshPlant.crop_plan_id });
         if (plans.length > 0) setCropPlan(plans[0]);
+      } else {
+        setCropPlan(null);
+      }
+
+      // Load linked IndoorContainer if this plant came from a tray transplant
+      if (freshPlant.source_tray_cell_id) {
+        try {
+          const linkedContainers = await base44.entities.IndoorContainer.filter({
+            source_tray_cell_id: freshPlant.source_tray_cell_id
+          });
+          if (linkedContainers.length > 0) {
+            setIndoorContainer(linkedContainers[0]);
+          }
+        } catch (err) {
+          console.log('[PlantDetailModal] No linked container found');
+        }
       }
 
       // Load related activity
@@ -134,6 +153,27 @@ export default function PlantDetailModal({ plantId, open, onOpenChange, onUpdate
       }
 
       await base44.entities.MyPlant.update(plant.id, updateData);
+
+      // If linked to an indoor container, also update container status
+      if (indoorContainer) {
+        const containerStatusMap = {
+          'transplanted': 'planted',
+          'flowering': 'growing',
+          'fruiting': 'growing',
+          'harvested': 'growing',
+          'done': 'transplanted'
+        };
+        const newContainerStatus = containerStatusMap[newStatus];
+        if (newContainerStatus) {
+          try {
+            await base44.entities.IndoorContainer.update(indoorContainer.id, {
+              status: newContainerStatus
+            });
+          } catch (err) {
+            console.log('[PlantDetailModal] Could not sync container status:', err);
+          }
+        }
+      }
       
       // Reload fresh data
       const updated = await base44.entities.MyPlant.filter({ id: plant.id });
@@ -197,6 +237,18 @@ export default function PlantDetailModal({ plantId, open, onOpenChange, onUpdate
 
   if (!plant) return null;
 
+  // Determine if this is an indoor container plant
+  const isIndoorPlant = !!(indoorContainer || (plant.location_name && plant.location_name.includes('🏠')));
+
+  const containerTypeLabel = indoorContainer ? ({
+    'cup_3.5in': '3.5" Cup',
+    'cup_4in': '4" Cup',
+    'pot_1gal': '1 Gallon Pot',
+    'pot_3gal': '3 Gallon Pot',
+    'grow_bag_5gal': '5 Gallon Grow Bag',
+    'grow_bag_10gal': '10 Gallon Grow Bag'
+  }[indoorContainer.container_type] || indoorContainer.container_type?.replace(/_/g, ' ')) : null;
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
@@ -207,6 +259,11 @@ export default function PlantDetailModal({ plantId, open, onOpenChange, onUpdate
                 {plant.name || profile?.variety_name || 'Plant Details'}
               </DialogTitle>
               <p className="text-sm text-gray-600">{profile?.common_name}</p>
+              {isIndoorPlant && (
+                <Badge className="mt-1 bg-blue-100 text-blue-700 text-xs">
+                  🏠 Indoor Container Plant
+                </Badge>
+              )}
             </div>
             <ShareButton
               title={`${plant.name || profile?.variety_name} - AwesomeGardener`}
@@ -218,11 +275,47 @@ export default function PlantDetailModal({ plantId, open, onOpenChange, onUpdate
         </DialogHeader>
 
         <div className="space-y-6">
+          {/* Indoor Container Info — shown only for indoor container plants */}
+          {indoorContainer && (
+            <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
+              <div className="flex items-center gap-2 mb-2">
+                <Home className="w-4 h-4 text-blue-600" />
+                <span className="font-medium text-blue-900 text-sm">Indoor Container</span>
+              </div>
+              <div className="grid grid-cols-2 gap-3 text-sm">
+                <div>
+                  <span className="text-blue-600">Container:</span>
+                  <span className="ml-2 font-medium text-blue-900">{containerTypeLabel}</span>
+                </div>
+                {indoorContainer.volume_gallons && (
+                  <div>
+                    <span className="text-blue-600">Volume:</span>
+                    <span className="ml-2 font-medium text-blue-900">{indoorContainer.volume_gallons} gal</span>
+                  </div>
+                )}
+                {indoorContainer.planted_date && (
+                  <div>
+                    <span className="text-blue-600">Potted:</span>
+                    <span className="ml-2 font-medium text-blue-900">
+                      {format(new Date(indoorContainer.planted_date), 'MMM d, yyyy')}
+                    </span>
+                  </div>
+                )}
+                <div>
+                  <span className="text-blue-600">Status:</span>
+                  <span className="ml-2 font-medium text-blue-900 capitalize">
+                    {indoorContainer.status?.replace(/_/g, ' ')}
+                  </span>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Planner Stage vs Observed Stage */}
           <div className="grid grid-cols-2 gap-4">
             <div>
               <Label className="text-xs text-gray-500">
-                Planner Stage {cropPlan ? '(auto from calendar)' : '(no plan)'}
+                {isIndoorPlant ? 'Planner Stage (N/A for indoor)' : `Planner Stage ${cropPlan ? '(auto from calendar)' : '(no plan)'}`}
               </Label>
               {cropPlan ? (
                 <Badge className="mt-1 bg-blue-100 text-blue-800">
@@ -230,10 +323,12 @@ export default function PlantDetailModal({ plantId, open, onOpenChange, onUpdate
                 </Badge>
               ) : (
                 <Badge className="mt-1 bg-gray-100 text-gray-600">
-                  Not scheduled
+                  {isIndoorPlant ? 'Indoor grow' : 'Not scheduled'}
                 </Badge>
               )}
-              <p className="text-xs text-gray-500 mt-1">From crop calendar</p>
+              <p className="text-xs text-gray-500 mt-1">
+                {isIndoorPlant ? 'Indoor plants are tracked independently' : 'From crop calendar'}
+              </p>
             </div>
             <div>
               <Label className="text-xs text-gray-500">Observed Stage (manual)</Label>
@@ -246,46 +341,55 @@ export default function PlantDetailModal({ plantId, open, onOpenChange, onUpdate
 
           <Separator />
 
-          {/* CropPlan Linkage */}
-          <div className="p-3 bg-gray-50 rounded-lg border">
-            <div className="flex items-center justify-between">
-              <div>
-                <Label className="text-xs text-gray-500">Linked to Crop Plan</Label>
-                <p className="text-sm font-medium">
-                  {cropPlan ? `✓ Yes (${cropPlan.label})` : '✗ No crop plan linked'}
-                </p>
-              </div>
-              {!cropPlan && (
-                <Button size="sm" variant="outline" onClick={async () => {
-                  // Allow user to link to a CropPlan
-                  const plans = await base44.entities.CropPlan.filter({ garden_season_id: plant.garden_season_id });
-                  if (plans.length === 0) {
-                    toast.error('No crop plans in this season');
-                    return;
-                  }
-                  const selection = prompt(`Select crop plan:\n${plans.map((p, i) => `${i+1}. ${p.label}`).join('\n')}\n\nEnter number:`);
-                  if (selection) {
-                    const plan = plans[parseInt(selection) - 1];
-                    if (plan) {
-                      await base44.entities.MyPlant.update(plant.id, { crop_plan_id: plan.id });
-                      toast.success('Linked to crop plan');
-                      loadPlantData();
+          {/* CropPlan Linkage — hide for indoor plants since they don't use crop plans */}
+          {!isIndoorPlant && (
+            <div className="p-3 bg-gray-50 rounded-lg border">
+              <div className="flex items-center justify-between">
+                <div>
+                  <Label className="text-xs text-gray-500">Linked to Crop Plan</Label>
+                  <p className="text-sm font-medium">
+                    {cropPlan ? `✓ Yes (${cropPlan.label})` : '✗ No crop plan linked'}
+                  </p>
+                </div>
+                {!cropPlan && plant.garden_season_id && (
+                  <Button size="sm" variant="outline" onClick={async () => {
+                    // Allow user to link to a CropPlan
+                    const plans = await base44.entities.CropPlan.filter({ garden_season_id: plant.garden_season_id });
+                    if (plans.length === 0) {
+                      toast.error('No crop plans in this season');
+                      return;
                     }
-                  }
-                }}>
-                  Fix Link
-                </Button>
-              )}
+                    const selection = prompt(`Select crop plan:\n${plans.map((p, i) => `${i+1}. ${p.label}`).join('\n')}\n\nEnter number:`);
+                    if (selection) {
+                      const plan = plans[parseInt(selection) - 1];
+                      if (plan) {
+                        await base44.entities.MyPlant.update(plant.id, { crop_plan_id: plan.id });
+                        toast.success('Linked to crop plan');
+                        loadPlantData();
+                      }
+                    }
+                  }}>
+                    Fix Link
+                  </Button>
+                )}
+              </div>
             </div>
-          </div>
+          )}
 
           {/* Identification & Location */}
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <Label className="text-xs text-gray-500">Season</Label>
-              <p className="text-sm font-medium">{plant.season_year || 'Current'}</p>
+              <Label className="text-xs text-gray-500">
+                {isIndoorPlant ? 'Location' : 'Season'}
+              </Label>
+              <p className="text-sm font-medium">
+                {isIndoorPlant 
+                  ? (plant.location_name || 'Indoor') 
+                  : (plant.season_year || 'Current')
+                }
+              </p>
             </div>
-            {plant.location_name && (
+            {plant.location_name && !isIndoorPlant && (
               <div>
                 <Label className="text-xs text-gray-500">Location</Label>
                 <Link 
@@ -415,6 +519,7 @@ export default function PlantDetailModal({ plantId, open, onOpenChange, onUpdate
             ) : (
               <div className="text-center py-8 bg-gray-50 rounded-lg">
                 <p className="text-sm text-gray-500">No photos yet</p>
+                <p className="text-xs text-gray-400 mt-1">Add photos to track your plant's growth over time</p>
               </div>
             )}
           </div>
