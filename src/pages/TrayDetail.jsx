@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { base44 } from '@/api/base44Client';
-import { ArrowLeft, Plus, Loader2, Check, X, Upload, Settings, Trash2, ArrowDown, ArrowRight, Grid } from 'lucide-react';
+import { ArrowLeft, Plus, Loader2, Check, X, Upload, Settings, Trash2, Grid, Rows, Columns } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import TrayGrid from '@/components/indoor/TrayGrid';
@@ -55,7 +56,6 @@ export default function TrayDetail() {
       if (cellsData.length < expectedCells) {
         try {
           await base44.functions.invoke('ensureTrayCells', { trayId });
-          // Reload cells after creating missing ones
           const refreshedCells = await base44.entities.TrayCell.filter({ tray_id: trayId }, 'cell_number');
           setCells(refreshedCells);
         } catch (error) {
@@ -90,13 +90,11 @@ export default function TrayDetail() {
 
   const handleCellClick = (cell, event) => {
     if (event?.shiftKey && lastClickedCell) {
-      // Shift+click: select range
       const start = Math.min(lastClickedCell.cell_number, cell.cell_number);
       const end = Math.max(lastClickedCell.cell_number, cell.cell_number);
       const rangeCells = cells.filter(c => c.cell_number >= start && c.cell_number <= end);
       setSelectedCells(rangeCells);
     } else {
-      // Regular click: toggle selection
       if (selectedCells.some(c => c.id === cell.id)) {
         setSelectedCells(selectedCells.filter(c => c.id !== cell.id));
       } else {
@@ -114,7 +112,6 @@ export default function TrayDetail() {
     const endNum = startNum + cols - 1;
     const rowCells = cells.filter(c => c.cell_number >= startNum && c.cell_number <= endNum);
     
-    // Toggle: if all row cells are already selected, deselect them
     const allSelected = rowCells.every(rc => selectedCells.some(sc => sc.id === rc.id));
     if (allSelected) {
       setSelectedCells(selectedCells.filter(sc => !rowCells.some(rc => rc.id === sc.id)));
@@ -140,7 +137,6 @@ export default function TrayDetail() {
       if (cell) colCells.push(cell);
     }
     
-    // Toggle: if all column cells are already selected, deselect them
     const allSelected = colCells.every(cc => selectedCells.some(sc => sc.id === cc.id));
     if (allSelected) {
       setSelectedCells(selectedCells.filter(sc => !colCells.some(cc => cc.id === sc.id)));
@@ -155,10 +151,41 @@ export default function TrayDetail() {
     }
   };
 
+  const selectAllEmpty = () => {
+    const emptyCells = cells.filter(c => c.status === 'empty');
+    const allSelected = emptyCells.every(ec => selectedCells.some(sc => sc.id === ec.id));
+    if (allSelected) {
+      setSelectedCells(selectedCells.filter(sc => !emptyCells.some(ec => ec.id === sc.id)));
+    } else {
+      const newSelection = [...selectedCells];
+      emptyCells.forEach(ec => {
+        if (!newSelection.some(sc => sc.id === ec.id)) {
+          newSelection.push(ec);
+        }
+      });
+      setSelectedCells(newSelection);
+    }
+  };
+
+  const selectAllSeeded = () => {
+    const seededCells = cells.filter(c => ['seeded', 'germinated', 'growing'].includes(c.status));
+    const allSelected = seededCells.every(sc2 => selectedCells.some(sc => sc.id === sc2.id));
+    if (allSelected) {
+      setSelectedCells(selectedCells.filter(sc => !seededCells.some(sc2 => sc2.id === sc.id)));
+    } else {
+      const newSelection = [...selectedCells];
+      seededCells.forEach(sc2 => {
+        if (!newSelection.some(sc => sc.id === sc2.id)) {
+          newSelection.push(sc2);
+        }
+      });
+      setSelectedCells(newSelection);
+    }
+  };
+
   // Derived: filter selected cells by status for smart action guards
   const selectedNonEmpty = selectedCells.filter(c => c.status !== 'empty');
   const selectedEmpty = selectedCells.filter(c => c.status === 'empty');
-  const selectedSeeded = selectedCells.filter(c => c.status === 'seeded' || c.status === 'growing');
   const selectedTransplantable = selectedCells.filter(c => 
     ['seeded', 'germinated', 'growing'].includes(c.status)
   );
@@ -352,7 +379,7 @@ export default function TrayDetail() {
         </Card>
       )}
 
-      {/* Quick Actions */}
+      {/* Quick Actions + Bulk Selection Toolbar */}
       <div className="flex flex-wrap gap-2">
         <Button 
           onClick={() => setShowPlantSeeds(true)}
@@ -368,110 +395,116 @@ export default function TrayDetail() {
           <Settings className="w-4 h-4 mr-2" />
           Edit Tray
         </Button>
+
+        <div className="h-9 w-px bg-gray-300 mx-1 hidden sm:block" />
+
+        {/* Bulk Selection Controls */}
+        <Select 
+          value="" 
+          onValueChange={(val) => {
+            const rowIdx = parseInt(val);
+            if (!isNaN(rowIdx)) selectRow(rowIdx);
+          }}
+        >
+          <SelectTrigger className="w-32 h-9 text-xs">
+            <span className="flex items-center gap-1">
+              <Rows className="w-3 h-3" />
+              Select Row
+            </span>
+          </SelectTrigger>
+          <SelectContent>
+            {Array.from({ length: rows }, (_, i) => {
+              const startNum = i * cols + 1;
+              const endNum = startNum + cols - 1;
+              const rowCells = cells.filter(c => c.cell_number >= startNum && c.cell_number <= endNum);
+              const selectedCount = rowCells.filter(rc => selectedCells.some(sc => sc.id === rc.id)).length;
+              return (
+                <SelectItem key={i} value={String(i)}>
+                  Row {i + 1} ({rowCells.length} cells){selectedCount > 0 ? ` ✓${selectedCount}` : ''}
+                </SelectItem>
+              );
+            })}
+          </SelectContent>
+        </Select>
+
+        <Select 
+          value="" 
+          onValueChange={(val) => {
+            const colIdx = parseInt(val);
+            if (!isNaN(colIdx)) selectColumn(colIdx);
+          }}
+        >
+          <SelectTrigger className="w-32 h-9 text-xs">
+            <span className="flex items-center gap-1">
+              <Columns className="w-3 h-3" />
+              Select Col
+            </span>
+          </SelectTrigger>
+          <SelectContent>
+            {Array.from({ length: cols }, (_, i) => {
+              const colCellNums = [];
+              for (let r = 0; r < rows; r++) {
+                colCellNums.push(r * cols + i + 1);
+              }
+              const colCells = cells.filter(c => colCellNums.includes(c.cell_number));
+              const selectedCount = colCells.filter(cc => selectedCells.some(sc => sc.id === cc.id)).length;
+              return (
+                <SelectItem key={i} value={String(i)}>
+                  Col {i + 1} ({colCells.length} cells){selectedCount > 0 ? ` ✓${selectedCount}` : ''}
+                </SelectItem>
+              );
+            })}
+          </SelectContent>
+        </Select>
+
+        <Button
+          onClick={selectAllEmpty}
+          variant="outline"
+          size="sm"
+          className="h-9 text-xs"
+        >
+          Empty ({stats.empty})
+        </Button>
+        <Button
+          onClick={selectAllSeeded}
+          variant="outline"
+          size="sm"
+          className="h-9 text-xs"
+        >
+          Seeded ({stats.active})
+        </Button>
         <Button
           onClick={() => {
             const allCells = cells.filter(c => c);
             setSelectedCells(allCells);
           }}
           variant="outline"
+          size="sm"
+          className="h-9 text-xs"
         >
-          <Grid className="w-4 h-4 mr-2" />
-          Select All ({cells.length})
+          <Grid className="w-3 h-3 mr-1" />
+          All ({cells.length})
         </Button>
         {selectedCells.length > 0 && (
           <Button
             onClick={() => setSelectedCells([])}
             variant="outline"
+            size="sm"
+            className="h-9 text-xs"
           >
-            Clear Selection
+            Clear
           </Button>
         )}
       </div>
 
-      {/* Bulk Selection Arrows + Tray Grid */}
-      <div className="overflow-x-auto">
-        {/* Column arrows at top */}
-        <div className="flex items-end mb-1" style={{ paddingLeft: '40px' }}>
-          {Array.from({ length: cols }, (_, colIdx) => {
-            // Check if all cells in this column are selected
-            const colCellNums = [];
-            for (let r = 0; r < rows; r++) {
-              colCellNums.push(r * cols + colIdx + 1);
-            }
-            const colCells = cells.filter(c => colCellNums.includes(c.cell_number));
-            const allSelected = colCells.length > 0 && colCells.every(cc => selectedCells.some(sc => sc.id === cc.id));
-
-            return (
-              <button
-                key={`col-${colIdx}`}
-                onClick={() => selectColumn(colIdx)}
-                className={`flex items-center justify-center transition-colors rounded-t ${
-                  allSelected 
-                    ? 'bg-emerald-500 text-white' 
-                    : 'bg-gray-200 text-gray-600 hover:bg-emerald-200 hover:text-emerald-700'
-                }`}
-                style={{ 
-                  width: `${Math.max(100 / cols, 8)}%`,
-                  minWidth: '28px',
-                  height: '22px',
-                  fontSize: '10px',
-                  margin: '0 1px'
-                }}
-                title={`Select column ${colIdx + 1}`}
-              >
-                <ArrowDown className="w-3 h-3" />
-              </button>
-            );
-          })}
-        </div>
-
-        {/* Row arrows + TrayGrid */}
-        <div className="flex">
-          {/* Row arrows on the left */}
-          <div className="flex flex-col justify-start mr-1" style={{ width: '36px', flexShrink: 0 }}>
-            {Array.from({ length: rows }, (_, rowIdx) => {
-              const startNum = rowIdx * cols + 1;
-              const endNum = startNum + cols - 1;
-              const rowCells = cells.filter(c => c.cell_number >= startNum && c.cell_number <= endNum);
-              const allSelected = rowCells.length > 0 && rowCells.every(rc => selectedCells.some(sc => sc.id === rc.id));
-
-              return (
-                <button
-                  key={`row-${rowIdx}`}
-                  onClick={() => selectRow(rowIdx)}
-                  className={`flex items-center justify-center transition-colors rounded-l ${
-                    allSelected 
-                      ? 'bg-emerald-500 text-white' 
-                      : 'bg-gray-200 text-gray-600 hover:bg-emerald-200 hover:text-emerald-700'
-                  }`}
-                  style={{
-                    width: '28px',
-                    height: `${Math.max(100 / rows, 8)}%`,
-                    minHeight: '28px',
-                    fontSize: '10px',
-                    margin: '1px 0',
-                    flex: 1
-                  }}
-                  title={`Select row ${rowIdx + 1}`}
-                >
-                  <ArrowRight className="w-3 h-3" />
-                </button>
-              );
-            })}
-          </div>
-
-          {/* The actual TrayGrid */}
-          <div className="flex-1">
-            <TrayGrid
-              tray={tray}
-              cells={cells}
-              selectedCells={selectedCells}
-              onCellClick={(cell, event) => handleCellClick(cell, event)}
-              loading={false}
-            />
-          </div>
-        </div>
-      </div>
+      {/* Tray Grid */}
+      <TrayGrid
+        tray={tray}
+        cells={cells}
+        selectedCells={selectedCells}
+        onCellClick={(cell, event) => handleCellClick(cell, event)}
+        loading={false}
+      />
 
       {/* Planted Varieties Summary */}
       {cells.filter(c => c.variety_name || c.plant_type_name).length > 0 && (
