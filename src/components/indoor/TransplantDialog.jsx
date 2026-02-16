@@ -83,6 +83,10 @@ export default function TransplantDialog({
       const user = await base44.auth.me();
       let containerCount = 0;
 
+      // Get the space name for location display
+      const selectedSpaceObj = indoorSpaces.find(s => s.id === selectedSpace);
+      const spaceName = selectedSpaceObj?.name || 'Indoor';
+
       for (const cell of selectedCells) {
          // Update TrayCell based on destination
          if (destination === 'discard') {
@@ -134,7 +138,7 @@ export default function TransplantDialog({
              transplant_date: transplantDate
            });
          } else if (destination === 'indoor_container') {
-           // Mark as empty when moving to indoor container (it's now in a container)
+           // Mark as empty when moving to indoor container
            await base44.entities.TrayCell.update(cell.id, {
              status: 'empty',
              transplanted_date: transplantDate,
@@ -150,13 +154,14 @@ export default function TransplantDialog({
            });
          }
 
-         // Create destination record
+         // Create destination record for indoor_container
          if (destination === 'indoor_container') {
            const displayName = cell.variety_name && cell.plant_type_name 
              ? `${cell.variety_name} - ${cell.plant_type_name}`
              : cell.variety_name || 'Plant';
 
-           await base44.entities.IndoorContainer.create({
+           // 1) Create the IndoorContainer
+           const newContainer = await base44.entities.IndoorContainer.create({
              indoor_space_id: selectedSpace,
              name: `${displayName} Cup ${++containerCount}`,
              container_type: containerType,
@@ -168,8 +173,34 @@ export default function TransplantDialog({
              user_seed_id: cell.user_seed_id,
              crop_plan_id: cell.crop_plan_id,
              source_tray_cell_id: cell.id,
-             status: 'ready_to_transplant',
+             status: 'planted',
              planted_date: transplantDate
+           });
+
+           // 2) ALSO create a MyPlant record for full lifecycle tracking
+           //    Linked via source_tray_cell_id (both records share the same cell origin)
+           const containerTypeLabel = {
+             'cup_3.5in': '3.5" Cup',
+             'cup_4in': '4" Cup',
+             'pot_1gal': '1 Gal Pot',
+             'pot_3gal': '3 Gal Pot',
+             'grow_bag_5gal': '5 Gal Grow Bag',
+             'grow_bag_10gal': '10 Gal Grow Bag'
+           }[containerType] || containerType;
+
+           await base44.entities.MyPlant.create({
+             plant_profile_id: cell.plant_profile_id,
+             seed_lot_id: cell.user_seed_id,
+             variety_id: cell.variety_id,
+             variety_name: cell.variety_name,
+             plant_type_id: cell.plant_type_id,
+             plant_type_name: cell.plant_type_name,
+             status: 'transplanted',
+             location_name: `🏠 ${spaceName} - ${containerTypeLabel}`,
+             name: displayName,
+             source_tray_cell_id: cell.id,
+             transplant_date: transplantDate,
+             notes: notes || `Transplanted to ${containerTypeLabel} in ${spaceName}`
            });
          }
        }
@@ -241,7 +272,7 @@ export default function TransplantDialog({
                 <RadioGroupItem value="indoor_container" id="indoor" />
                 <Label htmlFor="indoor" className="flex-1 cursor-pointer">
                   <p className="font-medium">Indoor Container (same grow space)</p>
-                  <p className="text-xs text-gray-600">Up-pot to cups, pots, or grow bags</p>
+                  <p className="text-xs text-gray-600">Up-pot to cups, pots, or grow bags — full lifecycle tracking enabled</p>
                 </Label>
               </div>
               
@@ -266,6 +297,11 @@ export default function TransplantDialog({
           {/* Indoor Container Options */}
           {destination === 'indoor_container' && (
             <div className="space-y-4 pl-6 border-l-2 border-emerald-200">
+              <div className="p-3 bg-emerald-50 rounded-lg border border-emerald-200">
+                <p className="text-xs text-emerald-800">
+                  ✨ A tracked plant record will be created automatically so you can monitor growth, add photos, log harvests, and track the full lifecycle.
+                </p>
+              </div>
               <div>
                 <Label>Container Type</Label>
                 <Select value={containerType} onValueChange={setContainerType}>
