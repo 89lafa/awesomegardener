@@ -205,6 +205,15 @@ export default function IndoorGrowDetail() {
         notes: `Indoor container: ${containerTypeLabel} in ${space?.name || 'Indoor Space'}`
       });
 
+      // Fix legacy container status: ready_to_transplant → planted (it's already in a container!)
+      if (container.status === 'ready_to_transplant') {
+        try {
+          await base44.entities.IndoorContainer.update(container.id, { status: 'planted' });
+        } catch (err) {
+          console.log('Could not update legacy container status:', err);
+        }
+      }
+
       // Update local map and open the detail modal
       setContainerMyPlantMap(prev => ({ ...prev, [container.id]: newPlant.id }));
       setSelectedPlantId(newPlant.id);
