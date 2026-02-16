@@ -19,11 +19,23 @@ import TipOfDayWidget from '@/components/dashboard/TipOfDayWidget';
 import StreakWidget from '@/components/gamification/StreakWidget';
 import LatestBadgeWidget from '@/components/gamification/LatestBadgeWidget';
 import LevelProgressWidget from '@/components/gamification/LevelProgressWidget';
-import LeaderboardRankWidget from '@/components/gamification/LeaderboardRankWidget';
 import ChallengeProgressWidget from '@/components/gamification/ChallengeProgressWidget';
 import IndoorCareWidget from '@/components/dashboard/IndoorCareWidget';
 import { smartQuery } from '@/components/utils/smartQuery';
 import { cn } from '@/lib/utils';
+
+/* ═══════════════════════════════════════════
+   COUNTRY-AWARE POSTAL LABEL
+   ═══════════════════════════════════════════ */
+function getPostalLabel(country) {
+  const labels = {
+    US: 'ZIP code', CA: 'postal code', GB: 'postcode', IE: 'Eircode',
+    AU: 'postcode', NZ: 'postcode', DE: 'Postleitzahl', FR: 'code postal',
+    IT: 'CAP', ES: 'código postal', NL: 'postcode', ZA: 'postal code',
+    JP: 'postal code', IN: 'PIN code', BR: 'CEP', MX: 'código postal'
+  };
+  return labels[country] || 'postal code';
+}
 
 /* ═══════════════════════════════════════════
    ANIMATED COUNTER — Numbers that count up
@@ -114,8 +126,9 @@ function StatCard({ icon: Icon, emoji, title, value, subtitle, color, gradient, 
 
 /* ═══════════════════════════════════════════
    WEATHER CARD — Beautiful weather widget
+   ★ FIX: Uses country-aware postal label
    ═══════════════════════════════════════════ */
-function WeatherWidget({ weather, loading }) {
+function WeatherWidget({ weather, loading, userCountry }) {
   if (loading) {
     return (
       <div className="rounded-2xl p-5 flex items-center justify-center" 
@@ -125,20 +138,30 @@ function WeatherWidget({ weather, loading }) {
     );
   }
   if (!weather) {
+    const postalLabel = getPostalLabel(userCountry);
     return (
       <div className="rounded-2xl p-5 flex flex-col items-center justify-center text-center"
         style={{ background: 'var(--card-bg)', border: '1px solid var(--border-color)', minHeight: 130 }}>
         <Cloud className="w-8 h-8 mb-2 text-gray-400" />
-        <p className="text-xs" style={{ color: 'var(--text-muted, #9ca3af)' }}>Set ZIP in Settings for weather</p>
+        <p className="text-xs" style={{ color: 'var(--text-muted, #9ca3af)' }}>
+          Set {postalLabel} in Settings for weather
+        </p>
       </div>
     );
   }
 
-  const getWeatherGradient = (temp) => {
-    if (temp <= 32) return 'linear-gradient(135deg, #1e40af 0%, #3b82f6 100%)';
-    if (temp <= 50) return 'linear-gradient(135deg, #0369a1 0%, #38bdf8 100%)';
-    if (temp <= 75) return 'linear-gradient(135deg, #059669 0%, #34d399 100%)';
-    if (temp <= 90) return 'linear-gradient(135deg, #d97706 0%, #fbbf24 100%)';
+  // ★ FIX: Use °C for metric users, °F for imperial
+  const isMetric = weather._userUnits === 'metric';
+  const tempUnit = isMetric ? '°C' : '°F';
+  const currentTemp = isMetric ? Math.round((weather.current_temp - 32) * 5/9) : weather.current_temp;
+  const highTemp = isMetric ? Math.round((weather.high_temp - 32) * 5/9) : weather.high_temp;
+  const lowTemp = isMetric ? Math.round((weather.low_temp - 32) * 5/9) : weather.low_temp;
+
+  const getWeatherGradient = (tempF) => {
+    if (tempF <= 32) return 'linear-gradient(135deg, #1e40af 0%, #3b82f6 100%)';
+    if (tempF <= 50) return 'linear-gradient(135deg, #0369a1 0%, #38bdf8 100%)';
+    if (tempF <= 75) return 'linear-gradient(135deg, #059669 0%, #34d399 100%)';
+    if (tempF <= 90) return 'linear-gradient(135deg, #d97706 0%, #fbbf24 100%)';
     return 'linear-gradient(135deg, #dc2626 0%, #f87171 100%)';
   };
 
@@ -149,11 +172,11 @@ function WeatherWidget({ weather, loading }) {
         {weather.conditions_icon || '🌤️'}
       </div>
       <p className="text-xs font-semibold uppercase tracking-wider opacity-80 mb-1">Today's Weather</p>
-      <p className="text-4xl font-extrabold">{weather.current_temp}°F</p>
+      <p className="text-4xl font-extrabold">{currentTemp}{tempUnit}</p>
       <p className="text-sm opacity-90 mt-1">{weather.conditions}</p>
       <div className="flex gap-4 mt-2 text-xs opacity-80">
-        <span>↑ {weather.high_temp}°</span>
-        <span>↓ {weather.low_temp}°</span>
+        <span>↑ {highTemp}°</span>
+        <span>↓ {lowTemp}°</span>
         {weather.precipitation_chance > 20 && <span>💧 {weather.precipitation_chance}%</span>}
       </div>
       {weather.frost_warning && (
@@ -178,7 +201,7 @@ function UpcomingTasksWidget({ tasks, onNavigate }) {
   const TASK_ICONS = { seed: '🌱', transplant: '🪴', harvest: '🥕', water: '💧', cultivate: '✂️', direct_seed: '🌾', bed_prep: '🔧' };
 
   return (
-    <div className="glass-card-no-padding">
+    <div className="glass-card-no-padding h-full">
       <div className="p-5">
         <div className="flex items-center justify-between mb-4">
           <h3 className="font-bold text-base flex items-center gap-2 text-gray-900 dark:text-white">
@@ -333,7 +356,7 @@ export default function Dashboard() {
       if (!zip) { setWeatherLoading(false); return; }
       const today = new Date().toISOString().split('T')[0];
       const cached = await base44.entities.WeatherCache.filter({ zip_code: zip, date: today }).then(r => r[0]);
-      if (cached && new Date(cached.expires_at) > new Date()) { setWeather(cached); setWeatherLoading(false); return; }
+      if (cached && new Date(cached.expires_at) > new Date()) { setWeather({ ...cached, _userUnits: u?.units }); setWeatherLoading(false); return; }
       const response = await fetch(`https://wttr.in/${zip}?format=j1`);
       const data = await response.json();
       const current = data.current_condition?.[0];
@@ -351,7 +374,7 @@ export default function Dashboard() {
       };
       if (cached) await base44.entities.WeatherCache.update(cached.id, weatherData);
       else await base44.entities.WeatherCache.create(weatherData);
-      setWeather(weatherData);
+      setWeather({ ...weatherData, _userUnits: u?.units });
     } catch (err) { console.warn('Weather failed (non-critical):', err.message); }
     finally { setWeatherLoading(false); }
   };
@@ -435,6 +458,9 @@ export default function Dashboard() {
     ? differenceInDays(new Date(user.last_frost_date), new Date())
     : null;
 
+  // ★ FIX: Only show indoor care widget if user actually has indoor plants
+  const hasIndoorPlants = stats.indoorPlants > 0;
+
   return (
     <div className="space-y-6 max-w-7xl mx-auto">
       {/* ═══ HERO HEADER ═══ */}
@@ -497,8 +523,10 @@ export default function Dashboard() {
         <LatestBadgeWidget loadDelay={800} />
       </div>
 
-      {/* ═══ HERO STATS ═══ */}
-      <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
+      {/* ═══ HERO STATS ═══ 
+           ★ FIX: 4 columns instead of 5. Removed "Indoor Plants" stat card.
+           Weather widget is now the 4th stat card position. */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard
           emoji="🌱" title="Active Crops" value={stats.activeCrops}
           subtitle={stats.activeCrops > 0 ? "Growing now" : "Add crops to start"}
@@ -514,52 +542,50 @@ export default function Dashboard() {
           subtitle="In your stash"
           color="#f59e0b" page="SeedStash" delay={200}
         />
-        <StatCard
-          emoji="🪴" title="Indoor Plants" value={stats.indoorPlants}
-          subtitle="Under your care"
-          color="#8b5cf6" page="MyIndoorPlants" delay={300}
-        />
-        <div className="col-span-2 lg:col-span-1">
-          <WeatherWidget weather={weather} loading={weatherLoading} />
-        </div>
+        <WeatherWidget weather={weather} loading={weatherLoading} userCountry={user?.country} />
       </div>
 
-      {/* ═══ MAIN CONTENT ═══ */}
-      <div className="grid lg:grid-cols-3 gap-4">
-        {/* Left column — Tasks + Actions */}
-        <div className="lg:col-span-2 space-y-4">
-          <UpcomingTasksWidget tasks={upcomingTasks} onNavigate={(page) => navigate(createPageUrl(page))} />
-          
-          {/* Quick Actions */}
-          <div className="glass-card-no-padding">
-            <div className="p-5">
-              <h3 className="font-bold text-base mb-3 flex items-center gap-2" style={{ color: 'var(--text-primary, #111827)' }}>
-                <Zap className="w-4 h-4 text-amber-500" /> Quick Actions
-              </h3>
-              <div className="grid grid-cols-2 gap-2">
-                <QuickAction emoji="📅" label="Plan Crops" page="Calendar" />
-                <QuickAction emoji="🌱" label="Manage Seeds" page="SeedStash" />
-                <QuickAction emoji="✓" label="View Tasks" page="CalendarTasks" />
-                <QuickAction emoji="🪴" label="Indoor Plants" page="MyIndoorPlants" />
-                <QuickAction emoji="🌾" label="Seed Trading" page="SeedTrading" />
-                <QuickAction emoji="🏡" label="Community" page="Community" />
-              </div>
+      {/* ═══ MAIN CONTENT ═══ 
+           ★ FIX: Tasks and Quick Actions side-by-side (2 equal columns)
+           instead of Tasks taking full 2/3 width.
+           ★ FIX: Removed LeaderboardRankWidget. */}
+      <div className="grid lg:grid-cols-2 gap-4">
+        {/* Left — Tasks */}
+        <UpcomingTasksWidget tasks={upcomingTasks} onNavigate={(page) => navigate(createPageUrl(page))} />
+        
+        {/* Right — Quick Actions */}
+        <div className="glass-card-no-padding h-full">
+          <div className="p-5">
+            <h3 className="font-bold text-base mb-3 flex items-center gap-2" style={{ color: 'var(--text-primary, #111827)' }}>
+              <Zap className="w-4 h-4 text-amber-500" /> Quick Actions
+            </h3>
+            <div className="grid grid-cols-2 gap-2">
+              <QuickAction emoji="📅" label="Plan Crops" page="Calendar" />
+              <QuickAction emoji="🌱" label="Manage Seeds" page="SeedStash" />
+              <QuickAction emoji="✓" label="View Tasks" page="CalendarTasks" />
+              <QuickAction emoji="🪴" label="Indoor Plants" page="MyIndoorPlants" />
+              <QuickAction emoji="🌾" label="Seed Trading" page="SeedTrading" />
+              <QuickAction emoji="🏡" label="Community" page="Community" />
             </div>
           </div>
         </div>
-
-        {/* Right column — Gamification + Care */}
-        <div className="space-y-4">
-          <LeaderboardRankWidget loadDelay={1200} />
-          <ChallengeProgressWidget loadDelay={1600} />
-          <IndoorCareWidget loadDelay={2000} compact />
-        </div>
       </div>
 
+      {/* ═══ CHALLENGES + ACTIVITY ═══ */}
+      <div className="grid lg:grid-cols-2 gap-4">
+        <ChallengeProgressWidget loadDelay={1200} />
+        <ActivityFeed limit={3} loadDelay={1600} compact />
+      </div>
+
+      {/* ═══ INDOOR CARE — CONDITIONAL ═══
+           ★ FIX: Only shows if user actually has indoor plants */}
+      {hasIndoorPlants && (
+        <IndoorCareWidget loadDelay={2000} compact />
+      )}
+
       {/* ═══ SECONDARY ROW ═══ */}
-      <div className="grid md:grid-cols-3 gap-4">
+      <div className="grid md:grid-cols-2 gap-4">
         <QuickCheckInWidget loadDelay={2400} compact />
-        <ActivityFeed limit={3} loadDelay={2800} compact />
         
         {/* AI Tools Card */}
         <div className="glass-card-no-padding">
@@ -620,7 +646,7 @@ export default function Dashboard() {
       )}
 
       {/* ═══ TIP OF THE DAY ═══ */}
-      <TipOfDayWidget loadDelay={3200} />
+      <TipOfDayWidget loadDelay={2800} />
 
       {/* ═══ NEW USER CTA ═══ */}
       {stats.gardens === 0 && (
