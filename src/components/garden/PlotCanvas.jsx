@@ -1087,9 +1087,12 @@ export default function PlotCanvas({ garden, plot, activeSeason, seasonId, onPlo
                 zoom={zoom}
                 isMobile={isMobile}
                 getItemColor={getItemColor}
-                // Mobile: tap to select, long-press for context menu
+                // Mobile: tap to select, long-press for context menu, drag to move
                 onTap={isMobile ? handleMobileTapItem : undefined}
                 onLongPress={isMobile ? handleMobileLongPressItem : undefined}
+                onDragStart={isMobile ? handleMobileDragStart : undefined}
+                
+
                 // Desktop: double-click for context menu
                 onDoubleClick={() => {
                   setLongPressedItem(item);
