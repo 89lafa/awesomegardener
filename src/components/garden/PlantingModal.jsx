@@ -80,9 +80,12 @@ export default function PlantingModal({
   const gridRows = isSlotBased ? Math.ceil(metadata.capacity / gridCols) : Math.floor(item.height / 12);
   const plantingPattern = item.metadata?.planting_pattern || 'square_foot';
 
-  // Cell size: slightly larger on mobile for better touch targets
-  const CELL_SIZE = isMobile ? 44 : 40;
-  const ARROW_SIZE = isMobile ? 28 : 24;
+  // Responsive cell size on mobile — fits grid to screen width
+  // Account for ~80px of padding/arrows/margins
+  const CELL_SIZE = isMobile 
+    ? Math.max(20, Math.min(44, Math.floor((window.innerWidth - 80) / Math.max(gridCols, 1))))
+    : 40;
+  const ARROW_SIZE = isMobile ? Math.min(28, CELL_SIZE) : 24;
 
   useEffect(() => {
      if (open && item) {
