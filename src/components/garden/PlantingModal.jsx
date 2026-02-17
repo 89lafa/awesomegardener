@@ -1273,6 +1273,12 @@ export default function PlantingModal({
                                   }}
                                 >
                                   <span className="text-xl lg:text-2xl">{p.plant_type_icon || '🌱'}</span>
+                                  {/* ×N badge — computed from PlantingRule, no schema change */}
+                                  {getPlantsPerSlot(p) > 1 && (
+                                    <span className="absolute bottom-0 right-0 bg-white text-emerald-700 text-[9px] font-bold px-1 rounded-tl-md rounded-br shadow leading-tight">
+                                      ×{getPlantsPerSlot(p)}
+                                    </span>
+                                  )}
                                   {selectedPlanting?.id === p.id && (
                                     <div className="absolute -bottom-12 left-0 right-0 flex gap-1 z-10">
                                       <Button size="sm" variant="secondary" onClick={(e) => { e.stopPropagation(); setIsMoving(true); }} className="flex-1">
