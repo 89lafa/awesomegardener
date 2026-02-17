@@ -204,16 +204,29 @@ export default function PlantingModal({
     }
   };
 
-  const getSpacingForPlant = (plantTypeId, varietySpacing) => {
+ const getSpacingForPlant = (plantTypeId, varietySpacing) => {
     const containerType = itemType || item.item_type;
+    
+    // 1) Exact match: plant_type_id + container_type
     const rule = plantingRules.find(r => 
       r.plant_type_id === plantTypeId && 
       r.container_type === containerType
     );
     
     if (rule) {
-      return { cols: rule.grid_cols, rows: rule.grid_rows, plantsPerSlot: rule.plants_per_grid_slot };
+      console.log(`[PlantingRule] ✓ Found rule for ${plantTypeId} in ${containerType}: ${rule.grid_cols}×${rule.grid_rows}, ${rule.plants_per_grid_slot} plants/slot`);
+      return { cols: rule.grid_cols, rows: rule.grid_rows, plantsPerSlot: rule.plants_per_grid_slot || 1 };
     }
+    
+    // 2) Fallback: any rule for this plant type (user may not have set up this container type yet)
+    const anyRule = plantingRules.find(r => r.plant_type_id === plantTypeId);
+    if (anyRule) {
+      console.log(`[PlantingRule] ⚠ No rule for ${containerType}, using ${anyRule.container_type} fallback: ${anyRule.grid_cols}×${anyRule.grid_rows}, ${anyRule.plants_per_grid_slot} plants/slot`);
+      return { cols: anyRule.grid_cols, rows: anyRule.grid_rows, plantsPerSlot: anyRule.plants_per_grid_slot || 1 };
+    }
+    
+    // 3) No rules at all — use spacing-based calculation
+    console.log(`[PlantingRule] ✗ No rules for plant ${plantTypeId}. Loaded rules: ${plantingRules.length}. Using spacing fallback.`);
     
     const method = garden.planting_method || 'STANDARD';
     
@@ -222,10 +235,21 @@ export default function PlantingModal({
       if (spacing >= 18) return { cols: 2, rows: 2, plantsPerSlot: 1 };
       return { cols: 1, rows: 1, plantsPerSlot: 1 };
     } else {
-      const spacing = varietySpacing || 24;
-      const cells = Math.ceil(spacing / 12);
+      // Changed default from 24 to 12 so unknown plants = 1×1, not 2×2
+      const spacing = varietySpacing || 12;
+      const cells = Math.max(1, Math.ceil(spacing / 12));
       return { cols: cells, rows: cells, plantsPerSlot: 1 };
     }
+  };
+// Look up plants-per-slot for a planting from the rules (no schema change needed)
+  const getPlantsPerSlot = (planting) => {
+    if (!planting?.plant_type_id) return 1;
+    const containerType = itemType || item.item_type;
+    const rule = plantingRules.find(r => 
+      r.plant_type_id === planting.plant_type_id && 
+      r.container_type === containerType
+    ) || plantingRules.find(r => r.plant_type_id === planting.plant_type_id);
+    return rule?.plants_per_grid_slot || 1;
   };
 
   // ===========================================================
