@@ -972,8 +972,16 @@ export default function PlantingModal({
                 <TabsContent value="stash" className="mt-2 flex-1 min-h-0 overflow-auto p-2 lg:p-0">
                   <StashTypeSelector
                     onSelect={(plantData) => {
-                      setSelectedPlant(plantData);
-                      checkCompanionAndRotation(plantData);
+                      // Re-apply PlantingRule lookup to override StashTypeSelector's spacing
+                      const spacing = getSpacingForPlant(plantData.plant_type_id, plantData.varietySpacing);
+                      const corrected = {
+                        ...plantData,
+                        spacing_cols: spacing.cols,
+                        spacing_rows: spacing.rows,
+                        plantsPerSlot: spacing.plantsPerSlot || 1
+                      };
+                      setSelectedPlant(corrected);
+                      checkCompanionAndRotation(corrected);
                       if (isMobile) setPickerCollapsed(true);
                     }}
                     selectedPlant={selectedPlant}
@@ -1000,7 +1008,7 @@ export default function PlantingModal({
                           <button
                             key={plan.id}
                             onClick={() => {
-                              const spacing = getDefaultSpacing(plantType?.common_name || plan.label);
+                              const spacing = getSpacingForPlant(plan.plant_type_id) || getDefaultSpacing(plantType?.common_name || plan.label);
                               const plantData = {
                                 crop_plan_id: plan.id,
                                 variety_id: plan.variety_id,
@@ -1050,8 +1058,15 @@ export default function PlantingModal({
                 <TabsContent value="new" className="mt-2 flex-1 overflow-auto p-2 lg:p-0">
                   <CatalogTypeSelector
                     onSelect={(plantData) => {
-                      setSelectedPlant(plantData);
-                      checkCompanionAndRotation(plantData);
+                      const spacing = getSpacingForPlant(plantData.plant_type_id, plantData.varietySpacing);
+                      const corrected = {
+                        ...plantData,
+                        spacing_cols: spacing.cols,
+                        spacing_rows: spacing.rows,
+                        plantsPerSlot: spacing.plantsPerSlot || 1
+                      };
+                      setSelectedPlant(corrected);
+                      checkCompanionAndRotation(corrected);
                       if (isMobile) setPickerCollapsed(true);
                     }}
                     selectedPlant={selectedPlant}
