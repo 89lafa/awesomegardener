@@ -657,16 +657,16 @@ export default function MyGarden() {
                         <p className="text-[10px] text-gray-500">plants</p>
                       </div>
 
-                      {/* Expand/Collapse toggle */}
+                      {/* Expand/Collapse toggle — DOWN arrow = collapse, UP arrow = expand */}
                       <button
                         onClick={() => setDetailExpanded(!detailExpanded)}
                         className="p-1.5 rounded-lg hover:bg-gray-100 transition"
                         title={detailExpanded ? 'Collapse' : 'Expand'}
                       >
                         {detailExpanded ? (
-                          <ChevronUp className="w-4 h-4 text-gray-500" />
-                        ) : (
                           <ChevronDown className="w-4 h-4 text-gray-500" />
+                        ) : (
+                          <ChevronUp className="w-4 h-4 text-gray-500" />
                         )}
                       </button>
 
