@@ -602,6 +602,25 @@ export default function PlotCanvas({ garden, plot, activeSeason, seasonId, onPlo
     setShowContextMenu(true);
   }, [isPinching]);
 
+   // ─── Mobile: PlotItem detected finger drag → initiate drag ───
+  const handleMobileDragStart = useCallback((item, touchEvent) => {
+    if (isPinching) return;
+    const touch = touchEvent.touches ? touchEvent.touches[0] : touchEvent;
+    const rect = canvasRef.current?.getBoundingClientRect();
+    if (!rect) return;
+    
+    const x = (touch.clientX - rect.left) / zoom;
+    const y = (touch.clientY - rect.top) / zoom;
+    
+    setSelectedItem(item);
+    if (onItemSelect) onItemSelect(item);
+    setDraggingItem(item);
+    setDragStartPos({ x: touch.clientX, y: touch.clientY });
+    setDragOffset({ x: x - item.x, y: y - item.y });
+    setIsDragging(true);
+    document.body.style.userSelect = 'none';
+  }, [isPinching, zoom, onItemSelect]);
+
   // ─── Mobile: tap on canvas background = deselect ───
   const handleMobileCanvasTap = useCallback((e) => {
     // Only if tapping the canvas itself, not an item
