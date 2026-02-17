@@ -1,4 +1,4 @@
-fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffimport React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { base44 } from '@/api/base44Client';
 import { createPageUrl } from '@/utils';
@@ -664,9 +664,9 @@ export default function MyGarden() {
                         title={detailExpanded ? 'Collapse' : 'Expand'}
                       >
                         {detailExpanded ? (
-                          <ChevronUp className="w-4 h-4 text-gray-500" />
-                        ) : (
                           <ChevronDown className="w-4 h-4 text-gray-500" />
+                        ) : (
+                          <ChevronUp className="w-4 h-4 text-gray-500" />
                         )}
                       </button>
 
