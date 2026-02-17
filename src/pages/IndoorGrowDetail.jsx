@@ -11,7 +11,9 @@ import {
   Lightbulb,
   List,
   Box,
-  Eye
+  Eye,
+  Search,
+  Sprout
 } from 'lucide-react';
 
 // Helper component to show tray status - uses pre-loaded cell data
@@ -31,6 +33,8 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
 import GrowLogComponent from '@/components/indoor/GrowLogComponent';
@@ -76,6 +80,13 @@ export default function IndoorGrowDetail() {
   const [containerMyPlantMap, setContainerMyPlantMap] = useState({});
   const [selectedPlantId, setSelectedPlantId] = useState(null);
   const [creatingTracking, setCreatingTracking] = useState(null);
+
+  // Assign seedling to empty container
+  const [showAssignSeedling, setShowAssignSeedling] = useState(false);
+  const [containerToAssign, setContainerToAssign] = useState(null);
+  const [availableSeedlings, setAvailableSeedlings] = useState([]);
+  const [loadingSeedlings, setLoadingSeedlings] = useState(false);
+  const [customSeedling, setCustomSeedling] = useState({ variety_name: '', plant_type_name: '', notes: '' });
 
   useEffect(() => {
     if (spaceId) {
@@ -217,6 +228,8 @@ export default function IndoorGrowDetail() {
       // Update local map and open the detail modal
       setContainerMyPlantMap(prev => ({ ...prev, [container.id]: newPlant.id }));
       setSelectedPlantId(newPlant.id);
+      // Reload containers so the card reflects updated status
+      loadSpaceData();
       toast.success('Tracking started! You can now monitor this plant.');
     } catch (error) {
       console.error('Error creating plant tracking:', error);
@@ -226,17 +239,128 @@ export default function IndoorGrowDetail() {
     }
   };
 
+  // Load available seedlings from ALL trays in this space
+  const loadAvailableSeedlings = async () => {
+    setLoadingSeedlings(true);
+    try {
+      const user = await base44.auth.me();
+      // Get all tray cells in this space that have seedlings
+      const allCells = await base44.entities.TrayCell.filter({ created_by: user.email });
+      const trayIds = trays.map(t => t.id);
+      const seedlingCells = allCells.filter(c => 
+        trayIds.includes(c.tray_id) && 
+        ['seeded', 'germinated', 'growing'].includes(c.status) &&
+        (c.variety_name || c.plant_type_name)
+      );
+      setAvailableSeedlings(seedlingCells);
+    } catch (error) {
+      console.error('Error loading seedlings:', error);
+    } finally {
+      setLoadingSeedlings(false);
+    }
+  };
+
+  // Assign a seedling (from tray or custom) to an empty container
+  const handleAssignSeedling = async (seedlingCell) => {
+    if (!containerToAssign) return;
+    try {
+      const now = new Date();
+      now.setHours(now.getHours() - 5);
+      const adjustedDate = now.toISOString().split('T')[0];
+
+      const containerTypeLabel = {
+        'cup_3.5in': '3.5" Cup', 'cup_4in': '4" Cup',
+        'pot_1gal': '1 Gal Pot', 'pot_3gal': '3 Gal Pot',
+        'grow_bag_5gal': '5 Gal Grow Bag', 'grow_bag_10gal': '10 Gal Grow Bag'
+      }[containerToAssign.container_type] || containerToAssign.container_type || 'Container';
+
+      // Update the container with plant info
+      await base44.entities.IndoorContainer.update(containerToAssign.id, {
+        variety_id: seedlingCell.variety_id || null,
+        variety_name: seedlingCell.variety_name,
+        plant_type_id: seedlingCell.plant_type_id || null,
+        plant_type_name: seedlingCell.plant_type_name,
+        plant_profile_id: seedlingCell.plant_profile_id || null,
+        user_seed_id: seedlingCell.user_seed_id || null,
+        source_tray_cell_id: seedlingCell.id || null,
+        status: 'planted',
+        planted_date: adjustedDate
+      });
+
+      // Create MyPlant for tracking
+      const displayName = seedlingCell.variety_name && seedlingCell.plant_type_name
+        ? `${seedlingCell.variety_name} - ${seedlingCell.plant_type_name}`
+        : seedlingCell.variety_name || seedlingCell.plant_type_name || 'Unknown';
+
+      const newPlant = await base44.entities.MyPlant.create({
+        plant_profile_id: seedlingCell.plant_profile_id || null,
+        seed_lot_id: seedlingCell.user_seed_id || null,
+        variety_id: seedlingCell.variety_id || null,
+        variety_name: seedlingCell.variety_name,
+        plant_type_id: seedlingCell.plant_type_id || null,
+        plant_type_name: seedlingCell.plant_type_name,
+        status: 'transplanted',
+        location_name: `🏠 ${space?.name || 'Indoor'} - ${containerTypeLabel}`,
+        name: displayName,
+        source_tray_cell_id: seedlingCell.id || null,
+        transplant_date: adjustedDate,
+        notes: `Indoor container: ${containerTypeLabel} in ${space?.name || 'Indoor Space'}`
+      });
+
+      // If from a tray cell, mark it as transplanted
+      if (seedlingCell.tray_id) {
+        await base44.entities.TrayCell.update(seedlingCell.id, {
+          status: 'transplanted',
+          transplanted_date: adjustedDate
+        });
+      }
+
+      setContainerMyPlantMap(prev => ({ ...prev, [containerToAssign.id]: newPlant.id }));
+      setShowAssignSeedling(false);
+      setContainerToAssign(null);
+      setCustomSeedling({ variety_name: '', plant_type_name: '', notes: '' });
+      loadSpaceData();
+      toast.success(`${displayName} planted in ${containerTypeLabel}!`);
+    } catch (error) {
+      console.error('Error assigning seedling:', error);
+      toast.error('Failed to assign seedling');
+    }
+  };
+
+  // Assign custom seedling (manual entry, e.g., bought at Home Depot)
+  const handleAssignCustomSeedling = async () => {
+    if (!customSeedling.variety_name && !customSeedling.plant_type_name) {
+      toast.error('Please enter at least a variety name or plant type');
+      return;
+    }
+    // Create a "fake" cell object with the custom data
+    await handleAssignSeedling({
+      variety_name: customSeedling.variety_name || null,
+      plant_type_name: customSeedling.plant_type_name || null,
+      variety_id: null,
+      plant_type_id: null,
+      plant_profile_id: null,
+      user_seed_id: null,
+      id: null,
+      tray_id: null // not from tray
+    });
+  };
+
   // Handle container card click
   const handleContainerClick = (container) => {
     const myPlantId = containerMyPlantMap[container.id];
     if (myPlantId) {
       // Has a linked MyPlant — open the detail modal
       setSelectedPlantId(myPlantId);
-    } else if (container.status !== 'empty') {
+    } else if (container.status === 'empty' || !container.variety_name) {
+      // Empty container — open assign seedling dialog
+      setContainerToAssign(container);
+      setShowAssignSeedling(true);
+      loadAvailableSeedlings();
+    } else {
       // Planted but no MyPlant yet (legacy) — offer to start tracking
       handleStartTracking(container);
     }
-    // Empty containers: no action (nothing to track)
   };
 
   if (loading) {
@@ -539,12 +663,12 @@ export default function IndoorGrowDetail() {
                 return (
                   <Card 
                     key={container.id} 
-                    className={`p-4 text-center transition group ${
+                    className={`p-4 text-center transition group cursor-pointer ${
                       isPlanted 
-                        ? 'cursor-pointer hover:shadow-lg hover:border-emerald-400' 
-                        : ''
+                        ? 'hover:shadow-lg hover:border-emerald-400' 
+                        : 'hover:shadow-lg hover:border-blue-400'
                     }`}
-                    onClick={() => isPlanted && handleContainerClick(container)}
+                    onClick={() => handleContainerClick(container)}
                   >
                     {/* Status indicator */}
                     {isPlanted && (
@@ -558,6 +682,15 @@ export default function IndoorGrowDetail() {
                             Tap to track
                           </Badge>
                         )}
+                      </div>
+                    )}
+
+                    {!isPlanted && (
+                      <div className="flex justify-end mb-1">
+                        <Badge className="bg-blue-100 text-blue-700 text-[9px] px-1.5 py-0">
+                          <Sprout className="w-2.5 h-2.5 mr-1 inline" />
+                          Tap to plant
+                        </Badge>
                       </div>
                     )}
 
@@ -595,12 +728,12 @@ export default function IndoorGrowDetail() {
                       </div>
                     )}
 
-                    {/* Hover hint for planted containers */}
-                    {isPlanted && !isCreatingThis && (
+                    {/* Hover hint */}
+                    {!isCreatingThis && (
                       <div className="mt-2 opacity-0 group-hover:opacity-100 transition-opacity">
                         <span className="text-[10px] text-emerald-600 flex items-center justify-center gap-1">
                           <Eye className="w-3 h-3" />
-                          {hasTracking ? 'View Details' : 'Start Tracking'}
+                          {!isPlanted ? 'Plant Seedling' : hasTracking ? 'View Details' : 'Start Tracking'}
                         </span>
                       </div>
                     )}
@@ -693,6 +826,119 @@ export default function IndoorGrowDetail() {
         spaceId={spaceId}
         onSuccess={loadSpaceData}
       />
+
+      {/* Assign Seedling to Container Dialog */}
+      <Dialog open={showAssignSeedling} onOpenChange={(open) => {
+        setShowAssignSeedling(open);
+        if (!open) {
+          setContainerToAssign(null);
+          setCustomSeedling({ variety_name: '', plant_type_name: '', notes: '' });
+        }
+      }}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>
+              Plant Seedling in {containerToAssign ? ({
+                'cup_3.5in': '3.5" Cup', 'cup_4in': '4" Cup',
+                'pot_1gal': '1 Gal Pot', 'pot_3gal': '3 Gal Pot',
+                'grow_bag_5gal': '5 Gal Grow Bag', 'grow_bag_10gal': '10 Gal Grow Bag'
+              }[containerToAssign.container_type] || containerToAssign.container_type) : 'Container'}
+            </DialogTitle>
+          </DialogHeader>
+
+          <Tabs defaultValue="from-tray">
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="from-tray">From Seed Tray</TabsTrigger>
+              <TabsTrigger value="custom">Custom / Store-Bought</TabsTrigger>
+            </TabsList>
+
+            {/* From Tray Tab */}
+            <TabsContent value="from-tray" className="space-y-3">
+              {loadingSeedlings ? (
+                <div className="flex items-center justify-center py-8">
+                  <Loader2 className="w-5 h-5 animate-spin text-emerald-600" />
+                </div>
+              ) : availableSeedlings.length === 0 ? (
+                <div className="text-center py-8">
+                  <p className="text-gray-500 text-sm">No seedlings in your trays right now</p>
+                  <p className="text-gray-400 text-xs mt-1">Plant seeds in trays first, or use Custom tab</p>
+                </div>
+              ) : (
+                <div className="max-h-72 overflow-y-auto space-y-2">
+                  <p className="text-xs text-gray-500 mb-2">
+                    {availableSeedlings.length} seedling{availableSeedlings.length !== 1 ? 's' : ''} available from trays in this space
+                  </p>
+                  {availableSeedlings.map((cell, idx) => {
+                    const name = cell.variety_name && cell.plant_type_name 
+                      ? `${cell.variety_name} - ${cell.plant_type_name}`
+                      : cell.variety_name || cell.plant_type_name || 'Unknown';
+                    
+                    const tray = trays.find(t => t.id === cell.tray_id);
+                    
+                    return (
+                      <button
+                        key={cell.id || idx}
+                        onClick={() => handleAssignSeedling(cell)}
+                        className="w-full p-3 border rounded-lg text-left transition hover:border-emerald-500 hover:bg-emerald-50"
+                      >
+                        <p className="font-medium text-sm">{name}</p>
+                        <div className="flex items-center gap-2 mt-1">
+                          <Badge variant="outline" className="text-[9px]">{cell.status}</Badge>
+                          {tray && <span className="text-[10px] text-gray-500">from {tray.name}</span>}
+                          <span className="text-[10px] text-gray-400">Cell #{cell.cell_number}</span>
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </TabsContent>
+
+            {/* Custom / Store-Bought Tab */}
+            <TabsContent value="custom" className="space-y-4">
+              <p className="text-sm text-gray-600">
+                Add a plant you bought at a store, received from a friend, or want to track without a seed record.
+              </p>
+              
+              <div className="space-y-3">
+                <div>
+                  <label className="block text-sm font-medium mb-1">Variety Name *</label>
+                  <Input
+                    placeholder="e.g., Early Girl, Carolina Reaper..."
+                    value={customSeedling.variety_name}
+                    onChange={(e) => setCustomSeedling(prev => ({ ...prev, variety_name: e.target.value }))}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1">Plant Type</label>
+                  <Input
+                    placeholder="e.g., Tomato, Pepper, Basil..."
+                    value={customSeedling.plant_type_name}
+                    onChange={(e) => setCustomSeedling(prev => ({ ...prev, plant_type_name: e.target.value }))}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1">Notes (optional)</label>
+                  <Input
+                    placeholder="e.g., Bought at Home Depot, 6-inch pot..."
+                    value={customSeedling.notes}
+                    onChange={(e) => setCustomSeedling(prev => ({ ...prev, notes: e.target.value }))}
+                  />
+                </div>
+              </div>
+
+              <Button
+                onClick={handleAssignCustomSeedling}
+                disabled={!customSeedling.variety_name && !customSeedling.plant_type_name}
+                className="w-full bg-emerald-600 hover:bg-emerald-700"
+              >
+                <Sprout className="w-4 h-4 mr-2" />
+                Plant in Container
+              </Button>
+            </TabsContent>
+          </Tabs>
+        </DialogContent>
+      </Dialog>
 
       {trayToMove && (
         <MoveTrayDialog
