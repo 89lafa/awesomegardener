@@ -569,11 +569,22 @@ export default function PlotCanvas({ garden, plot, activeSeason, seasonId, onPlo
     handleDragMove(e);
   };
 
-  const handleInteractionEnd = async () => {
+   const handleInteractionEnd = async () => {
     if (isPinching) { handlePinchEnd(); return; }
     if (draggingItem) {
-      const item = items.find(i => i.id === draggingItem.id);
-      if (isDragging && item) {
+      // Capture data BEFORE clearing state
+      const draggedId = draggingItem.id;
+      const wasDragging = isDragging;
+      const item = items.find(i => i.id === draggedId);
+      
+      // IMMEDIATELY clear drag state — prevents drift during async save
+      setDraggingItem(null);
+      setIsDragging(false);
+      document.body.style.userSelect = '';
+      document.body.style.cursor = '';
+      
+      // Now do the async DB save (mouse moves ignored since draggingItem is null)
+      if (wasDragging && item) {
         try {
           await base44.entities.PlotItem.update(item.id, { x: item.x, y: item.y });
           if (selectedItem?.id === item.id) setSelectedItem(item);
@@ -581,10 +592,6 @@ export default function PlotCanvas({ garden, plot, activeSeason, seasonId, onPlo
           console.error('Error updating position:', error);
         }
       }
-      setDraggingItem(null);
-      setIsDragging(false);
-      document.body.style.userSelect = '';
-      document.body.style.cursor = '';
     }
   };
 
