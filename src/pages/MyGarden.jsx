@@ -8,12 +8,14 @@ import {
   Settings,
   Loader2,
   ChevronDown,
+  ChevronUp,
   Trash2,
   Calendar,
   Copy,
   Eye,
   Grid3x3,
-  Layers
+  Layers,
+  X
 } from 'lucide-react';
 import Garden3DView from '@/components/garden/Garden3DView';
 import { Button } from '@/components/ui/button';
@@ -62,6 +64,7 @@ export default function MyGarden() {
   const [viewMode, setViewMode] = useState('standard');
   const [plotItems, setPlotItems] = useState([]);
   const [plantingCounts, setPlantingCounts] = useState({});
+  const [detailExpanded, setDetailExpanded] = useState(true);
 
   useEffect(() => {
     loadData();
@@ -140,14 +143,11 @@ export default function MyGarden() {
       setUser(userData);
       setGardens(gardensData);
 
-      // Garden selection logic
       if (gardensData.length === 0) {
-        // No gardens - show create CTA
         setLoading(false);
         return;
       }
 
-      // Try to get garden from URL or user preference
       const urlGardenId = searchParams.get('gardenId');
       let selectedGarden = null;
 
@@ -158,17 +158,14 @@ export default function MyGarden() {
       } else if (gardensData.length === 1) {
         selectedGarden = gardensData[0];
       } else {
-        // Multiple gardens, no preference - use first
         selectedGarden = gardensData[0];
       }
 
       if (selectedGarden) {
         setActiveGarden(selectedGarden);
-        // Save preference
         if (userData.active_garden_id !== selectedGarden.id) {
           await base44.auth.updateMe({ active_garden_id: selectedGarden.id });
         }
-        // Update URL
         setSearchParams({ gardenId: selectedGarden.id });
       }
     } catch (error) {
@@ -184,11 +181,10 @@ export default function MyGarden() {
       const plots = await base44.entities.GardenPlot.filter({ garden_id: activeGarden.id });
       
       if (plots.length === 0) {
-        // Auto-create default plot
         const newPlot = await base44.entities.GardenPlot.create({
           garden_id: activeGarden.id,
-          width: 480, // 40 feet
-          height: 720, // 60 feet
+          width: 480,
+          height: 720,
           units: 'ft',
           shape_type: 'RECTANGLE',
           grid_enabled: true,
@@ -212,7 +208,6 @@ export default function MyGarden() {
       }, '-year');
       
       if (seasons.length === 0) {
-        // Create default season for current year
         const currentYear = new Date().getFullYear();
         const newSeason = await base44.entities.GardenSeason.create({
           garden_id: activeGarden.id,
@@ -225,7 +220,6 @@ export default function MyGarden() {
         setActiveSeason(newSeason.season_key);
       } else {
         setAvailableSeasons(seasons);
-        // Set active season to most recent or user's current year
         const currentYear = new Date().getFullYear();
         const currentSeason = seasons.find(s => s.year === currentYear);
         setActiveSeason(currentSeason?.season_key || seasons[0].season_key);
@@ -263,7 +257,6 @@ export default function MyGarden() {
     setActiveGarden(garden);
     setSearchParams({ gardenId: garden.id });
     
-    // Save preference
     try {
       await base44.auth.updateMe({ active_garden_id: garden.id });
     } catch (error) {
@@ -274,7 +267,6 @@ export default function MyGarden() {
   const handleDeleteGarden = async () => {
     if (!activeGarden) return;
     
-    // Show warning dialog with red styling
     const confirmed = confirm(
       `⚠️ DELETE ENTIRE GARDEN?\n\n` +
       `You are about to permanently delete "${activeGarden.name}".\n\n` +
@@ -288,18 +280,16 @@ export default function MyGarden() {
     
     if (!confirmed) return;
     
-    // Second confirmation - require typing garden name
     const typedName = prompt(`To confirm deletion, type the garden name exactly:\n"${activeGarden.name}"`);
     
     if (typedName !== activeGarden.name) {
-      if (typedName !== null) { // Only show error if they didn't cancel
+      if (typedName !== null) {
         toast.error('Garden name did not match. Deletion cancelled.');
       }
       return;
     }
     
     try {
-      // Delete all plot items and their plantings
       const plotItems = await base44.entities.PlotItem.filter({ garden_id: activeGarden.id });
       for (const item of plotItems) {
         const plantings = await base44.entities.PlantInstance.filter({ bed_id: item.id });
@@ -309,22 +299,18 @@ export default function MyGarden() {
         await base44.entities.PlotItem.delete(item.id);
       }
       
-      // Delete planting spaces
       const spaces = await base44.entities.PlantingSpace.filter({ garden_id: activeGarden.id });
       for (const space of spaces) {
         await base44.entities.PlantingSpace.delete(space.id);
       }
       
-      // Delete plots
       const plots = await base44.entities.GardenPlot.filter({ garden_id: activeGarden.id });
       for (const p of plots) {
         await base44.entities.GardenPlot.delete(p.id);
       }
       
-      // Delete garden
       await base44.entities.Garden.delete(activeGarden.id);
       
-      // Update UI
       const updatedGardens = gardens.filter(g => g.id !== activeGarden.id);
       setGardens(updatedGardens);
       
@@ -346,7 +332,7 @@ export default function MyGarden() {
 
   const handleCreateGarden = async () => {
     if (!newGardenName.trim()) return;
-    if (creating) return; // V1B-11: Prevent double-submit
+    if (creating) return;
     setCreating(true);
     try {
       const garden = await base44.entities.Garden.create({
@@ -355,7 +341,6 @@ export default function MyGarden() {
         planting_method: 'STANDARD'
       });
 
-      // Create default plot
       const newPlot = await base44.entities.GardenPlot.create({
         garden_id: garden.id,
         width: 240,
@@ -416,6 +401,26 @@ export default function MyGarden() {
       </div>
     );
   }
+
+  // Deduplicate plantings for summary display
+  const plantingSummary = (() => {
+    if (!selectedItemPlantings.length) return [];
+    const grouped = {};
+    selectedItemPlantings.forEach(p => {
+      const name = p.display_name || 'Unknown';
+      const icon = p.plant_type_icon || '🌱';
+      const key = `${icon}-${name}`;
+      if (!grouped[key]) {
+        grouped[key] = { name, icon, count: 0 };
+      }
+      grouped[key].count += (p.cell_span_cols || 1) * (p.cell_span_rows || 1);
+    });
+    return Object.values(grouped).sort((a, b) => b.count - a.count);
+  })();
+
+  const totalPlants = selectedItemPlantings.reduce(
+    (sum, p) => sum + ((p.cell_span_cols || 1) * (p.cell_span_rows || 1)), 0
+  );
 
   return (
     <ErrorBoundary fallbackTitle="Garden Error">
@@ -613,7 +618,10 @@ export default function MyGarden() {
                   load3DData();
                 }}
                 onDeleteGarden={handleDeleteGarden}
-                onItemSelect={setSelectedItem}
+                onItemSelect={(item) => {
+                  setSelectedItem(item);
+                  setDetailExpanded(true); // Auto-expand when selecting new item
+                }}
               />
             ) : (
               <Garden3DView
@@ -623,45 +631,91 @@ export default function MyGarden() {
               />
             )}
 
-            {/* Selected Item Detail View - HIDDEN ON MOBILE */}
+            {/* ═══════════════════════════════════════════
+                Selected Item Detail — COMPACT & COLLAPSIBLE
+                Max height capped, scrollable, with dismiss
+                ═══════════════════════════════════════════ */}
             {selectedItem && (
-              <Card className="mt-6 lg:mb-0 mb-32 relative z-0 hidden lg:block">
-                <CardContent className="p-6">
-                  <div className="flex items-start justify-between mb-4">
-                    <div>
-                      <h3 className="text-xl font-bold" style={{ color: 'var(--text-primary)' }}>{selectedItem.label}</h3>
-                      <p className="text-sm capitalize mt-1" style={{ color: 'var(--text-secondary)' }}>
-                        {selectedItem.item_type.replace(/_/g, ' ')}
-                      </p>
-                    </div>
-                    <div className="text-right">
-                      <div className="text-2xl font-bold text-emerald-600">
-                        {selectedItemPlantings.reduce((sum, p) => sum + ((p.cell_span_cols || 1) * (p.cell_span_rows || 1)), 0)}
+              <Card className="mt-4 lg:mb-0 mb-32 relative z-0 hidden lg:block border-emerald-200">
+                <CardContent className="p-4">
+                  {/* Header row — always visible */}
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="min-w-0">
+                        <h3 className="text-lg font-bold truncate" style={{ color: 'var(--text-primary)' }}>
+                          {selectedItem.label}
+                        </h3>
+                        <p className="text-xs capitalize" style={{ color: 'var(--text-secondary)' }}>
+                          {selectedItem.item_type.replace(/_/g, ' ')} • {selectedItem.width}" × {selectedItem.height}"
+                        </p>
                       </div>
-                      <p className="text-xs text-gray-500">plants growing</p>
+                    </div>
+
+                    <div className="flex items-center gap-3 flex-shrink-0">
+                      <div className="text-right">
+                        <div className="text-xl font-bold text-emerald-600">{totalPlants}</div>
+                        <p className="text-[10px] text-gray-500">plants</p>
+                      </div>
+
+                      {/* Expand/Collapse toggle */}
+                      <button
+                        onClick={() => setDetailExpanded(!detailExpanded)}
+                        className="p-1.5 rounded-lg hover:bg-gray-100 transition"
+                        title={detailExpanded ? 'Collapse' : 'Expand'}
+                      >
+                        {detailExpanded ? (
+                          <ChevronUp className="w-4 h-4 text-gray-500" />
+                        ) : (
+                          <ChevronDown className="w-4 h-4 text-gray-500" />
+                        )}
+                      </button>
+
+                      {/* Dismiss button */}
+                      <button
+                        onClick={() => setSelectedItem(null)}
+                        className="p-1.5 rounded-lg hover:bg-gray-100 transition"
+                        title="Close"
+                      >
+                        <X className="w-4 h-4 text-gray-400" />
+                      </button>
                     </div>
                   </div>
 
-                  {selectedItemPlantings.length > 0 ? (
-                    <div className="space-y-2">
-                      <h4 className="font-semibold text-sm" style={{ color: 'var(--text-secondary)' }}>Currently Growing:</h4>
-                      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
-                        {selectedItemPlantings.map((planting) => (
-                          <div 
-                            key={planting.id}
-                            className="flex items-center gap-2 p-2 bg-emerald-50 rounded-lg border border-emerald-200"
-                          >
-                            <span className="text-xl">{planting.plant_type_icon || '🌱'}</span>
-                            <span className="text-sm font-medium truncate" style={{ color: 'var(--text-primary)' }}>
-                              {planting.display_name}
-                            </span>
+                  {/* Expandable content */}
+                  {detailExpanded && (
+                    <div className="mt-3">
+                      {plantingSummary.length > 0 ? (
+                        <div className="space-y-2">
+                          <h4 className="font-semibold text-xs uppercase tracking-wide" style={{ color: 'var(--text-secondary)' }}>
+                            Currently Growing ({plantingSummary.length} {plantingSummary.length === 1 ? 'variety' : 'varieties'}):
+                          </h4>
+                          {/* Capped height with scroll — never takes over the screen */}
+                          <div className="max-h-48 overflow-y-auto pr-1">
+                            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2">
+                              {plantingSummary.map((item, idx) => (
+                                <div 
+                                  key={idx}
+                                  className="flex items-center gap-2 p-2 bg-emerald-50 rounded-lg border border-emerald-200"
+                                >
+                                  <span className="text-lg flex-shrink-0">{item.icon}</span>
+                                  <div className="min-w-0 flex-1">
+                                    <span className="text-sm font-medium truncate block" style={{ color: 'var(--text-primary)' }}>
+                                      {item.name}
+                                    </span>
+                                    {item.count > 1 && (
+                                      <span className="text-[10px] text-emerald-600 font-bold">×{item.count}</span>
+                                    )}
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
                           </div>
-                        ))}
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="text-center py-8 bg-gray-50 rounded-lg">
-                      <p className="text-gray-500">No plants in this {selectedItem.item_type.replace(/_/g, ' ').toLowerCase()} yet</p>
+                        </div>
+                      ) : (
+                        <div className="text-center py-4 bg-gray-50 rounded-lg">
+                          <p className="text-gray-500 text-sm">No plants in this {selectedItem.item_type.replace(/_/g, ' ').toLowerCase()} yet</p>
+                        </div>
+                      )}
                     </div>
                   )}
                 </CardContent>
