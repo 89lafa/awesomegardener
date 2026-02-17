@@ -16,22 +16,25 @@ const PlotItem = React.memo(({
   getItemColor,
   onTap,
   onLongPress,
-  onDoubleClick // kept for backward compat but onTap/onLongPress preferred on mobile
+  onDragStart,   // NEW: mobile drag initiation callback
+  onDoubleClick
 }) => {
-  // ─── Mobile long-press detection ───
+  // ─── Mobile long-press + drag detection ───
   const longPressTimer = useRef(null);
   const pressStartPos = useRef({ x: 0, y: 0 });
   const didLongPress = useRef(false);
   const didMove = useRef(false);
+  const dragStarted = useRef(false);
 
   const handlePointerDown = useCallback((e) => {
-    if (!isMobile) return; // Desktop uses canvas-level handlers
+    if (!isMobile) return;
     
     const clientX = e.touches ? e.touches[0].clientX : e.clientX;
     const clientY = e.touches ? e.touches[0].clientY : e.clientY;
     pressStartPos.current = { x: clientX, y: clientY };
     didLongPress.current = false;
     didMove.current = false;
+    dragStarted.current = false;
 
     longPressTimer.current = setTimeout(() => {
       didLongPress.current = true;
@@ -40,17 +43,32 @@ const PlotItem = React.memo(({
   }, [isMobile, item, onLongPress]);
 
   const handlePointerMove = useCallback((e) => {
-    if (!isMobile || !longPressTimer.current) return;
+    if (!isMobile) return;
+    
+    // Already handed off to drag system — nothing more to do here
+    if (dragStarted.current) return;
+    
     const clientX = e.touches ? e.touches[0].clientX : e.clientX;
     const clientY = e.touches ? e.touches[0].clientY : e.clientY;
     const dx = clientX - pressStartPos.current.x;
     const dy = clientY - pressStartPos.current.y;
-    if (Math.sqrt(dx * dx + dy * dy) > 10) {
-      clearTimeout(longPressTimer.current);
-      longPressTimer.current = null;
+    const distance = Math.sqrt(dx * dx + dy * dy);
+
+    if (distance > 10) {
+      // Cancel long-press
+      if (longPressTimer.current) {
+        clearTimeout(longPressTimer.current);
+        longPressTimer.current = null;
+      }
       didMove.current = true;
+      
+      // *** FIX: Initiate drag instead of doing nothing ***
+      if (!didLongPress.current && onDragStart) {
+        dragStarted.current = true;
+        onDragStart(item, e);
+      }
     }
-  }, [isMobile]);
+  }, [isMobile, item, onDragStart]);
 
   const handlePointerUp = useCallback((e) => {
     if (!isMobile) return;
@@ -70,6 +88,7 @@ const PlotItem = React.memo(({
   const handlePointerCancel = useCallback(() => {
     clearTimeout(longPressTimer.current);
     longPressTimer.current = null;
+    dragStarted.current = false;
   }, []);
 
   // Minimum touch target size on mobile (44px per Apple HIG)
@@ -82,7 +101,7 @@ const PlotItem = React.memo(({
     <div
       // Desktop: double-click for context menu
       onDoubleClick={!isMobile ? onDoubleClick : undefined}
-      // Mobile: custom pointer handlers for tap + long-press
+      // Mobile: custom pointer handlers for tap + long-press + drag
       onTouchStart={isMobile ? handlePointerDown : undefined}
       onTouchMove={isMobile ? handlePointerMove : undefined}
       onTouchEnd={isMobile ? handlePointerUp : undefined}
@@ -103,7 +122,6 @@ const PlotItem = React.memo(({
         height: Math.max(renderedH, needsExpander ? minTouchSize : 0),
         backgroundColor: isGrowBagOrContainer && isFull ? '#10b981' : getItemColor(item),
         cursor: isDragging && draggingItem?.id === item.id ? 'grabbing' : 'grab',
-        // Ensure items are above grid lines
         zIndex: selectedItem?.id === item.id ? 5 : 1
       }}
     >
