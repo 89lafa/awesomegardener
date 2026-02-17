@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { base44 } from '@/api/base44Client';
-import { ArrowLeft, Plus, Loader2, Check, X, Upload, Settings, Trash2, Grid, Rows, Columns } from 'lucide-react';
+import { ArrowLeft, Plus, Loader2, Check, X, Upload, Settings, Trash2, Grid, Rows, Columns, ArrowDown, ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -9,7 +9,6 @@ import { Progress } from '@/components/ui/progress';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
-import TrayGrid from '@/components/indoor/TrayGrid';
 import TransplantDialog from '@/components/indoor/TransplantDialog';
 import { PlantSeedsDialog } from '@/components/indoor/PlantSeedsDialog';
 import GrowLogComponent from '@/components/indoor/GrowLogComponent';
@@ -497,14 +496,139 @@ export default function TrayDetail() {
         )}
       </div>
 
-      {/* Tray Grid */}
-      <TrayGrid
-        tray={tray}
-        cells={cells}
-        selectedCells={selectedCells}
-        onCellClick={(cell, event) => handleCellClick(cell, event)}
-        loading={false}
-      />
+      {/* Tray Grid with Integrated Row/Column Arrows */}
+      {(() => {
+        // Determine cell size based on column count for consistent sizing
+        const cellSize = cols > 10 ? 28 : cols > 6 ? 32 : 36;
+        const arrowW = 28; // arrow button width
+        const arrowH = 20; // column arrow height
+
+        // Helper: check if a cell is in the selected set
+        const isCellSelected = (cell) => selectedCells.some(sc => sc.id === cell.id);
+
+        // Status-based cell styling
+        const getCellStyle = (cell) => {
+          if (!cell) return 'bg-gray-200 text-gray-400';
+          if (isCellSelected(cell)) return 'bg-emerald-500 text-white ring-2 ring-emerald-300';
+          switch (cell.status) {
+            case 'seeded': return 'bg-amber-100 text-amber-800 border-amber-300';
+            case 'germinated': return 'bg-green-200 text-green-900 border-green-400';
+            case 'growing': return 'bg-green-400 text-white border-green-600';
+            case 'failed': return 'bg-red-200 text-red-700 border-red-400';
+            case 'transplanted': return 'bg-blue-100 text-blue-700 border-blue-300';
+            default: return 'bg-white hover:bg-gray-50 border-gray-200';
+          }
+        };
+
+        // Get plantable cell numbers for a row (all cells, not just empty)
+        const getRowCells = (rowIdx) => {
+          const rowCellsList = [];
+          for (let c = 0; c < cols; c++) {
+            const cellNum = rowIdx * cols + c + 1;
+            const cell = cells.find(cl => cl.cell_number === cellNum);
+            if (cell) rowCellsList.push(cell);
+          }
+          return rowCellsList;
+        };
+
+        const getColCells = (colIdx) => {
+          const colCellsList = [];
+          for (let r = 0; r < rows; r++) {
+            const cellNum = r * cols + colIdx + 1;
+            const cell = cells.find(cl => cl.cell_number === cellNum);
+            if (cell) colCellsList.push(cell);
+          }
+          return colCellsList;
+        };
+
+        return (
+          <Card className="p-4 overflow-auto">
+            <div className="inline-block">
+              {/* Column arrows row */}
+              <div className="flex" style={{ paddingLeft: `${arrowW}px` }}>
+                {Array.from({ length: cols }).map((_, colIdx) => {
+                  const colCellsList = getColCells(colIdx);
+                  const allSelected = colCellsList.length > 0 && colCellsList.every(c => isCellSelected(c));
+
+                  return (
+                    <button
+                      key={`col-${colIdx}`}
+                      onClick={() => selectColumn(colIdx)}
+                      className={`flex items-center justify-center border transition-colors ${
+                        allSelected
+                          ? 'bg-emerald-500 text-white border-emerald-600'
+                          : 'bg-gray-100 text-gray-500 border-gray-200 hover:bg-emerald-100 hover:text-emerald-700'
+                      }`}
+                      style={{ width: `${cellSize}px`, height: `${arrowH}px` }}
+                      title={`Select column ${colIdx + 1}`}
+                    >
+                      <ArrowDown className="w-3 h-3" />
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Grid rows with row arrows */}
+              {Array.from({ length: rows }).map((_, rowIdx) => {
+                const rowCellsList = getRowCells(rowIdx);
+                const allSelected = rowCellsList.length > 0 && rowCellsList.every(c => isCellSelected(c));
+
+                return (
+                  <div key={rowIdx} className="flex">
+                    {/* Row arrow */}
+                    <button
+                      onClick={() => selectRow(rowIdx)}
+                      className={`flex items-center justify-center border flex-shrink-0 transition-colors ${
+                        allSelected
+                          ? 'bg-emerald-500 text-white border-emerald-600'
+                          : 'bg-gray-100 text-gray-500 border-gray-200 hover:bg-emerald-100 hover:text-emerald-700'
+                      }`}
+                      style={{ width: `${arrowW}px`, height: `${cellSize}px` }}
+                      title={`Select row ${rowIdx + 1}`}
+                    >
+                      <ArrowRight className="w-3 h-3" />
+                    </button>
+
+                    {/* Cells */}
+                    {Array.from({ length: cols }).map((_, colIdx) => {
+                      const cellNum = rowIdx * cols + colIdx + 1;
+                      const cell = cells.find(c => c.cell_number === cellNum);
+
+                      return (
+                        <button
+                          key={`${rowIdx}-${colIdx}`}
+                          onClick={(e) => cell && handleCellClick(cell, e)}
+                          className={`border flex items-center justify-center font-bold transition-all ${getCellStyle(cell)}`}
+                          style={{ width: `${cellSize}px`, height: `${cellSize}px`, fontSize: '9px' }}
+                          title={cell ? `Cell ${cell.cell_number} - ${cell.status}${cell.variety_name ? ': ' + cell.variety_name : ''}` : ''}
+                        >
+                          {cell?.status === 'empty' ? cell.cell_number : 
+                           cell?.status === 'seeded' ? '🌰' :
+                           cell?.status === 'germinated' ? '🌱' :
+                           cell?.status === 'growing' ? '✅' :
+                           cell?.status === 'failed' ? '❌' :
+                           cell?.status === 'transplanted' ? '📤' :
+                           cell?.cell_number}
+                        </button>
+                      );
+                    })}
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Legend */}
+            <div className="flex flex-wrap gap-4 mt-4 text-xs text-gray-600 pt-3 border-t">
+              <span className="flex items-center gap-1"><span className="w-4 h-4 bg-white border border-gray-200 inline-block rounded"></span> Empty</span>
+              <span className="flex items-center gap-1"><span className="w-4 h-4 bg-amber-100 border border-amber-300 inline-block rounded"></span> 🌰 Seeded</span>
+              <span className="flex items-center gap-1"><span className="w-4 h-4 bg-green-200 border border-green-400 inline-block rounded"></span> 🌱 Germinated</span>
+              <span className="flex items-center gap-1"><span className="w-4 h-4 bg-green-400 border border-green-600 inline-block rounded"></span> ✅ Growing</span>
+              <span className="flex items-center gap-1"><span className="w-4 h-4 bg-red-200 border border-red-400 inline-block rounded"></span> ❌ Failed</span>
+              <span className="flex items-center gap-1"><span className="w-4 h-4 bg-emerald-500 inline-block rounded"></span> Selected</span>
+            </div>
+          </Card>
+        );
+      })()}
 
       {/* Planted Varieties Summary */}
       {cells.filter(c => c.variety_name || c.plant_type_name).length > 0 && (
