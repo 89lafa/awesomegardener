@@ -98,7 +98,7 @@ export default function MyGarden() {
         const itemPlantings = plantings.filter(p => p.bed_id === item.id);
         const capacity = (item.metadata?.grid_rows * item.metadata?.grid_cols) || item.metadata?.capacity || 0;
         counts[item.id] = {
-  filled: itemPlantings.reduce((sum, p) => sum + ((p.cell_span_cols || 1) * (p.cell_span_rows || 1) * getPlantsPerSlot(p, item.item_type)), 0),
+  filled: itemPlantings.reduce((sum, p) => sum + getPlantsPerSlot(p, item.item_type), 0),
   capacity
 };
       });
@@ -420,20 +420,20 @@ const loadData = async () => {
   const plantingSummary = (() => {
     if (!selectedItemPlantings.length) return [];
     const grouped = {};
-    selectedItemPlantings.forEach(p => {
+    selectedIfilled: itemPlantings.reduce((sum, p) => sum + ((p.cell_span_cols || 1) * (p.cell_span_rows || 1) * getPlantsPerSlot(p, item.item_type)), 0),temPlantings.forEach(p => {
       const name = p.display_name || 'Unknown';
       const icon = p.plant_type_icon || '🌱';
       const key = `${icon}-${name}`;
       if (!grouped[key]) {
         grouped[key] = { name, icon, count: 0 };
       }
-      grouped[key].count += (p.cell_span_cols || 1) * (p.cell_span_rows || 1) * getPlantsPerSlot(p, selectedItem?.item_type);
+      grouped[key].count += getPlantsPerSlot(p, selectedItem?.item_type);
     });
     return Object.values(grouped).sort((a, b) => b.count - a.count);
   })();
 
 const totalPlants = selectedItemPlantings.reduce(
-  (sum, p) => sum + ((p.cell_span_cols || 1) * (p.cell_span_rows || 1) * getPlantsPerSlot(p, selectedItem?.item_type)), 0
+  (sum, p) => sum + getPlantsPerSlot(p, selectedItem?.item_type), 0
 );
 
   return (
