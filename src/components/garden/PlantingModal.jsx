@@ -339,6 +339,7 @@ export default function PlantingModal({
           cell_row: row,
           cell_span_cols: spanCols,
           cell_span_rows: spanRows,
+          plants_per_slot: selectedPlant.plantsPerSlot || 1,
           season_year: activeSeason || `${new Date().getFullYear()}-Spring`,
           status: 'planned',
           ...seedlingData
@@ -486,6 +487,7 @@ export default function PlantingModal({
         cell_row: 0,
         cell_span_cols: 1,
         cell_span_rows: 1,
+        plants_per_slot: selectedPlant.plantsPerSlot || 1,
         season_year: activeSeason || `${new Date().getFullYear()}-Spring`,
         status: 'planned',
         ...seedlingData
@@ -605,6 +607,7 @@ export default function PlantingModal({
           cell_row: row,
           cell_span_cols: selectedPlant.spacing_cols,
           cell_span_rows: selectedPlant.spacing_rows,
+          plants_per_slot: selectedPlant.plantsPerSlot || 1,
           season_year: activeSeason || `${new Date().getFullYear()}-Spring`,
           status: 'planned',
           ...seedlingData
