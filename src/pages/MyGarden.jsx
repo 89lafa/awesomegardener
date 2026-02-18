@@ -66,6 +66,15 @@ export default function MyGarden() {
   const [plantingCounts, setPlantingCounts] = useState({});
   const [detailExpanded, setDetailExpanded] = useState(true);
   const [plantingRules, setPlantingRules] = useState([]);
+ const getPlantsPerSlot = (planting, containerType) => {
+  if (!planting?.plant_type_id) return 1;
+  const rule = plantingRules.find(r => 
+    r.plant_type_id === planting.plant_type_id && 
+    r.container_type === containerType
+  ) || plantingRules.find(r => r.plant_type_id === planting.plant_type_id);
+  return rule?.plants_per_grid_slot || 1;
+};
+ 
   useEffect(() => {
     loadData();
   }, []);
