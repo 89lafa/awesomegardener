@@ -459,21 +459,43 @@ const handleSubmit = async () => {
         'Update seed'
       );
       toast.success('Seed updated!');
+      
+      closeDialog();
+      
+      // Background refresh
+      await sleep(300);
+      loadingRef.current = false;
+      loadData();
     } else {
       const newSeed = await safeApiCall(
         () => base44.entities.SeedLot.create(formData),
         'Create seed'
       );
-      // INSTANT UPDATE: Add to local state immediately
+      
+      // CRITICAL: Load and add profile to state if not already there
+      if (formData.plant_profile_id && !profiles[formData.plant_profile_id]) {
+        await sleep(200);
+        const profile = await safeApiCall(
+          () => base44.entities.PlantProfile.get(formData.plant_profile_id),
+          'Load new profile'
+        );
+        setProfiles(prev => ({ ...prev, [profile.id]: profile }));
+      }
+      
+      // INSTANT UPDATE: Add to local state
       setSeeds(prev => [newSeed, ...prev]);
       toast.success(formData.is_wishlist ? 'Added to wishlist!' : 'Seed added to stash!');
+      
+      // Small delay before closing to let React update
+      await sleep(150);
+      closeDialog();
+      
+      // Background refresh (non-blocking)
+      setTimeout(() => {
+        loadingRef.current = false;
+        loadData();
+      }, 500);
     }
-    closeDialog();
-    
-    // Background refresh to ensure sync (without blocking UI)
-    await sleep(500);
-    loadingRef.current = false; // Reset the guard
-    loadData();
   } catch (error) {
     console.error('[SeedStash] Error saving seed:', error);
     toast.error('Failed to save seed');
