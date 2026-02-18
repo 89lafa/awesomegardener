@@ -323,6 +323,52 @@ export default function PlantingModal({
           actual_transplant_date: new Date().toISOString().split('T')[0]
         } : {};
 
+const seedlingData = selectedPlant.seedling_source_id ? {
+  growing_method: 'SEEDLING_TRANSPLANT',
+  seedling_source_id: selectedPlant.seedling_source_id,
+  seedling_source_type: selectedPlant.seedling_source_type,
+  seedling_age_days: selectedPlant.seedling_age_days,
+  seedling_location: selectedPlant.seedling_location,
+  actual_transplant_date: new Date().toISOString().split('T')[0]
+} : {};
+
+// ADD THIS DEBUG BLOCK HERE:
+console.log('═══════════════════════════════════════');
+console.log('[PLANTING DEBUG] About to create PlantInstance');
+console.log('selectedPlant.plantsPerSlot:', selectedPlant.plantsPerSlot);
+console.log('selectedPlant object:', selectedPlant);
+console.log('Will save plants_per_slot as:', selectedPlant.plantsPerSlot || 1);
+console.log('═══════════════════════════════════════');
+
+const planting = await base44.entities.PlantInstance.create({
+  garden_id: garden.id,
+  bed_id: item.id,
+  space_id: item.id,
+  cell_x: col,
+  cell_y: row,
+  plant_type_id: selectedPlant.plant_type_id,
+  plant_type_icon: icon,
+  plant_family: plantFamily,
+  variety_id: selectedPlant.variety_id,
+  display_name: displayName,
+  placement_mode: 'grid_cell',
+  cell_col: col,
+  cell_row: row,
+  cell_span_cols: spanCols,
+  cell_span_rows: spanRows,
+  plants_per_slot: selectedPlant.plantsPerSlot || 1,
+  season_year: activeSeason || `${new Date().getFullYear()}-Spring`,
+  status: 'planned',
+  ...seedlingData
+});
+
+// ADD THIS DEBUG BLOCK HERE TOO:
+console.log('═══════════════════════════════════════');
+console.log('[PLANTING DEBUG] Created PlantInstance');
+console.log('Returned record plants_per_slot:', planting.plants_per_slot);
+console.log('Full planting object:', planting);
+console.log('═══════════════════════════════════════');
+
         const planting = await base44.entities.PlantInstance.create({
           garden_id: garden.id,
           bed_id: item.id,
