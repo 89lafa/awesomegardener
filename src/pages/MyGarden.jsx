@@ -65,7 +65,7 @@ export default function MyGarden() {
   const [plotItems, setPlotItems] = useState([]);
   const [plantingCounts, setPlantingCounts] = useState({});
   const [detailExpanded, setDetailExpanded] = useState(true);
-
+  const [plantingRules, setPlantingRules] = useState([]);
   useEffect(() => {
     loadData();
   }, []);
@@ -89,9 +89,9 @@ export default function MyGarden() {
         const itemPlantings = plantings.filter(p => p.bed_id === item.id);
         const capacity = (item.metadata?.grid_rows * item.metadata?.grid_cols) || item.metadata?.capacity || 0;
         counts[item.id] = {
-          filled: itemPlantings.reduce((sum, p) => sum + ((p.cell_span_cols || 1) * (p.cell_span_rows || 1) * (p.plants_per_slot || 1)), 0),
-          capacity
-        };
+  filled: itemPlantings.reduce((sum, p) => sum + ((p.cell_span_cols || 1) * (p.cell_span_rows || 1) * getPlantsPerSlot(p, item.item_type)), 0),
+  capacity
+};
       });
 
       setPlotItems(items);
@@ -132,13 +132,18 @@ export default function MyGarden() {
     }
   };
 
-  const loadData = async () => {
-    try {
-      const userData = await base44.auth.me();
-      const gardensData = await base44.entities.Garden.filter({ 
+const loadData = async () => {
+  try {
+    const userData = await base44.auth.me();
+    const [gardensData, rulesData] = await Promise.all([
+      base44.entities.Garden.filter({ 
         archived: false, 
         created_by: userData.email 
-      }, '-updated_date');
+      }, '-updated_date'),
+      base44.entities.PlantingRule.list()
+    ]);
+    
+    setPlantingRules(rulesData || []);
       
       setUser(userData);
       setGardens(gardensData);
@@ -413,14 +418,14 @@ export default function MyGarden() {
       if (!grouped[key]) {
         grouped[key] = { name, icon, count: 0 };
       }
-      grouped[key].count += (p.cell_span_cols || 1) * (p.cell_span_rows || 1) * (p.plants_per_slot || 1);
+      grouped[key].count += (p.cell_span_cols || 1) * (p.cell_span_rows || 1) * getPlantsPerSlot(p, selectedItem?.item_type);
     });
     return Object.values(grouped).sort((a, b) => b.count - a.count);
   })();
 
- const totalPlants = selectedItemPlantings.reduce(
-    (sum, p) => sum + ((p.cell_span_cols || 1) * (p.cell_span_rows || 1) * (p.plants_per_slot || 1)), 0
-  );
+const totalPlants = selectedItemPlantings.reduce(
+  (sum, p) => sum + ((p.cell_span_cols || 1) * (p.cell_span_rows || 1) * getPlantsPerSlot(p, selectedItem?.item_type)), 0
+);
 
   return (
     <ErrorBoundary fallbackTitle="Garden Error">
