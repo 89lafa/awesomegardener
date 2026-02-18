@@ -443,41 +443,44 @@ export default function SeedStash() {
 
   const [submitting, setSubmitting] = useState(false);
 
-  const handleSubmit = async () => {
-    if (!formData.plant_profile_id) {
-      toast.error('Please select a variety');
-      return;
-    }
-    
-    if (submitting) return;
-    setSubmitting(true);
+const handleSubmit = async () => {
+  if (!formData.plant_profile_id) {
+    toast.error('Please select a variety');
+    return;
+  }
+  
+  if (submitting) return;
+  setSubmitting(true);
 
-    try {
-      if (editingSeed) {
-        await safeApiCall(
-          () => base44.entities.SeedLot.update(editingSeed.id, formData),
-          'Update seed'
-        );
-        await sleep(500);
-        await loadData();
-        toast.success('Seed updated!');
-      } else {
-        await safeApiCall(
-          () => base44.entities.SeedLot.create(formData),
-          'Create seed'
-        );
-        await sleep(500);
-        await loadData();
-        toast.success(formData.is_wishlist ? 'Added to wishlist!' : 'Seed added to stash!');
-      }
-      closeDialog();
-    } catch (error) {
-      console.error('[SeedStash] Error saving seed:', error);
-      toast.error('Failed to save seed');
-    } finally {
-      setSubmitting(false);
+  try {
+    if (editingSeed) {
+      await safeApiCall(
+        () => base44.entities.SeedLot.update(editingSeed.id, formData),
+        'Update seed'
+      );
+      toast.success('Seed updated!');
+    } else {
+      const newSeed = await safeApiCall(
+        () => base44.entities.SeedLot.create(formData),
+        'Create seed'
+      );
+      // INSTANT UPDATE: Add to local state immediately
+      setSeeds(prev => [newSeed, ...prev]);
+      toast.success(formData.is_wishlist ? 'Added to wishlist!' : 'Seed added to stash!');
     }
-  };
+    closeDialog();
+    
+    // Background refresh to ensure sync (without blocking UI)
+    await sleep(500);
+    loadingRef.current = false; // Reset the guard
+    loadData();
+  } catch (error) {
+    console.error('[SeedStash] Error saving seed:', error);
+    toast.error('Failed to save seed');
+  } finally {
+    setSubmitting(false);
+  }
+};
 
   // ==========================================================
   // FIX: Simplified handleDelete to avoid unnecessary API calls
