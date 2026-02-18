@@ -1,7 +1,10 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { 
-  Home, Leaf, Archive, Mail, MoreHorizontal, ChevronDown, ChevronUp
+  Home, Leaf, Archive, Mail, MoreHorizontal, ChevronDown, ChevronUp, ArrowUp,
+  LayoutDashboard, TreeDeciduous, Hammer, BookOpen, ListChecks, Calendar, Globe,
+  MessageSquare, Lightbulb, Settings, Sprout, Shield, BookText, Bug, Apple, MapPin,
+  Link2, ChefHat, Award, Target, Trophy, Package
 } from 'lucide-react';
 import { createPageUrl } from '@/utils';
 import { base44 } from '@/api/base44Client';
@@ -25,35 +28,113 @@ const getMoreMenuItems = (user) => {
   
   return [
     { category: 'PLANTING & PLANNING' },
-    { name: 'Gardens', icon: Leaf, page: 'Gardens' },
-    { name: 'My Garden Plants', icon: Leaf, page: 'MyPlants' },
-    { name: 'Grow Lists', icon: Leaf, page: 'GrowLists' },
+    { name: 'Plant Catalog', icon: BookOpen, page: 'PlantCatalog' },
+    { name: 'Gardens', icon: Globe, page: 'Gardens' },
+    { name: 'My Garden Plants', icon: Apple, page: 'MyPlants' },
+    { name: 'Grow Lists', icon: ListChecks, page: 'GrowLists' },
     
     { category: 'GARDEN MANAGEMENT' },
-    { name: 'Calendar', icon: Leaf, page: 'Calendar' },
-    { name: 'Tasks', icon: Leaf, page: 'CalendarTasks' },
-    { name: 'Indoor Grow', icon: Leaf, page: 'IndoorGrowSpaces' },
-    { name: 'Houseplant Spaces', icon: Leaf, page: 'IndoorPlants' },
-    { name: 'My Houseplants', icon: Leaf, page: 'MyIndoorPlants' },
+    { name: 'Calendar', icon: Calendar, page: 'Calendar' },
+    { name: 'Tasks', icon: ListChecks, page: 'CalendarTasks' },
+    { name: 'Indoor Grow', icon: Sprout, page: 'IndoorGrowSpaces' },
+    { name: 'Houseplant Spaces', icon: Sprout, page: 'IndoorPlants' },
+    { name: 'My Houseplants', icon: Sprout, page: 'MyIndoorPlants' },
+    { name: 'Ready to Plant', icon: Sprout, page: 'ReadyToPlantSeedlings' },
+    { name: 'Plot Layout', icon: Hammer, page: 'MyGarden' },
+    { name: 'Garden Spaces', icon: TreeDeciduous, page: 'GardenPlanting' },
     
     { category: 'TRACKING' },
-    { name: 'Diary', icon: Leaf, page: 'GardenDiary' },
-    { name: 'Harvest Log', icon: Leaf, page: 'HarvestLog' },
+    { name: 'Tracking', icon: BookText, page: 'Tracking' },
     
     { category: 'COMMUNITY' },
-    { name: 'Seed Trading', icon: Leaf, page: 'SeedTrading' },
-    { name: 'Browse Gardens', icon: Leaf, page: 'BrowseGardens' },
-    { name: 'Community Board', icon: Leaf, page: 'CommunityBoard' },
+    { name: 'Seed Trading', icon: Apple, page: 'SeedTrading' },
+    { name: 'Companion Planting', icon: Sprout, page: 'CompanionPlanner' },
+    { name: 'Browse Gardens', icon: Globe, page: 'BrowseGardens' },
+    { name: 'Leaderboard', icon: Trophy, page: 'LeaderboardV2' },
+    
+    { category: 'GAMIFICATION' },
+    { name: 'Achievements', icon: Award, page: 'Achievements' },
+    { name: 'Challenges', icon: Target, page: 'Challenges' },
+    
+    { category: 'AI TOOLS' },
+    { name: 'AI Assistants', icon: Lightbulb, page: 'AIAssistants' },
+    { name: 'Recipes', icon: ChefHat, page: 'Recipes' },
+    
+    { category: 'LEARN & EXPLORE' },
+    { name: 'Resources', icon: Link2, page: 'Resources' },
+    { name: 'Blog & News', icon: BookText, page: 'BlogList' },
+    { name: 'Community Board', icon: MessageSquare, page: 'CommunityBoard' },
+    { name: 'Feature Requests', icon: Lightbulb, page: 'FeatureRequests' },
+    
+    { category: 'SETTINGS' },
+    { name: 'Settings', icon: Settings, page: 'Settings' },
+    { name: 'Zone Map', icon: MapPin, page: 'ZoneMap' },
     
     ...(isEditor || isAdmin || isMod 
       ? [
           { category: 'ADMIN' },
-          { name: 'Admin Hub', icon: Leaf, page: 'AdminHub' },
+          { name: 'Admin Hub', icon: Shield, page: 'AdminHub' },
+          { name: 'Manage Achievements', icon: Award, page: 'AdminAchievements' },
+          { name: 'Manage Challenges', icon: Target, page: 'AdminChallenges' },
+          { name: 'Manage Recipes', icon: ChefHat, page: 'AdminRecipes' },
         ]
       : []
     ),
   ];
 };
+
+// Floating "Back to Top" button component
+function BackToTopButton() {
+  const [isVisible, setIsVisible] = useState(false);
+
+  useEffect(() => {
+    const toggleVisibility = () => {
+      if (window.pageYOffset > 300) {
+        setIsVisible(true);
+      } else {
+        setIsVisible(false);
+      }
+    };
+
+    window.addEventListener('scroll', toggleVisibility);
+    return () => window.removeEventListener('scroll', toggleVisibility);
+  }, []);
+
+  const scrollToTop = () => {
+    window.scrollTo({
+      top: 0,
+      behavior: 'smooth'
+    });
+  };
+
+  return (
+    <>
+      {isVisible && (
+        <button
+          onClick={scrollToTop}
+          className="fixed bottom-24 right-4 z-40 w-12 h-12 rounded-full bg-emerald-600 text-white shadow-lg hover:bg-emerald-700 transition-all duration-300 flex items-center justify-center lg:hidden"
+          style={{
+            animation: 'fadeIn 0.3s ease-in-out',
+          }}
+        >
+          <ArrowUp className="w-6 h-6" />
+        </button>
+      )}
+      <style>{`
+        @keyframes fadeIn {
+          from {
+            opacity: 0;
+            transform: translateY(10px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+      `}</style>
+    </>
+  );
+}
 
 export default function CollapsibleBottomNav() {
   const navigate = useNavigate();
@@ -134,6 +215,9 @@ export default function CollapsibleBottomNav() {
   
   return (
     <>
+      {/* Back to Top Button */}
+      <BackToTopButton />
+
       {/* Collapse/Expand Button - ALWAYS VISIBLE */}
       <button
         onClick={toggleCollapse}
