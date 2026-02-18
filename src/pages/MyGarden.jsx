@@ -417,20 +417,20 @@ const loadData = async () => {
   }
 
   // Deduplicate plantings for summary display
-  const plantingSummary = (() => {
-    if (!selectedItemPlantings.length) return [];
-    const grouped = {};
-    selectedIfilled: itemPlantings.reduce((sum, p) => sum + ((p.cell_span_cols || 1) * (p.cell_span_rows || 1) * getPlantsPerSlot(p, item.item_type)), 0),temPlantings.forEach(p => {
-      const name = p.display_name || 'Unknown';
-      const icon = p.plant_type_icon || '🌱';
-      const key = `${icon}-${name}`;
-      if (!grouped[key]) {
-        grouped[key] = { name, icon, count: 0 };
-      }
-      grouped[key].count += getPlantsPerSlot(p, selectedItem?.item_type);
-    });
-    return Object.values(grouped).sort((a, b) => b.count - a.count);
-  })();
+ const plantingSummary = (() => {
+  if (!selectedItemPlantings.length) return [];
+  const grouped = {};
+  selectedItemPlantings.forEach(p => {
+    const name = p.display_name || 'Unknown';
+    const icon = p.plant_type_icon || '🌱';
+    const key = `${icon}-${name}`;
+    if (!grouped[key]) {
+      grouped[key] = { name, icon, count: 0 };
+    }
+    grouped[key].count += getPlantsPerSlot(p, selectedItem?.item_type);
+  });
+  return Object.values(grouped).sort((a, b) => b.count - a.count);
+})();
 
 const totalPlants = selectedItemPlantings.reduce(
   (sum, p) => sum + getPlantsPerSlot(p, selectedItem?.item_type), 0
