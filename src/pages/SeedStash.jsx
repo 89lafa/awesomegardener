@@ -1350,15 +1350,21 @@ const handleSubmit = async () => {
         </Card>
       )}
 
-      {/* Add/Edit Dialog */}
-      <Dialog open={showAddDialog} onOpenChange={closeDialog}>
-        <DialogContent className="max-w-lg">
-          <DialogHeader>
-            <DialogTitle>
-              {editingSeed ? 'Edit Seed' : (formData.is_wishlist ? 'Add to Wishlist' : 'Add Seeds')}
-            </DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-2">
+{/* Add/Edit Dialog */}
+<Dialog open={showAddDialog} onOpenChange={closeDialog}>
+  <DialogContent className="max-w-lg">
+    <DialogHeader>
+      <DialogTitle>
+        {editingSeed ? 'Edit Seed' : (formData.is_wishlist ? 'Add to Wishlist' : 'Add Seeds')}
+      </DialogTitle>
+    </DialogHeader>
+    <form 
+      onSubmit={(e) => {
+        e.preventDefault();
+        handleSubmit();
+      }}
+      className="space-y-4 max-h-[60vh] overflow-y-auto pr-2" 
+    >
             <div>
               <Label>Plant Type (from catalog)</Label>
               <Select 
@@ -1557,14 +1563,15 @@ const handleSubmit = async () => {
                 Add to wishlist (seeds I want to buy)
               </Label>
             </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={closeDialog}>Cancel</Button>
-            <Button 
-              onClick={handleSubmit}
-              disabled={submitting}
-              className="bg-emerald-600 hover:bg-emerald-700"
-            >
+    </form>
+    <DialogFooter>
+      <Button type="button" variant="outline" onClick={closeDialog}>Cancel</Button>
+      <Button 
+        type="submit"
+        onClick={handleSubmit}
+        disabled={submitting}
+        className="bg-emerald-600 hover:bg-emerald-700"
+      >
               {submitting ? (
                 <>
                   <Loader2 className="w-4 h-4 animate-spin mr-2" />
@@ -1579,27 +1586,36 @@ const handleSubmit = async () => {
       </Dialog>
 
       {/* New Dialogs */}
-      <AddCustomSeedDialog 
-        open={showAddCustomDialog}
-        onOpenChange={(open) => {
-          setShowAddCustomDialog(open);
-          if (!open) setScannedData(null);
-        }}
-        onSuccess={loadData}
-        prefilledData={scannedData}
-      />
+<AddCustomSeedDialog 
+  open={showAddCustomDialog}
+  onOpenChange={(open) => {
+    setShowAddCustomDialog(open);
+    if (!open) setScannedData(null);
+  }}
+  onSuccess={() => {
+    loadingRef.current = false; // Reset guard
+    loadData();
+  }}
+  prefilledData={scannedData}
+/>
 
-      <AddFromCatalogDialog 
-        open={showAddFromCatalogDialog}
-        onOpenChange={setShowAddFromCatalogDialog}
-        onSuccess={loadData}
-      />
+<AddFromCatalogDialog 
+  open={showAddFromCatalogDialog}
+  onOpenChange={setShowAddFromCatalogDialog}
+  onSuccess={() => {
+    loadingRef.current = false; // Reset guard
+    loadData();
+  }}
+/>
 
-      <ImportSpreadsheetDialog
-        open={showImportDialog}
-        onOpenChange={setShowImportDialog}
-        onSuccess={loadData}
-      />
+<ImportSpreadsheetDialog
+  open={showImportDialog}
+  onOpenChange={setShowImportDialog}
+  onSuccess={() => {
+    loadingRef.current = false; // Reset guard
+    loadData();
+  }}
+/>
 
       {/* Packet Scanner */}
       {showPacketScanner && (
@@ -1619,29 +1635,31 @@ const handleSubmit = async () => {
         />
       )}
 
-      {/* Unified Scanner */}
-      {showUnifiedScanner && (
-        <UnifiedSeedScanner
-          onScanComplete={(result) => {
-            console.log('[SeedStash] Scan complete:', result);
-            setShowUnifiedScanner(false);
-            loadData();
-          }}
-          onClose={() => setShowUnifiedScanner(false)}
-        />
-      )}
+{/* Unified Scanner */}
+{showUnifiedScanner && (
+  <UnifiedSeedScanner
+    onScanComplete={(result) => {
+      console.log('[SeedStash] Scan complete:', result);
+      setShowUnifiedScanner(false);
+      loadingRef.current = false; // Reset guard
+      loadData();
+    }}
+    onClose={() => setShowUnifiedScanner(false)}
+  />
+)}
 
-      {/* Barcode Scanner */}
-      {showBarcodeScanner && (
-        <BarcodeScanner
-          onScanComplete={(product) => {
-            console.log('[SeedStash] Barcode scanned:', product);
-            setShowBarcodeScanner(false);
-            loadData();
-          }}
-          onClose={() => setShowBarcodeScanner(false)}
-        />
-      )}
+{/* Barcode Scanner */}
+{showBarcodeScanner && (
+  <BarcodeScanner
+    onScanComplete={(product) => {
+      console.log('[SeedStash] Barcode scanned:', product);
+      setShowBarcodeScanner(false);
+      loadingRef.current = false; // Reset guard
+      loadData();
+    }}
+    onClose={() => setShowBarcodeScanner(false)}
+  />
+)}
 
       {/* Column Chooser Dialog */}
       <Dialog open={showColumnChooser} onOpenChange={setShowColumnChooser}>
