@@ -16,7 +16,8 @@ import {
   X,
   Grid3x3,
   List,
-  Search
+  Search,
+  ExternalLink
 } from 'lucide-react';
 import AddVarietyDialog from '@/components/variety/AddVarietyDialog';
 import AddToStashModal from '@/components/catalog/AddToStashModal';
@@ -744,7 +745,28 @@ export default function PlantCatalogDetail() {
                     {browseCategory?.info_banner || 'ℹ️ Squash Browse View: This shows varieties from Summer Squash, Winter Squash, Zucchini, and Pumpkin. To add new varieties, navigate to the specific plant type.'}
                   </div>
                 )}
-
+{/* Buy Seeds Banner - PlantType level affiliate link */}
+{plantType?.buy_seeds_link && !plantType?._is_browse_only && (
+  <div className="flex items-center justify-between p-4 bg-emerald-50 border border-emerald-200 rounded-xl">
+    <div className="flex items-center gap-3">
+      <div className="w-9 h-9 rounded-full bg-emerald-100 flex items-center justify-center">
+        🌱
+      </div>
+      <div>
+        <p className="font-semibold text-emerald-900 text-sm">
+          Buy {plantType.common_name} Seeds
+        </p>
+        <p className="text-emerald-700 text-xs">Get seeds from our trusted partner</p>
+      </div>
+    </div>
+    <a href={plantType.buy_seeds_link} target="_blank" rel="noopener noreferrer">
+      <Button className="bg-emerald-600 hover:bg-emerald-700 gap-2">
+        <ExternalLink className="w-4 h-4" />
+        Buy Now
+      </Button>
+    </a>
+  </div>
+)}
                 {/* Special Care Warnings for Carnivorous Plants */}
         <SpecialCareWarnings variety={varieties[0]} />
 
