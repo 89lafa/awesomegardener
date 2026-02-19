@@ -1,9 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
 import { base44 } from '@/api/base44Client';
-import { 
-  ArrowLeft, 
+import {
+  ArrowLeft,
   Plus,
   Leaf,
   Droplets,
@@ -19,6 +19,7 @@ import {
   Search,
   ExternalLink
 } from 'lucide-react';
+
 import AddVarietyDialog from '@/components/variety/AddVarietyDialog';
 import AddToStashModal from '@/components/catalog/AddToStashModal';
 import AddToGrowListModal from '@/components/catalog/AddToGrowListModal';
@@ -36,23 +37,46 @@ import {
 } from '@/components/ui/select';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { toast } from 'sonner';
 import ErrorBoundary from '@/components/common/ErrorBoundary';
 import { useDebouncedValue } from '../components/utils/useDebouncedValue';
 
+const INITIAL_FILTERS = {
+  daysToMaturity: { min: null, max: null },
+  spacing: { min: null, max: null },
+  heatLevel: { min: null, max: null },
+  growthHabits: [],
+  colors: [],
+  species: [],
+  containerFriendly: null,
+  trellisRequired: null,
+  hasImage: null,
+  seedTypes: [],
+  organicOnly: false,
+  speciesFilter: [],
+  ornamentalOnly: false,
+  seedLineTypes: [],
+  organicSeedsOnly: false,
+  seasonTimings: []
+};
+
 export default function PlantCatalogDetail() {
   const [searchParams] = useSearchParams();
   const plantTypeId = searchParams.get('id');
-  
+
   const SQUASH_UMBRELLA_ID = '69594ee83e086041528f2b15';
-  const SQUASH_CANONICAL_IDS = ['69594a9f1243f13d1245edfd', '69594a9f1243f13d1245edfe', '69594a9f1243f13d1245edff', '69575e5ecdbb16ee56fa7508'];
+  const SQUASH_CANONICAL_IDS = [
+    '69594a9f1243f13d1245edfd',
+    '69594a9f1243f13d1245edfe',
+    '69594a9f1243f13d1245edff',
+    '69575e5ecdbb16ee56fa7508'
+  ];
   const isSquashUmbrella = plantTypeId === SQUASH_UMBRELLA_ID;
-  
+
   const [browseCategory, setBrowseCategory] = useState(null);
   const isBrowseCategory = plantTypeId?.startsWith('browse_');
   const [canonicalIds, setCanonicalIds] = useState(isSquashUmbrella ? SQUASH_CANONICAL_IDS : []);
-  
+
   const [plantType, setPlantType] = useState(null);
   const [varieties, setVarieties] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -65,39 +89,30 @@ export default function PlantCatalogDetail() {
   const [selectedSubCategories, setSelectedSubCategories] = useState([]);
   const [subCategories, setSubCategories] = useState([]);
   const [user, setUser] = useState(null);
+
   const [viewMode, setViewMode] = useState(() => {
     if (plantTypeId) {
       return localStorage.getItem(`pc_detail_view_${plantTypeId}`) || 'cards';
     }
     return 'cards';
   });
+
   const [searchQuery, setSearchQuery] = useState('');
   const debouncedSearchQuery = useDebouncedValue(searchQuery, 300);
+
+  // ✅ Default sort is now Recommended
   const [sortBy, setSortBy] = useState('recommended');
-  const [filters, setFilters] = useState({
-    daysToMaturity: { min: null, max: null },
-    spacing: { min: null, max: null },
-    heatLevel: { min: null, max: null },
-    growthHabits: [],
-    colors: [],
-    species: [],
-    containerFriendly: null,
-    trellisRequired: null,
-    hasImage: null,
-    seedTypes: [],
-    organicOnly: false,
-    speciesFilter: [],
-    ornamentalOnly: false,
-    seedLineTypes: [],
-    organicSeedsOnly: false,
-    seasonTimings: []
-  });
+
+  const [filters, setFilters] = useState(INITIAL_FILTERS);
+
   const [currentPage, setCurrentPage] = useState(1);
-  const [hasMore, setHasMore] = useState(true);
   const itemsPerPage = 50;
+
   const [visibleColumns, setVisibleColumns] = useState(() => {
     const saved = localStorage.getItem('variety_columns');
-    return saved ? JSON.parse(saved) : ['name', 'subcategory', 'days', 'spacing', 'species', 'seed_line', 'traits', 'actions'];
+    return saved
+      ? JSON.parse(saved)
+      : ['name', 'subcategory', 'days', 'spacing', 'species', 'seed_line', 'traits', 'actions'];
   });
   const [showColumnSelector, setShowColumnSelector] = useState(false);
 
@@ -128,36 +143,34 @@ export default function PlantCatalogDetail() {
 
   const reloadVarieties = async (resetPagination = true) => {
     if (!plantTypeId) return;
-    
+
     if (resetPagination) {
       setCurrentPage(1);
     }
-    
+
     try {
-      // For Squash umbrella, load from canonical types
       let vars;
       if (isSquashUmbrella) {
         vars = await base44.entities.Variety.filter({ status: 'active' }, 'variety_name', 1000);
         vars = vars.filter(v => SQUASH_CANONICAL_IDS.includes(v.plant_type_id));
       } else {
-        vars = await base44.entities.Variety.filter({ 
-          plant_type_id: plantTypeId,
-          status: 'active'
-        }, 'variety_name', 1000);
+        vars = await base44.entities.Variety.filter(
+          { plant_type_id: plantTypeId, status: 'active' },
+          'variety_name',
+          1000
+        );
       }
-      
-      // Load subcategory mappings
-        const varietyIds = vars.map(v => v.id);
-        if (varietyIds.length > 0 && vars.some(v => !v.plant_subcategory_id)) {
-          await new Promise(resolve => setTimeout(resolve, 400));
-          const allMaps = await base44.entities.VarietySubCategoryMap.filter({ 
-            variety_id: { $in: varietyIds } 
-          });
-          const mapsForThese = allMaps;
-        
+
+      const varietyIds = vars.map(v => v.id);
+      if (varietyIds.length > 0 && vars.some(v => !v.plant_subcategory_id)) {
+        await new Promise(resolve => setTimeout(resolve, 400));
+        const allMaps = await base44.entities.VarietySubCategoryMap.filter({
+          variety_id: { $in: varietyIds }
+        });
+
         vars = vars.map(v => {
           if (!v.plant_subcategory_id) {
-            const mapping = mapsForThese.find(m => m.variety_id === v.id);
+            const mapping = allMaps.find(m => m.variety_id === v.id);
             if (mapping) {
               return { ...v, plant_subcategory_id: mapping.plant_subcategory_id };
             }
@@ -165,7 +178,7 @@ export default function PlantCatalogDetail() {
           return v;
         });
       }
-      
+
       setVarieties(vars);
     } catch (error) {
       console.error('Error reloading varieties:', error);
@@ -174,7 +187,6 @@ export default function PlantCatalogDetail() {
 
   const loadPlantType = async () => {
     try {
-      // Validate plantTypeId
       if (!plantTypeId) {
         console.error('No plantTypeId provided');
         setNotFound(true);
@@ -183,32 +195,28 @@ export default function PlantCatalogDetail() {
       }
 
       console.log('Loading plant type:', plantTypeId);
-      
+
       // HANDLE BROWSE CATEGORIES
       if (isBrowseCategory) {
         const categoryCode = plantTypeId.replace('browse_', '');
         console.log('[BROWSE] Looking for category code:', categoryCode);
+
         const browseCats = await base44.entities.BrowseCategory.filter({ category_code: categoryCode });
-        
+
         if (browseCats.length === 0) {
           console.error('Browse category not found:', categoryCode);
           setNotFound(true);
           setLoading(false);
           return;
         }
-        
+
         const cat = browseCats[0];
-        console.log('[BROWSE] Found category:', cat.name, 'with plant_type_ids:', cat.plant_type_ids);
         setBrowseCategory(cat);
-        
-        // Clean and validate plant_type_ids - MUST be valid 24-char MongoDB IDs
+
         const cleanIds = (cat.plant_type_ids || [])
           .filter(id => id && typeof id === 'string' && id.length === 24 && /^[a-f0-9]{24}$/.test(id));
-        console.log('[BROWSE] Cleaned plant_type_ids:', cleanIds);
-        
+
         if (cleanIds.length === 0) {
-          console.error('[BROWSE] No valid plant_type_ids found');
-          // Don't set notFound - show empty state instead
           setPlantType({
             id: plantTypeId,
             common_name: cat.name,
@@ -222,29 +230,22 @@ export default function PlantCatalogDetail() {
           setLoading(false);
           return;
         }
-        
-        // CRITICAL: Use local variable cleanIds, not state canonicalIds
-        // Load subcategories for these plant types
-        console.log('[BROWSE] Loading subcategories for plant_type_ids:', cleanIds);
+
         const allSubcats = await base44.entities.PlantSubCategory.filter({ is_active: true });
         const validSubcats = allSubcats.filter(sc => cleanIds.includes(sc.plant_type_id));
-        console.log('[BROWSE] Found', validSubcats.length, 'subcategories');
         setSubCategories(validSubcats);
-        
-        // Load varieties for these plant types using $in query
-        console.log('[BROWSE] Loading varieties for plant_type_ids:', cleanIds);
-        const filteredVars = await base44.entities.Variety.filter({ 
-          plant_type_id: { $in: cleanIds },
-          status: 'active'
-        }, 'variety_name', 1000);
-        console.log('[BROWSE] Found', filteredVars.length, 'varieties for plant types');
-        
-        // Load subcategory mappings
+
+        const filteredVars = await base44.entities.Variety.filter(
+          { plant_type_id: { $in: cleanIds }, status: 'active' },
+          'variety_name',
+          1000
+        );
+
         const varietyIds = filteredVars.map(v => v.id);
         if (varietyIds.length > 0) {
           const allMaps = await base44.entities.VarietySubCategoryMap.list();
           const mapsForThese = allMaps.filter(m => varietyIds.includes(m.variety_id));
-          
+
           const varsWithMaps = filteredVars.map(v => {
             if (!v.plant_subcategory_id) {
               const mapping = mapsForThese.find(m => m.variety_id === v.id);
@@ -254,15 +255,14 @@ export default function PlantCatalogDetail() {
             }
             return v;
           });
-          
+
           setVarieties(varsWithMaps);
         } else {
           setVarieties(filteredVars);
         }
-        
+
         setCanonicalIds(cleanIds);
-        
-        // Create virtual plant type
+
         setPlantType({
           id: plantTypeId,
           common_name: cat.name,
@@ -271,13 +271,12 @@ export default function PlantCatalogDetail() {
           description: cat.description,
           _is_browse_only: true
         });
-        
+
         setLoading(false);
         return;
       } else {
-        // Regular plant type loading
         const types = await base44.entities.PlantType.filter({ id: plantTypeId });
-        
+
         if (types.length === 0) {
           console.error('Plant type not found:', plantTypeId);
           setNotFound(true);
@@ -286,11 +285,10 @@ export default function PlantCatalogDetail() {
         }
 
         const type = types[0];
-        console.log('Loaded plant type:', type);
         setPlantType(type);
       }
 
-      // Load active subcategories (only for non-browse categories since browse already loaded)
+      // Load active subcategories
       if (!isBrowseCategory) {
         await new Promise(resolve => setTimeout(resolve, 400));
         let subcats;
@@ -298,14 +296,12 @@ export default function PlantCatalogDetail() {
           const allSubcats = await base44.entities.PlantSubCategory.filter({ is_active: true });
           subcats = allSubcats.filter(sc => SQUASH_CANONICAL_IDS.includes(sc.plant_type_id));
         } else {
-          subcats = await base44.entities.PlantSubCategory.filter({ 
-            plant_type_id: plantTypeId,
-            is_active: true
-          }, 'sort_order');
+          subcats = await base44.entities.PlantSubCategory.filter(
+            { plant_type_id: plantTypeId, is_active: true },
+            'sort_order'
+          );
         }
-        console.log('[SUBCATEGORY] Loaded active subcategories:', subcats.length);
-        
-        // Deduplicate subcategories by name (in case of duplicates)
+
         const uniqueSubcats = [];
         const seenNames = new Set();
         for (const subcat of subcats) {
@@ -317,47 +313,41 @@ export default function PlantCatalogDetail() {
         setSubCategories(uniqueSubcats);
       }
 
-      // Load varieties - ONLY for non-browse categories (browse already handled above)
-      console.log('[VARIETY DEBUG] Attempting to load varieties for plant_type_id:', plantTypeId);
-
+      // Load varieties
       await new Promise(resolve => setTimeout(resolve, 400));
       let vars = [];
-      
+
       if (isSquashUmbrella) {
-        vars = await base44.entities.Variety.filter({ 
-          plant_type_id: { $in: SQUASH_CANONICAL_IDS },
-          status: 'active'
-        }, 'variety_name', 200);
+        vars = await base44.entities.Variety.filter(
+          { plant_type_id: { $in: SQUASH_CANONICAL_IDS }, status: 'active' },
+          'variety_name',
+          200
+        );
       } else if (!isBrowseCategory) {
-        vars = await base44.entities.Variety.filter({ 
-          plant_type_id: plantTypeId,
-          status: 'active'
-        }, 'variety_name', 200);
+        vars = await base44.entities.Variety.filter(
+          { plant_type_id: plantTypeId, status: 'active' },
+          'variety_name',
+          200
+        );
       }
-      
-      console.log('[VARIETY DEBUG] Found Variety records:', vars.length);
-      
-      // If no Variety records found, try PlantProfile table
+
       if (vars.length === 0) {
-        vars = await base44.entities.PlantProfile.filter({ 
-          plant_type_id: plantTypeId
-        }, 'variety_name');
-        console.log('[VARIETY DEBUG] Found PlantProfile records:', vars.length);
+        vars = await base44.entities.PlantProfile.filter(
+          { plant_type_id: plantTypeId },
+          'variety_name'
+        );
       }
-      
-      // Load subcategory mappings for varieties that don't have direct subcategory_id
+
       const varietyIds = vars.map(v => v.id);
       if (varietyIds.length > 0 && vars.some(v => !v.plant_subcategory_id)) {
         await new Promise(resolve => setTimeout(resolve, 400));
-        const allMaps = await base44.entities.VarietySubCategoryMap.filter({ 
-          variety_id: { $in: varietyIds } 
+        const allMaps = await base44.entities.VarietySubCategoryMap.filter({
+          variety_id: { $in: varietyIds }
         });
-        const mapsForThese = allMaps;
-        
-        // Merge subcategory IDs from mappings into varieties
+
         vars = vars.map(v => {
           if (!v.plant_subcategory_id) {
-            const mapping = mapsForThese.find(m => m.variety_id === v.id);
+            const mapping = allMaps.find(m => m.variety_id === v.id);
             if (mapping) {
               return { ...v, plant_subcategory_id: mapping.plant_subcategory_id };
             }
@@ -365,8 +355,7 @@ export default function PlantCatalogDetail() {
           return v;
         });
       }
-      
-      console.log('[VARIETY DEBUG] Final varieties:', vars.slice(0, 3));
+
       setVarieties(vars);
       setCurrentPage(1);
     } catch (error) {
@@ -383,8 +372,8 @@ export default function PlantCatalogDetail() {
       const seedType = v.traits?.seed_type || (v.popularity_tier === 'heirloom' ? 'heirloom' : null);
       if (seedType) seedTypeSet.add(seedType);
     });
-    
-    const available = {
+
+    return {
       daysToMaturity: varieties.some(v => v.days_to_maturity || v.days_to_maturity_seed),
       spacing: varieties.some(v => v.spacing_recommended || v.spacing_in_min),
       heatLevel: varieties.some(v => v.heat_scoville_min || v.heat_scoville_max),
@@ -404,17 +393,77 @@ export default function PlantCatalogDetail() {
         organicSeeds: varieties.some(v => v.is_organic === true)
       }
     };
-    return available;
   };
 
-  // UTILITY: Use single subcategory_id only (new system)
-  const getEffectiveSubcategoryIds = (variety) => {
-    // Return only the single primary subcategory
-    if (variety.plant_subcategory_id) {
-      return [variety.plant_subcategory_id];
-    }
-    return [];
-  };
+  // ✅ Affiliate helpers used by Recommended sorting
+  const affiliateHelpers = useMemo(() => {
+    const pullUrlsFromString = (s) => {
+      if (!s || typeof s !== 'string') return [];
+      const matches = s.match(/https?:\/\/[^\s"'<>]+/gi) || [];
+      return matches;
+    };
+
+    const extractUrls = (val) => {
+      if (!val) return [];
+
+      if (typeof val === 'string') return pullUrlsFromString(val);
+
+      if (Array.isArray(val)) {
+        return val.flatMap(item => extractUrls(item));
+      }
+
+      if (typeof val === 'object') {
+        const urls = [];
+        for (const [k, v] of Object.entries(val)) {
+          if (typeof v === 'string' && /(url|link|href)/i.test(k)) {
+            urls.push(...pullUrlsFromString(v));
+          } else {
+            urls.push(...extractUrls(v));
+          }
+        }
+        urls.push(...pullUrlsFromString(JSON.stringify(val)));
+        return urls;
+      }
+
+      return [];
+    };
+
+    const normalize = (u) =>
+      (u || '')
+        .toLowerCase()
+        .replace(/^https?:\/\//, '')
+        .replace(/^www\./, '');
+
+    const affiliateScore = (v) => {
+      const urls = [
+        ...extractUrls(v.affiliate_url),
+        ...extractUrls(v.sources)
+      ].map(normalize);
+
+      // Also check raw strings for non-http stored links
+      const raw = `${v.affiliate_url ?? ''} ${typeof v.sources === 'string' ? v.sources : ''}`.toLowerCase();
+
+      const hasPepperSeeds =
+        urls.some(u => u.includes('pepperseeds.net')) ||
+        raw.includes('pepperseeds.net');
+
+      if (hasPepperSeeds) return 2;
+
+      const hasAnyAffiliate =
+        (typeof v.affiliate_url === 'string' && v.affiliate_url.trim().length > 0) ||
+        urls.length > 0;
+
+      return hasAnyAffiliate ? 1 : 0;
+    };
+
+    const popularityScore = (v) => {
+      if (v.popularity_tier === 'popular') return 3;
+      if (v.popularity_tier === 'common') return 2;
+      return 1;
+    };
+
+    return { affiliateScore, popularityScore };
+  }, []);
 
   const applyFiltersAndSort = () => {
     let filtered = [...varieties];
@@ -422,7 +471,7 @@ export default function PlantCatalogDetail() {
     // Search
     if (debouncedSearchQuery) {
       const query = debouncedSearchQuery.toLowerCase();
-      filtered = filtered.filter(v => 
+      filtered = filtered.filter(v =>
         v.variety_name?.toLowerCase().includes(query) ||
         v.synonyms?.some(s => s.toLowerCase().includes(query)) ||
         v.grower_notes?.toLowerCase().includes(query) ||
@@ -430,15 +479,12 @@ export default function PlantCatalogDetail() {
       );
     }
 
-    // Sub-category filter - using single plant_subcategory_id
+    // Sub-category filter (single primary subcategory)
     if (selectedSubCategories.length > 0) {
       filtered = filtered.filter(v => {
-        // Handle Uncategorized
         if (selectedSubCategories.includes('uncategorized')) {
           return !v.plant_subcategory_id;
         }
-
-        // Match if variety's single subcategory matches any selected
         return selectedSubCategories.includes(v.plant_subcategory_id);
       });
     }
@@ -476,29 +522,25 @@ export default function PlantCatalogDetail() {
       });
     }
 
-    // Growth habit multi-select
+    // Growth habit
     if (filters.growthHabits.length > 0) {
-      filtered = filtered.filter(v => 
-        v.growth_habit && filters.growthHabits.includes(v.growth_habit)
-      );
+      filtered = filtered.filter(v => v.growth_habit && filters.growthHabits.includes(v.growth_habit));
     }
 
-    // Color multi-select
+    // Colors
     if (filters.colors.length > 0) {
-      filtered = filtered.filter(v => 
+      filtered = filtered.filter(v =>
         (v.fruit_color && filters.colors.includes(v.fruit_color)) ||
         (v.pod_color && filters.colors.includes(v.pod_color))
       );
     }
 
-    // Species multi-select
+    // Species
     if (filters.species.length > 0) {
-      filtered = filtered.filter(v => 
-        v.species && filters.species.includes(v.species)
-      );
+      filtered = filtered.filter(v => v.species && filters.species.includes(v.species));
     }
 
-    // Seed type filter
+    // Seed type
     if (filters.seedTypes.length > 0) {
       filtered = filtered.filter(v => {
         const seedType = v.traits?.seed_type || (v.popularity_tier === 'heirloom' ? 'heirloom' : null);
@@ -506,7 +548,7 @@ export default function PlantCatalogDetail() {
       });
     }
 
-    // Organic filter
+    // Organic
     if (filters.organicOnly) {
       filtered = filtered.filter(v => v.traits?.organic_seed === true);
     }
@@ -516,106 +558,66 @@ export default function PlantCatalogDetail() {
       filtered = filtered.filter(v => v.species && filters.speciesFilter.includes(v.species));
     }
 
-    // Ornamental filter
+    // Ornamental
     if (filters.ornamentalOnly) {
       filtered = filtered.filter(v => v.is_ornamental === true);
     }
 
-    // Seed line type filter
+    // Seed line type
     if (filters.seedLineTypes.length > 0) {
       filtered = filtered.filter(v => v.seed_line_type && filters.seedLineTypes.includes(v.seed_line_type));
     }
 
-    // Organic seeds filter
+    // Organic seeds
     if (filters.organicSeedsOnly) {
       filtered = filtered.filter(v => v.is_organic === true);
     }
 
-    // Season timing filter
+    // Season timing
     if (filters.seasonTimings.length > 0) {
       filtered = filtered.filter(v => v.season_timing && filters.seasonTimings.includes(v.season_timing));
     }
 
-    // Boolean filters
-    if (filters.containerFriendly === true) {
-      filtered = filtered.filter(v => v.container_friendly === true);
-    }
-    if (filters.trellisRequired === true) {
-      filtered = filtered.filter(v => v.trellis_required === true);
-    }
-    if (filters.hasImage === true) {
-      filtered = filtered.filter(v => v.images?.length > 0 || v.image_url);
-    }
+    // Booleans
+    if (filters.containerFriendly === true) filtered = filtered.filter(v => v.container_friendly === true);
+    if (filters.trellisRequired === true) filtered = filtered.filter(v => v.trellis_required === true);
+    if (filters.hasImage === true) filtered = filtered.filter(v => v.images?.length > 0 || v.image_url);
 
-// Sort
+    // ✅ Sort
     filtered.sort((a, b) => {
       switch (sortBy) {
-case 'recommended': {
-          // Helper: Convert value to searchable string (handles arrays/objects)
-          const toSearchString = (val) => {
-            if (!val) return '';
-            if (typeof val === 'string') return val.toLowerCase();
-            if (Array.isArray(val)) return val.join(' ').toLowerCase();
-            return JSON.stringify(val).toLowerCase();
-          };
-          
-          // Helper: Check if URL points to pepperseeds.net (your primary money-maker!)
-          const isPepperSeeds = (variety) => {
-            const url = toSearchString(variety.affiliate_url);
-            const sources = toSearchString(variety.sources);
-            return url.includes('pepperseeds.net') || sources.includes('pepperseeds.net');
-          };
-          
-          // Helper: Has any affiliate link
-          const hasAffiliateLink = (variety) => {
-            return !!(variety.affiliate_url || variety.sources);
-          };
-          
-          // PRIORITY 1: PepperSeeds.net links (YOUR site!)
-          const aPepper = isPepperSeeds(a);
-          const bPepper = isPepperSeeds(b);
-          if (aPepper && !bPepper) return -1;
-          if (!aPepper && bPepper) return 1;
-          
-          // PRIORITY 2: Any other affiliate links
-          const aHasLink = hasAffiliateLink(a);
-          const bHasLink = hasAffiliateLink(b);
-          if (aHasLink && !bHasLink) return -1;
-          if (!aHasLink && bHasLink) return 1;
-          
-          // PRIORITY 3: Popularity
-          const popularityScore = (v) => {
-            if (v.popularity_tier === 'popular') return 3;
-            if (v.popularity_tier === 'common') return 2;
-            return 1;
-          };
-          const popDiff = popularityScore(b) - popularityScore(a);
+        case 'recommended': {
+          const aAff = affiliateHelpers.affiliateScore(a);
+          const bAff = affiliateHelpers.affiliateScore(b);
+          if (aAff !== bAff) return bAff - aAff; // pepperseeds(2) > other(1) > none(0)
+
+          const popDiff = affiliateHelpers.popularityScore(b) - affiliateHelpers.popularityScore(a);
           if (popDiff !== 0) return popDiff;
-          
-          // PRIORITY 4: Alphabetical
+
           return (a.variety_name || '').localeCompare(b.variety_name || '');
         }
+
         case 'name_asc':
           return (a.variety_name || '').localeCompare(b.variety_name || '');
         case 'name_desc':
           return (b.variety_name || '').localeCompare(a.variety_name || '');
         case 'days_asc':
-          return (a.days_to_maturity || a.days_to_maturity_seed || 999) - 
+          return (a.days_to_maturity || a.days_to_maturity_seed || 999) -
                  (b.days_to_maturity || b.days_to_maturity_seed || 999);
         case 'days_desc':
-          return (b.days_to_maturity || b.days_to_maturity_seed || 0) - 
+          return (b.days_to_maturity || b.days_to_maturity_seed || 0) -
                  (a.days_to_maturity || a.days_to_maturity_seed || 0);
         case 'spacing_asc':
-          return (a.spacing_recommended || a.spacing_in_min || 999) - 
+          return (a.spacing_recommended || a.spacing_in_min || 999) -
                  (b.spacing_recommended || b.spacing_in_min || 999);
         case 'spacing_desc':
-          return (b.spacing_recommended || b.spacing_in_min || 0) - 
+          return (b.spacing_recommended || b.spacing_in_min || 0) -
                  (a.spacing_recommended || a.spacing_in_min || 0);
         case 'heat_asc':
-          return (a.heat_scoville_min || a.heat_scoville_max || 0) - 
+          return (a.heat_scoville_min || a.heat_scoville_max || 0) -
                  (b.heat_scoville_min || b.heat_scoville_max || 0);
         case 'heat_desc':
-          return (b.heat_scoville_min || b.heat_scoville_max || 0) - 
+          return (b.heat_scoville_min || b.heat_scoville_max || 0) -
                  (a.heat_scoville_min || a.heat_scoville_max || 0);
         case 'species_asc':
           return (a.species || 'zzz').localeCompare(b.species || 'zzz');
@@ -640,25 +642,11 @@ case 'recommended': {
   const handleClearFilters = () => {
     setSearchQuery('');
     setSelectedSubCategories([]);
-    setFilters({
-      daysToMaturity: { min: null, max: null },
-      spacing: { min: null, max: null },
-      heatLevel: { min: null, max: null },
-      growthHabits: [],
-      colors: [],
-      species: [],
-      containerFriendly: null,
-      trellisRequired: null,
-      hasImage: null,
-      seedTypes: [],
-      organicOnly: false,
-      speciesFilter: [],
-      ornamentalOnly: false,
-      seedLineTypes: [],
-      organicSeedsOnly: false,
-      seasonTimings: []
-    });
-    setSortBy('name_asc');
+    setFilters(INITIAL_FILTERS);
+
+    // ✅ Keep monetization default
+    setSortBy('recommended');
+
     setCurrentPage(1);
   };
 
@@ -686,15 +674,6 @@ case 'recommended': {
   };
 
   const activeFilterCount = getActiveFilterCount();
-
-  const handleSubCategoryToggle = (subcatId) => {
-    setSelectedSubCategories(prev => 
-      prev.includes(subcatId) 
-        ? prev.filter(id => id !== subcatId)
-        : [...prev, subcatId]
-    );
-    setCurrentPage(1);
-  };
 
   if (loading) {
     return (
@@ -725,6 +704,7 @@ case 'recommended': {
   return (
     <ErrorBoundary fallbackTitle="Plant Detail Error">
       <div className="space-y-6 max-w-5xl">
+
         {/* Header */}
         <div className="flex items-center gap-3">
           <Link to={createPageUrl('PlantCatalog')}>
@@ -732,21 +712,24 @@ case 'recommended': {
               <ArrowLeft className="w-5 h-5" />
             </Button>
           </Link>
+
           <div className="flex-1">
             <div className="flex items-center gap-3">
               <div className={`w-12 h-12 rounded-xl flex items-center justify-center text-2xl ${
-                plantType.color || 'bg-emerald-100'
+                plantType?.color || 'bg-emerald-100'
               }`}>
-                {plantType.icon || '🌱'}
+                {plantType?.icon || '🌱'}
               </div>
+
               <div className="flex-1">
                 <h1 className="text-2xl lg:text-3xl font-bold text-gray-900">
-                  {plantType.common_name || plantType.name}
+                  {plantType?.common_name || plantType?.name}
                 </h1>
-                {plantType.scientific_name && (
+                {plantType?.scientific_name && (
                   <p className="text-gray-500 italic">{plantType.scientific_name}</p>
                 )}
               </div>
+
               <div className="flex gap-2">
                 <div className="flex border rounded-lg">
                   <Button
@@ -766,56 +749,59 @@ case 'recommended': {
                     <List className="w-4 h-4" />
                   </Button>
                 </div>
-                {!isSquashUmbrella && !isBrowseCategory ? (
-                <Button 
-                  onClick={() => setShowAddVariety(true)}
-                  className="bg-emerald-600 hover:bg-emerald-700 gap-2"
-                >
-                  <Plus className="w-4 h-4" />
-                  {user?.role === 'admin' || user?.role === 'editor' ? 'Add Variety' : 'Suggest Variety'}
-                </Button>
-                ) : (
-                <div className="px-3 py-2 bg-amber-50 border border-amber-200 rounded-lg text-xs text-amber-800 max-w-xs">
-                  ℹ️ Browse-only: Navigate to specific plant type to add varieties
-                </div>
-                )}
-                </div>
-                </div>
-                </div>
-                </div>
 
-                {/* Browse Category Notice */}
-                {(isSquashUmbrella || browseCategory) && (
-                  <div className="px-4 py-3 bg-amber-50 border border-amber-300 rounded-lg text-sm text-amber-900">
-                    {browseCategory?.info_banner || 'ℹ️ Squash Browse View: This shows varieties from Summer Squash, Winter Squash, Zucchini, and Pumpkin. To add new varieties, navigate to the specific plant type.'}
+                {!isSquashUmbrella && !isBrowseCategory ? (
+                  <Button
+                    onClick={() => setShowAddVariety(true)}
+                    className="bg-emerald-600 hover:bg-emerald-700 gap-2"
+                  >
+                    <Plus className="w-4 h-4" />
+                    {user?.role === 'admin' || user?.role === 'editor' ? 'Add Variety' : 'Suggest Variety'}
+                  </Button>
+                ) : (
+                  <div className="px-3 py-2 bg-amber-50 border border-amber-200 rounded-lg text-xs text-amber-800 max-w-xs">
+                    ℹ️ Browse-only: Navigate to specific plant type to add varieties
                   </div>
                 )}
-{/* Buy Seeds Banner - PlantType level affiliate link */}
-{plantType?.buy_seeds_link && !plantType?._is_browse_only && (
-  <div className="flex items-center justify-between p-4 bg-emerald-50 border border-emerald-200 rounded-xl">
-    <div className="flex items-center gap-3">
-      <div className="w-9 h-9 rounded-full bg-emerald-100 flex items-center justify-center">
-        🌱
-      </div>
-      <div>
-        <p className="font-semibold text-emerald-900 text-sm">
-          Buy {plantType.common_name} Seeds
-        </p>
-        <p className="text-emerald-700 text-xs">Get seeds from our trusted partner</p>
-      </div>
-    </div>
-    <a href={plantType.buy_seeds_link} target="_blank" rel="noopener noreferrer">
-      <Button className="bg-emerald-600 hover:bg-emerald-700 gap-2">
-        <ExternalLink className="w-4 h-4" />
-        Buy Now
-      </Button>
-    </a>
-  </div>
-)}
-                {/* Special Care Warnings for Carnivorous Plants */}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Browse Category Notice */}
+        {(isSquashUmbrella || browseCategory) && (
+          <div className="px-4 py-3 bg-amber-50 border border-amber-300 rounded-lg text-sm text-amber-900">
+            {browseCategory?.info_banner || 'ℹ️ Squash Browse View: This shows varieties from Summer Squash, Winter Squash, Zucchini, and Pumpkin. To add new varieties, navigate to the specific plant type.'}
+          </div>
+        )}
+
+        {/* Buy Seeds Banner - PlantType level affiliate link */}
+        {plantType?.buy_seeds_link && !plantType?._is_browse_only && (
+          <div className="flex items-center justify-between p-4 bg-emerald-50 border border-emerald-200 rounded-xl">
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-full bg-emerald-100 flex items-center justify-center">
+                🌱
+              </div>
+              <div>
+                <p className="font-semibold text-emerald-900 text-sm">
+                  Buy {plantType.common_name} Seeds
+                </p>
+                <p className="text-emerald-700 text-xs">Get seeds from our trusted partner</p>
+              </div>
+            </div>
+            <a href={plantType.buy_seeds_link} target="_blank" rel="noopener noreferrer">
+              <Button className="bg-emerald-600 hover:bg-emerald-700 gap-2">
+                <ExternalLink className="w-4 h-4" />
+                Buy Now
+              </Button>
+            </a>
+          </div>
+        )}
+
+        {/* Special Care Warnings for Carnivorous Plants */}
         <SpecialCareWarnings variety={varieties[0]} />
 
-        {/* Overview - Compact */}
+        {/* Overview */}
         <Card>
           <CardContent className="p-4">
             <div className="flex flex-wrap items-center gap-4">
@@ -823,24 +809,27 @@ case 'recommended': {
                 <span className="text-xs text-gray-500 mb-0.5">Water Needs</span>
                 <div className="flex items-center gap-2">
                   <Droplets className="w-4 h-4 text-blue-600" />
-                  <span className="text-sm font-medium capitalize">{plantType.typical_water || 'Moderate'}</span>
+                  <span className="text-sm font-medium capitalize">{plantType?.typical_water || 'Moderate'}</span>
                 </div>
               </div>
+
               <div className="flex flex-col">
                 <span className="text-xs text-gray-500 mb-0.5">Sun Exposure</span>
                 <div className="flex items-center gap-2">
                   <Sun className="w-4 h-4 text-yellow-600" />
-                  <span className="text-sm font-medium capitalize">{plantType.typical_sun?.replace(/_/g, ' ') || 'Full Sun'}</span>
+                  <span className="text-sm font-medium capitalize">{plantType?.typical_sun?.replace(/_/g, ' ') || 'Full Sun'}</span>
                 </div>
               </div>
+
               <div className="flex flex-col">
                 <span className="text-xs text-gray-500 mb-0.5">Days to Maturity</span>
                 <div className="flex items-center gap-2">
                   <TrendingUp className="w-4 h-4 text-green-600" />
-                  <span className="text-sm font-medium">{plantType.default_days_to_maturity || 'Varies'}</span>
+                  <span className="text-sm font-medium">{plantType?.default_days_to_maturity || 'Varies'}</span>
                 </div>
               </div>
-              {(plantType.typical_spacing_min && plantType.typical_spacing_max) && (
+
+              {(plantType?.typical_spacing_min && plantType?.typical_spacing_max) && (
                 <div className="flex flex-col">
                   <span className="text-xs text-gray-500 mb-0.5">Spacing</span>
                   <div className="flex items-center gap-2">
@@ -850,7 +839,8 @@ case 'recommended': {
                   </div>
                 </div>
               )}
-              {plantType.is_perennial !== undefined && (
+
+              {plantType?.is_perennial !== undefined && (
                 <div className="flex flex-col">
                   <span className="text-xs text-gray-500 mb-0.5">Growth Habit</span>
                   <div className="flex items-center gap-2">
@@ -860,7 +850,8 @@ case 'recommended': {
                   </div>
                 </div>
               )}
-              {plantType.default_start_indoors_weeks && (
+
+              {plantType?.default_start_indoors_weeks && (
                 <div className="flex flex-col">
                   <span className="text-xs text-gray-500 mb-0.5">Start Indoors</span>
                   <div className="flex items-center gap-2">
@@ -868,7 +859,8 @@ case 'recommended': {
                   </div>
                 </div>
               )}
-              {plantType.default_transplant_weeks !== undefined && (
+
+              {plantType?.default_transplant_weeks !== undefined && (
                 <div className="flex flex-col">
                   <span className="text-xs text-gray-500 mb-0.5">Transplant</span>
                   <div className="flex items-center gap-2">
@@ -878,10 +870,11 @@ case 'recommended': {
                   </div>
                 </div>
               )}
-              {user?.role === 'admin' && (
-                <Button 
-                  size="sm" 
-                  variant="outline" 
+
+              {user?.role === 'admin' && plantType?.id && (
+                <Button
+                  size="sm"
+                  variant="outline"
                   className="ml-auto"
                   onClick={() => window.location.href = `/EditPlantType?id=${plantType.id}`}
                 >
@@ -895,7 +888,6 @@ case 'recommended': {
         {/* Search, Sort, Filters */}
         <Card>
           <CardContent className="p-4 space-y-4">
-            {/* Top Controls */}
             <div className="flex flex-wrap gap-3">
               <div className="flex-1 min-w-[200px]">
                 <div className="relative">
@@ -911,12 +903,13 @@ case 'recommended': {
                   />
                 </div>
               </div>
-              
-              {/* Sub-Category Dropdown - Display by NAME */}
-              <Select 
-                value={selectedSubCategories[0] || ''} 
+
+              {/* Sub-Category Dropdown */}
+              <Select
+                value={selectedSubCategories[0] || 'all'}
                 onValueChange={(v) => {
-                  setSelectedSubCategories(v ? [v] : []);
+                  if (!v || v === 'all') setSelectedSubCategories([]);
+                  else setSelectedSubCategories([v]);
                   setCurrentPage(1);
                 }}
               >
@@ -924,12 +917,11 @@ case 'recommended': {
                   <SelectValue placeholder="All Sub-Categories" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value={null}>All ({varieties.length})</SelectItem>
+                  <SelectItem value="all">All ({varieties.length})</SelectItem>
                   {subCategories
                     .filter(s => s.is_active)
                     .sort((a, b) => (a.name || '').localeCompare(b.name || ''))
                     .map((subcat) => {
-                      // Count varieties with this single primary subcategory
                       const count = varieties.filter(v => v.plant_subcategory_id === subcat.id).length;
                       if (count === 0) return null;
 
@@ -951,7 +943,8 @@ case 'recommended': {
                 </SelectContent>
               </Select>
 
-<Select value={sortBy} onValueChange={(v) => {
+              {/* Sort */}
+              <Select value={sortBy} onValueChange={(v) => {
                 setSortBy(v);
                 setCurrentPage(1);
               }}>
@@ -976,8 +969,9 @@ case 'recommended': {
                   <SelectItem value="species_desc">Species: Z → A</SelectItem>
                   <SelectItem value="seed_line_asc">Seed Line: A → Z</SelectItem>
                   <SelectItem value="seed_line_desc">Seed Line: Z → A</SelectItem>
-                  </SelectContent>
+                </SelectContent>
               </Select>
+
               <Button
                 variant="outline"
                 onClick={() => setShowFilters(true)}
@@ -989,6 +983,7 @@ case 'recommended': {
                   <Badge className="ml-1 bg-emerald-600">{activeFilterCount}</Badge>
                 )}
               </Button>
+
               {activeFilterCount > 0 && (
                 <Button
                   variant="ghost"
@@ -999,6 +994,7 @@ case 'recommended': {
                   Clear
                 </Button>
               )}
+
               {viewMode === 'list' && (
                 <Button
                   variant="outline"
@@ -1010,7 +1006,7 @@ case 'recommended': {
                 </Button>
               )}
             </div>
-            
+
             {/* Column Selector */}
             {showColumnSelector && viewMode === 'list' && (
               <div className="p-3 bg-gray-50 rounded-lg border">
@@ -1050,76 +1046,13 @@ case 'recommended': {
                 </div>
               </div>
             )}
-
-            {/* Active Filter Chips */}
-            {activeFilterCount > 0 && (
-              <div className="flex flex-wrap gap-2">
-                <span className="text-sm text-gray-500">Active filters:</span>
-                {debouncedSearchQuery && (
-                  <Badge variant="secondary" className="gap-1">
-                    Search: "{debouncedSearchQuery}"
-                    <X className="w-3 h-3 cursor-pointer" onClick={() => setSearchQuery('')} />
-                  </Badge>
-                )}
-                {filters.daysToMaturity.min !== null && (
-                  <Badge variant="secondary" className="gap-1">
-                    Days ≥ {filters.daysToMaturity.min}
-                    <X className="w-3 h-3 cursor-pointer" onClick={() => setFilters({
-                      ...filters, daysToMaturity: { ...filters.daysToMaturity, min: null }
-                    })} />
-                  </Badge>
-                )}
-                {filters.daysToMaturity.max !== null && (
-                  <Badge variant="secondary" className="gap-1">
-                    Days ≤ {filters.daysToMaturity.max}
-                    <X className="w-3 h-3 cursor-pointer" onClick={() => setFilters({
-                      ...filters, daysToMaturity: { ...filters.daysToMaturity, max: null }
-                    })} />
-                  </Badge>
-                )}
-                {filters.spacing.min !== null && (
-                  <Badge variant="secondary" className="gap-1">
-                    Spacing ≥ {filters.spacing.min}"
-                    <X className="w-3 h-3 cursor-pointer" onClick={() => setFilters({
-                      ...filters, spacing: { ...filters.spacing, min: null }
-                    })} />
-                  </Badge>
-                )}
-                {filters.spacing.max !== null && (
-                  <Badge variant="secondary" className="gap-1">
-                    Spacing ≤ {filters.spacing.max}"
-                    <X className="w-3 h-3 cursor-pointer" onClick={() => setFilters({
-                      ...filters, spacing: { ...filters.spacing, max: null }
-                    })} />
-                  </Badge>
-                )}
-                {filters.containerFriendly && (
-                  <Badge variant="secondary" className="gap-1">
-                    Container Friendly
-                    <X className="w-3 h-3 cursor-pointer" onClick={() => setFilters({
-                      ...filters, containerFriendly: null
-                    })} />
-                  </Badge>
-                )}
-                {filters.trellisRequired && (
-                  <Badge variant="secondary" className="gap-1">
-                    Needs Trellis
-                    <X className="w-3 h-3 cursor-pointer" onClick={() => setFilters({
-                      ...filters, trellisRequired: null
-                    })} />
-                  </Badge>
-                )}
-              </div>
-            )}
           </CardContent>
         </Card>
 
         {/* Varieties */}
         <Card>
           <CardHeader>
-            <CardTitle>
-              Varieties ({filteredVarieties.length})
-            </CardTitle>
+            <CardTitle>Varieties ({filteredVarieties.length})</CardTitle>
           </CardHeader>
           <CardContent>
             {filteredVarieties.length === 0 ? (
@@ -1127,27 +1060,25 @@ case 'recommended': {
                 <Leaf className="w-12 h-12 text-gray-300 mx-auto mb-3" />
                 <p className="text-gray-600 mb-2">
                   {activeFilterCount > 0 ? 'No varieties match your filters' : 'No varieties cataloged yet'}
-                  </p>
-                  {activeFilterCount > 0 ? (
-                  <Button 
-                    onClick={handleClearFilters}
-                    variant="outline"
-                    className="gap-2"
-                  >
+                </p>
+
+                {activeFilterCount > 0 ? (
+                  <Button onClick={handleClearFilters} variant="outline" className="gap-2">
                     <X className="w-4 h-4" />
                     Clear Filters
                   </Button>
-                  ) : (
+                ) : (
                   <>
                     <p className="text-sm text-gray-500 mb-4">
                       {plantType?._is_browse_only
                         ? 'Navigate to specific plant types to add varieties'
-                        : user?.role === 'admin' 
-                          ? 'Import varieties or add them manually' 
+                        : user?.role === 'admin'
+                          ? 'Import varieties or add them manually'
                           : 'Be the first to suggest a variety!'}
                     </p>
+
                     {!plantType?._is_browse_only && (
-                      <Button 
+                      <Button
                         onClick={() => setShowAddVariety(true)}
                         className="bg-emerald-600 hover:bg-emerald-700 gap-2"
                       >
@@ -1156,7 +1087,7 @@ case 'recommended': {
                       </Button>
                     )}
                   </>
-                  )}
+                )}
               </div>
             ) : viewMode === 'list' ? (
               <>
@@ -1175,12 +1106,10 @@ case 'recommended': {
                     setShowAddToGrowList(true);
                   }}
                 />
+
                 {hasMoreItems && (
                   <div className="text-center mt-4">
-                    <Button
-                      variant="outline"
-                      onClick={() => setCurrentPage(currentPage + 1)}
-                    >
+                    <Button variant="outline" onClick={() => setCurrentPage(currentPage + 1)}>
                       Load More ({filteredVarieties.length - paginatedVarieties.length} remaining)
                     </Button>
                   </div>
@@ -1190,8 +1119,8 @@ case 'recommended': {
               <>
                 <div className="grid md:grid-cols-2 gap-4">
                   {paginatedVarieties.map((variety) => (
-                    <Card 
-                      key={variety.id} 
+                    <Card
+                      key={variety.id}
                       className="hover:shadow-md transition-shadow cursor-pointer"
                       onClick={() => {
                         const targetPage = user?.role === 'admin' ? 'EditVariety' : 'ViewVariety';
@@ -1201,30 +1130,24 @@ case 'recommended': {
                       <CardContent className="p-4">
                         <div className="flex items-start justify-between mb-2">
                           <h4 className="font-semibold text-gray-900">{variety.variety_name}</h4>
+
                           <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>
                             {user?.role === 'admin' && (
                               <>
                                 <Link to={createPageUrl('ViewVariety') + `?id=${variety.id}`}>
-                                  <Button 
-                                    size="sm"
-                                    variant="ghost"
-                                    title="View as User"
-                                  >
+                                  <Button size="sm" variant="ghost" title="View as User">
                                     <span className="text-xs">View</span>
                                   </Button>
                                 </Link>
                                 <Link to={createPageUrl('EditVariety') + `?id=${variety.id}`}>
-                                  <Button 
-                                    size="sm"
-                                    variant="ghost"
-                                    title="Edit"
-                                  >
+                                  <Button size="sm" variant="ghost" title="Edit">
                                     <span className="text-xs">Edit</span>
                                   </Button>
                                 </Link>
                               </>
                             )}
-                            <Button 
+
+                            <Button
                               size="sm"
                               variant="ghost"
                               onClick={() => {
@@ -1235,7 +1158,8 @@ case 'recommended': {
                             >
                               <Package className="w-4 h-4" />
                             </Button>
-                            <Button 
+
+                            <Button
                               size="sm"
                               variant="ghost"
                               onClick={() => {
@@ -1248,79 +1172,88 @@ case 'recommended': {
                             </Button>
                           </div>
                         </div>
-                        <div className="flex flex-wrap gap-2">
-                         {(() => {
-                          // Display single primary subcategory NAME (no arrays, no codes)
-                          // NEVER render junk values
-                          const isJunkValue = (val) => {
-                            if (!val) return true;
-                            if (typeof val !== 'string') return true;
-                            const str = val.trim();
-                            if (str === '' || str === '[]') return true;
-                            if (str.includes('[') || str.includes('"psc') || str.includes('PSC_')) return true;
-                            return false;
-                          };
 
-                          if (!variety.plant_subcategory_id || isJunkValue(variety.plant_subcategory_id)) {
-                            return (
+                        <div className="flex flex-wrap gap-2">
+                          {(() => {
+                            const isJunkValue = (val) => {
+                              if (!val) return true;
+                              if (typeof val !== 'string') return true;
+                              const str = val.trim();
+                              if (str === '' || str === '[]') return true;
+                              if (str.includes('[') || str.includes('"psc') || str.includes('PSC_')) return true;
+                              return false;
+                            };
+
+                            if (!variety.plant_subcategory_id || isJunkValue(variety.plant_subcategory_id)) {
+                              return (
+                                <Badge variant="outline" className="text-xs text-gray-500">
+                                  Uncategorized
+                                </Badge>
+                              );
+                            }
+
+                            const subcat = subCategories.find(s => s.id === variety.plant_subcategory_id);
+                            return subcat ? (
+                              <Badge variant="secondary" className="text-xs">
+                                {subcat.icon && <span className="mr-1">{subcat.icon}</span>}
+                                {subcat.name}
+                              </Badge>
+                            ) : (
                               <Badge variant="outline" className="text-xs text-gray-500">
                                 Uncategorized
                               </Badge>
                             );
-                          }
-                          const subcat = subCategories.find(s => s.id === variety.plant_subcategory_id);
-                          return subcat ? (
-                            <Badge variant="secondary" className="text-xs">
-                              {subcat.icon && <span className="mr-1">{subcat.icon}</span>}
-                              {subcat.name}
+                          })()}
+
+                          {(variety.days_to_maturity || variety.days_to_maturity_seed) && (
+                            <Badge variant="outline" className="text-xs">
+                              {variety.days_to_maturity || variety.days_to_maturity_seed} days
                             </Badge>
-                          ) : (
-                            <Badge variant="outline" className="text-xs text-gray-500">
-                              Uncategorized
+                          )}
+
+                          {(variety.spacing_recommended || variety.spacing_in_min) && (
+                            <Badge variant="outline" className="text-xs">
+                              {variety.spacing_recommended || variety.spacing_in_min}" spacing
                             </Badge>
-                          );
-                         })()}
-                         {(variety.days_to_maturity || variety.days_to_maturity_seed) && (
-                           <Badge variant="outline" className="text-xs">
-                             {variety.days_to_maturity || variety.days_to_maturity_seed} days
-                           </Badge>
-                         )}
-                         {(variety.spacing_recommended || variety.spacing_in_min) && (
-                           <Badge variant="outline" className="text-xs">
-                             {variety.spacing_recommended || variety.spacing_in_min}" spacing
-                           </Badge>
-                         )}
-                         {variety.trellis_required && (
-                           <Badge className="bg-green-100 text-green-800 text-xs">Needs Trellis</Badge>
-                         )}
-                         {variety.container_friendly && (
-                           <Badge className="bg-blue-100 text-blue-800 text-xs">Container</Badge>
-                         )}
-                         {(() => {
-                           const seedType = variety.traits?.seed_type || (variety.popularity_tier === 'heirloom' ? 'heirloom' : null);
-                           if (!seedType) return null;
-                           const label = seedType === 'open_pollinated' ? 'OP' : 
-                                        seedType === 'hybrid_f1' ? 'Hybrid' : 
-                                        seedType === 'heirloom' ? 'Heirloom' : seedType;
-                           return <Badge variant="outline" className="text-xs">{label}</Badge>;
-                         })()}
-                         {variety.traits?.organic_seed && (
-                           <Badge className="bg-purple-100 text-purple-800 text-xs">Organic</Badge>
-                         )}
+                          )}
+
+                          {variety.trellis_required && (
+                            <Badge className="bg-green-100 text-green-800 text-xs">Needs Trellis</Badge>
+                          )}
+
+                          {variety.container_friendly && (
+                            <Badge className="bg-blue-100 text-blue-800 text-xs">Container</Badge>
+                          )}
+
+                          {(() => {
+                            const seedType = variety.traits?.seed_type || (variety.popularity_tier === 'heirloom' ? 'heirloom' : null);
+                            if (!seedType) return null;
+                            const label =
+                              seedType === 'open_pollinated' ? 'OP' :
+                              seedType === 'hybrid_f1' ? 'Hybrid' :
+                              seedType === 'heirloom' ? 'Heirloom' : seedType;
+
+                            return <Badge variant="outline" className="text-xs">{label}</Badge>;
+                          })()}
+
+                          {variety.traits?.organic_seed && (
+                            <Badge className="bg-purple-100 text-purple-800 text-xs">Organic</Badge>
+                          )}
                         </div>
+
                         {(variety.grower_notes || variety.notes_public) && (
-                          <p className="text-sm text-gray-600 mt-3 line-clamp-2">{variety.grower_notes || variety.notes_public}</p>
+                          <p className="text-sm text-gray-600 mt-3 line-clamp-2">
+                            {variety.grower_notes || variety.notes_public}
+                          </p>
                         )}
                       </CardContent>
                     </Card>
                   ))}
                 </div>
+
                 {hasMoreItems && (
                   <div className="text-center mt-4">
-                    <Button
-                      variant="outline"
-                      onClick={() => setCurrentPage(currentPage + 1)}
-                    >
+                    <Button variant="outline" onClick={() => setCurrentPage(currentPage + 1)}>
                       Load More ({filteredVarieties.length - paginatedVarieties.length} remaining)
                     </Button>
                   </div>
@@ -1330,10 +1263,8 @@ case 'recommended': {
           </CardContent>
         </Card>
 
-
-
         {/* Add Variety Dialog */}
-        <AddVarietyDialog 
+        <AddVarietyDialog
           plantType={plantType}
           open={showAddVariety}
           onOpenChange={setShowAddVariety}
@@ -1367,17 +1298,7 @@ case 'recommended': {
             setCurrentPage(1);
           }}
           onClearAll={() => {
-            setFilters({
-              daysToMaturity: { min: null, max: null },
-              spacing: { min: null, max: null },
-              heatLevel: { min: null, max: null },
-              growthHabits: [],
-              colors: [],
-              species: [],
-              containerFriendly: null,
-              trellisRequired: null,
-              hasImage: null
-            });
+            setFilters(INITIAL_FILTERS);
             setCurrentPage(1);
           }}
           availableFilters={getAvailableFilters()}
