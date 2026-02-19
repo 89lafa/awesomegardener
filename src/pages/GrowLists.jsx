@@ -747,11 +747,10 @@ export default function GrowLists() {
                  ══════════════════════════════════════════════════ */}
               <Button 
                 onClick={handleAddItem}
-                disabled={
-                  (!newItem.plant_type_id && !newItem.plant_type_name) || 
-                  addingItem ||
-                  (newItem.seed_lot_id && newItem.available_quantity !== undefined && newItem.quantity > newItem.available_quantity)
-                }
+                  disabled={
+    (!newItem.plant_type_id && !newItem.plant_type_name) || 
+    addingItem
+  }
                 className="bg-emerald-600 hover:bg-emerald-700"
               >
                 {addingItem ? (
