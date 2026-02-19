@@ -73,7 +73,7 @@ export default function PlantCatalogDetail() {
   });
   const [searchQuery, setSearchQuery] = useState('');
   const debouncedSearchQuery = useDebouncedValue(searchQuery, 300);
-  const [sortBy, setSortBy] = useState('name_asc');
+  const [sortBy, setSortBy] = useState('recommended');
   const [filters, setFilters] = useState({
     daysToMaturity: { min: null, max: null },
     spacing: { min: null, max: null },
@@ -547,9 +547,45 @@ export default function PlantCatalogDetail() {
       filtered = filtered.filter(v => v.images?.length > 0 || v.image_url);
     }
 
-    // Sort
+// Sort
     filtered.sort((a, b) => {
       switch (sortBy) {
+        case 'recommended': {
+          // Helper: Check if URL points to pepperseeds.net (your primary money-maker!)
+          const isPepperSeeds = (variety) => {
+            const url = variety.affiliate_url || variety.sources || '';
+            return url.toLowerCase().includes('pepperseeds.net');
+          };
+          
+          // Helper: Has any affiliate link
+          const hasAffiliateLink = (variety) => {
+            return !!(variety.affiliate_url || variety.sources);
+          };
+          
+          // PRIORITY 1: PepperSeeds.net links (YOUR site!)
+          const aPepper = isPepperSeeds(a);
+          const bPepper = isPepperSeeds(b);
+          if (aPepper && !bPepper) return -1;
+          if (!aPepper && bPepper) return 1;
+          
+          // PRIORITY 2: Any other affiliate links
+          const aHasLink = hasAffiliateLink(a);
+          const bHasLink = hasAffiliateLink(b);
+          if (aHasLink && !bHasLink) return -1;
+          if (!aHasLink && bHasLink) return 1;
+          
+          // PRIORITY 3: Popularity
+          const popularityScore = (v) => {
+            if (v.popularity_tier === 'popular') return 3;
+            if (v.popularity_tier === 'common') return 2;
+            return 1;
+          };
+          const popDiff = popularityScore(b) - popularityScore(a);
+          if (popDiff !== 0) return popDiff;
+          
+          // PRIORITY 4: Alphabetical
+          return (a.variety_name || '').localeCompare(b.variety_name || '');
+        }
         case 'name_asc':
           return (a.variety_name || '').localeCompare(b.variety_name || '');
         case 'name_desc':
@@ -906,7 +942,7 @@ export default function PlantCatalogDetail() {
                 </SelectContent>
               </Select>
 
-              <Select value={sortBy} onValueChange={(v) => {
+<Select value={sortBy} onValueChange={(v) => {
                 setSortBy(v);
                 setCurrentPage(1);
               }}>
@@ -914,6 +950,7 @@ export default function PlantCatalogDetail() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
+                  <SelectItem value="recommended">⭐ Recommended</SelectItem>
                   <SelectItem value="name_asc">Name A → Z</SelectItem>
                   <SelectItem value="name_desc">Name Z → A</SelectItem>
                   <SelectItem value="days_asc">Days: Low → High</SelectItem>
