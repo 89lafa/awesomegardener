@@ -550,11 +550,20 @@ export default function PlantCatalogDetail() {
 // Sort
     filtered.sort((a, b) => {
       switch (sortBy) {
-        case 'recommended': {
+case 'recommended': {
+          // Helper: Convert value to searchable string (handles arrays/objects)
+          const toSearchString = (val) => {
+            if (!val) return '';
+            if (typeof val === 'string') return val.toLowerCase();
+            if (Array.isArray(val)) return val.join(' ').toLowerCase();
+            return JSON.stringify(val).toLowerCase();
+          };
+          
           // Helper: Check if URL points to pepperseeds.net (your primary money-maker!)
           const isPepperSeeds = (variety) => {
-            const url = variety.affiliate_url || variety.sources || '';
-            return url.toLowerCase().includes('pepperseeds.net');
+            const url = toSearchString(variety.affiliate_url);
+            const sources = toSearchString(variety.sources);
+            return url.includes('pepperseeds.net') || sources.includes('pepperseeds.net');
           };
           
           // Helper: Has any affiliate link
