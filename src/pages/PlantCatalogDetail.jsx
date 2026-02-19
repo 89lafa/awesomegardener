@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
 import { base44 } from '@/api/base44Client';
@@ -41,29 +41,11 @@ import { toast } from 'sonner';
 import ErrorBoundary from '@/components/common/ErrorBoundary';
 import { useDebouncedValue } from '../components/utils/useDebouncedValue';
 
-const INITIAL_FILTERS = {
-  daysToMaturity: { min: null, max: null },
-  spacing: { min: null, max: null },
-  heatLevel: { min: null, max: null },
-  growthHabits: [],
-  colors: [],
-  species: [],
-  containerFriendly: null,
-  trellisRequired: null,
-  hasImage: null,
-  seedTypes: [],
-  organicOnly: false,
-  speciesFilter: [],
-  ornamentalOnly: false,
-  seedLineTypes: [],
-  organicSeedsOnly: false,
-  seasonTimings: []
-};
-
 export default function PlantCatalogDetail() {
   const [searchParams] = useSearchParams();
   const plantTypeId = searchParams.get('id');
 
+  // Squash umbrella special-case
   const SQUASH_UMBRELLA_ID = '69594ee83e086041528f2b15';
   const SQUASH_CANONICAL_IDS = [
     '69594a9f1243f13d1245edfd',
@@ -75,35 +57,53 @@ export default function PlantCatalogDetail() {
 
   const [browseCategory, setBrowseCategory] = useState(null);
   const isBrowseCategory = plantTypeId?.startsWith('browse_');
-  const [canonicalIds, setCanonicalIds] = useState(isSquashUmbrella ? SQUASH_CANONICAL_IDS : []);
 
   const [plantType, setPlantType] = useState(null);
   const [varieties, setVarieties] = useState([]);
+  const [subCategories, setSubCategories] = useState([]);
+
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
+
   const [showAddVariety, setShowAddVariety] = useState(false);
   const [showAddToStash, setShowAddToStash] = useState(false);
   const [showAddToGrowList, setShowAddToGrowList] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
+
   const [selectedVariety, setSelectedVariety] = useState(null);
-  const [selectedSubCategories, setSelectedSubCategories] = useState([]);
-  const [subCategories, setSubCategories] = useState([]);
+  const [selectedSubCategories, setSelectedSubCategories] = useState([]); // single-select UI still stores array
+
   const [user, setUser] = useState(null);
 
   const [viewMode, setViewMode] = useState(() => {
-    if (plantTypeId) {
-      return localStorage.getItem(`pc_detail_view_${plantTypeId}`) || 'cards';
-    }
+    if (plantTypeId) return localStorage.getItem(`pc_detail_view_${plantTypeId}`) || 'cards';
     return 'cards';
   });
 
   const [searchQuery, setSearchQuery] = useState('');
   const debouncedSearchQuery = useDebouncedValue(searchQuery, 300);
 
-  // ✅ Default sort is now Recommended
+  // ✅ Default sort is Recommended
   const [sortBy, setSortBy] = useState('recommended');
 
-  const [filters, setFilters] = useState(INITIAL_FILTERS);
+  const [filters, setFilters] = useState({
+    daysToMaturity: { min: null, max: null },
+    spacing: { min: null, max: null },
+    heatLevel: { min: null, max: null },
+    growthHabits: [],
+    colors: [],
+    species: [],
+    containerFriendly: null,
+    trellisRequired: null,
+    hasImage: null,
+    seedTypes: [],
+    organicOnly: false,
+    speciesFilter: [],
+    ornamentalOnly: false,
+    seedLineTypes: [],
+    organicSeedsOnly: false,
+    seasonTimings: []
+  });
 
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 50;
@@ -116,43 +116,47 @@ export default function PlantCatalogDetail() {
   });
   const [showColumnSelector, setShowColumnSelector] = useState(false);
 
+  // Persist view mode per plant type
   useEffect(() => {
-    loadUser();
-    if (plantTypeId) {
-      loadPlantType();
-    } else {
-      setNotFound(true);
-      setLoading(false);
-    }
-  }, [plantTypeId]);
-
-  useEffect(() => {
-    if (plantTypeId) {
-      localStorage.setItem(`pc_detail_view_${plantTypeId}`, viewMode);
-    }
+    if (plantTypeId) localStorage.setItem(`pc_detail_view_${plantTypeId}`, viewMode);
   }, [viewMode, plantTypeId]);
 
-  const loadUser = async () => {
-    try {
-      const userData = await base44.auth.me();
-      setUser(userData);
-    } catch (error) {
-      console.error('Error loading user:', error);
-    }
-  };
+  // Load user once
+  useEffect(() => {
+    (async () => {
+      try {
+        const userData = await base44.auth.me();
+        setUser(userData);
+      } catch (e) {
+        console.error('Error loading user:', e);
+      }
+    })();
+  }, []);
 
-  const reloadVarieties = async (resetPagination = true) => {
+  // Load page data
+  useEffect(() => {
+    if (!plantTypeId) {
+      setNotFound(true);
+      setLoading(false);
+      return;
+    }
+    loadPlantTypeAndVarieties();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [plantTypeId]);
+
+  const reloadVarieties = async () => {
     if (!plantTypeId) return;
-
-    if (resetPagination) {
-      setCurrentPage(1);
-    }
-
     try {
-      let vars;
+      setCurrentPage(1);
+
+      let vars = [];
       if (isSquashUmbrella) {
         vars = await base44.entities.Variety.filter({ status: 'active' }, 'variety_name', 1000);
         vars = vars.filter(v => SQUASH_CANONICAL_IDS.includes(v.plant_type_id));
+      } else if (isBrowseCategory) {
+        // Browse categories are handled in loadPlantTypeAndVarieties, keep reload simple:
+        await loadPlantTypeAndVarieties();
+        return;
       } else {
         vars = await base44.entities.Variety.filter(
           { plant_type_id: plantTypeId, status: 'active' },
@@ -161,50 +165,41 @@ export default function PlantCatalogDetail() {
         );
       }
 
+      // Merge subcategory from map ONLY if missing
       const varietyIds = vars.map(v => v.id);
       if (varietyIds.length > 0 && vars.some(v => !v.plant_subcategory_id)) {
-        await new Promise(resolve => setTimeout(resolve, 400));
-        const allMaps = await base44.entities.VarietySubCategoryMap.filter({
+        const maps = await base44.entities.VarietySubCategoryMap.filter({
           variety_id: { $in: varietyIds }
         });
 
+        const mapByVariety = new Map(maps.map(m => [m.variety_id, m.plant_subcategory_id]));
         vars = vars.map(v => {
-          if (!v.plant_subcategory_id) {
-            const mapping = allMaps.find(m => m.variety_id === v.id);
-            if (mapping) {
-              return { ...v, plant_subcategory_id: mapping.plant_subcategory_id };
-            }
+          if (!v.plant_subcategory_id && mapByVariety.has(v.id)) {
+            return { ...v, plant_subcategory_id: mapByVariety.get(v.id) };
           }
           return v;
         });
       }
 
       setVarieties(vars);
-    } catch (error) {
-      console.error('Error reloading varieties:', error);
+    } catch (e) {
+      console.error('Error reloading varieties:', e);
     }
   };
 
-  const loadPlantType = async () => {
+  const loadPlantTypeAndVarieties = async () => {
+    setLoading(true);
+    setNotFound(false);
+
     try {
-      if (!plantTypeId) {
-        console.error('No plantTypeId provided');
-        setNotFound(true);
-        setLoading(false);
-        return;
-      }
-
-      console.log('Loading plant type:', plantTypeId);
-
-      // HANDLE BROWSE CATEGORIES
+      // ----------------------------
+      // Browse Category (virtual plant type)
+      // ----------------------------
       if (isBrowseCategory) {
         const categoryCode = plantTypeId.replace('browse_', '');
-        console.log('[BROWSE] Looking for category code:', categoryCode);
-
         const browseCats = await base44.entities.BrowseCategory.filter({ category_code: categoryCode });
 
-        if (browseCats.length === 0) {
-          console.error('Browse category not found:', categoryCode);
+        if (!browseCats.length) {
           setNotFound(true);
           setLoading(false);
           return;
@@ -216,53 +211,7 @@ export default function PlantCatalogDetail() {
         const cleanIds = (cat.plant_type_ids || [])
           .filter(id => id && typeof id === 'string' && id.length === 24 && /^[a-f0-9]{24}$/.test(id));
 
-        if (cleanIds.length === 0) {
-          setPlantType({
-            id: plantTypeId,
-            common_name: cat.name,
-            icon: cat.icon,
-            category: 'browse',
-            description: cat.description,
-            _is_browse_only: true
-          });
-          setVarieties([]);
-          setSubCategories([]);
-          setLoading(false);
-          return;
-        }
-
-        const allSubcats = await base44.entities.PlantSubCategory.filter({ is_active: true });
-        const validSubcats = allSubcats.filter(sc => cleanIds.includes(sc.plant_type_id));
-        setSubCategories(validSubcats);
-
-        const filteredVars = await base44.entities.Variety.filter(
-          { plant_type_id: { $in: cleanIds }, status: 'active' },
-          'variety_name',
-          1000
-        );
-
-        const varietyIds = filteredVars.map(v => v.id);
-        if (varietyIds.length > 0) {
-          const allMaps = await base44.entities.VarietySubCategoryMap.list();
-          const mapsForThese = allMaps.filter(m => varietyIds.includes(m.variety_id));
-
-          const varsWithMaps = filteredVars.map(v => {
-            if (!v.plant_subcategory_id) {
-              const mapping = mapsForThese.find(m => m.variety_id === v.id);
-              if (mapping) {
-                return { ...v, plant_subcategory_id: mapping.plant_subcategory_id };
-              }
-            }
-            return v;
-          });
-
-          setVarieties(varsWithMaps);
-        } else {
-          setVarieties(filteredVars);
-        }
-
-        setCanonicalIds(cleanIds);
-
+        // Create virtual plant type immediately
         setPlantType({
           id: plantTypeId,
           common_name: cat.name,
@@ -272,90 +221,119 @@ export default function PlantCatalogDetail() {
           _is_browse_only: true
         });
 
-        setLoading(false);
-        return;
-      } else {
-        const types = await base44.entities.PlantType.filter({ id: plantTypeId });
-
-        if (types.length === 0) {
-          console.error('Plant type not found:', plantTypeId);
-          setNotFound(true);
+        if (!cleanIds.length) {
+          setSubCategories([]);
+          setVarieties([]);
           setLoading(false);
           return;
         }
 
-        const type = types[0];
-        setPlantType(type);
+        // Load subcategories and varieties in parallel
+        const [allSubcats, varsRaw] = await Promise.all([
+          base44.entities.PlantSubCategory.filter({ is_active: true }),
+          base44.entities.Variety.filter(
+            { plant_type_id: { $in: cleanIds }, status: 'active' },
+            'variety_name',
+            1000
+          )
+        ]);
+
+        const validSubcats = allSubcats.filter(sc => cleanIds.includes(sc.plant_type_id));
+        setSubCategories(validSubcats);
+
+        // Merge subcategory mappings if missing
+        const varietyIds = varsRaw.map(v => v.id);
+        let vars = varsRaw;
+
+        if (varietyIds.length > 0 && varsRaw.some(v => !v.plant_subcategory_id)) {
+          const maps = await base44.entities.VarietySubCategoryMap.filter({
+            variety_id: { $in: varietyIds }
+          });
+          const mapByVariety = new Map(maps.map(m => [m.variety_id, m.plant_subcategory_id]));
+          vars = varsRaw.map(v => {
+            if (!v.plant_subcategory_id && mapByVariety.has(v.id)) {
+              return { ...v, plant_subcategory_id: mapByVariety.get(v.id) };
+            }
+            return v;
+          });
+        }
+
+        setVarieties(vars);
+        setCurrentPage(1);
+        setLoading(false);
+        return;
       }
 
-      // Load active subcategories
-      if (!isBrowseCategory) {
-        await new Promise(resolve => setTimeout(resolve, 400));
-        let subcats;
+      // ----------------------------
+      // Regular Plant Type
+      // ----------------------------
+      const types = await base44.entities.PlantType.filter({ id: plantTypeId });
+      if (!types.length) {
+        setNotFound(true);
+        setLoading(false);
+        return;
+      }
+      const type = types[0];
+      setPlantType(type);
+
+      // Load subcategories and varieties
+      const subcatsPromise = (async () => {
         if (isSquashUmbrella) {
           const allSubcats = await base44.entities.PlantSubCategory.filter({ is_active: true });
-          subcats = allSubcats.filter(sc => SQUASH_CANONICAL_IDS.includes(sc.plant_type_id));
+          const filtered = allSubcats.filter(sc => SQUASH_CANONICAL_IDS.includes(sc.plant_type_id));
+          return dedupeSubcatsByName(filtered);
         } else {
-          subcats = await base44.entities.PlantSubCategory.filter(
+          const subcats = await base44.entities.PlantSubCategory.filter(
             { plant_type_id: plantTypeId, is_active: true },
             'sort_order'
           );
+          return dedupeSubcatsByName(subcats);
+        }
+      })();
+
+      const varietiesPromise = (async () => {
+        let vars = [];
+        if (isSquashUmbrella) {
+          vars = await base44.entities.Variety.filter(
+            { plant_type_id: { $in: SQUASH_CANONICAL_IDS }, status: 'active' },
+            'variety_name',
+            1000
+          );
+        } else {
+          vars = await base44.entities.Variety.filter(
+            { plant_type_id: plantTypeId, status: 'active' },
+            'variety_name',
+            1000
+          );
         }
 
-        const uniqueSubcats = [];
-        const seenNames = new Set();
-        for (const subcat of subcats) {
-          if (!seenNames.has(subcat.name)) {
-            seenNames.add(subcat.name);
-            uniqueSubcats.push(subcat);
-          }
+        // Fallback: PlantProfile only if Variety is empty
+        if (!vars.length) {
+          const prof = await base44.entities.PlantProfile.filter({ plant_type_id: plantTypeId }, 'variety_name');
+          vars = prof || [];
         }
-        setSubCategories(uniqueSubcats);
-      }
 
-      // Load varieties
-      await new Promise(resolve => setTimeout(resolve, 400));
-      let vars = [];
-
-      if (isSquashUmbrella) {
-        vars = await base44.entities.Variety.filter(
-          { plant_type_id: { $in: SQUASH_CANONICAL_IDS }, status: 'active' },
-          'variety_name',
-          200
-        );
-      } else if (!isBrowseCategory) {
-        vars = await base44.entities.Variety.filter(
-          { plant_type_id: plantTypeId, status: 'active' },
-          'variety_name',
-          200
-        );
-      }
-
-      if (vars.length === 0) {
-        vars = await base44.entities.PlantProfile.filter(
-          { plant_type_id: plantTypeId },
-          'variety_name'
-        );
-      }
-
-      const varietyIds = vars.map(v => v.id);
-      if (varietyIds.length > 0 && vars.some(v => !v.plant_subcategory_id)) {
-        await new Promise(resolve => setTimeout(resolve, 400));
-        const allMaps = await base44.entities.VarietySubCategoryMap.filter({
-          variety_id: { $in: varietyIds }
-        });
-
-        vars = vars.map(v => {
-          if (!v.plant_subcategory_id) {
-            const mapping = allMaps.find(m => m.variety_id === v.id);
-            if (mapping) {
-              return { ...v, plant_subcategory_id: mapping.plant_subcategory_id };
+        // Merge subcategory mapping if missing
+        const varietyIds = vars.map(v => v.id);
+        if (varietyIds.length > 0 && vars.some(v => !v.plant_subcategory_id)) {
+          const maps = await base44.entities.VarietySubCategoryMap.filter({
+            variety_id: { $in: varietyIds }
+          });
+          const mapByVariety = new Map(maps.map(m => [m.variety_id, m.plant_subcategory_id]));
+          vars = vars.map(v => {
+            if (!v.plant_subcategory_id && mapByVariety.has(v.id)) {
+              return { ...v, plant_subcategory_id: mapByVariety.get(v.id) };
             }
-          }
-          return v;
-        });
-      }
+            return v;
+          });
+        }
 
+        return vars;
+      })();
+
+      const [subcats, vars] = await Promise.all([subcatsPromise, varietiesPromise]);
+
+      setSubCategories(subcats);
       setVarieties(vars);
       setCurrentPage(1);
     } catch (error) {
@@ -366,291 +344,152 @@ export default function PlantCatalogDetail() {
     }
   };
 
-  const getAvailableFilters = () => {
+  const dedupeSubcatsByName = (subcats) => {
+    const unique = [];
+    const seen = new Set();
+    for (const s of subcats || []) {
+      const key = (s?.name || '').trim().toLowerCase();
+      if (!key) continue;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      unique.push(s);
+    }
+    return unique;
+  };
+
+  // -----------------------------------------
+  // BUY LINK + RECOMMENDED SORT (NO API CALLS)
+  // -----------------------------------------
+  const norm = (s) => (s || '').toString().trim().toLowerCase();
+
+  const toStringsDeep = (val) => {
+    if (!val) return [];
+    if (typeof val === 'string') return [val];
+    if (Array.isArray(val)) return val.flatMap(toStringsDeep);
+    if (typeof val === 'object') return Object.values(val).flatMap(toStringsDeep);
+    return [];
+  };
+
+  const looksLikeUrlOrDomain = (s) => {
+    const x = norm(s);
+    return (
+      x.includes('http://') ||
+      x.includes('https://') ||
+      x.includes('www.') ||
+      /\b[a-z0-9-]+\.(com|net|org|io|co|us|ca|uk)\b/.test(x)
+    );
+  };
+
+  const extractBuyLinks = (v) => {
+    const candidates = [];
+
+    // Schema fields you listed
+    if (v?.affiliate_url) candidates.push(v.affiliate_url);
+    if (v?.sources) candidates.push(...toStringsDeep(v.sources));
+
+    // Common resolved/convenience fields (often used by ViewVariety)
+    if (v?.buy_seeds_link) candidates.push(v.buy_seeds_link);
+    if (v?.buy_link) candidates.push(v.buy_link);
+    if (v?.purchase_url) candidates.push(v.purchase_url);
+    if (v?.product_url) candidates.push(v.product_url);
+
+    // Sometimes stored inside traits / extended_data
+    if (v?.traits) candidates.push(...toStringsDeep(v.traits));
+    if (v?.extended_data) candidates.push(...toStringsDeep(v.extended_data));
+
+    return candidates
+      .flatMap(toStringsDeep)
+      .map(s => (s?.toString?.() ?? '').trim())
+      .filter(Boolean)
+      .filter(looksLikeUrlOrDomain);
+  };
+
+  const hasAnyBuyLink = (v) => extractBuyLinks(v).length > 0;
+
+  const isPepperSeeds = (v) => {
+    const all = extractBuyLinks(v).join(' ').toLowerCase();
+    return all.includes('pepperseeds.net');
+  };
+
+  // Tier: 3 pepperseeds.net, 2 affiliate_url exists, 1 any other buy link exists, 0 none
+  const recommendedTier = (v) => {
+    if (isPepperSeeds(v)) return 3;
+    if (v?.affiliate_url && norm(v.affiliate_url)) return 2;
+    if (hasAnyBuyLink(v)) return 1;
+    return 0;
+  };
+
+  const popularityScore = (v) => {
+    if (v?.popularity_tier === 'popular') return 3;
+    if (v?.popularity_tier === 'common') return 2;
+    return 1;
+  };
+
+  // Build available filters ONCE per varieties change
+  const availableFilters = useMemo(() => {
     const seedTypeSet = new Set();
-    varieties.forEach(v => {
-      const seedType = v.traits?.seed_type || (v.popularity_tier === 'heirloom' ? 'heirloom' : null);
+    const growthHabits = new Set();
+    const colors = new Set();
+    const species = new Set();
+    const seedLineTypes = new Set();
+    const seasonTimings = new Set();
+
+    let hasDays = false;
+    let hasSpacing = false;
+    let hasHeat = false;
+
+    let hasContainer = false;
+    let hasTrellis = false;
+    let hasImage = false;
+    let hasOrganicTrait = false;
+    let hasOrnamental = false;
+    let hasOrganicSeeds = false;
+
+    for (const v of varieties) {
+      const seedType = v?.traits?.seed_type || (v?.popularity_tier === 'heirloom' ? 'heirloom' : null);
       if (seedType) seedTypeSet.add(seedType);
-    });
+
+      if (v?.days_to_maturity || v?.days_to_maturity_seed) hasDays = true;
+      if (v?.spacing_recommended || v?.spacing_in_min || v?.spacing_min) hasSpacing = true;
+      if (v?.scoville_min || v?.scoville_max || v?.heat_scoville_min || v?.heat_scoville_max) hasHeat = true;
+
+      if (v?.growth_habit) growthHabits.add(v.growth_habit);
+      if (v?.fruit_color || v?.pod_color) colors.add(v.fruit_color || v.pod_color);
+      if (v?.species) species.add(v.species);
+      if (v?.seed_line_type) seedLineTypes.add(v.seed_line_type);
+      if (v?.season_timing) seasonTimings.add(v.season_timing);
+
+      if (v?.container_friendly) hasContainer = true;
+      if (v?.trellis_required) hasTrellis = true;
+      if (v?.images?.length > 0 || v?.image_url) hasImage = true;
+      if (v?.traits?.organic_seed === true) hasOrganicTrait = true;
+      if (v?.is_ornamental === true) hasOrnamental = true;
+      if (v?.is_organic === true) hasOrganicSeeds = true;
+    }
 
     return {
-      daysToMaturity: varieties.some(v => v.days_to_maturity || v.days_to_maturity_seed),
-      spacing: varieties.some(v => v.spacing_recommended || v.spacing_in_min),
-      heatLevel: varieties.some(v => v.heat_scoville_min || v.heat_scoville_max),
-      growthHabits: [...new Set(varieties.filter(v => v.growth_habit).map(v => v.growth_habit))],
-      colors: [...new Set(varieties.filter(v => v.fruit_color || v.pod_color).map(v => v.fruit_color || v.pod_color))],
-      species: [...new Set(varieties.filter(v => v.species).map(v => v.species))],
+      daysToMaturity: hasDays,
+      spacing: hasSpacing,
+      heatLevel: hasHeat,
+      growthHabits: [...growthHabits],
+      colors: [...colors],
+      species: [...species],
       seedTypes: Array.from(seedTypeSet),
-      speciesOptions: [...new Set(varieties.filter(v => v.species).map(v => v.species))],
-      seedLineTypes: [...new Set(varieties.filter(v => v.seed_line_type).map(v => v.seed_line_type))],
-      seasonTimings: [...new Set(varieties.filter(v => v.season_timing).map(v => v.season_timing))],
+      speciesOptions: [...species],
+      seedLineTypes: [...seedLineTypes],
+      seasonTimings: [...seasonTimings],
       booleans: {
-        containerFriendly: varieties.some(v => v.container_friendly),
-        trellisRequired: varieties.some(v => v.trellis_required),
-        hasImage: varieties.some(v => v.images?.length > 0 || v.image_url),
-        organic: varieties.some(v => v.traits?.organic_seed === true),
-        ornamental: varieties.some(v => v.is_ornamental === true),
-        organicSeeds: varieties.some(v => v.is_organic === true)
+        containerFriendly: hasContainer,
+        trellisRequired: hasTrellis,
+        hasImage,
+        organic: hasOrganicTrait,
+        ornamental: hasOrnamental,
+        organicSeeds: hasOrganicSeeds
       }
     };
-  };
+  }, [varieties]);
 
-  // ✅ Affiliate helpers used by Recommended sorting
-  const affiliateHelpers = useMemo(() => {
-    const pullUrlsFromString = (s) => {
-      if (!s || typeof s !== 'string') return [];
-      const matches = s.match(/https?:\/\/[^\s"'<>]+/gi) || [];
-      return matches;
-    };
-
-    const extractUrls = (val) => {
-      if (!val) return [];
-
-      if (typeof val === 'string') return pullUrlsFromString(val);
-
-      if (Array.isArray(val)) {
-        return val.flatMap(item => extractUrls(item));
-      }
-
-      if (typeof val === 'object') {
-        const urls = [];
-        for (const [k, v] of Object.entries(val)) {
-          if (typeof v === 'string' && /(url|link|href)/i.test(k)) {
-            urls.push(...pullUrlsFromString(v));
-          } else {
-            urls.push(...extractUrls(v));
-          }
-        }
-        urls.push(...pullUrlsFromString(JSON.stringify(val)));
-        return urls;
-      }
-
-      return [];
-    };
-
-    const normalize = (u) =>
-      (u || '')
-        .toLowerCase()
-        .replace(/^https?:\/\//, '')
-        .replace(/^www\./, '');
-
-    const affiliateScore = (v) => {
-      const urls = [
-        ...extractUrls(v.affiliate_url),
-        ...extractUrls(v.sources)
-      ].map(normalize);
-
-      // Also check raw strings for non-http stored links
-      const raw = `${v.affiliate_url ?? ''} ${typeof v.sources === 'string' ? v.sources : ''}`.toLowerCase();
-
-      const hasPepperSeeds =
-        urls.some(u => u.includes('pepperseeds.net')) ||
-        raw.includes('pepperseeds.net');
-
-      if (hasPepperSeeds) return 2;
-
-      const hasAnyAffiliate =
-        (typeof v.affiliate_url === 'string' && v.affiliate_url.trim().length > 0) ||
-        urls.length > 0;
-
-      return hasAnyAffiliate ? 1 : 0;
-    };
-
-    const popularityScore = (v) => {
-      if (v.popularity_tier === 'popular') return 3;
-      if (v.popularity_tier === 'common') return 2;
-      return 1;
-    };
-
-    return { affiliateScore, popularityScore };
-  }, []);
-
-  const applyFiltersAndSort = () => {
-    let filtered = [...varieties];
-
-    // Search
-    if (debouncedSearchQuery) {
-      const query = debouncedSearchQuery.toLowerCase();
-      filtered = filtered.filter(v =>
-        v.variety_name?.toLowerCase().includes(query) ||
-        v.synonyms?.some(s => s.toLowerCase().includes(query)) ||
-        v.grower_notes?.toLowerCase().includes(query) ||
-        v.notes_public?.toLowerCase().includes(query)
-      );
-    }
-
-    // Sub-category filter (single primary subcategory)
-    if (selectedSubCategories.length > 0) {
-      filtered = filtered.filter(v => {
-        if (selectedSubCategories.includes('uncategorized')) {
-          return !v.plant_subcategory_id;
-        }
-        return selectedSubCategories.includes(v.plant_subcategory_id);
-      });
-    }
-
-    // Days to maturity range
-    if (filters.daysToMaturity.min !== null || filters.daysToMaturity.max !== null) {
-      filtered = filtered.filter(v => {
-        const days = v.days_to_maturity || v.days_to_maturity_seed;
-        if (!days) return false;
-        if (filters.daysToMaturity.min !== null && days < filters.daysToMaturity.min) return false;
-        if (filters.daysToMaturity.max !== null && days > filters.daysToMaturity.max) return false;
-        return true;
-      });
-    }
-
-    // Spacing range
-    if (filters.spacing.min !== null || filters.spacing.max !== null) {
-      filtered = filtered.filter(v => {
-        const spacing = v.spacing_recommended || v.spacing_in_min;
-        if (!spacing) return false;
-        if (filters.spacing.min !== null && spacing < filters.spacing.min) return false;
-        if (filters.spacing.max !== null && spacing > filters.spacing.max) return false;
-        return true;
-      });
-    }
-
-    // Heat level range
-    if (filters.heatLevel.min !== null || filters.heatLevel.max !== null) {
-      filtered = filtered.filter(v => {
-        const heat = v.heat_scoville_min || v.heat_scoville_max;
-        if (!heat) return false;
-        if (filters.heatLevel.min !== null && heat < filters.heatLevel.min) return false;
-        if (filters.heatLevel.max !== null && heat > filters.heatLevel.max) return false;
-        return true;
-      });
-    }
-
-    // Growth habit
-    if (filters.growthHabits.length > 0) {
-      filtered = filtered.filter(v => v.growth_habit && filters.growthHabits.includes(v.growth_habit));
-    }
-
-    // Colors
-    if (filters.colors.length > 0) {
-      filtered = filtered.filter(v =>
-        (v.fruit_color && filters.colors.includes(v.fruit_color)) ||
-        (v.pod_color && filters.colors.includes(v.pod_color))
-      );
-    }
-
-    // Species
-    if (filters.species.length > 0) {
-      filtered = filtered.filter(v => v.species && filters.species.includes(v.species));
-    }
-
-    // Seed type
-    if (filters.seedTypes.length > 0) {
-      filtered = filtered.filter(v => {
-        const seedType = v.traits?.seed_type || (v.popularity_tier === 'heirloom' ? 'heirloom' : null);
-        return seedType && filters.seedTypes.includes(seedType);
-      });
-    }
-
-    // Organic
-    if (filters.organicOnly) {
-      filtered = filtered.filter(v => v.traits?.organic_seed === true);
-    }
-
-    // Species filter
-    if (filters.speciesFilter.length > 0) {
-      filtered = filtered.filter(v => v.species && filters.speciesFilter.includes(v.species));
-    }
-
-    // Ornamental
-    if (filters.ornamentalOnly) {
-      filtered = filtered.filter(v => v.is_ornamental === true);
-    }
-
-    // Seed line type
-    if (filters.seedLineTypes.length > 0) {
-      filtered = filtered.filter(v => v.seed_line_type && filters.seedLineTypes.includes(v.seed_line_type));
-    }
-
-    // Organic seeds
-    if (filters.organicSeedsOnly) {
-      filtered = filtered.filter(v => v.is_organic === true);
-    }
-
-    // Season timing
-    if (filters.seasonTimings.length > 0) {
-      filtered = filtered.filter(v => v.season_timing && filters.seasonTimings.includes(v.season_timing));
-    }
-
-    // Booleans
-    if (filters.containerFriendly === true) filtered = filtered.filter(v => v.container_friendly === true);
-    if (filters.trellisRequired === true) filtered = filtered.filter(v => v.trellis_required === true);
-    if (filters.hasImage === true) filtered = filtered.filter(v => v.images?.length > 0 || v.image_url);
-
-    // ✅ Sort
-    filtered.sort((a, b) => {
-      switch (sortBy) {
-        case 'recommended': {
-          const aAff = affiliateHelpers.affiliateScore(a);
-          const bAff = affiliateHelpers.affiliateScore(b);
-          if (aAff !== bAff) return bAff - aAff; // pepperseeds(2) > other(1) > none(0)
-
-          const popDiff = affiliateHelpers.popularityScore(b) - affiliateHelpers.popularityScore(a);
-          if (popDiff !== 0) return popDiff;
-
-          return (a.variety_name || '').localeCompare(b.variety_name || '');
-        }
-
-        case 'name_asc':
-          return (a.variety_name || '').localeCompare(b.variety_name || '');
-        case 'name_desc':
-          return (b.variety_name || '').localeCompare(a.variety_name || '');
-        case 'days_asc':
-          return (a.days_to_maturity || a.days_to_maturity_seed || 999) -
-                 (b.days_to_maturity || b.days_to_maturity_seed || 999);
-        case 'days_desc':
-          return (b.days_to_maturity || b.days_to_maturity_seed || 0) -
-                 (a.days_to_maturity || a.days_to_maturity_seed || 0);
-        case 'spacing_asc':
-          return (a.spacing_recommended || a.spacing_in_min || 999) -
-                 (b.spacing_recommended || b.spacing_in_min || 999);
-        case 'spacing_desc':
-          return (b.spacing_recommended || b.spacing_in_min || 0) -
-                 (a.spacing_recommended || a.spacing_in_min || 0);
-        case 'heat_asc':
-          return (a.heat_scoville_min || a.heat_scoville_max || 0) -
-                 (b.heat_scoville_min || b.heat_scoville_max || 0);
-        case 'heat_desc':
-          return (b.heat_scoville_min || b.heat_scoville_max || 0) -
-                 (a.heat_scoville_min || a.heat_scoville_max || 0);
-        case 'species_asc':
-          return (a.species || 'zzz').localeCompare(b.species || 'zzz');
-        case 'species_desc':
-          return (b.species || '').localeCompare(a.species || '');
-        case 'seed_line_asc':
-          return (a.seed_line_type || 'zzz').localeCompare(b.seed_line_type || 'zzz');
-        case 'seed_line_desc':
-          return (b.seed_line_type || '').localeCompare(a.seed_line_type || '');
-        default:
-          return 0;
-      }
-    });
-
-    return filtered;
-  };
-
-  const filteredVarieties = applyFiltersAndSort();
-  const paginatedVarieties = filteredVarieties.slice(0, currentPage * itemsPerPage);
-  const hasMoreItems = filteredVarieties.length > paginatedVarieties.length;
-
-  const handleClearFilters = () => {
-    setSearchQuery('');
-    setSelectedSubCategories([]);
-    setFilters(INITIAL_FILTERS);
-
-    // ✅ Keep monetization default
-    setSortBy('recommended');
-
-    setCurrentPage(1);
-  };
-
-  const getActiveFilterCount = () => {
+  const activeFilterCount = useMemo(() => {
     let count = 0;
     if (debouncedSearchQuery) count++;
     if (selectedSubCategories.length > 0) count++;
@@ -671,9 +510,211 @@ export default function PlantCatalogDetail() {
     if (filters.organicSeedsOnly) count++;
     if (filters.seasonTimings.length > 0) count++;
     return count;
-  };
+  }, [debouncedSearchQuery, selectedSubCategories, filters]);
 
-  const activeFilterCount = getActiveFilterCount();
+  const filteredVarieties = useMemo(() => {
+    let filtered = [...varieties];
+
+    // Search
+    if (debouncedSearchQuery) {
+      const query = debouncedSearchQuery.toLowerCase();
+      filtered = filtered.filter(v =>
+        v.variety_name?.toLowerCase().includes(query) ||
+        v.synonyms?.some(s => s.toLowerCase().includes(query)) ||
+        v.grower_notes?.toLowerCase().includes(query) ||
+        v.notes_public?.toLowerCase().includes(query)
+      );
+    }
+
+    // Subcategory filter (single primary subcategory)
+    if (selectedSubCategories.length > 0) {
+      filtered = filtered.filter(v => {
+        if (selectedSubCategories.includes('uncategorized')) return !v.plant_subcategory_id;
+        return selectedSubCategories.includes(v.plant_subcategory_id);
+      });
+    }
+
+    // Days range
+    if (filters.daysToMaturity.min !== null || filters.daysToMaturity.max !== null) {
+      filtered = filtered.filter(v => {
+        const days = v.days_to_maturity || v.days_to_maturity_seed;
+        if (!days) return false;
+        if (filters.daysToMaturity.min !== null && days < filters.daysToMaturity.min) return false;
+        if (filters.daysToMaturity.max !== null && days > filters.daysToMaturity.max) return false;
+        return true;
+      });
+    }
+
+    // Spacing range
+    if (filters.spacing.min !== null || filters.spacing.max !== null) {
+      filtered = filtered.filter(v => {
+        const spacing = v.spacing_recommended || v.spacing_in_min || v.spacing_min;
+        if (!spacing) return false;
+        if (filters.spacing.min !== null && spacing < filters.spacing.min) return false;
+        if (filters.spacing.max !== null && spacing > filters.spacing.max) return false;
+        return true;
+      });
+    }
+
+    // Heat range (supports scoville_min/max and legacy heat_scoville)
+    if (filters.heatLevel.min !== null || filters.heatLevel.max !== null) {
+      filtered = filtered.filter(v => {
+        const heat =
+          v.scoville_min || v.scoville_max || v.heat_scoville_min || v.heat_scoville_max;
+        if (!heat) return false;
+        if (filters.heatLevel.min !== null && heat < filters.heatLevel.min) return false;
+        if (filters.heatLevel.max !== null && heat > filters.heatLevel.max) return false;
+        return true;
+      });
+    }
+
+    // Growth habits
+    if (filters.growthHabits.length > 0) {
+      filtered = filtered.filter(v => v.growth_habit && filters.growthHabits.includes(v.growth_habit));
+    }
+
+    // Colors
+    if (filters.colors.length > 0) {
+      filtered = filtered.filter(v =>
+        (v.fruit_color && filters.colors.includes(v.fruit_color)) ||
+        (v.pod_color && filters.colors.includes(v.pod_color))
+      );
+    }
+
+    // Species
+    if (filters.species.length > 0) {
+      filtered = filtered.filter(v => v.species && filters.species.includes(v.species));
+    }
+
+    // Seed types
+    if (filters.seedTypes.length > 0) {
+      filtered = filtered.filter(v => {
+        const seedType = v.traits?.seed_type || (v.popularity_tier === 'heirloom' ? 'heirloom' : null);
+        return seedType && filters.seedTypes.includes(seedType);
+      });
+    }
+
+    // Organic trait filter
+    if (filters.organicOnly) filtered = filtered.filter(v => v.traits?.organic_seed === true);
+
+    // SpeciesFilter (secondary UI hook)
+    if (filters.speciesFilter.length > 0) {
+      filtered = filtered.filter(v => v.species && filters.speciesFilter.includes(v.species));
+    }
+
+    // Ornamental
+    if (filters.ornamentalOnly) filtered = filtered.filter(v => v.is_ornamental === true);
+
+    // Seed line type
+    if (filters.seedLineTypes.length > 0) {
+      filtered = filtered.filter(v => v.seed_line_type && filters.seedLineTypes.includes(v.seed_line_type));
+    }
+
+    // Certified organic seeds
+    if (filters.organicSeedsOnly) filtered = filtered.filter(v => v.is_organic === true);
+
+    // Season timing
+    if (filters.seasonTimings.length > 0) {
+      filtered = filtered.filter(v => v.season_timing && filters.seasonTimings.includes(v.season_timing));
+    }
+
+    // Boolean filters
+    if (filters.containerFriendly === true) filtered = filtered.filter(v => v.container_friendly === true);
+    if (filters.trellisRequired === true) filtered = filtered.filter(v => v.trellis_required === true);
+    if (filters.hasImage === true) filtered = filtered.filter(v => v.images?.length > 0 || v.image_url);
+
+    // Sort
+    filtered.sort((a, b) => {
+      switch (sortBy) {
+        case 'recommended': {
+          const tierDiff = recommendedTier(b) - recommendedTier(a);
+          if (tierDiff !== 0) return tierDiff;
+
+          const popDiff = popularityScore(b) - popularityScore(a);
+          if (popDiff !== 0) return popDiff;
+
+          return (a.variety_name || '').localeCompare(b.variety_name || '');
+        }
+        case 'name_asc':
+          return (a.variety_name || '').localeCompare(b.variety_name || '');
+        case 'name_desc':
+          return (b.variety_name || '').localeCompare(a.variety_name || '');
+        case 'days_asc':
+          return (a.days_to_maturity || a.days_to_maturity_seed || 999) -
+                 (b.days_to_maturity || b.days_to_maturity_seed || 999);
+        case 'days_desc':
+          return (b.days_to_maturity || b.days_to_maturity_seed || 0) -
+                 (a.days_to_maturity || a.days_to_maturity_seed || 0);
+        case 'spacing_asc':
+          return (a.spacing_recommended || a.spacing_in_min || a.spacing_min || 999) -
+                 (b.spacing_recommended || b.spacing_in_min || b.spacing_min || 999);
+        case 'spacing_desc':
+          return (b.spacing_recommended || b.spacing_in_min || b.spacing_min || 0) -
+                 (a.spacing_recommended || a.spacing_in_min || a.spacing_min || 0);
+        case 'heat_asc': {
+          const ha = a.scoville_min || a.scoville_max || a.heat_scoville_min || a.heat_scoville_max || 0;
+          const hb = b.scoville_min || b.scoville_max || b.heat_scoville_min || b.heat_scoville_max || 0;
+          return ha - hb;
+        }
+        case 'heat_desc': {
+          const ha = a.scoville_min || a.scoville_max || a.heat_scoville_min || a.heat_scoville_max || 0;
+          const hb = b.scoville_min || b.scoville_max || b.heat_scoville_min || b.heat_scoville_max || 0;
+          return hb - ha;
+        }
+        case 'species_asc':
+          return (a.species || 'zzz').localeCompare(b.species || 'zzz');
+        case 'species_desc':
+          return (b.species || '').localeCompare(a.species || '');
+        case 'seed_line_asc':
+          return (a.seed_line_type || 'zzz').localeCompare(b.seed_line_type || 'zzz');
+        case 'seed_line_desc':
+          return (b.seed_line_type || '').localeCompare(a.seed_line_type || '');
+        default:
+          return 0;
+      }
+    });
+
+    return filtered;
+  }, [
+    varieties,
+    debouncedSearchQuery,
+    selectedSubCategories,
+    filters,
+    sortBy
+  ]);
+
+  const paginatedVarieties = useMemo(() => {
+    return filteredVarieties.slice(0, currentPage * itemsPerPage);
+  }, [filteredVarieties, currentPage]);
+
+  const hasMoreItems = filteredVarieties.length > paginatedVarieties.length;
+
+  const handleClearFilters = () => {
+    setSearchQuery('');
+    setSelectedSubCategories([]);
+    setFilters({
+      daysToMaturity: { min: null, max: null },
+      spacing: { min: null, max: null },
+      heatLevel: { min: null, max: null },
+      growthHabits: [],
+      colors: [],
+      species: [],
+      containerFriendly: null,
+      trellisRequired: null,
+      hasImage: null,
+      seedTypes: [],
+      organicOnly: false,
+      speciesFilter: [],
+      ornamentalOnly: false,
+      seedLineTypes: [],
+      organicSeedsOnly: false,
+      seasonTimings: []
+    });
+
+    // ✅ keep default sort = recommended
+    setSortBy('recommended');
+    setCurrentPage(1);
+  };
 
   if (loading) {
     return (
@@ -701,10 +742,11 @@ export default function PlantCatalogDetail() {
     );
   }
 
+  const plantDisplayName = plantType?.common_name || plantType?.name || 'Plant';
+
   return (
     <ErrorBoundary fallbackTitle="Plant Detail Error">
       <div className="space-y-6 max-w-5xl">
-
         {/* Header */}
         <div className="flex items-center gap-3">
           <Link to={createPageUrl('PlantCatalog')}>
@@ -715,15 +757,17 @@ export default function PlantCatalogDetail() {
 
           <div className="flex-1">
             <div className="flex items-center gap-3">
-              <div className={`w-12 h-12 rounded-xl flex items-center justify-center text-2xl ${
-                plantType?.color || 'bg-emerald-100'
-              }`}>
+              <div
+                className={`w-12 h-12 rounded-xl flex items-center justify-center text-2xl ${
+                  plantType?.color || 'bg-emerald-100'
+                }`}
+              >
                 {plantType?.icon || '🌱'}
               </div>
 
               <div className="flex-1">
                 <h1 className="text-2xl lg:text-3xl font-bold text-gray-900">
-                  {plantType?.common_name || plantType?.name}
+                  {plantDisplayName}
                 </h1>
                 {plantType?.scientific_name && (
                   <p className="text-gray-500 italic">{plantType.scientific_name}</p>
@@ -771,7 +815,8 @@ export default function PlantCatalogDetail() {
         {/* Browse Category Notice */}
         {(isSquashUmbrella || browseCategory) && (
           <div className="px-4 py-3 bg-amber-50 border border-amber-300 rounded-lg text-sm text-amber-900">
-            {browseCategory?.info_banner || 'ℹ️ Squash Browse View: This shows varieties from Summer Squash, Winter Squash, Zucchini, and Pumpkin. To add new varieties, navigate to the specific plant type.'}
+            {browseCategory?.info_banner ||
+              'ℹ️ Squash Browse View: This shows varieties from Summer Squash, Winter Squash, Zucchini, and Pumpkin. To add new varieties, navigate to the specific plant type.'}
           </div>
         )}
 
@@ -784,7 +829,7 @@ export default function PlantCatalogDetail() {
               </div>
               <div>
                 <p className="font-semibold text-emerald-900 text-sm">
-                  Buy {plantType.common_name} Seeds
+                  Buy {plantDisplayName} Seeds
                 </p>
                 <p className="text-emerald-700 text-xs">Get seeds from our trusted partner</p>
               </div>
@@ -801,7 +846,7 @@ export default function PlantCatalogDetail() {
         {/* Special Care Warnings for Carnivorous Plants */}
         <SpecialCareWarnings variety={varieties[0]} />
 
-        {/* Overview */}
+        {/* Overview - Compact */}
         <Card>
           <CardContent className="p-4">
             <div className="flex flex-wrap items-center gap-4">
@@ -809,7 +854,9 @@ export default function PlantCatalogDetail() {
                 <span className="text-xs text-gray-500 mb-0.5">Water Needs</span>
                 <div className="flex items-center gap-2">
                   <Droplets className="w-4 h-4 text-blue-600" />
-                  <span className="text-sm font-medium capitalize">{plantType?.typical_water || 'Moderate'}</span>
+                  <span className="text-sm font-medium capitalize">
+                    {plantType?.typical_water || 'Moderate'}
+                  </span>
                 </div>
               </div>
 
@@ -817,7 +864,9 @@ export default function PlantCatalogDetail() {
                 <span className="text-xs text-gray-500 mb-0.5">Sun Exposure</span>
                 <div className="flex items-center gap-2">
                   <Sun className="w-4 h-4 text-yellow-600" />
-                  <span className="text-sm font-medium capitalize">{plantType?.typical_sun?.replace(/_/g, ' ') || 'Full Sun'}</span>
+                  <span className="text-sm font-medium capitalize">
+                    {plantType?.typical_sun?.replace(/_/g, ' ') || 'Full Sun'}
+                  </span>
                 </div>
               </div>
 
@@ -825,7 +874,9 @@ export default function PlantCatalogDetail() {
                 <span className="text-xs text-gray-500 mb-0.5">Days to Maturity</span>
                 <div className="flex items-center gap-2">
                   <TrendingUp className="w-4 h-4 text-green-600" />
-                  <span className="text-sm font-medium">{plantType?.default_days_to_maturity || 'Varies'}</span>
+                  <span className="text-sm font-medium">
+                    {plantType?.default_days_to_maturity || 'Varies'}
+                  </span>
                 </div>
               </div>
 
@@ -855,7 +906,9 @@ export default function PlantCatalogDetail() {
                 <div className="flex flex-col">
                   <span className="text-xs text-gray-500 mb-0.5">Start Indoors</span>
                   <div className="flex items-center gap-2">
-                    <span className="text-sm font-medium">{plantType.default_start_indoors_weeks} wks before frost</span>
+                    <span className="text-sm font-medium">
+                      {plantType.default_start_indoors_weeks} wks before frost
+                    </span>
                   </div>
                 </div>
               )}
@@ -865,18 +918,19 @@ export default function PlantCatalogDetail() {
                   <span className="text-xs text-gray-500 mb-0.5">Transplant</span>
                   <div className="flex items-center gap-2">
                     <span className="text-sm font-medium">
-                      {plantType.default_transplant_weeks} wks {plantType.default_transplant_weeks >= 0 ? 'after' : 'before'} frost
+                      {plantType.default_transplant_weeks} wks{' '}
+                      {plantType.default_transplant_weeks >= 0 ? 'after' : 'before'} frost
                     </span>
                   </div>
                 </div>
               )}
 
-              {user?.role === 'admin' && plantType?.id && (
+              {user?.role === 'admin' && (
                 <Button
                   size="sm"
                   variant="outline"
                   className="ml-auto"
-                  onClick={() => window.location.href = `/EditPlantType?id=${plantType.id}`}
+                  onClick={() => (window.location.href = `/EditPlantType?id=${plantType.id}`)}
                 >
                   Edit PlantType
                 </Button>
@@ -888,6 +942,7 @@ export default function PlantCatalogDetail() {
         {/* Search, Sort, Filters */}
         <Card>
           <CardContent className="p-4 space-y-4">
+            {/* Top Controls */}
             <div className="flex flex-wrap gap-3">
               <div className="flex-1 min-w-[200px]">
                 <div className="relative">
@@ -908,7 +963,7 @@ export default function PlantCatalogDetail() {
               <Select
                 value={selectedSubCategories[0] || 'all'}
                 onValueChange={(v) => {
-                  if (!v || v === 'all') setSelectedSubCategories([]);
+                  if (v === 'all') setSelectedSubCategories([]);
                   else setSelectedSubCategories([v]);
                   setCurrentPage(1);
                 }}
@@ -918,13 +973,13 @@ export default function PlantCatalogDetail() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All ({varieties.length})</SelectItem>
+
                   {subCategories
                     .filter(s => s.is_active)
                     .sort((a, b) => (a.name || '').localeCompare(b.name || ''))
                     .map((subcat) => {
                       const count = varieties.filter(v => v.plant_subcategory_id === subcat.id).length;
                       if (count === 0) return null;
-
                       return (
                         <SelectItem key={subcat.id} value={subcat.id}>
                           {subcat.icon && <span className="mr-1">{subcat.icon}</span>}
@@ -932,22 +987,26 @@ export default function PlantCatalogDetail() {
                         </SelectItem>
                       );
                     })}
+
                   {(() => {
                     const uncategorizedCount = varieties.filter(v => !v.plant_subcategory_id).length;
-                    return uncategorizedCount > 0 && (
+                    return uncategorizedCount > 0 ? (
                       <SelectItem value="uncategorized">
                         Uncategorized ({uncategorizedCount})
                       </SelectItem>
-                    );
+                    ) : null;
                   })()}
                 </SelectContent>
               </Select>
 
               {/* Sort */}
-              <Select value={sortBy} onValueChange={(v) => {
-                setSortBy(v);
-                setCurrentPage(1);
-              }}>
+              <Select
+                value={sortBy}
+                onValueChange={(v) => {
+                  setSortBy(v);
+                  setCurrentPage(1);
+                }}
+              >
                 <SelectTrigger className="w-[180px]">
                   <SelectValue />
                 </SelectTrigger>
@@ -959,7 +1018,7 @@ export default function PlantCatalogDetail() {
                   <SelectItem value="days_desc">Days: High → Low</SelectItem>
                   <SelectItem value="spacing_asc">Spacing: Low → High</SelectItem>
                   <SelectItem value="spacing_desc">Spacing: High → Low</SelectItem>
-                  {getAvailableFilters().heatLevel && (
+                  {availableFilters.heatLevel && (
                     <>
                       <SelectItem value="heat_asc">Heat: Low → High</SelectItem>
                       <SelectItem value="heat_desc">Heat: High → Low</SelectItem>
@@ -1046,6 +1105,37 @@ export default function PlantCatalogDetail() {
                 </div>
               </div>
             )}
+
+            {/* Active Filter Chips (minimal) */}
+            {activeFilterCount > 0 && (
+              <div className="flex flex-wrap gap-2">
+                <span className="text-sm text-gray-500">Active filters:</span>
+                {debouncedSearchQuery && (
+                  <Badge variant="secondary" className="gap-1">
+                    Search: "{debouncedSearchQuery}"
+                    <X className="w-3 h-3 cursor-pointer" onClick={() => setSearchQuery('')} />
+                  </Badge>
+                )}
+                {filters.containerFriendly && (
+                  <Badge variant="secondary" className="gap-1">
+                    Container Friendly
+                    <X
+                      className="w-3 h-3 cursor-pointer"
+                      onClick={() => setFilters({ ...filters, containerFriendly: null })}
+                    />
+                  </Badge>
+                )}
+                {filters.trellisRequired && (
+                  <Badge variant="secondary" className="gap-1">
+                    Needs Trellis
+                    <X
+                      className="w-3 h-3 cursor-pointer"
+                      onClick={() => setFilters({ ...filters, trellisRequired: null })}
+                    />
+                  </Badge>
+                )}
+              </div>
+            )}
           </CardContent>
         </Card>
 
@@ -1054,6 +1144,7 @@ export default function PlantCatalogDetail() {
           <CardHeader>
             <CardTitle>Varieties ({filteredVarieties.length})</CardTitle>
           </CardHeader>
+
           <CardContent>
             {filteredVarieties.length === 0 ? (
               <div className="text-center py-8">
@@ -1076,14 +1167,15 @@ export default function PlantCatalogDetail() {
                           ? 'Import varieties or add them manually'
                           : 'Be the first to suggest a variety!'}
                     </p>
-
                     {!plantType?._is_browse_only && (
                       <Button
                         onClick={() => setShowAddVariety(true)}
                         className="bg-emerald-600 hover:bg-emerald-700 gap-2"
                       >
                         <Plus className="w-4 h-4" />
-                        {user?.role === 'admin' || user?.role === 'editor' ? 'Add First Variety' : 'Suggest Variety'}
+                        {user?.role === 'admin' || user?.role === 'editor'
+                          ? 'Add First Variety'
+                          : 'Suggest Variety'}
                       </Button>
                     )}
                   </>
@@ -1096,7 +1188,10 @@ export default function PlantCatalogDetail() {
                   subCategories={subCategories}
                   visibleColumns={visibleColumns}
                   sortBy={sortBy}
-                  onSortChange={setSortBy}
+                  onSortChange={(v) => {
+                    setSortBy(v);
+                    setCurrentPage(1);
+                  }}
                   onAddToStash={(variety) => {
                     setSelectedVariety(variety);
                     setShowAddToStash(true);
@@ -1109,7 +1204,10 @@ export default function PlantCatalogDetail() {
 
                 {hasMoreItems && (
                   <div className="text-center mt-4">
-                    <Button variant="outline" onClick={() => setCurrentPage(currentPage + 1)}>
+                    <Button
+                      variant="outline"
+                      onClick={() => setCurrentPage(currentPage + 1)}
+                    >
                       Load More ({filteredVarieties.length - paginatedVarieties.length} remaining)
                     </Button>
                   </div>
@@ -1191,7 +1289,6 @@ export default function PlantCatalogDetail() {
                                 </Badge>
                               );
                             }
-
                             const subcat = subCategories.find(s => s.id === variety.plant_subcategory_id);
                             return subcat ? (
                               <Badge variant="secondary" className="text-xs">
@@ -1211,28 +1308,29 @@ export default function PlantCatalogDetail() {
                             </Badge>
                           )}
 
-                          {(variety.spacing_recommended || variety.spacing_in_min) && (
+                          {(variety.spacing_recommended || variety.spacing_in_min || variety.spacing_min) && (
                             <Badge variant="outline" className="text-xs">
-                              {variety.spacing_recommended || variety.spacing_in_min}" spacing
+                              {variety.spacing_recommended || variety.spacing_in_min || variety.spacing_min}" spacing
                             </Badge>
                           )}
 
                           {variety.trellis_required && (
                             <Badge className="bg-green-100 text-green-800 text-xs">Needs Trellis</Badge>
                           )}
-
                           {variety.container_friendly && (
                             <Badge className="bg-blue-100 text-blue-800 text-xs">Container</Badge>
                           )}
 
                           {(() => {
-                            const seedType = variety.traits?.seed_type || (variety.popularity_tier === 'heirloom' ? 'heirloom' : null);
+                            const seedType =
+                              variety.traits?.seed_type ||
+                              (variety.popularity_tier === 'heirloom' ? 'heirloom' : null);
                             if (!seedType) return null;
                             const label =
                               seedType === 'open_pollinated' ? 'OP' :
                               seedType === 'hybrid_f1' ? 'Hybrid' :
-                              seedType === 'heirloom' ? 'Heirloom' : seedType;
-
+                              seedType === 'heirloom' ? 'Heirloom' :
+                              seedType;
                             return <Badge variant="outline" className="text-xs">{label}</Badge>;
                           })()}
 
@@ -1253,7 +1351,10 @@ export default function PlantCatalogDetail() {
 
                 {hasMoreItems && (
                   <div className="text-center mt-4">
-                    <Button variant="outline" onClick={() => setCurrentPage(currentPage + 1)}>
+                    <Button
+                      variant="outline"
+                      onClick={() => setCurrentPage(currentPage + 1)}
+                    >
                       Load More ({filteredVarieties.length - paginatedVarieties.length} remaining)
                     </Button>
                   </div>
@@ -1298,10 +1399,27 @@ export default function PlantCatalogDetail() {
             setCurrentPage(1);
           }}
           onClearAll={() => {
-            setFilters(INITIAL_FILTERS);
+            setFilters({
+              daysToMaturity: { min: null, max: null },
+              spacing: { min: null, max: null },
+              heatLevel: { min: null, max: null },
+              growthHabits: [],
+              colors: [],
+              species: [],
+              containerFriendly: null,
+              trellisRequired: null,
+              hasImage: null,
+              seedTypes: [],
+              organicOnly: false,
+              speciesFilter: [],
+              ornamentalOnly: false,
+              seedLineTypes: [],
+              organicSeedsOnly: false,
+              seasonTimings: []
+            });
             setCurrentPage(1);
           }}
-          availableFilters={getAvailableFilters()}
+          availableFilters={availableFilters}
         />
       </div>
     </ErrorBoundary>
