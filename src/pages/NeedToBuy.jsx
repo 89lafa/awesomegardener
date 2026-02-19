@@ -1,205 +1,297 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { base44 } from '@/api/base44Client';
-import { 
-  ShoppingCart, 
-  ExternalLink, 
-  Leaf, 
-  Heart,
-  Loader2,
-  Filter,
-  Search,
-  Package,
-  Link as LinkIcon
-} from 'lucide-react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { Card } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Loader2, ExternalLink, Download, Search } from 'lucide-react';
 import { toast } from 'sonner';
 
+function normalizeUrlString(val) {
+  if (!val) return '';
+  if (typeof val === 'string') return val.trim();
+  return '';
+}
+
+function toUrlList({ affiliate_url, sources }) {
+  const urls = [];
+
+  const a = normalizeUrlString(affiliate_url);
+  if (a) urls.push(a);
+
+  if (Array.isArray(sources)) {
+    for (const s of sources) {
+      const u = normalizeUrlString(s);
+      if (u) urls.push(u);
+    }
+  }
+
+  // de-dupe
+  const seen = new Set();
+  return urls.filter(u => {
+    const key = u.toLowerCase();
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
+function pickBestLink(urls) {
+  if (!urls?.length) return '';
+
+  const lower = urls.map(u => u.toLowerCase());
+  const pepperIdx = lower.findIndex(u => u.includes('pepperseeds.net'));
+  if (pepperIdx >= 0) return urls[pepperIdx];
+
+  return urls[0];
+}
+
+function linkTier(urls) {
+  if (!urls?.length) return 2;
+  const hasPepper = urls.some(u => u.toLowerCase().includes('pepperseeds.net'));
+  if (hasPepper) return 0;
+  return 1;
+}
+
+function downloadCsv(filename, rows) {
+  const escape = (v) => {
+    const s = (v ?? '').toString();
+    // wrap in quotes and escape quotes
+    return `"${s.replaceAll('"', '""')}"`;
+  };
+
+  const csv = rows
+    .map(r => r.map(escape).join(','))
+    .join('\n');
+
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  a.click();
+
+  URL.revokeObjectURL(url);
+}
+
 export default function NeedToBuy() {
-  const [user, setUser] = useState(null);
-  const [needToBuy, setNeedToBuy] = useState([]);
-  const [wishlist, setWishlist] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [filterType, setFilterType] = useState('all'); // 'all', 'calendar', 'wishlist'
-  const [sortBy, setSortBy] = useState('plant_type');
-  const [stashMap, setStashMap] = useState({});
+  const [user, setUser] = useState(null);
+
+  const [search, setSearch] = useState('');
+
+  // Final list rows
+  const [needRows, setNeedRows] = useState([]);
 
   useEffect(() => {
-    loadData();
+    load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const loadData = async () => {
+  const load = async () => {
+    setLoading(true);
     try {
-      setLoading(true);
-      const userData = await base44.auth.me();
-      setUser(userData);
+      const me = await base44.auth.me();
+      setUser(me);
 
-      // Load user's seed stash (what they own)
-      const stash = await base44.entities.SeedLot.filter({
-        created_by: userData.email,
-        is_wishlist: false
-      });
-      
-      // Build map of what user has: plant_profile_id -> count
-      const stashProfileMap = {};
-      stash.forEach(lot => {
-        if (lot.plant_profile_id) {
-          stashProfileMap[lot.plant_profile_id] = (stashProfileMap[lot.plant_profile_id] || 0) + 1;
-        }
-      });
-      setStashMap(stashProfileMap);
-
-      // Load wishlist items
-      const wishlistItems = await base44.entities.SeedLot.filter({
-        created_by: userData.email,
-        is_wishlist: true
-      });
-      
-      // Get profiles and varieties for wishlist
-      const wishlistProfileIds = wishlistItems.map(w => w.plant_profile_id).filter(Boolean);
-      const wishlistProfiles = wishlistProfileIds.length > 0 
-        ? await base44.entities.PlantProfile.filter({ id: { $in: wishlistProfileIds } })
-        : [];
-      
-      const wishlistWithData = wishlistItems.map(item => {
-        const profile = wishlistProfiles.find(p => p.id === item.plant_profile_id);
-        return {
-          ...item,
-          profile,
-          source: 'wishlist',
-          plant_type_name: profile?.common_name || 'Unknown',
-          variety_name: profile?.variety_name || 'Unknown'
-        };
-      });
-      
-      setWishlist(wishlistWithData);
-
-      // Load grow lists and calendar crops
+      // 1) Pull grow lists (for planned quantities)
+      // Keep this simple: active + draft lists owned by user
       const growLists = await base44.entities.GrowList.filter({
-        created_by: userData.email
-      });
-      
-      const cropPlans = await base44.entities.CropPlan.filter({
-        // Filter by garden owner - need to get gardens first
+        created_by: me.email,
+        status: { $in: ['active', 'draft'] }
       });
 
-      // Get gardens to filter crop plans
-      const gardens = await base44.entities.Garden.filter({
-        created_by: userData.email
-      });
-      
-      const gardenIds = gardens.map(g => g.id);
-      const allCropPlans = gardenIds.length > 0 
-        ? await base44.entities.CropPlan.filter({ garden_id: { $in: gardenIds } })
-        : [];
+      const allGrowItems = (growLists || [])
+        .flatMap(gl => gl.items || [])
+        .filter(it => it && (it.variety_id || it.variety_name));
 
-      // Extract varieties/plants from grow lists and calendar
-      const needToBuySet = new Set();
-      const needToBuyItems = [];
+      // Desired qty by variety_id (best case), fallback by (plant_type_name + variety_name)
+      const desiredByVarietyId = new Map();
+      const desiredByNameKey = new Map();
 
-      // From grow lists
-      growLists.forEach(list => {
-        (list.items || []).forEach(item => {
-          if (item.variety_id) {
-            needToBuySet.add(item.variety_id);
-          }
-        });
-      });
+      for (const it of allGrowItems) {
+        const qty = Number(it.quantity || 0) || 0;
+        if (qty <= 0) continue;
 
-      // From calendar crops
-      allCropPlans.forEach(crop => {
-        if (crop.variety_id) {
-          needToBuySet.add(crop.variety_id);
+        if (it.variety_id) {
+          desiredByVarietyId.set(
+            it.variety_id,
+            (desiredByVarietyId.get(it.variety_id) || 0) + qty
+          );
+        } else {
+          const key = `${(it.plant_type_name || '').toLowerCase()}__${(it.variety_name || '').toLowerCase()}`;
+          desiredByNameKey.set(key, (desiredByNameKey.get(key) || 0) + qty);
         }
-      });
+      }
 
-      // Load varieties and profiles for items in need to buy
-      const varietyIds = Array.from(needToBuySet);
-      if (varietyIds.length > 0) {
-        const varieties = await base44.entities.Variety.filter({
-          id: { $in: varietyIds }
-        });
+      // 2) Pull seed lots (for owned quantities + wishlist items)
+      const [stashLots, wishLots] = await Promise.all([
+        base44.entities.SeedLot.filter({ created_by: me.email, is_wishlist: false }),
+        base44.entities.SeedLot.filter({ created_by: me.email, is_wishlist: true })
+      ]);
 
-        // Get plant types
-        const plantTypeIds = [...new Set(varieties.map(v => v.plant_type_id).filter(Boolean))];
-        const plantTypes = plantTypeIds.length > 0
-          ? await base44.entities.PlantType.filter({ id: { $in: plantTypeIds } })
-          : [];
+      // Load PlantProfiles for all seed lots (bulk)
+      const allProfileIds = Array.from(
+        new Set([...(stashLots || []), ...(wishLots || [])]
+          .map(l => l.plant_profile_id)
+          .filter(Boolean))
+      );
 
-        varieties.forEach(variety => {
-          const plantType = plantTypes.find(pt => pt.id === variety.plant_type_id);
-          
-          // Check if user actually has this in stash
-          // For now, compare by variety - in real app, would check PlantProfile
-          const hasInStash = stashProfileMap[variety.id] || false;
-          
-          if (!hasInStash) {
-            needToBuyItems.push({
-              ...variety,
-              source: 'calendar',
-              plant_type_name: plantType?.common_name || 'Unknown',
-              plant_type_icon: plantType?.icon || '🌱'
-            });
-          }
+      let profiles = [];
+      if (allProfileIds.length > 0) {
+        profiles = await base44.entities.PlantProfile.filter({
+          id: { $in: allProfileIds }
         });
       }
 
-      // Deduplicate by variety_id
-      const deduped = Array.from(
-        new Map(needToBuyItems.map(item => [item.id, item])).values()
-      );
+      const profileById = new Map(profiles.map(p => [p.id, p]));
 
-      setNeedToBuy(deduped);
-    } catch (error) {
-      console.error('Error loading need to buy data:', error);
-      toast.error('Failed to load shopping list');
+      // Owned quantity aggregated by variety_id (from stash)
+      const ownedByVarietyId = new Map();
+      // Also track owned by name-key fallback
+      const ownedByNameKey = new Map();
+
+      for (const lot of (stashLots || [])) {
+        const qty = Number(lot.quantity || 0) || 0;
+        const profile = profileById.get(lot.plant_profile_id);
+
+        const varietyId = profile?.variety_id || null;
+        if (varietyId) {
+          ownedByVarietyId.set(varietyId, (ownedByVarietyId.get(varietyId) || 0) + qty);
+        } else {
+          const key = `${(profile?.common_name || '').toLowerCase()}__${(profile?.variety_name || '').toLowerCase()}`;
+          if (key !== '__') {
+            ownedByNameKey.set(key, (ownedByNameKey.get(key) || 0) + qty);
+          }
+        }
+      }
+
+      // 3) Pull Variety records in bulk for anything we might display
+      const varietyIdsToFetch = Array.from(desiredByVarietyId.keys());
+
+      // Also include wish list variety_ids (if profile has it)
+      for (const lot of (wishLots || [])) {
+        const profile = profileById.get(lot.plant_profile_id);
+        if (profile?.variety_id) {
+          if (!varietyIdsToFetch.includes(profile.variety_id)) varietyIdsToFetch.push(profile.variety_id);
+        }
+      }
+
+      let varieties = [];
+      if (varietyIdsToFetch.length > 0) {
+        // Big but still single call
+        varieties = await base44.entities.Variety.filter(
+          { id: { $in: varietyIdsToFetch } },
+          'variety_name',
+          5000
+        );
+      }
+
+      const varietyById = new Map(varieties.map(v => [v.id, v]));
+
+      // 4) Build “needed to buy” rows:
+      // A) Missing quantities from grow lists (desired - owned)
+      const rows = [];
+
+      for (const [varietyId, desiredQty] of desiredByVarietyId.entries()) {
+        const owned = ownedByVarietyId.get(varietyId) || 0;
+        const need = Math.max(0, desiredQty - owned);
+        if (need <= 0) continue;
+
+        const v = varietyById.get(varietyId);
+        const urls = toUrlList({ affiliate_url: v?.affiliate_url, sources: v?.sources });
+        const bestLink = pickBestLink(urls);
+
+        rows.push({
+          source: 'growlist',
+          plant_type_name: v?.plant_type_name || '',
+          variety_name: v?.variety_name || '',
+          quantity_needed: need,
+          urls,
+          bestLink
+        });
+      }
+
+      // B) Fallback rows when grow list items don’t have variety_id (still show)
+      for (const [key, desiredQty] of desiredByNameKey.entries()) {
+        const owned = ownedByNameKey.get(key) || 0;
+        const need = Math.max(0, desiredQty - owned);
+        if (need <= 0) continue;
+
+        const [typeNameLower, varietyNameLower] = key.split('__');
+        rows.push({
+          source: 'growlist',
+          plant_type_name: typeNameLower ? typeNameLower.replace(/\b\w/g, c => c.toUpperCase()) : '',
+          variety_name: varietyNameLower ? varietyNameLower.replace(/\b\w/g, c => c.toUpperCase()) : '',
+          quantity_needed: need,
+          urls: [],
+          bestLink: ''
+        });
+      }
+
+      // C) Wishlist items (always show as “need to buy”)
+      for (const lot of (wishLots || [])) {
+        const profile = profileById.get(lot.plant_profile_id);
+        const desiredQty = Number(lot.quantity || 0) || 1;
+
+        const v = profile?.variety_id ? varietyById.get(profile.variety_id) : null;
+        const urls = toUrlList({ affiliate_url: v?.affiliate_url, sources: v?.sources });
+        const bestLink = pickBestLink(urls);
+
+        rows.push({
+          source: 'wishlist',
+          plant_type_name: v?.plant_type_name || profile?.common_name || '',
+          variety_name: v?.variety_name || profile?.variety_name || '',
+          quantity_needed: desiredQty,
+          urls,
+          bestLink
+        });
+      }
+
+      // Sort with your tier rules:
+      // pepperseeds.net first, then any link, then none
+      rows.sort((a, b) => {
+        const ta = linkTier(a.urls);
+        const tb = linkTier(b.urls);
+        if (ta !== tb) return ta - tb;
+
+        // secondary: Type then Variety
+        const tcmp = (a.plant_type_name || '').localeCompare(b.plant_type_name || '');
+        if (tcmp !== 0) return tcmp;
+        return (a.variety_name || '').localeCompare(b.variety_name || '');
+      });
+
+      setNeedRows(rows);
+    } catch (e) {
+      console.error(e);
+      toast.error('Failed to load Need To Buy');
     } finally {
       setLoading(false);
     }
   };
 
-  const allItems = filterType === 'all' 
-    ? [...needToBuy, ...wishlist]
-    : filterType === 'calendar'
-    ? needToBuy
-    : wishlist;
-
-  const filtered = allItems.filter(item => {
-    const query = searchQuery.toLowerCase();
-    return (
-      (item.variety_name?.toLowerCase().includes(query) || '') ||
-      (item.plant_type_name?.toLowerCase().includes(query) || '')
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return needRows;
+    return needRows.filter(r =>
+      (r.plant_type_name || '').toLowerCase().includes(q) ||
+      (r.variety_name || '').toLowerCase().includes(q)
     );
-  });
+  }, [needRows, search]);
 
-  const sorted = filtered.sort((a, b) => {
-    switch (sortBy) {
-      case 'plant_type':
-        return (a.plant_type_name || '').localeCompare(b.plant_type_name || '');
-      case 'variety':
-        return (a.variety_name || '').localeCompare(b.variety_name || '');
-      case 'source':
-        return (a.source || '').localeCompare(b.source || '');
-      default:
-        return 0;
-    }
-  });
-
-  const handleAddToWishlist = async (item) => {
-    try {
-      await base44.entities.SeedLot.create({
-        plant_profile_id: item.id,
-        is_wishlist: true
-      });
-      toast.success('Added to wishlist!');
-      await loadData();
-    } catch (error) {
-      console.error('Error adding to wishlist:', error);
-      toast.error('Failed to add to wishlist');
-    }
+  const handleExport = () => {
+    const rows = [
+      ['Type', 'Variety', 'Qty Needed', 'Best Buy Link'],
+      ...filtered.map(r => [
+        r.plant_type_name || '',
+        r.variety_name || '',
+        r.quantity_needed || 0,
+        r.bestLink || ''
+      ])
+    ];
+    downloadCsv('need_to_buy.csv', rows);
+    toast.success('Exported CSV');
   };
 
   if (loading) {
@@ -211,194 +303,105 @@ export default function NeedToBuy() {
   }
 
   return (
-    <div className="space-y-6 max-w-6xl">
-      {/* Header */}
-      <div>
-        <div className="flex items-center gap-3 mb-2">
-          <div className="w-12 h-12 rounded-xl bg-blue-100 flex items-center justify-center text-2xl">
-            🛒
-          </div>
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900">Shopping List</h1>
-            <p className="text-gray-600">Seeds you want to grow but don't own</p>
-          </div>
+    <div className="space-y-6 max-w-5xl">
+      <div className="flex items-center justify-between gap-3 flex-wrap">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">Need to Buy</h1>
+          <p className="text-sm text-gray-500">
+            Items you’re planning to plant but don’t have enough seeds for (plus wishlist items).
+          </p>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <Button variant="outline" className="gap-2" onClick={handleExport} disabled={filtered.length === 0}>
+            <Download className="w-4 h-4" />
+            Export CSV
+          </Button>
         </div>
       </div>
 
-      {/* Stats */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <Card className="p-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-600">Need to Buy</p>
-              <p className="text-2xl font-bold text-gray-900">{needToBuy.length}</p>
-            </div>
-            <ShoppingCart className="w-8 h-8 text-emerald-600 opacity-50" />
-          </div>
-        </Card>
-        <Card className="p-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-600">Wishlist</p>
-              <p className="text-2xl font-bold text-gray-900">{wishlist.length}</p>
-            </div>
-            <Heart className="w-8 h-8 text-red-600 opacity-50" />
-          </div>
-        </Card>
-        <Card className="p-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-600">Total Items</p>
-              <p className="text-2xl font-bold text-gray-900">{allItems.length}</p>
-            </div>
-            <Package className="w-8 h-8 text-blue-600 opacity-50" />
-          </div>
-        </Card>
-      </div>
-
-      {/* Controls */}
-      <div className="space-y-4">
-        <div className="flex flex-wrap gap-3">
-          <div className="flex-1 min-w-[250px]">
+      <Card>
+        <CardContent className="p-4">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
             <Input
-              placeholder="Search varieties..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full"
+              className="pl-9"
+              placeholder="Search type or variety..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
             />
           </div>
-          <select 
-            value={filterType}
-            onChange={(e) => setFilterType(e.target.value)}
-            className="px-4 py-2 rounded-lg border border-gray-300"
-          >
-            <option value="all">All Items</option>
-            <option value="calendar">Calendar Only</option>
-            <option value="wishlist">Wishlist Only</option>
-          </select>
-          <select 
-            value={sortBy}
-            onChange={(e) => setSortBy(e.target.value)}
-            className="px-4 py-2 rounded-lg border border-gray-300"
-          >
-            <option value="plant_type">Sort by Plant Type</option>
-            <option value="variety">Sort by Variety</option>
-            <option value="source">Sort by Source</option>
-          </select>
-        </div>
-      </div>
+        </CardContent>
+      </Card>
 
-      {/* Items List */}
-      {sorted.length === 0 ? (
-        <Card className="p-12 text-center">
-          <Leaf className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-          <h3 className="text-lg font-semibold text-gray-900 mb-2">All Set!</h3>
-          <p className="text-gray-600">You have all the seeds you need for your planned crops.</p>
-        </Card>
-      ) : (
-        <div className="grid gap-4">
-          {sorted.map((item, idx) => (
-            <Card 
-              key={`${item.id}-${idx}`}
-              className="p-4 hover:shadow-md transition-shadow"
-            >
-              <div className="flex items-start justify-between gap-4">
-                <div className="flex-1">
-                  <div className="flex items-center gap-3 mb-2">
-                    <span className="text-2xl">{item.plant_type_icon || '🌱'}</span>
-                    <div>
-                      <h3 className="font-semibold text-gray-900">
-                        {item.variety_name}
-                      </h3>
-                      <p className="text-sm text-gray-600">
-                        {item.plant_type_name}
-                      </p>
+      <Card>
+        <CardHeader>
+          <CardTitle>Items ({filtered.length})</CardTitle>
+        </CardHeader>
+
+        <CardContent className="p-0">
+          {filtered.length === 0 ? (
+            <div className="p-8 text-center text-gray-500">
+              Nothing needed right now.
+            </div>
+          ) : (
+            <div className="divide-y">
+              {filtered.map((r, idx) => {
+                const tier = linkTier(r.urls);
+                const tierLabel =
+                  tier === 0 ? 'PepperSeeds.net' : tier === 1 ? 'Has Link' : 'No Link';
+
+                return (
+                  <div key={`${r.source}-${idx}`} className="p-4 flex items-center justify-between gap-4 flex-wrap">
+                    <div className="min-w-[260px]">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="font-semibold text-gray-900">
+                          {r.variety_name || '(Unnamed Variety)'}
+                        </span>
+                        <Badge variant="outline" className="text-xs">
+                          {r.plant_type_name || 'Unknown Type'}
+                        </Badge>
+                        <Badge
+                          className={
+                            tier === 0
+                              ? 'bg-emerald-100 text-emerald-800'
+                              : tier === 1
+                                ? 'bg-blue-100 text-blue-800'
+                                : 'bg-gray-100 text-gray-700'
+                          }
+                        >
+                          {tierLabel}
+                        </Badge>
+                        {r.source === 'wishlist' && (
+                          <Badge className="bg-amber-100 text-amber-800">Wishlist</Badge>
+                        )}
+                      </div>
+                      <div className="text-sm text-gray-600 mt-1">
+                        Qty needed: <span className="font-semibold">{r.quantity_needed}</span>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      {r.bestLink ? (
+                        <a href={r.bestLink} target="_blank" rel="noopener noreferrer">
+                          <Button className="bg-emerald-600 hover:bg-emerald-700 gap-2">
+                            <ExternalLink className="w-4 h-4" />
+                            Buy Now
+                          </Button>
+                        </a>
+                      ) : (
+                        <Button variant="outline" disabled>
+                          No buy link yet
+                        </Button>
+                      )}
                     </div>
                   </div>
-                  
-                  {/* Badges */}
-                  <div className="flex flex-wrap gap-2 mt-2">
-                    <Badge 
-                      variant={item.source === 'calendar' ? 'default' : 'outline'}
-                      className={item.source === 'calendar' ? 'bg-emerald-100 text-emerald-800' : 'bg-red-100 text-red-800'}
-                    >
-                      {item.source === 'calendar' ? '📅 In Calendar' : '❤️ Wishlist'}
-                    </Badge>
-                    
-                    {item.days_to_maturity && (
-                      <Badge variant="outline">
-                        {item.days_to_maturity} days
-                      </Badge>
-                    )}
-                    
-                    {item.seed_line_type && (
-                      <Badge variant="outline">
-                        {item.seed_line_type}
-                      </Badge>
-                    )}
-                  </div>
-
-                  {/* Description */}
-                  {item.description && (
-                    <p className="text-sm text-gray-600 mt-2 line-clamp-2">
-                      {item.description}
-                    </p>
-                  )}
-                </div>
-
-                {/* Actions */}
-                <div className="flex flex-col gap-2 flex-shrink-0">
-                  {/* Buy links */}
-                  {item.sources && item.sources.length > 0 ? (
-                    <a
-                      href={item.sources[0]}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors whitespace-nowrap"
-                    >
-                      <ExternalLink className="w-4 h-4" />
-                      Buy Seeds
-                    </a>
-                  ) : item.source_url ? (
-                    <a
-                      href={item.source_url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors whitespace-nowrap"
-                    >
-                      <ExternalLink className="w-4 h-4" />
-                      Buy
-                    </a>
-                  ) : (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="whitespace-nowrap"
-                      disabled
-                    >
-                      <LinkIcon className="w-4 h-4 mr-1" />
-                      No Link
-                    </Button>
-                  )}
-
-                  {/* Add to wishlist (if from calendar) */}
-                  {item.source === 'calendar' && (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleAddToWishlist(item)}
-                      className="whitespace-nowrap"
-                    >
-                      <Heart className="w-4 h-4 mr-1" />
-                      Save
-                    </Button>
-                  )}
-                </div>
-              </div>
-            </Card>
-          ))}
-        </div>
-      )}
+                );
+              })}
+            </div>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }
