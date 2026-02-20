@@ -124,7 +124,22 @@ export default function PlantingModal({
       if (sharedData) {
         console.log('[PlantingModal] Using pre-loaded shared data from parent page');
         setVarieties(sharedData.varieties || []);
-        setPlantTypes(sharedData.plantTypes || []);
+        const sharedPlantTypes = sharedData.plantTypes || [];
+setPlantTypes(sharedPlantTypes);
+
+// If parent provided a truncated list (common symptom: ~100 items ending around S),
+// safely re-fetch a larger list here.
+try {
+  const looksTruncated = sharedPlantTypes.length > 0 && sharedPlantTypes.length <= 120;
+  if (looksTruncated) {
+    const fullTypes = await base44.entities.PlantType.list('common_name', 1000);
+    if (Array.isArray(fullTypes) && fullTypes.length > sharedPlantTypes.length) {
+      setPlantTypes(fullTypes);
+    }
+  }
+} catch (e) {
+  console.warn('[PlantingModal] Could not refresh PlantTypes list:', e);
+}
         setPlantingRules(sharedData.plantingRules || []);
         setStashPlants(sharedData.stashPlants || []);
         setProfiles(sharedData.profiles || {});
