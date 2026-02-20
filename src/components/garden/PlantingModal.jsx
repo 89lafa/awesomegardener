@@ -241,25 +241,17 @@ export default function PlantingModal({
       return { cols: cells, rows: cells, plantsPerSlot: 1 };
     }
   };
-  // Plants-per-slot: prefer the value stored on the planting record.
-  // Fallback to PlantingRule only if old records don't have it.
+// Look up plants-per-slot for a planting from the rules (no schema change needed)
   const getPlantsPerSlot = (planting) => {
-    if (!planting) return 1;
-
-    // ✅ If you saved it on the record, use it.
-    if (planting.plants_per_slot != null) return Number(planting.plants_per_slot) || 1;
-
-    // ↩ Fallback for legacy records (no plants_per_slot saved)
-    if (!planting.plant_type_id) return 1;
+    if (!planting?.plant_type_id) return 1;
     const containerType = itemType || item.item_type;
-
-    const rule =
-      plantingRules.find(
-        (r) => r.plant_type_id === planting.plant_type_id && r.container_type === containerType
-      ) || plantingRules.find((r) => r.plant_type_id === planting.plant_type_id);
-
+    const rule = plantingRules.find(r => 
+      r.plant_type_id === planting.plant_type_id && 
+      r.container_type === containerType
+    ) || plantingRules.find(r => r.plant_type_id === planting.plant_type_id);
     return rule?.plants_per_grid_slot || 1;
   };
+
   // ===========================================================
   // Collision detection — accepts a plantings list for bulk use
   // ===========================================================
@@ -386,7 +378,7 @@ try {
     // Update crop plan quantities in bulk
     if (selectedPlant.crop_plan_id && newPlantings.length > 0) {
       try {
-        const plantsAdded = newPlantings.reduce((sum, p) => sum + (p.plants_per_slot || 1), 0);
+        const plantsAdded = newPlantings.length * (selectedPlant.plantsPerSlot || 1);
         await base44.functions.invoke('updateCropPlantedQuantity', { 
           crop_plan_id: selectedPlant.crop_plan_id,
           quantity_to_add: plantsAdded
@@ -529,7 +521,7 @@ try {
       
       if (selectedPlant.crop_plan_id) {
         try {
-          const plantsAdded = planting.plants_per_slot || 1;
+          const plantsAdded = selectedPlant.plantsPerSlot || 1;
           await base44.functions.invoke('updateCropPlantedQuantity', { 
             crop_plan_id: selectedPlant.crop_plan_id,
             quantity_to_add: plantsAdded
@@ -649,7 +641,7 @@ try {
 
         if (selectedPlant.crop_plan_id) {
           try {
-            const plantsAdded = planting.plants_per_slot || 1;
+            const plantsAdded = selectedPlant.plantsPerSlot || 1;
             await base44.functions.invoke('updateCropPlantedQuantity', { 
               crop_plan_id: selectedPlant.crop_plan_id,
               quantity_to_add: plantsAdded
@@ -692,7 +684,7 @@ try {
         try {
           await base44.functions.invoke('updateCropPlantedQuantity', { 
             crop_plan_id: planting.crop_plan_id,
-            quantity_to_add: -(planting.plants_per_slot || 1)
+            quantity_to_add: -1
           });
           if (!sharedData && seasonId) {
             const updatedPlans = await base44.entities.CropPlan.filter({ garden_season_id: seasonId });
@@ -854,26 +846,15 @@ try {
   const analyzeCompanions = () => analyzeCompanionsWithPlantings(plantings);
 
   const getCellContent = (col, row) => {
-    const planting = plantings.find((p) => {
-      const pRow = p.cell_row ?? 0;
-      const pCol = p.cell_col ?? 0;
-      const spanCols = p.cell_span_cols || 1;
-      const spanRows = p.cell_span_rows || 1;
-
-      return (
-        col >= pCol && col < pCol + spanCols &&
-        row >= pRow && row < pRow + spanRows
-      );
-    });
-
-    if (!planting) return null;
-
-    const originRow = planting.cell_row ?? 0;
-    const originCol = planting.cell_col ?? 0;
-
-    if (col === originCol && row === originRow) return { planting, isOrigin: true };
-    return { planting, isOrigin: false };
+    const planting = plantings.find(p => 
+      col >= p.cell_col && col < p.cell_col + (p.cell_span_cols || 1) &&
+      row >= p.cell_row && row < p.cell_row + (p.cell_span_rows || 1)
+    );
+    if (planting && col === planting.cell_col && row === planting.cell_row) return { planting, isOrigin: true };
+    if (planting) return { planting, isOrigin: false };
+    return null;
   };
+
   if (loading) {
     return (
       <Dialog open={open} onOpenChange={onOpenChange}>
@@ -1305,7 +1286,7 @@ try {
                               const hasConditional = companionBorders.includes('GOOD_CONDITIONAL');
 
                               const borderColor = hasBad ? 'border-red-500' : 
-                                                 hasGood ? 'border-green-500' : 
+                                                 hasGood ? 'border-yellow-500' : 
                                                  hasConditional ? 'border-amber-500' : 'border-emerald-600';
 
                               return (
