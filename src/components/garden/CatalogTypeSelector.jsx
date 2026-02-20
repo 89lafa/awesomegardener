@@ -38,7 +38,7 @@ export default function CatalogTypeSelector({
           }
           return true;
         })
-        .slice(0, 300) // Limit to 100 for performance
+        .slice(0, 150) // Limit to 100 for performance
     : [];
 
   const handleSelectVariety = async (variety) => {
