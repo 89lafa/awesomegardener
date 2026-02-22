@@ -250,30 +250,14 @@ export default function PlantCatalogDetail() {
   useEffect(() => {
     (async () => {
       try {
-        const [userData, settings] = await Promise.all([
-          base44.auth.me(),
-          base44.entities.UserSettings.list(),
-        ]);
+        // Zone is saved on the user object via base44.auth.updateMe()
+        // ZoneMap.jsx saves to usda_zone_override (fallback: usda_zone)
+        const userData = await base44.auth.me();
         setUser(userData);
-        const zone = settings?.[0]?.usda_zone;
-        // Debug: log all settings keys to find correct field name
-        console.debug('[ZoneDebug] UserSettings record:', JSON.stringify(settings?.[0]));
-        console.debug('[ZoneDebug] usda_zone value:', zone);
+        const zone = userData?.usda_zone_override || userData?.usda_zone;
         if (zone) {
-          const label = parseZoneLabel(zone);
-          const minTemp = getZoneMinTemp(zone);
-          console.debug('[ZoneDebug] parsed label:', label, 'minTemp:', minTemp);
-          setUserZone(label);
-          setUserZoneMinTemp(minTemp);
-        } else {
-          // Try alternate field names in case schema uses different name
-          const altZone = settings?.[0]?.zone || settings?.[0]?.hardiness_zone || 
-                          settings?.[0]?.usda_zone_code || settings?.[0]?.zone_code;
-          console.debug('[ZoneDebug] Trying alt fields, found:', altZone);
-          if (altZone) {
-            setUserZone(parseZoneLabel(altZone));
-            setUserZoneMinTemp(getZoneMinTemp(altZone));
-          }
+          setUserZone(parseZoneLabel(zone));
+          setUserZoneMinTemp(getZoneMinTemp(zone));
         }
       } catch (e) {
         console.error('Error loading user/zone:', e);
