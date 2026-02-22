@@ -125,13 +125,23 @@ const PLANT_ZONE_DATA = {
   PT_LUPINE:         { temp_min_f: -30, is_perennial_species: true  },
 };
 
-// Converts "7a" → 0°F, "7b" → 5°F, "6a" → -10°F, etc.
+// Converts any zone string format to minimum winter temp in °F.
+// Handles: "7a", "Zone 7a", "Zone 7a (0°F to 5°F)", "zone 7b", etc.
 function getZoneMinTemp(zoneStr) {
   if (!zoneStr) return null;
-  const num = parseInt(zoneStr);
-  if (isNaN(num)) return null;
-  const sub = String(zoneStr).slice(-1).toLowerCase();
+  // Extract the numeric zone + optional a/b subzone from anywhere in the string
+  const match = String(zoneStr).match(/(\d+)\s*([ab])?/i);
+  if (!match) return null;
+  const num = parseInt(match[1]);
+  const sub = (match[2] || 'a').toLowerCase();
   return (num - 1) * 10 - 60 + (sub === 'b' ? 5 : 0);
+}
+
+// Extract clean display label, e.g. "Zone 7a (0°F to 5°F)" → "7a"
+function parseZoneLabel(zoneStr) {
+  if (!zoneStr) return null;
+  const match = String(zoneStr).match(/(\d+\s*[ab]?)/i);
+  return match ? match[1].replace(/\s+/, '').toLowerCase() : zoneStr;
 }
 
 // Returns the effective temp_min_f for a variety:
@@ -247,7 +257,7 @@ export default function PlantCatalogDetail() {
         setUser(userData);
         const zone = settings?.[0]?.usda_zone;
         if (zone) {
-          setUserZone(zone);
+          setUserZone(parseZoneLabel(zone)); // normalize: "Zone 7a (0°F...)" → "7a"
           setUserZoneMinTemp(getZoneMinTemp(zone));
         }
       } catch (e) {
