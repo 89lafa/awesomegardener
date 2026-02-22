@@ -256,9 +256,24 @@ export default function PlantCatalogDetail() {
         ]);
         setUser(userData);
         const zone = settings?.[0]?.usda_zone;
+        // Debug: log all settings keys to find correct field name
+        console.debug('[ZoneDebug] UserSettings record:', JSON.stringify(settings?.[0]));
+        console.debug('[ZoneDebug] usda_zone value:', zone);
         if (zone) {
-          setUserZone(parseZoneLabel(zone)); // normalize: "Zone 7a (0°F...)" → "7a"
-          setUserZoneMinTemp(getZoneMinTemp(zone));
+          const label = parseZoneLabel(zone);
+          const minTemp = getZoneMinTemp(zone);
+          console.debug('[ZoneDebug] parsed label:', label, 'minTemp:', minTemp);
+          setUserZone(label);
+          setUserZoneMinTemp(minTemp);
+        } else {
+          // Try alternate field names in case schema uses different name
+          const altZone = settings?.[0]?.zone || settings?.[0]?.hardiness_zone || 
+                          settings?.[0]?.usda_zone_code || settings?.[0]?.zone_code;
+          console.debug('[ZoneDebug] Trying alt fields, found:', altZone);
+          if (altZone) {
+            setUserZone(parseZoneLabel(altZone));
+            setUserZoneMinTemp(getZoneMinTemp(altZone));
+          }
         }
       } catch (e) {
         console.error('Error loading user/zone:', e);
@@ -534,12 +549,58 @@ export default function PlantCatalogDetail() {
   }, [debouncedSearchQuery, selectedSubCategories, showPerennialOnly, filters]);
 
   // ─── Zone info for this plant type ───────────────────────
+  // Works even when plant_type_code is not populated in DB by falling
+  // back to matching PLANT_ZONE_DATA keys via common_name.
   const plantTypeZoneInfo = useMemo(() => {
-    if (!userZoneMinTemp || !plantType?.plant_type_code) return null;
-    const zd = PLANT_ZONE_DATA[plantType.plant_type_code];
-    if (!zd) return null;
-    const behavior = getZoneBehavior(zd.temp_min_f, userZoneMinTemp, plantType.plant_type_code);
-    return { behavior, zd };
+    if (!userZoneMinTemp || !plantType) return null;
+
+    let zd = null;
+    let matchedCode = null;
+
+    // 1. Try exact plant_type_code match
+    if (plantType.plant_type_code) {
+      zd = PLANT_ZONE_DATA[plantType.plant_type_code];
+      matchedCode = plantType.plant_type_code;
+    }
+
+    // 2. Fallback: derive key from common_name e.g. "Tomato" -> "PT_TOMATO"
+    if (!zd && plantType.common_name) {
+      const derived = 'PT_' + plantType.common_name
+        .toUpperCase()
+        .trim()
+        .replace(/[^A-Z0-9]+/g, '_')
+        .replace(/^_+|_+$/g, '');
+      zd = PLANT_ZONE_DATA[derived];
+      matchedCode = derived;
+
+      // 3. Try common name aliases
+      if (!zd) {
+        const NAME_ALIASES = {
+          'PT_BRUSSELS_SPROUTS': 'PT_BRUSSELS',
+          'PT_BRUSSEL_SPROUTS': 'PT_BRUSSELS',
+          'PT_GLOBE_ARTICHOKE': 'PT_ARTICHOKE',
+          'PT_JERUSALEM_ARTICHOKE': 'PT_SUNCHOKE',
+          'PT_GROUND_CHERRY': 'PT_GROUNDCHERRY',
+          'PT_ECHINACEA': 'PT_CONEFLOWER',
+          'PT_BLACK_EYED_SUSAN': 'PT_BLACK_EYED_SUSAN',
+          'PT_SWEET_CORN': 'PT_SWEET_CORN',
+          'PT_HOT_PEPPER': 'PT_PEPPER',
+          'PT_BELL_PEPPER': 'PT_PEPPER',
+          'PT_CHILI_PEPPER': 'PT_PEPPER',
+          'PT_CHILLI': 'PT_PEPPER',
+        };
+        if (NAME_ALIASES[derived]) {
+          zd = PLANT_ZONE_DATA[NAME_ALIASES[derived]];
+          matchedCode = NAME_ALIASES[derived];
+        }
+      }
+    }
+
+    // If still no data, return noData flag so toggle still renders
+    if (!zd) return { behavior: null, zd: null, noData: true };
+
+    const behavior = getZoneBehavior(zd.temp_min_f, userZoneMinTemp, matchedCode);
+    return { behavior, zd, matchedCode };
   }, [userZone, userZoneMinTemp, plantType]);
 
   // ─── Filtered varieties ───────────────────────────────────
@@ -730,7 +791,21 @@ export default function PlantCatalogDetail() {
 
   // ─── Zone banner helper ───────────────────────────────────
   const renderZoneBanner = () => {
-    if (!userZone || !plantTypeZoneInfo) return null;
+    if (!userZone) return null;
+    // Show a generic banner if we have a zone but no specific temp data
+    if (!plantTypeZoneInfo || plantTypeZoneInfo.noData || !plantTypeZoneInfo.behavior) {
+      if (!plantTypeZoneInfo || plantTypeZoneInfo.noData) {
+        return (
+          <div className="flex items-center gap-3 px-4 py-3 rounded-xl border bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-700">
+            <MapPin className="w-5 h-5 text-blue-600 flex-shrink-0" />
+            <p className="text-sm text-blue-800 dark:text-blue-300">
+              Your zone is <strong>Zone {userZone}</strong>. Detailed hardiness data for this plant coming soon.
+            </p>
+          </div>
+        );
+      }
+      return null;
+    }
     const { behavior, zd } = plantTypeZoneInfo;
     const isPerennial = behavior === 'perennial';
 
@@ -1027,10 +1102,13 @@ export default function PlantCatalogDetail() {
                 <Button
                   variant={showPerennialOnly ? 'default' : 'outline'}
                   onClick={() => { setShowPerennialOnly(p => !p); setCurrentPage(1); }}
+                  title={plantTypeZoneInfo?.noData ? 'Filter by zone hardiness (limited data for this plant)' : ''}
                   className={`gap-2 whitespace-nowrap ${showPerennialOnly ? 'bg-emerald-600 hover:bg-emerald-700 text-white' : ''}`}
                 >
                   <Leaf className="w-4 h-4" />
-                  Perennial in Zone {userZone}
+                  Zone {userZone}
+                  {plantTypeZoneInfo?.behavior === 'perennial' && <span className="text-xs">✓ Perennial</span>}
+                  {plantTypeZoneInfo?.behavior === 'annual' && <span className="text-xs">Annual here</span>}
                 </Button>
               )}
 
