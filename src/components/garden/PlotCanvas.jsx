@@ -751,6 +751,7 @@ export default function PlotCanvas({ garden, plot, activeSeason, seasonId, onPlo
 
     if (clickedItem) {
       setSelectedItem(clickedItem);
+      selectedItemRef.current = clickedItem;
       if (onItemSelect) onItemSelect(clickedItem);
       setDraggingItem(clickedItem);
       setDragStartPos({ x: e.clientX, y: e.clientY });
@@ -791,7 +792,8 @@ export default function PlotCanvas({ garden, plot, activeSeason, seasonId, onPlo
 
   const handleMobileTapItem = useCallback((item) => {
     if (isPinching) return;
-    setSelectedItem(item);
+setSelectedItem(item);
+    selectedItemRef.current = item;
     if (onItemSelect) onItemSelect(item);
   }, [isPinching, onItemSelect]);
 
