@@ -96,7 +96,78 @@ function getTouchDistance(t1, t2) {
 // treating it as a new component type on every render (which caused the
 // Rotate button to require a double-click due to remount disruption).
 // ═══════════════════════════════════════════════════════════════════════════
+function ItemContextMenu({ item, onClose, isMobile, showContextMenu, setShowContextMenu,
+  openEditItem, setShowPlantingModal, handleRotate, handleDeleteItem }) {
+  const itemType = ITEM_TYPES.find(t => t.value === item.item_type);
+  const isPlantable = itemType?.plantable;
+
+  const ContextContent = (
+    <>
+      <DrawerHeader>
+        <DrawerTitle>{item.label}</DrawerTitle>
+        <DrawerDescription>{item.width}" × {item.height}"</DrawerDescription>
+      </DrawerHeader>
+      <div className="px-4 space-y-2 pb-4">
+        <Button variant="outline" className="w-full justify-start gap-2" onClick={() => { openEditItem(item); onClose(); }}>
+          <Edit className="w-4 h-4" />Edit
+        </Button>
+        {isPlantable && (
+          <Button className="w-full justify-start gap-2 bg-emerald-600 hover:bg-emerald-700 text-white h-12 font-semibold"
+            onClick={() => { setShowPlantingModal(true); onClose(); }}>
+            <Sprout className="w-5 h-5" />Plant Seeds
+          </Button>
+        )}
+        <Button variant="outline" className="w-full justify-start gap-2" onClick={() => { handleRotate(); onClose(); }}>
+          <RotateCw className="w-4 h-4" />Rotate
+        </Button>
+        <Button variant="outline" className="w-full justify-start gap-2 text-red-600 hover:text-red-700 hover:bg-red-50"
+          onClick={() => { handleDeleteItem(item); onClose(); }}>
+          <Trash2 className="w-4 h-4" />Delete
+        </Button>
+      </div>
+      <DrawerFooter>
+        <DrawerClose asChild><Button variant="outline">Close</Button></DrawerClose>
+      </DrawerFooter>
+    </>
+  );
+
+  if (isMobile) {
+    return (
+      <Drawer open={showContextMenu} onOpenChange={setShowContextMenu}>
+        <DrawerContent>{ContextContent}</DrawerContent>
+      </Drawer>
+    );
+  }
+  return (
+    <Dialog open={showContextMenu} onOpenChange={setShowContextMenu}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader><DialogTitle>{item.label}</DialogTitle></DialogHeader>
+        <div className="space-y-2">
+          <Button variant="outline" className="w-full justify-start gap-2" onClick={() => { openEditItem(item); onClose(); }}>
+            <Edit className="w-4 h-4" />Edit
+          </Button>
+          {isPlantable && (
+            <Button className="w-full justify-start gap-2 bg-emerald-600 hover:bg-emerald-700 text-white h-12 font-semibold"
+              onClick={() => { setShowPlantingModal(true); onClose(); }}>
+              <Sprout className="w-5 h-5" />Plant Seeds
+            </Button>
+          )}
+          <Button variant="outline" className="w-full justify-start gap-2" onClick={() => { handleRotate(); onClose(); }}>
+            <RotateCw className="w-4 h-4" />Rotate
+          </Button>
+          <Button variant="outline" className="w-full justify-start gap-2 text-red-600 hover:text-red-700 hover:bg-red-50"
+            onClick={() => { handleDeleteItem(item); onClose(); }}>
+            <Trash2 className="w-4 h-4" />Delete
+          </Button>
+        </div>
+        <DialogFooter><Button variant="outline" onClick={onClose}>Close</Button></DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 function MoveButtons({ compact = false, handleMoveItem, selectedItem }) {
+
   const btnClass = compact
     ? "w-8 h-8 p-0 flex items-center justify-center"
     : "w-9 h-9 p-0 flex items-center justify-center";
@@ -935,79 +1006,7 @@ export default function PlotCanvas({ garden, plot, activeSeason, seasonId, onPlo
     return { status: 'partial', label: 'Partial', color: 'amber' };
   };
 
-  // MoveButtons is defined OUTSIDE this component (see below PlotCanvas)
-  // to prevent React from treating it as a new component type on every render,
-  // which was causing the rotate button to require a double-click.
-
-  const ItemContextMenu = ({ item, onClose }) => {
-    const itemType = ITEM_TYPES.find(t => t.value === item.item_type);
-    const isPlantable = itemType?.plantable;
-    
-    const ContextContent = (
-      <>
-        <DrawerHeader>
-          <DrawerTitle>{item.label}</DrawerTitle>
-          <DrawerDescription>{item.width}" × {item.height}"</DrawerDescription>
-        </DrawerHeader>
-        <div className="px-4 space-y-2 pb-4">
-          <Button variant="outline" className="w-full justify-start gap-2" onClick={() => { openEditItem(item); onClose(); }}>
-            <Edit className="w-4 h-4" />Edit
-          </Button>
-          {isPlantable && (
-            <Button className="w-full justify-start gap-2 bg-emerald-600 hover:bg-emerald-700 text-white h-12 font-semibold"
-              onClick={() => { setShowPlantingModal(true); onClose(); }}>
-              <Sprout className="w-5 h-5" />Plant Seeds
-            </Button>
-          )}
-          <Button variant="outline" className="w-full justify-start gap-2" onClick={() => { handleRotate(); onClose(); }}>
-            <RotateCw className="w-4 h-4" />Rotate
-          </Button>
-          <Button variant="outline" className="w-full justify-start gap-2 text-red-600 hover:text-red-700 hover:bg-red-50"
-            onClick={() => { handleDeleteItem(item); onClose(); }}>
-            <Trash2 className="w-4 h-4" />Delete
-          </Button>
-        </div>
-        <DrawerFooter>
-          <DrawerClose asChild><Button variant="outline">Close</Button></DrawerClose>
-        </DrawerFooter>
-      </>
-    );
-    
-    if (isMobile) {
-      return (
-        <Drawer open={showContextMenu} onOpenChange={setShowContextMenu}>
-          <DrawerContent>{ContextContent}</DrawerContent>
-        </Drawer>
-      );
-    }
-    return (
-      <Dialog open={showContextMenu} onOpenChange={setShowContextMenu}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader><DialogTitle>{item.label}</DialogTitle></DialogHeader>
-          <div className="space-y-2">
-            <Button variant="outline" className="w-full justify-start gap-2" onClick={() => { openEditItem(item); onClose(); }}>
-              <Edit className="w-4 h-4" />Edit
-            </Button>
-            {isPlantable && (
-              <Button className="w-full justify-start gap-2 bg-emerald-600 hover:bg-emerald-700 text-white h-12 font-semibold"
-                onClick={() => { setShowPlantingModal(true); onClose(); }}>
-                <Sprout className="w-5 h-5" />Plant Seeds
-              </Button>
-            )}
-            <Button variant="outline" className="w-full justify-start gap-2" onClick={() => { handleRotate(); onClose(); }}>
-              <RotateCw className="w-4 h-4" />Rotate
-            </Button>
-            <Button variant="outline" className="w-full justify-start gap-2 text-red-600 hover:text-red-700 hover:bg-red-50"
-              onClick={() => { handleDeleteItem(item); onClose(); }}>
-              <Trash2 className="w-4 h-4" />Delete
-            </Button>
-          </div>
-          <DialogFooter><Button variant="outline" onClick={onClose}>Close</Button></DialogFooter>
-        </DialogContent>
-      </Dialog>
-    );
-  };
-
+// MoveButtons and ItemContextMenu are defined OUTSIDE this component (above the export)
   return (
     <div className="flex-1 flex flex-col lg:flex-row gap-4 mt-4 min-h-0">
       {/* ═══════════════════════════════════════════
@@ -1284,9 +1283,21 @@ export default function PlotCanvas({ garden, plot, activeSeason, seasonId, onPlo
       )}
 
       {/* Context Menu */}
-      {longPressedItem && (
-        <ItemContextMenu item={longPressedItem} onClose={() => { setShowContextMenu(false); setLongPressedItem(null); }} />
+
+{longPressedItem && (
+        <ItemContextMenu
+          item={longPressedItem}
+          onClose={() => { setShowContextMenu(false); setLongPressedItem(null); }}
+          isMobile={isMobile}
+          showContextMenu={showContextMenu}
+          setShowContextMenu={setShowContextMenu}
+          openEditItem={openEditItem}
+          setShowPlantingModal={setShowPlantingModal}
+          handleRotate={handleRotate}
+          handleDeleteItem={handleDeleteItem}
+        />
       )}
+
 
       {/* ─── Add Item Dialog ─── */}
       <Dialog open={showAddItem} onOpenChange={setShowAddItem}>
