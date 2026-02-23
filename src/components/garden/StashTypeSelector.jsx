@@ -67,7 +67,7 @@ export default function StashTypeSelector({
         base44.entities.SeedLot.filter({ is_wishlist: false, created_by: user.email }),
         base44.entities.PlantProfile.list('variety_name', 500),
         base44.entities.Variety.list('variety_name', 500),
-        base44.entities.PlantType.list('common_name', 100)
+        base44.entities.PlantType.list('common_name', 500)
       ]);
 
       setStashPlants(stashData);
