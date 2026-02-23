@@ -870,9 +870,10 @@ export default function PlotCanvas({ garden, plot, activeSeason, seasonId, onPlo
     }
   };
 
-  const handleRotate = async () => {
-    if (!selectedItem) return;
-    const currentItem = items.find(i => i.id === selectedItem.id) || selectedItem;
+const handleRotate = async () => {
+    const current = selectedItemRef.current;
+    if (!current) return;
+    const currentItem = items.find(i => i.id === current.id) || current;
     const currentRotation = currentItem.rotation || 0;
     const newRotation = (currentRotation + 90) % 360;
     const cx = currentItem.x + currentItem.width / 2;
@@ -892,16 +893,16 @@ export default function PlotCanvas({ garden, plot, activeSeason, seasonId, onPlo
 
     try {
       const updatedItem = { ...currentItem, x: newX, y: newY, width: newWidth, height: newHeight, rotation: newRotation };
-      setItems(prevItems => prevItems.map(i => i.id === selectedItem.id ? updatedItem : i));
+      setItems(prevItems => prevItems.map(i => i.id === current.id ? updatedItem : i));
       setSelectedItem(updatedItem);
-      await base44.entities.PlotItem.update(selectedItem.id, { x: newX, y: newY, width: newWidth, height: newHeight, rotation: newRotation });
+      selectedItemRef.current = updatedItem;
+      await base44.entities.PlotItem.update(current.id, { x: newX, y: newY, width: newWidth, height: newHeight, rotation: newRotation });
       toast.success('Rotated');
     } catch (error) {
       console.error('Error rotating:', error);
       toast.error('Failed to rotate');
     }
   };
-
   const handlePlotSettingsSave = async (newSettings) => {
     try {
       await base44.entities.GardenPlot.update(plot.id, newSettings);
