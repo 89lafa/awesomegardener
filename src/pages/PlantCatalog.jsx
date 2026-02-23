@@ -66,7 +66,11 @@ function getSection(type) {
   // Indoor = plant group sort_order >= 50
   if ((type.plant_group_sort_order ?? 0) >= 50) return 'indoor';
   if (type.category === 'herb') return 'herb';
-  if (type.category === 'flower') return 'flower';
+  if (type.category === 'flower' ||
+      type.category === 'cut_flowers' ||
+      type.category === 'bedding_annuals' ||
+      type.category === 'perennials_bulbs' ||
+      type.category === 'wildflowers_cottage') return 'flower';
   if (type.category === 'other') return 'other';
   // vegetable, fruit, carnivorous, cannabis → garden
   return 'garden';
