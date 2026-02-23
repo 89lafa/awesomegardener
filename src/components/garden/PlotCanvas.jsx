@@ -91,6 +91,54 @@ function getTouchDistance(t1, t2) {
   return Math.sqrt(dx * dx + dy * dy);
 }
 
+// ═══════════════════════════════════════════════════════════════════════════
+// MoveButtons — MUST be defined outside PlotCanvas to prevent React from
+// treating it as a new component type on every render (which caused the
+// Rotate button to require a double-click due to remount disruption).
+// ═══════════════════════════════════════════════════════════════════════════
+function MoveButtons({ compact = false, handleMoveItem, selectedItem }) {
+  const btnClass = compact
+    ? "w-8 h-8 p-0 flex items-center justify-center"
+    : "w-9 h-9 p-0 flex items-center justify-center";
+  const iconSize = compact ? 14 : 16;
+
+  return (
+    <div className="flex flex-col items-center gap-0.5" aria-label="Move selected item">
+      <Button
+        variant="outline" size="icon" className={btnClass}
+        onClick={() => handleMoveItem('up')} disabled={!selectedItem}
+        aria-label="Move item up" title="Move Up (↑)"
+      >
+        <ArrowUp size={iconSize} />
+      </Button>
+      <div className="flex gap-0.5">
+        <Button
+          variant="outline" size="icon" className={btnClass}
+          onClick={() => handleMoveItem('left')} disabled={!selectedItem}
+          aria-label="Move item left" title="Move Left (←)"
+        >
+          <ArrowLeft size={iconSize} />
+        </Button>
+        <div className={compact ? "w-8 h-8" : "w-9 h-9"} />
+        <Button
+          variant="outline" size="icon" className={btnClass}
+          onClick={() => handleMoveItem('right')} disabled={!selectedItem}
+          aria-label="Move item right" title="Move Right (→)"
+        >
+          <ArrowRight size={iconSize} />
+        </Button>
+      </div>
+      <Button
+        variant="outline" size="icon" className={btnClass}
+        onClick={() => handleMoveItem('down')} disabled={!selectedItem}
+        aria-label="Move item down" title="Move Down (↓)"
+      >
+        <ArrowDown size={iconSize} />
+      </Button>
+    </div>
+  );
+}
+
 export default function PlotCanvas({ garden, plot, activeSeason, seasonId, onPlotUpdate, onDeleteGarden, onItemSelect }) {
   const isMobile = useIsMobile();
   const [cropPlans, setCropPlans] = useState([]);
@@ -887,73 +935,9 @@ export default function PlotCanvas({ garden, plot, activeSeason, seasonId, onPlo
     return { status: 'partial', label: 'Partial', color: 'amber' };
   };
 
-  // ═══════════════════════════════════════════════════════════════════════════
-  // Directional Move Buttons — rendered next to Rotate in toolbar
-  // Each press = one grid cell in that direction
-  // aria-label provided for screen reader accessibility
-  // ═══════════════════════════════════════════════════════════════════════════
-  const MoveButtons = ({ compact = false }) => {
-    const btnClass = compact
-      ? "w-8 h-8 p-0 flex items-center justify-center"
-      : "w-9 h-9 p-0 flex items-center justify-center";
-    const iconSize = compact ? 14 : 16;
-
-    return (
-      <div className="flex flex-col items-center gap-0.5" aria-label="Move selected item">
-        {/* Up */}
-        <Button
-          variant="outline"
-          size="icon"
-          className={btnClass}
-          onClick={() => handleMoveItem('up')}
-          disabled={!selectedItem}
-          aria-label="Move item up"
-          title="Move Up (↑)"
-        >
-          <ArrowUp size={iconSize} />
-        </Button>
-        {/* Left / Right row */}
-        <div className="flex gap-0.5">
-          <Button
-            variant="outline"
-            size="icon"
-            className={btnClass}
-            onClick={() => handleMoveItem('left')}
-            disabled={!selectedItem}
-            aria-label="Move item left"
-            title="Move Left (←)"
-          >
-            <ArrowLeft size={iconSize} />
-          </Button>
-          {/* Center placeholder keeps the layout square */}
-          <div className={compact ? "w-8 h-8" : "w-9 h-9"} />
-          <Button
-            variant="outline"
-            size="icon"
-            className={btnClass}
-            onClick={() => handleMoveItem('right')}
-            disabled={!selectedItem}
-            aria-label="Move item right"
-            title="Move Right (→)"
-          >
-            <ArrowRight size={iconSize} />
-          </Button>
-        </div>
-        {/* Down */}
-        <Button
-          variant="outline"
-          size="icon"
-          className={btnClass}
-          onClick={() => handleMoveItem('down')}
-          disabled={!selectedItem}
-          aria-label="Move item down"
-          title="Move Down (↓)"
-        >
-          <ArrowDown size={iconSize} />
-        </Button>
-      </div>
-    );
-  };
+  // MoveButtons is defined OUTSIDE this component (see below PlotCanvas)
+  // to prevent React from treating it as a new component type on every render,
+  // which was causing the rotate button to require a double-click.
 
   const ItemContextMenu = ({ item, onClose }) => {
     const itemType = ITEM_TYPES.find(t => t.value === item.item_type);
@@ -1104,7 +1088,7 @@ export default function PlotCanvas({ garden, plot, activeSeason, seasonId, onPlo
                     <p className="text-[10px] text-gray-400 text-center">rotate 90°</p>
                   </div>
                   <div className="flex flex-col items-center gap-0.5">
-                    <MoveButtons />
+                    <MoveButtons handleMoveItem={handleMoveItem} selectedItem={selectedItem} />
                     <p className="text-[10px] text-gray-400 mt-0.5">move</p>
                   </div>
                 </div>
@@ -1293,7 +1277,7 @@ export default function PlotCanvas({ garden, plot, activeSeason, seasonId, onPlo
             </div>
             {/* Directional move buttons (compact) */}
             <div className="border-l pl-2 flex-shrink-0">
-              <MoveButtons compact />
+              <MoveButtons compact handleMoveItem={handleMoveItem} selectedItem={selectedItem} />
             </div>
           </div>
         </div>
