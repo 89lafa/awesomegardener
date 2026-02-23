@@ -26,8 +26,9 @@ export default function CatalogTypeSelector({
   const [creating, setCreating] = useState(false);
 
   // ─── When user picks a type, load ALL varieties for that type ─────────────
-  // This completely bypasses the global 500-variety ceiling and the old
-  // .slice(0, 150) limiter — users now see every variety in the database.
+  // Uses smartQuery with a high limit (9999) to bypass the default 100-record
+  // page cap. Also gets the 30-minute cache benefit from smartQuery's TTL map,
+  // so repeat visits to the same type are instant.
   useEffect(() => {
     if (!selectedType) {
       setTypeVarieties([]);
@@ -39,10 +40,13 @@ export default function CatalogTypeSelector({
     const fetchVarieties = async () => {
       setTypeVarietiesLoading(true);
       try {
-        // Filter server-side by plant_type_id so we only pay for what we need
-        const data = await base44.entities.Variety.filter(
+        const { smartQuery } = await import('@/components/utils/smartQuery');
+        const data = await smartQuery(
+          base44,
+          'Variety',
           { plant_type_id: selectedType.id },
-          'variety_name'
+          'variety_name',
+          9999   // ← fetch every variety for this type, no ceiling
         );
         if (!cancelled) setTypeVarieties(data || []);
       } catch (err) {
