@@ -109,7 +109,61 @@ function parseZoneLabel(zoneStr) {
 // Keyed by plant_type_code OR derived "PT_" + COMMON_NAME_UPPERCASED
 // is_perennial_species: true = survives as perennial IF temp_min_f <= zone min
 const PLANT_TYPE_ZONE_MAP = {
-  // Vegetables — shown for completeness, filter mainly targets flowers
+ // Vegetables — annuals (frost-killed, filtered out in any zone)
+  PT_TOMATO:        { temp_min_f: 32,  is_perennial_species: false },
+  PT_PEPPER:        { temp_min_f: 32,  is_perennial_species: false },
+  PT_EGGPLANT:      { temp_min_f: 32,  is_perennial_species: false },
+  PT_CUCUMBER:      { temp_min_f: 32,  is_perennial_species: false },
+  PT_ZUCCHINI:      { temp_min_f: 32,  is_perennial_species: false },
+  PT_SQUASH:        { temp_min_f: 32,  is_perennial_species: false },
+  PT_SUMMER_SQUASH: { temp_min_f: 32,  is_perennial_species: false },
+  PT_WINTER_SQUASH: { temp_min_f: 32,  is_perennial_species: false },
+  PT_PUMPKIN:       { temp_min_f: 32,  is_perennial_species: false },
+  PT_BEAN:          { temp_min_f: 32,  is_perennial_species: false },
+  PT_CORN:          { temp_min_f: 32,  is_perennial_species: false },
+  PT_SWEET_CORN:    { temp_min_f: 32,  is_perennial_species: false },
+  PT_POTATO:        { temp_min_f: 32,  is_perennial_species: false },
+  PT_SWEET_POTATO:  { temp_min_f: 32,  is_perennial_species: false },
+  PT_OKRA:          { temp_min_f: 32,  is_perennial_species: false },
+  PT_TOMATILLO:     { temp_min_f: 32,  is_perennial_species: false },
+  PT_GROUNDCHERRY:  { temp_min_f: 32,  is_perennial_species: false },
+  PT_WATERMELON:    { temp_min_f: 32,  is_perennial_species: false },
+  PT_CANTALOUPE:    { temp_min_f: 32,  is_perennial_species: false },
+  PT_BASIL:         { temp_min_f: 32,  is_perennial_species: false },
+  PT_LETTUCE:       { temp_min_f: 28,  is_perennial_species: false },
+  PT_SPINACH:       { temp_min_f: 20,  is_perennial_species: false },
+  PT_CABBAGE:       { temp_min_f: 20,  is_perennial_species: false },
+  PT_BROCCOLI:      { temp_min_f: 25,  is_perennial_species: false },
+  PT_CAULIFLOWER:   { temp_min_f: 28,  is_perennial_species: false },
+  PT_BRUSSELS:      { temp_min_f: 15,  is_perennial_species: false },
+  PT_KALE:          { temp_min_f: 10,  is_perennial_species: false },
+  PT_CARROT:        { temp_min_f: 15,  is_perennial_species: false },
+  PT_RADISH:        { temp_min_f: 28,  is_perennial_species: false },
+  PT_BEET:          { temp_min_f: 25,  is_perennial_species: false },
+  PT_TURNIP:        { temp_min_f: 20,  is_perennial_species: false },
+  PT_PARSNIP:       { temp_min_f: 10,  is_perennial_species: false },
+  PT_ONION:         { temp_min_f: 20,  is_perennial_species: false },
+  PT_LEEK:          { temp_min_f: 10,  is_perennial_species: false },
+  PT_SCALLION:      { temp_min_f: 20,  is_perennial_species: false },
+  PT_CELERY:        { temp_min_f: 28,  is_perennial_species: false },
+  PT_BOK_CHOY:      { temp_min_f: 25,  is_perennial_species: false },
+  PT_COLLARD_GREENS:{ temp_min_f: 15,  is_perennial_species: false },
+  PT_SWISS_CHARD:   { temp_min_f: 25,  is_perennial_species: false },
+  PT_ARUGULA:       { temp_min_f: 20,  is_perennial_species: false },
+  PT_MUSTARD_GREENS:{ temp_min_f: 20,  is_perennial_species: false },
+  PT_MUSTARD_ARUGULA:{ temp_min_f: 20, is_perennial_species: false },
+  PT_KOHLRABI:      { temp_min_f: 20,  is_perennial_species: false },
+  PT_RUTABAGA:      { temp_min_f: 15,  is_perennial_species: false },
+  PT_PEA:           { temp_min_f: 20,  is_perennial_species: false },
+  PT_CILANTRO:      { temp_min_f: 20,  is_perennial_species: false },
+  PT_DILL:          { temp_min_f: 25,  is_perennial_species: false },
+  PT_PARSLEY:       { temp_min_f: 10,  is_perennial_species: false },
+  PT_FENNEL:        { temp_min_f: 15,  is_perennial_species: false },
+  PT_SUNFLOWER:     { temp_min_f: 32,  is_perennial_species: false },
+  PT_CALENDULA:     { temp_min_f: 20,  is_perennial_species: false },
+  PT_BORAGE:        { temp_min_f: 25,  is_perennial_species: false },
+  PT_NASTURTIUM:    { temp_min_f: 32,  is_perennial_species: false },
+  // Vegetables — perennials (survive winter in right zone)
   PT_ASPARAGUS:     { temp_min_f: -40, is_perennial_species: true },
   PT_RHUBARB:       { temp_min_f: -40, is_perennial_species: true },
   PT_ARTICHOKE:     { temp_min_f:  15, is_perennial_species: true },
@@ -353,7 +407,7 @@ useEffect(() => {
     }).filter(type => {
       if (!showPerennialOnly || !userZoneMinTemp || type._is_browse_only) return true;
       const zoneInfo = getPlantTypeZoneInfo(type, userZoneMinTemp);
-      if (!zoneInfo) return true;
+      if (!zoneInfo) return false;
       return zoneInfo.isPerennial;
     }).sort((a, b) => {
       // 1. Browse categories always first
