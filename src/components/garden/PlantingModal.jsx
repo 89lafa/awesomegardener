@@ -80,12 +80,9 @@ export default function PlantingModal({
   const gridRows = isSlotBased ? Math.ceil(metadata.capacity / gridCols) : Math.floor(item.height / 12);
   const plantingPattern = item.metadata?.planting_pattern || 'square_foot';
 
-  // Responsive cell size on mobile — fits grid to screen width
-  // Account for ~80px of padding/arrows/margins
-  const CELL_SIZE = isMobile 
-    ? Math.max(20, Math.min(44, Math.floor((window.innerWidth - 80) / Math.max(gridCols, 1))))
-    : 40;
-  const ARROW_SIZE = isMobile ? Math.min(28, CELL_SIZE) : 24;
+  // Cell size: slightly larger on mobile for better touch targets
+  const CELL_SIZE = isMobile ? 44 : 40;
+  const ARROW_SIZE = isMobile ? 28 : 24;
 
   useEffect(() => {
      if (open && item) {
@@ -154,10 +151,12 @@ export default function PlantingModal({
 
       console.log('[PlantingModal] No shared data, loading all data...');
       
+      const { smartQuery: sq } = await import('@/components/utils/smartQuery');
+      
       const [allPlantings, stashData, varietiesData, typesData, rulesData] = await Promise.all([
         base44.entities.PlantInstance.filter({ bed_id: item.id }),
         base44.entities.SeedLot.filter({ is_wishlist: false, created_by: user.email }),
-        base44.entities.Variety.list('variety_name', 500),
+        sq(base44, 'Variety', {}, 'variety_name'),
         base44.entities.PlantType.list('common_name', 100),
         base44.entities.PlantingRule.list()
       ]);
@@ -204,29 +203,16 @@ export default function PlantingModal({
     }
   };
 
- const getSpacingForPlant = (plantTypeId, varietySpacing) => {
+  const getSpacingForPlant = (plantTypeId, varietySpacing) => {
     const containerType = itemType || item.item_type;
-    
-    // 1) Exact match: plant_type_id + container_type
     const rule = plantingRules.find(r => 
       r.plant_type_id === plantTypeId && 
       r.container_type === containerType
     );
     
     if (rule) {
-      console.log(`[PlantingRule] ✓ Found rule for ${plantTypeId} in ${containerType}: ${rule.grid_cols}×${rule.grid_rows}, ${rule.plants_per_grid_slot} plants/slot`);
-      return { cols: rule.grid_cols, rows: rule.grid_rows, plantsPerSlot: rule.plants_per_grid_slot || 1 };
+      return { cols: rule.grid_cols, rows: rule.grid_rows, plantsPerSlot: rule.plants_per_grid_slot };
     }
-    
-    // 2) Fallback: any rule for this plant type (user may not have set up this container type yet)
-    const anyRule = plantingRules.find(r => r.plant_type_id === plantTypeId);
-    if (anyRule) {
-      console.log(`[PlantingRule] ⚠ No rule for ${containerType}, using ${anyRule.container_type} fallback: ${anyRule.grid_cols}×${anyRule.grid_rows}, ${anyRule.plants_per_grid_slot} plants/slot`);
-      return { cols: anyRule.grid_cols, rows: anyRule.grid_rows, plantsPerSlot: anyRule.plants_per_grid_slot || 1 };
-    }
-    
-    // 3) No rules at all — use spacing-based calculation
-    console.log(`[PlantingRule] ✗ No rules for plant ${plantTypeId}. Loaded rules: ${plantingRules.length}. Using spacing fallback.`);
     
     const method = garden.planting_method || 'STANDARD';
     
@@ -235,25 +221,14 @@ export default function PlantingModal({
       if (spacing >= 18) return { cols: 2, rows: 2, plantsPerSlot: 1 };
       return { cols: 1, rows: 1, plantsPerSlot: 1 };
     } else {
-      // Changed default from 24 to 12 so unknown plants = 1×1, not 2×2
-      const spacing = varietySpacing || 12;
-      const cells = Math.max(1, Math.ceil(spacing / 12));
+      const spacing = varietySpacing || 24;
+      const cells = Math.ceil(spacing / 12);
       return { cols: cells, rows: cells, plantsPerSlot: 1 };
     }
   };
-// Look up plants-per-slot for a planting from the rules (no schema change needed)
-  const getPlantsPerSlot = (planting) => {
-    if (!planting?.plant_type_id) return 1;
-    const containerType = itemType || item.item_type;
-    const rule = plantingRules.find(r => 
-      r.plant_type_id === planting.plant_type_id && 
-      r.container_type === containerType
-    ) || plantingRules.find(r => r.plant_type_id === planting.plant_type_id);
-    return rule?.plants_per_grid_slot || 1;
-  };
 
   // ===========================================================
-  // Collision detection — accepts a plantings list for bulk use
+  // Collision detection â€” accepts a plantings list for bulk use
   // ===========================================================
   const checkCollisionWithList = (col, row, spanCols, spanRows, plantingsList, excludeId = null) => {
     const isContainer = item.item_type === 'GROW_BAG' || item.item_type === 'CONTAINER';
@@ -280,7 +255,7 @@ export default function PlantingModal({
   };
 
   // ===========================================================
-  // BULK PLANTING — core function that places multiple plants
+  // BULK PLANTING â€” core function that places multiple plants
   // ===========================================================
   const handleBulkPlant = async (positions) => {
     if (!selectedPlant || positions.length === 0) return;
@@ -299,7 +274,7 @@ export default function PlantingModal({
       ? `${selectedPlant.plant_type_name} - ${selectedPlant.variety_name}`
       : selectedPlant.variety_name;
     const plantType = plantTypes.find(t => t.id === selectedPlant.plant_type_id || t.common_name === selectedPlant.plant_type_name);
-    const icon = plantType?.icon || '🌱';
+    const icon = plantType?.icon || 'ðŸŒ±';
     const plantFamily = plantType?.plant_family_id || selectedPlant.plant_family;
     
     const newPlantings = [];
@@ -313,7 +288,7 @@ export default function PlantingModal({
         continue;
       }
       
-try {
+      try {
         const seedlingData = selectedPlant.seedling_source_id ? {
           growing_method: 'SEEDLING_TRANSPLANT',
           seedling_source_id: selectedPlant.seedling_source_id,
@@ -322,13 +297,6 @@ try {
           seedling_location: selectedPlant.seedling_location,
           actual_transplant_date: new Date().toISOString().split('T')[0]
         } : {};
-
-        console.log('═══════════════════════════════════════');
-        console.log('[PLANTING DEBUG] About to create PlantInstance');
-        console.log('selectedPlant.plantsPerSlot:', selectedPlant.plantsPerSlot);
-        console.log('selectedPlant object:', selectedPlant);
-        console.log('Will save plants_per_slot as:', selectedPlant.plantsPerSlot || 1);
-        console.log('═══════════════════════════════════════');
 
         const planting = await base44.entities.PlantInstance.create({
           garden_id: garden.id,
@@ -346,17 +314,10 @@ try {
           cell_row: row,
           cell_span_cols: spanCols,
           cell_span_rows: spanRows,
-          plants_per_slot: selectedPlant.plantsPerSlot || 1,
           season_year: activeSeason || `${new Date().getFullYear()}-Spring`,
           status: 'planned',
           ...seedlingData
         });
-        
-        console.log('═══════════════════════════════════════');
-        console.log('[PLANTING DEBUG] Created PlantInstance');
-        console.log('Returned record plants_per_slot:', planting.plants_per_slot);
-        console.log('Full planting object:', planting);
-        console.log('═══════════════════════════════════════');
         
         localPlantings.push(planting);
         newPlantings.push(planting);
@@ -474,7 +435,7 @@ try {
         ? `${selectedPlant.plant_type_name} - ${selectedPlant.variety_name}`
         : selectedPlant.variety_name;
       const plantType = plantTypes.find(t => t.id === selectedPlant.plant_type_id || t.common_name === selectedPlant.plant_type_name);
-      const icon = plantType?.icon || '🌱';
+      const icon = plantType?.icon || 'ðŸŒ±';
       const plantFamily = plantType?.plant_family_id || selectedPlant.plant_family;
 
       const seedlingData = selectedPlant.seedling_source_id ? {
@@ -500,7 +461,6 @@ try {
         cell_row: 0,
         cell_span_cols: 1,
         cell_span_rows: 1,
-        plants_per_slot: selectedPlant.plantsPerSlot || 1,
         season_year: activeSeason || `${new Date().getFullYear()}-Spring`,
         status: 'planned',
         ...seedlingData
@@ -592,7 +552,7 @@ try {
           ? `${selectedPlant.plant_type_name} - ${selectedPlant.variety_name}`
           : selectedPlant.variety_name;
         const plantType = plantTypes.find(t => t.id === selectedPlant.plant_type_id || t.common_name === selectedPlant.plant_type_name);
-        const icon = plantType?.icon || '🌱';
+        const icon = plantType?.icon || 'ðŸŒ±';
         const plantFamily = plantType?.plant_family_id || selectedPlant.plant_family;
 
         const seedlingData = selectedPlant.seedling_source_id ? {
@@ -620,7 +580,6 @@ try {
           cell_row: row,
           cell_span_cols: selectedPlant.spacing_cols,
           cell_span_rows: selectedPlant.spacing_rows,
-          plants_per_slot: selectedPlant.plantsPerSlot || 1,
           season_year: activeSeason || `${new Date().getFullYear()}-Spring`,
           status: 'planned',
           ...seedlingData
@@ -756,7 +715,7 @@ try {
         const badRule = companionRules.find(r => r.companion_type === 'BAD' && r.companion_plant_type_id === existing.plant_type_id);
         if (badRule) {
           hasCompanionIssue = true;
-          setCompanionWarning(`⚠️ ${plantData.plant_type_name} should not be planted near ${existing.display_name}`);
+          setCompanionWarning(`âš ï¸ ${plantData.plant_type_name} should not be planted near ${existing.display_name}`);
           break;
         }
       }
@@ -772,7 +731,7 @@ try {
       );
       
       if (lastYearPlantings.length > 0) {
-        setRotationWarning(`⚠️ Rotation: ${plantData.plant_family} family was grown here last season`);
+        setRotationWarning(`âš ï¸ Rotation: ${plantData.plant_family} family was grown here last season`);
       } else {
         setRotationWarning(null);
       }
@@ -904,8 +863,8 @@ try {
           <div className="flex-1 min-w-0">
             <DialogTitle className="text-base lg:text-lg truncate">Plant in {item.label}</DialogTitle>
             <p className="text-xs lg:text-sm text-gray-600 mt-0.5">
-              {gridCols}×{gridRows} grid • {plantings.length} planted
-              {plantingPattern === 'diagonal' && ' • Diagonal'}
+              {gridCols}Ã—{gridRows} grid â€¢ {plantings.length} planted
+              {plantingPattern === 'diagonal' && ' â€¢ Diagonal'}
             </p>
           </div>
           <div className="flex items-center gap-2 flex-shrink-0 ml-2">
@@ -914,7 +873,7 @@ try {
                 onClick={handleDone}
                 className="bg-emerald-600 hover:bg-emerald-700 text-white h-9 lg:h-11 px-4 lg:px-8 text-sm lg:text-base font-semibold"
               >
-                ✓ Done
+                âœ“ Done
               </Button>
             )}
           </div>
@@ -957,8 +916,8 @@ try {
               >
                 <span className="text-sm font-semibold text-gray-700">
                   {selectedPlant 
-                    ? `🌱 ${selectedPlant.variety_name} (${selectedPlant.spacing_cols}×${selectedPlant.spacing_rows})`
-                    : '🌱 Select a plant to place'
+                    ? `ðŸŒ± ${selectedPlant.variety_name} (${selectedPlant.spacing_cols}Ã—${selectedPlant.spacing_rows})`
+                    : 'ðŸŒ± Select a plant to place'
                   }
                 </span>
                 <ChevronDown className={cn("w-4 h-4 text-gray-500 transition-transform", pickerCollapsed && "-rotate-90")} />
@@ -988,16 +947,8 @@ try {
                 <TabsContent value="stash" className="mt-2 flex-1 min-h-0 overflow-auto p-2 lg:p-0">
                   <StashTypeSelector
                     onSelect={(plantData) => {
-                      // Re-apply PlantingRule lookup to override StashTypeSelector's spacing
-                      const spacing = getSpacingForPlant(plantData.plant_type_id, plantData.varietySpacing);
-                      const corrected = {
-                        ...plantData,
-                        spacing_cols: spacing.cols,
-                        spacing_rows: spacing.rows,
-                        plantsPerSlot: spacing.plantsPerSlot || 1
-                      };
-                      setSelectedPlant(corrected);
-                      checkCompanionAndRotation(corrected);
+                      setSelectedPlant(plantData);
+                      checkCompanionAndRotation(plantData);
                       if (isMobile) setPickerCollapsed(true);
                     }}
                     selectedPlant={selectedPlant}
@@ -1024,7 +975,7 @@ try {
                           <button
                             key={plan.id}
                             onClick={() => {
-                              const spacing = getSpacingForPlant(plan.plant_type_id) || getDefaultSpacing(plantType?.common_name || plan.label);
+                              const spacing = getDefaultSpacing(plantType?.common_name || plan.label);
                               const plantData = {
                                 crop_plan_id: plan.id,
                                 variety_id: plan.variety_id,
@@ -1065,8 +1016,8 @@ try {
                     <div className="p-3 bg-emerald-50 rounded-lg border border-emerald-200">
                       <p className="text-xs text-emerald-600 mb-1">Selected:</p>
                       <p className="font-medium text-sm text-emerald-900">{selectedPlant.display_name}</p>
-                      <p className="text-xs text-emerald-700 mt-1">📍 {selectedPlant.seedling_location}</p>
-                      <p className="text-xs text-emerald-700">📅 Age: {selectedPlant.seedling_age_days}d</p>
+                      <p className="text-xs text-emerald-700 mt-1">ðŸ“ {selectedPlant.seedling_location}</p>
+                      <p className="text-xs text-emerald-700">ðŸ“… Age: {selectedPlant.seedling_age_days}d</p>
                     </div>
                   )}
                 </TabsContent>
@@ -1074,15 +1025,8 @@ try {
                 <TabsContent value="new" className="mt-2 flex-1 overflow-auto p-2 lg:p-0">
                   <CatalogTypeSelector
                     onSelect={(plantData) => {
-                      const spacing = getSpacingForPlant(plantData.plant_type_id, plantData.varietySpacing);
-                      const corrected = {
-                        ...plantData,
-                        spacing_cols: spacing.cols,
-                        spacing_rows: spacing.rows,
-                        plantsPerSlot: spacing.plantsPerSlot || 1
-                      };
-                      setSelectedPlant(corrected);
-                      checkCompanionAndRotation(corrected);
+                      setSelectedPlant(plantData);
+                      checkCompanionAndRotation(plantData);
                       if (isMobile) setPickerCollapsed(true);
                     }}
                     selectedPlant={selectedPlant}
@@ -1102,7 +1046,7 @@ try {
                   <p className="text-sm font-medium text-emerald-900">Selected:</p>
                   <p className="text-sm text-emerald-700 truncate">{selectedPlant.variety_name}</p>
                   <p className="text-xs text-emerald-600 mt-1">
-                    Takes {selectedPlant.spacing_cols}×{selectedPlant.spacing_rows} cells
+                    Takes {selectedPlant.spacing_cols}Ã—{selectedPlant.spacing_rows} cells
                     {selectedPlant.plantsPerSlot > 1 && ` (${selectedPlant.plantsPerSlot} plants)`}
                   </p>
                   <Button
@@ -1139,7 +1083,7 @@ try {
               }
             }}
           >
-            {/* BULK FILL TOOLBAR — shows when a plant is selected */}
+            {/* BULK FILL TOOLBAR â€” shows when a plant is selected */}
             {selectedPlant && !isSlotBased && plantingPattern !== 'diagonal' && (
               <div className="flex flex-wrap items-center gap-2 mb-3 p-2 bg-emerald-50 border border-emerald-200 rounded-lg">
                 <span className="text-xs font-semibold text-emerald-800">Quick Fill:</span>
@@ -1154,7 +1098,7 @@ try {
                   Fill All ({countEmptyCells()})
                 </Button>
                 <p className="text-[10px] text-emerald-600 w-full">
-                  Or click ↓ arrows above columns / → arrows left of rows to fill one at a time
+                  Or click â†“ arrows above columns / â†’ arrows left of rows to fill one at a time
                 </p>
               </div>
             )}
@@ -1185,7 +1129,7 @@ try {
                       )}
                       title={planting ? planting.display_name : `Slot ${slotIdx + 1}`}
                     >
-                      {planting && <span>{planting.plant_type_icon || '🌱'}</span>}
+                      {planting && <span>{planting.plant_type_icon || 'ðŸŒ±'}</span>}
                       {selectedPlanting?.id === planting?.id && planting && (
                         <div className="absolute -bottom-16 left-1/2 -translate-x-1/2 flex gap-1 z-10 bg-white rounded-lg shadow-lg p-1">
                           <Button size="sm" variant="destructive" onClick={(e) => { e.stopPropagation(); handleDeletePlanting(planting); setSelectedPlanting(null); }}>
@@ -1217,11 +1161,11 @@ try {
                 ) : (
                   /* ====================================================
                      GRID WITH BULK FILL ARROWS
-                     Column arrows on top (↓), Row arrows on left (→)
+                     Column arrows on top (â†“), Row arrows on left (â†’)
                      ==================================================== */
                   <div className="inline-flex grid-container">
-                    {/* Row arrows column (left side) — offset for grid padding (p-4=16px) + border (2px) */}
-                    <div className="flex flex-col gap-1 mr-1" style={{ paddingTop: selectedPlant ? `${ARROW_SIZE + 4 + 16 + 2}px` : `${16 + 2}px` }}>
+                    {/* Row arrows column (left side) */}
+                    <div className="flex flex-col gap-1 mr-1" style={{ paddingTop: selectedPlant ? `${ARROW_SIZE + 4}px` : '0px' }}>
                       {Array.from({ length: gridRows }).map((_, rowIdx) => (
                         <button
                           key={`row-${rowIdx}`}
@@ -1242,9 +1186,9 @@ try {
                     </div>
                     
                     <div>
-                      {/* Column arrows row (top) — offset for grid padding (p-4=16px) + border (2px) */}
+                      {/* Column arrows row (top) */}
                       {selectedPlant && (
-                        <div className="flex gap-1 mb-1" style={{ paddingLeft: '18px' }}>
+                        <div className="flex gap-1 mb-1">
                           {Array.from({ length: gridCols }).map((_, colIdx) => (
                             <button
                               key={`col-${colIdx}`}
@@ -1286,7 +1230,7 @@ try {
                               const hasConditional = companionBorders.includes('GOOD_CONDITIONAL');
 
                               const borderColor = hasBad ? 'border-red-500' : 
-                                                 hasGood ? 'border-yellow-500' : 
+                                                 hasGood ? 'border-green-500' : 
                                                  hasConditional ? 'border-amber-500' : 'border-emerald-600';
 
                               return (
@@ -1303,13 +1247,7 @@ try {
                                     else { setSelectedPlanting(p); setSelectedPlant(null); }
                                   }}
                                 >
-                                  <span className="text-xl lg:text-2xl">{p.plant_type_icon || '🌱'}</span>
-                                  {/* ×N badge — computed from PlantingRule, no schema change */}
-                                  {getPlantsPerSlot(p) > 1 && (
-                                    <span className="absolute bottom-0 right-0 bg-white text-emerald-700 text-[9px] font-bold px-1 rounded-tl-md rounded-br shadow leading-tight">
-                                      ×{getPlantsPerSlot(p)}
-                                    </span>
-                                  )}
+                                  <span className="text-xl lg:text-2xl">{p.plant_type_icon || 'ðŸŒ±'}</span>
                                   {selectedPlanting?.id === p.id && (
                                     <div className="absolute -bottom-12 left-0 right-0 flex gap-1 z-10">
                                       <Button size="sm" variant="secondary" onClick={(e) => { e.stopPropagation(); setIsMoving(true); }} className="flex-1">
@@ -1362,7 +1300,7 @@ try {
             {/* Companion Analysis */}
             {companionResults.length > 0 && (
               <div className="mt-4 p-4 bg-gray-50 rounded-lg border">
-                <h4 className="font-semibold text-sm mb-2">🌱 Companion Planting</h4>
+                <h4 className="font-semibold text-sm mb-2">ðŸŒ± Companion Planting</h4>
                 <div className="space-y-2">
                   {companionResults.map((result, idx) => (
                     <div 
@@ -1377,7 +1315,7 @@ try {
                         result.type === 'GOOD' ? 'text-green-800' : result.type === 'BAD' ? 'text-red-800' : 'text-amber-800'
                       }`}>
                         {result.plantA} + {result.plantB}: {
-                          result.type === 'GOOD' ? '✓ Good' : result.type === 'BAD' ? '✗ Bad' : '⚠ Conditional'
+                          result.type === 'GOOD' ? 'âœ“ Good' : result.type === 'BAD' ? 'âœ— Bad' : 'âš  Conditional'
                         }
                       </p>
                       {result.notes && <p className="text-gray-600 mt-1">{result.notes}</p>}
@@ -1395,7 +1333,7 @@ try {
             <div className="flex items-center justify-between gap-2">
               <div className="flex-1 min-w-0">
                 <p className="text-xs font-medium text-emerald-900 truncate">{selectedPlant.variety_name}</p>
-                <p className="text-[10px] text-emerald-600">{selectedPlant.spacing_cols}×{selectedPlant.spacing_rows}</p>
+                <p className="text-[10px] text-emerald-600">{selectedPlant.spacing_cols}Ã—{selectedPlant.spacing_rows}</p>
               </div>
               <Button
                 size="icon" variant="ghost"
@@ -1418,7 +1356,7 @@ try {
               onClick={handleDone}
               className="w-full bg-emerald-600 hover:bg-emerald-700 text-white h-11 text-base font-semibold"
             >
-              ✓ Done
+              âœ“ Done
             </Button>
           </DialogFooter>
         )}
