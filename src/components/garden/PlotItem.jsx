@@ -137,17 +137,15 @@ const PlotItem = React.memo(({
           ))}
         </svg>
       )}
-      <div className="absolute inset-0 flex items-center justify-center pointer-events-none"
-        style={{ transform: `rotate(${item.rotation}deg)`, transformOrigin: 'center' }}>
+<div className="absolute inset-0 flex items-center justify-center pointer-events-none">
         <span className={cn(
           "text-white text-shadow font-semibold plot-item-label text-center leading-tight",
           isMobile && renderedW < 60 && "text-[9px]",
           isMobile && renderedW >= 60 && renderedW < 100 && "text-[11px]"
-        )} style={{ transform: `rotate(${-item.rotation}deg)`, display: 'inline-block', maxWidth: '90%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+        )} style={{ display: 'inline-block', maxWidth: '90%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
           {item.label}
         </span>
-      </div>
-    </div>
+      </div>    </div>
   );
 });
 
