@@ -235,7 +235,7 @@ const PLANT_TYPE_ZONE_MAP = {
 
 // Returns zone info for a plant type, matching by code then by derived name key
 function getPlantTypeZoneInfo(plantType, zoneMinTemp) {
-  if (!zoneMinTemp || !plantType) return null;
+  if (zoneMinTemp === null || zoneMinTemp === undefined || !plantType) return null;
   let zd = null;
   // 1. Try plant_type_code directly
   if (plantType.plant_type_code) {
@@ -307,9 +307,11 @@ useEffect(() => {
       const userData = await base44.auth.me();
       const zone = userData?.usda_zone_override || userData?.usda_zone;
       if (zone) {
+        const minTemp = getZoneMinTemp(zone);
         setUserZone(parseZoneLabel(zone));
-        setUserZoneMinTemp(getZoneMinTemp(zone));
+        setUserZoneMinTemp(minTemp !== null ? minTemp : null);
       }
+
     } catch (e) {
       console.error('[PlantCatalog] zone load error:', e);
     }
@@ -405,7 +407,7 @@ useEffect(() => {
 
 
     }).filter(type => {
-      if (!showPerennialOnly || !userZoneMinTemp || type._is_browse_only) return true;
+      if (!showPerennialOnly || userZoneMinTemp === null || userZoneMinTemp === undefined || type._is_browse_only) return true;
       const zoneInfo = getPlantTypeZoneInfo(type, userZoneMinTemp);
       if (!zoneInfo) return false;
       return zoneInfo.isPerennial;
