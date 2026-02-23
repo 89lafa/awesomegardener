@@ -144,8 +144,17 @@ export default function GrowLists() {
       const typesData = await getPlantTypesCached(() => 
         base44.entities.PlantType.list('common_name', 500)
       );
-      
-      setGrowLists(listsData);
+            // Backfill missing IDs on items created before id field existed
+      const fixedLists = await Promise.all(listsData.map(async (list) => {
+        const needsFix = list.items?.some(item => !item.id);
+        if (!needsFix) return list;
+        const fixedItems = list.items.map((item, idx) =>
+          item.id ? item : { ...item, id: `${Date.now()}_${idx}_${Math.random()}` }
+        );
+        await base44.entities.GrowList.update(list.id, { items: fixedItems });
+        return { ...list, items: fixedItems };
+      }));
+      setGrowLists(fixedLists);
       setGardens(gardensData);
       setSeeds(seedsData);
       setPlantTypes(typesData);
@@ -266,8 +275,12 @@ export default function GrowLists() {
     }
   };
 
-  const handleRemoveItem = async (itemId) => {
+const handleRemoveItem = async (itemId) => {
     if (!selectedList) return;
+    if (itemId === undefined || itemId === null) {
+      toast.error('Cannot remove item: missing ID. Please refresh and try again.');
+      return;
+    }
     try {
       const updatedItems = selectedList.items.filter(i => i.id !== itemId);
       await base44.entities.GrowList.update(selectedList.id, { items: updatedItems });
