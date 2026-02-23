@@ -4,7 +4,7 @@ import { createPageUrl } from '@/utils';
 import { base44 } from '@/api/base44Client';
 import { 
   Search, Sprout, Plus, ChevronRight, Loader2,
-  Grid3x3, List, Sparkles
+  Grid3x3, List, Sparkles, MapPin, Leaf
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -86,6 +86,129 @@ const POPULAR_TYPES = [
   'Zucchini', 'Carrot', 'Radish', 'Onion', 'Garlic', 'Basil', 'Cilantro', 'Parsley',
 ];
 
+// ─── Zone utilities (mirrors PlantCatalogDetail) ───────────
+function getZoneMinTemp(zoneStr) {
+  if (!zoneStr) return null;
+  const match = String(zoneStr).match(/(\d+)\s*([ab])?/i);
+  if (!match) return null;
+  const num = parseInt(match[1]);
+  const sub = (match[2] || 'a').toLowerCase();
+  return (num - 1) * 10 - 60 + (sub === 'b' ? 5 : 0);
+}
+
+function parseZoneLabel(zoneStr) {
+  if (!zoneStr) return null;
+  const match = String(zoneStr).match(/(\d+\s*[ab]?)/i);
+  return match ? match[1].replace(/\s+/, '').toLowerCase() : zoneStr;
+}
+
+// Keyed by plant_type_code OR derived "PT_" + COMMON_NAME_UPPERCASED
+// is_perennial_species: true = survives as perennial IF temp_min_f <= zone min
+const PLANT_TYPE_ZONE_MAP = {
+  // Vegetables — shown for completeness, filter mainly targets flowers
+  PT_ASPARAGUS:     { temp_min_f: -40, is_perennial_species: true },
+  PT_RHUBARB:       { temp_min_f: -40, is_perennial_species: true },
+  PT_ARTICHOKE:     { temp_min_f:  15, is_perennial_species: true },
+  PT_CHIVES:        { temp_min_f: -40, is_perennial_species: true },
+  PT_GARLIC:        { temp_min_f: -20, is_perennial_species: true },
+  PT_MINT:          { temp_min_f: -30, is_perennial_species: true },
+  PT_OREGANO:       { temp_min_f: -10, is_perennial_species: true },
+  PT_THYME:         { temp_min_f: -30, is_perennial_species: true },
+  PT_ROSEMARY:      { temp_min_f:  10, is_perennial_species: true },
+  PT_SAGE:          { temp_min_f: -20, is_perennial_species: true },
+  PT_STRAWBERRY:    { temp_min_f: -30, is_perennial_species: true },
+  PT_RASPBERRY:     { temp_min_f: -40, is_perennial_species: true },
+  PT_BLACKBERRY:    { temp_min_f: -10, is_perennial_species: true },
+  PT_BLUEBERRY:     { temp_min_f: -30, is_perennial_species: true },
+  PT_APPLE:         { temp_min_f: -40, is_perennial_species: true },
+  PT_PEAR:          { temp_min_f: -30, is_perennial_species: true },
+  PT_PEACH:         { temp_min_f: -10, is_perennial_species: true },
+  PT_CHERRY:        { temp_min_f: -30, is_perennial_species: true },
+  PT_GRAPE:         { temp_min_f: -20, is_perennial_species: true },
+  // Flowers — the main focus of this filter
+  PT_ROSE:          { temp_min_f: -20, is_perennial_species: true },
+  PT_PEONY:         { temp_min_f: -40, is_perennial_species: true },
+  PT_HYDRANGEA:     { temp_min_f: -20, is_perennial_species: true },
+  PT_TULIP:         { temp_min_f: -40, is_perennial_species: true },
+  PT_DAFFODIL:      { temp_min_f: -40, is_perennial_species: true },
+  PT_IRIS:          { temp_min_f: -40, is_perennial_species: true },
+  PT_LILY:          { temp_min_f: -30, is_perennial_species: true },
+  PT_DAYLILY:       { temp_min_f: -40, is_perennial_species: true },
+  PT_LAVENDER:      { temp_min_f: -10, is_perennial_species: true },
+  PT_CONEFLOWER:    { temp_min_f: -40, is_perennial_species: true },
+  PT_ASTER:         { temp_min_f: -30, is_perennial_species: true },
+  PT_LUPINE:        { temp_min_f: -30, is_perennial_species: true },
+  PT_DAHLIA:        { temp_min_f:  28, is_perennial_species: true },  // bulb; dig in cold zones
+  PT_SWEET_ALYSSUM: { temp_min_f:  20, is_perennial_species: true },
+  PT_MARIGOLD:      { temp_min_f:  32, is_perennial_species: false }, // true annual
+  PT_SUNFLOWER:     { temp_min_f:  32, is_perennial_species: false },
+  PT_ZINNIA:        { temp_min_f:  32, is_perennial_species: false },
+  PT_COSMOS:        { temp_min_f:  32, is_perennial_species: false },
+  PT_CALENDULA:     { temp_min_f:  20, is_perennial_species: false },
+  PT_NASTURTIUM:    { temp_min_f:  32, is_perennial_species: false },
+  PT_BORAGE:        { temp_min_f:  25, is_perennial_species: false },
+  // New flower types we just created
+  PT_COREOPSIS:     { temp_min_f: -30, is_perennial_species: true },
+  PT_GAILLARDIA:    { temp_min_f: -30, is_perennial_species: true },
+  PT_SCABIOSA:      { temp_min_f: -20, is_perennial_species: true },
+  PT_FORGET_ME_NOT: { temp_min_f: -20, is_perennial_species: true },
+  PT_MILKWEED:      { temp_min_f: -30, is_perennial_species: true },
+  PT_STATICE:       { temp_min_f: -10, is_perennial_species: true },  // perennial species exist
+  PT_AMMI:          { temp_min_f:  20, is_perennial_species: false },
+  PT_CELOSIA:       { temp_min_f:  32, is_perennial_species: false },
+  PT_MORNING_GLORY: { temp_min_f:  32, is_perennial_species: false },
+  PT_GOMPHRENA:     { temp_min_f:  32, is_perennial_species: false },
+  PT_NIGELLA:       { temp_min_f:  20, is_perennial_species: false },
+  PT_AMARANTH_ORNAMENTAL: { temp_min_f: 32, is_perennial_species: false },
+  // Bachelors Button, Snapdragon, Sweet Pea, Larkspur, Foxglove, Hollyhock, Pansy = annuals/biennials
+  PT_BACHELOR_BUTTON:  { temp_min_f:  20, is_perennial_species: false },
+  PT_SNAPDRAGON:       { temp_min_f:  25, is_perennial_species: false },
+  PT_SWEET_PEA:        { temp_min_f:  20, is_perennial_species: false },
+  PT_LARKSPUR:         { temp_min_f:  20, is_perennial_species: false },
+  PT_FOXGLOVE:         { temp_min_f: -20, is_perennial_species: true },  // biennial/perennial
+  PT_HOLLYHOCK:        { temp_min_f: -30, is_perennial_species: true },  // short-lived perennial
+  PT_PANSY:            { temp_min_f:  10, is_perennial_species: false },
+  PT_PETUNIA:          { temp_min_f:  32, is_perennial_species: false },
+  PT_IMPATIENS:        { temp_min_f:  32, is_perennial_species: false },
+  PT_VERBENA:          { temp_min_f:  20, is_perennial_species: true },  // perennial in 7a+
+  PT_STRAWFLOWER:      { temp_min_f:  28, is_perennial_species: false },
+  PT_WAX_BEGONIA:      { temp_min_f:  32, is_perennial_species: false },
+};
+
+// Returns zone info for a plant type, matching by code then by derived name key
+function getPlantTypeZoneInfo(plantType, zoneMinTemp) {
+  if (!zoneMinTemp || !plantType) return null;
+  let zd = null;
+  // 1. Try plant_type_code directly
+  if (plantType.plant_type_code) {
+    zd = PLANT_TYPE_ZONE_MAP[plantType.plant_type_code];
+  }
+  // 2. Derive from common_name
+  if (!zd && plantType.common_name) {
+    const derived = 'PT_' + plantType.common_name
+      .toUpperCase().trim()
+      .replace(/[^A-Z0-9]+/g, '_')
+      .replace(/^_+|_+$/g, '');
+    zd = PLANT_TYPE_ZONE_MAP[derived];
+    // 3. Aliases
+    if (!zd) {
+      const ALIASES = {
+        PT_BLANKET_FLOWER: 'PT_GAILLARDIA',
+        PT_PINCUSHION_FLOWER: 'PT_SCABIOSA',
+        PT_ORNAMENTAL_AMARANTH: 'PT_AMARANTH_ORNAMENTAL',
+        PT_MILKWEED_ASCLEPIAS: 'PT_MILKWEED',
+        PT_LOVE_IN_A_MIST: 'PT_NIGELLA',
+        PT_GLOBE_AMARANTH: 'PT_GOMPHRENA',
+        PT_BACHELOR_S_BUTTON: 'PT_BACHELOR_BUTTON',
+      };
+      if (ALIASES[derived]) zd = PLANT_TYPE_ZONE_MAP[ALIASES[derived]];
+    }
+  }
+  if (!zd) return null; // unknown — caller decides whether to include
+  const isPerennial = zd.is_perennial_species && zd.temp_min_f <= zoneMinTemp;
+  return { isPerennial, temp_min_f: zd.temp_min_f };
+}
+
 // ─────────────────────────────────────────────────────────────
 export default function PlantCatalog() {
   const [searchParams] = useSearchParams();
@@ -103,7 +226,10 @@ export default function PlantCatalog() {
   const [showAIRecommendations, setShowAIRecommendations] = useState(false);
   const [rateLimitError, setRateLimitError] = useState(null);
   const [retrying, setRetrying] = useState(false);
-
+// ── Zone state ──
+const [userZone, setUserZone] = useState(null);
+const [userZoneMinTemp, setUserZoneMinTemp] = useState(null);
+const [showPerennialOnly, setShowPerennialOnly] = useState(false);
   // ─── Load ────────────────────────────────────────────────
   useEffect(() => {
     loadPlantTypes();
@@ -115,6 +241,23 @@ export default function PlantCatalog() {
   useEffect(() => {
     if (debouncedSearchQuery && !allVarietiesLoaded) loadAllVarieties();
   }, [debouncedSearchQuery, allVarietiesLoaded]);
+
+// Load zone from user object (same source as ZoneMap.jsx)
+useEffect(() => {
+  (async () => {
+    try {
+      const userData = await base44.auth.me();
+      const zone = userData?.usda_zone_override || userData?.usda_zone;
+      if (zone) {
+        setUserZone(parseZoneLabel(zone));
+        setUserZoneMinTemp(getZoneMinTemp(zone));
+      }
+    } catch (e) {
+      console.error('[PlantCatalog] zone load error:', e);
+    }
+  })();
+}, []);
+
 
   const loadPlantTypes = useCallback(async (isRetry = false) => {
     if (isRetry) setRetrying(true);
@@ -200,6 +343,14 @@ export default function PlantCatalog() {
         || type._is_browse_only;
 
       return matchesSearch && matchesCategory;
+
+
+
+    }).filter(type => {
+      if (!showPerennialOnly || !userZoneMinTemp || type._is_browse_only) return true;
+      const zoneInfo = getPlantTypeZoneInfo(type, userZoneMinTemp);
+      if (!zoneInfo) return true;
+      return zoneInfo.isPerennial;
     }).sort((a, b) => {
       // 1. Browse categories always first
       if (a._is_browse_only && b._is_browse_only) {
@@ -232,8 +383,8 @@ export default function PlantCatalog() {
       if (bi !== -1) return 1;
       return (a.common_name || '').localeCompare(b.common_name || '');
     });
-  }, [plantTypes, debouncedSearchQuery, selectedCategory, sortBy,
-      allVarieties, allVarietiesLoaded]);
+}, [plantTypes, debouncedSearchQuery, selectedCategory, sortBy,
+      allVarieties, allVarietiesLoaded, showPerennialOnly, userZoneMinTemp]);
 
   // ─── Build render items (plants + section dividers) ───────
   // Walks the already-correctly-sorted filteredTypes and injects
@@ -392,6 +543,17 @@ export default function PlantCatalog() {
             </SelectContent>
           </Select>
 
+{userZone && (
+            <Button
+              variant={showPerennialOnly ? 'default' : 'outline'}
+              onClick={() => setShowPerennialOnly(p => !p)}
+              className={`gap-2 whitespace-nowrap ${showPerennialOnly ? 'bg-emerald-600 hover:bg-emerald-700 text-white' : ''}`}
+            >
+              <Leaf className="w-4 h-4" />
+              Zone {userZone} Perennials
+            </Button>
+          )}
+
           <div className="flex gap-1">
             <Button
               variant={viewMode === 'grid' ? 'default' : 'outline'}
@@ -409,8 +571,7 @@ export default function PlantCatalog() {
             >
               <List className="w-4 h-4" />
             </Button>
-          </div>
-        </div>
+          </div>        </div>
 
         <AdBanner placement="top_banner" pageType="catalog" />
 
