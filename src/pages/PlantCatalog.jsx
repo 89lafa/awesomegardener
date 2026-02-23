@@ -333,7 +333,7 @@ useEffect(() => {
     if (cached && !isRetry) {
       try {
         const { types, browseCats, plantGroups: cGroups, timestamp } = JSON.parse(cached);
-        if (Date.now() - timestamp < 30 * 60 * 1000) {
+        if (Date.now() - timestamp < 2 * 60 * 1000) {
           setPlantTypes([
             ...buildBrowseTypes(browseCats),
             ...buildValidTypes(types, cGroups || []),
@@ -790,7 +790,7 @@ function buildValidTypes(types, plantGroups) {
     .filter(t => t.id && t.common_name && t.is_active !== false && !t.notes?.includes('DEPRECATED'))
     .map(t => {
       const group = plantGroups.find(g => g.id === t.plant_group_id);
-      return { ...t, plant_group_sort_order: group?.sort_order ?? 99 };
+       return { ...t, plant_group_sort_order: group?.sort_order ?? 0 };
     });
 }
 
