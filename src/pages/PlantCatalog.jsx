@@ -4,7 +4,7 @@ import { createPageUrl } from '@/utils';
 import { base44 } from '@/api/base44Client';
 import { 
   Search, Sprout, Plus, ChevronRight, Loader2,
-  Grid3x3, List, Sparkles, MapPin, Leaf
+  Grid3x3, List, Sparkles, Leaf
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
