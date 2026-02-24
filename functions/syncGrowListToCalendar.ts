@@ -111,7 +111,12 @@ Deno.serve(async (req) => {
       }
 
       // Check if already synced
-      const existing = existingPlans.find(p => p.grow_list_item_index === itemIndex);
+      
+            const existing = existingPlans.find(p => 
+        p.grow_list_id === grow_list_id &&
+        p.grow_list_item_index === itemIndex
+      );
+      
 
       // Calculate default timing based on variety or plant type
       const daysToMaturity = variety?.days_to_maturity || plantType.default_days_to_maturity || 80;
