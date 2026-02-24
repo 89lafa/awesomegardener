@@ -186,8 +186,8 @@ const loadPlansAndTasks = async (forceFresh = false, overrideSeasonId = null) =>
     try {
       if (forceFresh) clearCache();
 const [plansData, tasksData] = await Promise.all([
-  smartQuery(base44, 'CropPlan', { garden_season_id: seasonId, user_owner_email: user.email }),
-        smartQuery(base44, 'CropTask', { garden_season_id: seasonId, created_by: user.email }, 'start_date')
+      smartQuery(base44, 'CropPlan', { garden_season_id: seasonId, created_by: user.email }),
+smartQuery(base44, 'CropTask', { garden_season_id: seasonId, created_by: user.email }, 'start_date')
       ]);
 
       setCropPlans(plansData);
