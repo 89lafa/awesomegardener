@@ -30,11 +30,11 @@ Deno.serve(async (req) => {
     console.log('[SyncGrowList] Found', items.length, 'items in grow list');
 
     // Load existing CropPlans for this season to avoid duplicates
-    const existingPlans = await base44.entities.CropPlan.filter({ 
-      garden_season_id,
-      grow_list_id,
-      user_owner_email: user.email
-    });
+
+const existingPlans = await base44.entities.CropPlan.filter({ 
+  garden_season_id,
+  created_by: user.email
+});
 
     console.log('[SyncGrowList] Found', existingPlans.length, 'existing plans from this grow list');
 
