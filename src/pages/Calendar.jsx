@@ -54,7 +54,7 @@ import { KanbanBoard } from '@/components/tasks/KanbanBoard';
 
 export default function Calendar() {
   const [searchParams] = useSearchParams();
-  const syncProcessedRef = React.useRef(false);
+  const syncProcessedRef = React.useRef(null);
   const [user, setUser] = useState(null);
   const [gardens, setGardens] = useState([]);
   const [activeGarden, setActiveGarden] = useState(null);
@@ -104,8 +104,8 @@ export default function Calendar() {
     const syncGrowListId = searchParams.get('syncGrowList');
     const seasonParam = searchParams.get('season');
     
-    if (syncGrowListId && seasonParam && !syncing && !loading && seasons.length > 0 && !syncProcessedRef.current) {
-      syncProcessedRef.current = true;
+if (syncGrowListId && seasonParam && !syncing && !loading && seasons.length > 0 && syncProcessedRef.current !== `${syncGrowListId}-${Date.now().toString().slice(0,-4)}`) {
+      syncProcessedRef.current = `${syncGrowListId}-${Date.now().toString().slice(0,-4)}`;
       if (seasonParam !== activeSeasonId) {
         setActiveSeasonId(seasonParam);
         localStorage.setItem('calendar_active_season', seasonParam);
