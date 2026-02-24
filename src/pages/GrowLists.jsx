@@ -502,7 +502,9 @@ const handleRemoveItem = async (itemId) => {
                       toast.success(`Synced: ${response.data.created} new, ${response.data.updated} updated crops`);
                       localStorage.setItem('calendar_active_garden', selectedList.garden_id);
                       localStorage.setItem('calendar_active_season', selectedList.garden_season_id);
+                      console.log('NAVIGATING with', selectedList.garden_id, selectedList.garden_season_id);
                       navigate(`/Calendar?forceGarden=${selectedList.garden_id}&forceSeason=${selectedList.garden_season_id}`);
+
                     } else {
                       toast.error('Sync failed');
                     }
