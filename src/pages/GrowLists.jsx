@@ -496,7 +496,9 @@ const handleRemoveItem = async (itemId) => {
                       garden_season_id: selectedList.garden_season_id,
                       auto_generate_tasks: true
                     });
+                                        console.log('SYNC RESPONSE', JSON.stringify(response.data));
                     if (response.data?.success) {
+                    
                       toast.success(`Synced: ${response.data.created} new, ${response.data.updated} updated crops`);
                       localStorage.setItem('calendar_active_garden', selectedList.garden_id);
                       localStorage.setItem('calendar_active_season', selectedList.garden_season_id);
