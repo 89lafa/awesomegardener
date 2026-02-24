@@ -92,16 +92,11 @@ export default function GrowLists() {
   // ══════════════════════════════════════════════════════════════
   const [plantTypeSearch, setPlantTypeSearch] = useState('');
 
-  useEffect(() => {
+useEffect(() => {
     loadData();
-    
-    const unsubscribe = base44.entities.GrowList.subscribe((event) => {
-      console.log('[GrowList Subscription]', event.type, event.id);
-      loadData();
-    });
-    
-    return () => unsubscribe();
   }, []);
+
+
 
   useEffect(() => {
     const addSeedId = searchParams.get('addSeed');
