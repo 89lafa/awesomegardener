@@ -134,7 +134,7 @@ Deno.serve(async (req) => {
         grow_list_item_index: itemIndex,
         plant_type_id: plantType.id,
         variety_id: variety?.id || null,
-        label: item.variety_name || item.plant_type_name || plantType.common_name,
+        label: item.variety_name && item.plant_type_name ? `${item.variety_name} - ${item.plant_type_name}` : (item.variety_name || item.plant_type_name || plantType.common_name),
         quantity_planned: item.target_count || item.quantity || 1,
         quantity_scheduled: 0,
         quantity_planted: 0,
