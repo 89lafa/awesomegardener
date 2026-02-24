@@ -100,12 +100,17 @@ export default function Calendar() {
     loadData();
   }, []);
 
-  useEffect(() => {
+useEffect(() => {
     const syncGrowListId = searchParams.get('syncGrowList');
     const seasonParam = searchParams.get('season');
-    
-if (syncGrowListId && seasonParam && !syncing && !loading && seasons.length > 0 && syncProcessedRef.current !== `${syncGrowListId}-${Date.now().toString().slice(0,-4)}`) {
-      syncProcessedRef.current = `${syncGrowListId}-${Date.now().toString().slice(0,-4)}`;
+
+    if (!syncGrowListId || !seasonParam) {
+      syncProcessedRef.current = null;
+      return;
+    }
+
+    if (!syncing && !loading && syncProcessedRef.current !== syncGrowListId) {
+      syncProcessedRef.current = syncGrowListId;
       if (seasonParam !== activeSeasonId) {
         setActiveSeasonId(seasonParam);
         localStorage.setItem('calendar_active_season', seasonParam);
@@ -115,8 +120,9 @@ if (syncGrowListId && seasonParam && !syncing && !loading && seasons.length > 0 
         window.history.replaceState({}, '', window.location.pathname);
       })();
     }
-  }, [searchParams, loading, seasons, syncing, activeSeasonId]);
-  
+  }, [searchParams, loading, syncing, activeSeasonId]);
+
+
   useEffect(() => {
     if (activeSeasonId && !loading) {
       loadPlansAndTasks();
