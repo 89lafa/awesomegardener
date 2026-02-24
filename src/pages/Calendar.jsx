@@ -104,10 +104,13 @@ useEffect(() => {
     const forceGarden = searchParams.get('forceGarden');
     const forceSeason = searchParams.get('forceSeason');
     if (!forceGarden || !forceSeason) return;
+    console.log('CALENDAR FORCE LOAD', forceGarden, forceSeason);
     localStorage.setItem('calendar_active_garden', forceGarden);
     localStorage.setItem('calendar_active_season', forceSeason);
     window.history.replaceState({}, '', window.location.pathname);
     loadData();
+
+
   }, [searchParams]);
 
 
