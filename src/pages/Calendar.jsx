@@ -189,14 +189,16 @@ useEffect(() => {
     }
   };
   
-  const loadPlansAndTasks = async (forceFresh = false) => {
-    if (!activeSeasonId || !user) return;
+const loadPlansAndTasks = async (forceFresh = false, overrideSeasonId = null) => {
+    const seasonId = overrideSeasonId || activeSeasonId;
+    if (!seasonId || !user) return;
     try {
       if (forceFresh) clearCache();
       const [plansData, tasksData] = await Promise.all([
-        smartQuery(base44, 'CropPlan', { garden_season_id: activeSeasonId, user_owner_email: user.email }),
-        smartQuery(base44, 'CropTask', { garden_season_id: activeSeasonId, created_by: user.email }, 'start_date')
+        smartQuery(base44, 'CropPlan', { garden_season_id: seasonId, user_owner_email: user.email }),
+        smartQuery(base44, 'CropTask', { garden_season_id: seasonId, created_by: user.email }, 'start_date')
       ]);
+
       setCropPlans(plansData);
       setTasks(tasksData);
       setRefreshKey(k => k + 1);
@@ -258,9 +260,11 @@ useEffect(() => {
         grow_list_id: growListId, garden_season_id: seasonId, auto_generate_tasks: true
       });
       if (response.data.success) {
-        clearCache();
-        await new Promise(resolve => setTimeout(resolve, 500));
-        await loadPlansAndTasks(true);
+
+clearCache();
+await new Promise(resolve => setTimeout(resolve, 500));
+await loadPlansAndTasks(true, seasonId);
+
         toast.success(`Synced: ${response.data.created} new, ${response.data.updated} updated crops with tasks`);
         window.history.replaceState({}, '', window.location.pathname);
       } else {
