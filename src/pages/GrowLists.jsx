@@ -66,7 +66,8 @@ export default function GrowLists() {
   const [showAddItemDialog, setShowAddItemDialog] = useState(false);
   const [showAIRecommendations, setShowAIRecommendations] = useState(false);
   const [viewMode, setViewMode] = useState('cards');
-  const [itemViewMode, setItemViewMode] = useState('card');
+    const [itemViewMode, setItemViewMode] = useState('card');
+  const [syncing, setSyncing] = useState(false);
 
   const [seasons, setSeasons] = useState([]);
   const [newList, setNewList] = useState({
@@ -484,17 +485,38 @@ const handleRemoveItem = async (itemId) => {
           </div>
           <div className="flex gap-2 flex-wrap">
             {selectedList.garden_season_id && (
-              <Button 
+<Button 
                 className="gap-2 bg-emerald-600 hover:bg-emerald-700 text-xs sm:text-sm h-9"
-                onClick={() => {
-                  localStorage.setItem('calendar_active_garden', selectedList.garden_id);
-                  localStorage.setItem('calendar_active_season', selectedList.garden_season_id);
-                  navigate(`/Calendar?syncGrowList=${selectedList.id}&season=${selectedList.garden_season_id}`);
+                disabled={syncing}
+                onClick={async () => {
+                  try {
+                    setSyncing(true);
+                    const response = await base44.functions.invoke('syncGrowListToCalendar', {
+                      grow_list_id: selectedList.id,
+                      garden_season_id: selectedList.garden_season_id,
+                      auto_generate_tasks: true
+                    });
+                    if (response.data?.success) {
+                      toast.success(`Synced: ${response.data.created} new, ${response.data.updated} updated crops`);
+                      localStorage.setItem('calendar_active_garden', selectedList.garden_id);
+                      localStorage.setItem('calendar_active_season', selectedList.garden_season_id);
+                      navigate(`/Calendar?forceGarden=${selectedList.garden_id}&forceSeason=${selectedList.garden_season_id}`);
+                    } else {
+                      toast.error('Sync failed');
+                    }
+                  } catch (error) {
+                    console.error('Sync error:', error);
+                    toast.error('Sync failed: ' + error.message);
+                  } finally {
+                    setSyncing(false);
+                  }
                 }}
               >
-                <Calendar className="w-4 h-4" />
-                Sync to Calendar
+                {syncing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Calendar className="w-4 h-4" />}
+                {syncing ? 'Syncing...' : 'Sync to Calendar'}
               </Button>
+
+
             )}
             <Button variant="outline" onClick={() => handleUpdateStatus(selectedList, selectedList.status === 'active' ? 'archived' : 'active')} className="text-xs sm:text-sm h-9">
               {selectedList.status === 'active' ? 'Archive' : 'Activate'}
