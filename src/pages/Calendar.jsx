@@ -101,26 +101,15 @@ export default function Calendar() {
   }, []);
 
 useEffect(() => {
-    const syncGrowListId = searchParams.get('syncGrowList');
-    const seasonParam = searchParams.get('season');
+    const forceGarden = searchParams.get('forceGarden');
+    const forceSeason = searchParams.get('forceSeason');
+    if (!forceGarden || !forceSeason) return;
+    localStorage.setItem('calendar_active_garden', forceGarden);
+    localStorage.setItem('calendar_active_season', forceSeason);
+    window.history.replaceState({}, '', window.location.pathname);
+    loadData();
+  }, [searchParams]);
 
-    if (!syncGrowListId || !seasonParam) {
-      syncProcessedRef.current = null;
-      return;
-    }
-
-    if (!syncing && !loading && syncProcessedRef.current !== syncGrowListId) {
-      syncProcessedRef.current = syncGrowListId;
-      if (seasonParam !== activeSeasonId) {
-        setActiveSeasonId(seasonParam);
-        localStorage.setItem('calendar_active_season', seasonParam);
-      }
-      (async () => {
-        await handleSyncGrowList(syncGrowListId, seasonParam);
-        window.history.replaceState({}, '', window.location.pathname);
-      })();
-    }
-  }, [searchParams, loading, syncing, activeSeasonId]);
 
 
   useEffect(() => {
