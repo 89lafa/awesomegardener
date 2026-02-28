@@ -512,7 +512,7 @@ function ResourceArticles() {
           <h3 className="text-xl font-bold text-gray-900">🐛 Pest & Disease Library</h3>
           <div className="flex gap-2">
             <Button
-              onClick={() => window.location.href = createPageUrl('AdminPestLibrary')}
+              onClick={() => window.location.href = createPageUrl('PestLibrary')}
               variant="outline"
               size="sm"
               className="gap-2"
