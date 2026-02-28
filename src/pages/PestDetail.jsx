@@ -23,6 +23,7 @@ export default function PestDetail() {
   const [user, setUser] = useState(null);
   const [showEdit, setShowEdit] = useState(false);
   const [editData, setEditData] = useState(null);
+  const [imageUploading, setImageUploading] = useState(false);
 
   useEffect(() => {
     if (pestId) {
@@ -87,6 +88,24 @@ export default function PestDetail() {
     } catch (error) {
       console.error('Error saving:', error);
       toast.error('Failed to save changes');
+    }
+  };
+
+  // ✅ FIXED: Correct response destructuring + functional state update to avoid stale closure
+  const handleImageUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setImageUploading(true);
+    try {
+      const { file_url } = await base44.integrations.Core.UploadFile({ file });
+      setEditData(prev => ({ ...prev, primary_photo_url: file_url }));
+      toast.success('Image uploaded!');
+    } catch (error) {
+      console.error('Error uploading image:', error);
+      toast.error('Failed to upload image');
+    } finally {
+      setImageUploading(false);
     }
   };
 
@@ -329,28 +348,33 @@ export default function PestDetail() {
                   </div>
                 </div>
                 
+                {/* ✅ FIXED image upload section */}
                 <div>
                   <Label>Hero Image</Label>
                   <div className="mt-2 space-y-2">
-                    <Input
-                      type="file"
-                      accept="image/*"
-                      onChange={async (e) => {
-                        const file = e.target.files?.[0];
-                        if (file) {
-                          try {
-                            const { data } = await base44.integrations.Core.UploadFile({ file });
-                            setEditData({ ...editData, primary_photo_url: data.file_url });
-                            toast.success('Image uploaded!');
-                          } catch (error) {
-                            toast.error('Failed to upload image');
-                          }
-                        }
-                      }}
-                    />
-                    {editData.primary_photo_url && (
+                    <div className="flex items-center gap-3">
+                      <Input
+                        type="file"
+                        accept="image/*"
+                        onChange={handleImageUpload}
+                        disabled={imageUploading}
+                        className="flex-1"
+                      />
+                      {imageUploading && (
+                        <Loader2 className="w-5 h-5 animate-spin text-emerald-600 shrink-0" />
+                      )}
+                    </div>
+                    {imageUploading && (
+                      <p className="text-sm text-emerald-600">Uploading image...</p>
+                    )}
+                    {editData.primary_photo_url && !imageUploading && (
                       <div className="mt-2">
-                        <img src={editData.primary_photo_url} alt="Preview" className="h-32 object-cover rounded" />
+                        <img
+                          src={editData.primary_photo_url}
+                          alt="Preview"
+                          className="h-32 object-cover rounded border"
+                        />
+                        <p className="text-xs text-green-600 mt-1">✓ Image ready</p>
                       </div>
                     )}
                   </div>
@@ -409,8 +433,19 @@ export default function PestDetail() {
             )}
             <DialogFooter>
               <Button variant="outline" onClick={() => setShowEdit(false)}>Cancel</Button>
-              <Button onClick={handleSave} className="bg-emerald-600 hover:bg-emerald-700">
-                Save Changes
+              <Button
+                onClick={handleSave}
+                disabled={imageUploading}
+                className="bg-emerald-600 hover:bg-emerald-700"
+              >
+                {imageUploading ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Uploading...
+                  </>
+                ) : (
+                  'Save Changes'
+                )}
               </Button>
             </DialogFooter>
           </DialogContent>
