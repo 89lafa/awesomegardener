@@ -152,7 +152,7 @@ export default function AdminPestLibrary() {
                         <p className="text-sm italic text-gray-600">{pest.scientific_name}</p>
                         <div className="flex gap-2 mt-2 flex-wrap">
                           <span className="text-xs px-2 py-1 bg-gray-100 rounded capitalize">{pest.category}</span>
-                          <span className="text-xs px-2 py-1 bg-gray-100 rounded capitalize">{pest.severity_potential} severity</span>
+                          <span className="text-xs px-2 py-1 bg-gray-100 rounded capitalize">{pest.severity_potential ? pest.severity_potential.charAt(0).toUpperCase() + pest.severity_potential.slice(1) : ''} Severity</span>
                         </div>
                       </div>
                     </div>
@@ -346,7 +346,7 @@ function PestEditDialog({ open, onOpenChange, pest, onSave }) {
               <Select value={formData.spread_rate} onValueChange={(v) => setFormData(prev => ({ ...prev, spread_rate: v }))}>
                 <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
                 <SelectContent>
-                <SelectItem value="none">None</SelectItem>
+                  <SelectItem value="none">None (Not Contagious)</SelectItem>
                   <SelectItem value="slow">Slow</SelectItem>
                   <SelectItem value="moderate">Moderate</SelectItem>
                   <SelectItem value="fast">Fast</SelectItem>
