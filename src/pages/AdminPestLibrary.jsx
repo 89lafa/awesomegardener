@@ -10,6 +10,28 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Loader2, Plus, Edit, Trash2, CheckCircle } from 'lucide-react';
 import { toast } from 'sonner';
 
+// ─────────────────────────────────────────────
+// Helper: encode/decode confused_with inside the lifecycle field
+// We use a distinctive marker that will never appear naturally in lifecycle text.
+// ─────────────────────────────────────────────
+const CONFUSED_MARKER = '\n\n__CONFUSED_WITH__\n';
+
+function encodeLifecycle(lifecycle, confusedWith) {
+  const cleanLifecycle = (lifecycle || '').split(CONFUSED_MARKER)[0].trimEnd();
+  if (!confusedWith || confusedWith.length === 0) return cleanLifecycle;
+  return cleanLifecycle + CONFUSED_MARKER + confusedWith.join('\n');
+}
+
+function decodeLifecycle(rawLifecycle) {
+  const raw = rawLifecycle || '';
+  const parts = raw.split(CONFUSED_MARKER);
+  return {
+    lifecycle: parts[0] || '',
+    confused_with: parts[1] ? parts[1].split('\n').map(s => s.trim()).filter(Boolean) : []
+  };
+}
+
+// ─────────────────────────────────────────────
 export default function AdminPestLibrary() {
   const [pests, setPests] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -37,10 +59,10 @@ export default function AdminPestLibrary() {
       const dataToSave = { ...pestData, is_active: true };
       if (editingPest?.id) {
         await base44.entities.PestLibrary.update(editingPest.id, dataToSave);
-        toast.success('Pest entry updated!');
+        toast.success('Entry updated!');
       } else {
         await base44.entities.PestLibrary.create(dataToSave);
-        toast.success('Pest entry created! It will now appear in the Pest & Disease Library.');
+        toast.success('Entry created! It will now appear in the Pest & Disease Library.');
       }
       setShowDialog(false);
       setEditingPest(null);
@@ -58,8 +80,7 @@ export default function AdminPestLibrary() {
       toast.success('Deleted');
       await loadPests();
     } catch (error) {
-      console.error('Delete error:', error);
-      toast.error('Failed to delete: ' + (error?.message || 'Unknown error'));
+      toast.error('Failed to delete');
     }
   };
 
@@ -93,64 +114,66 @@ export default function AdminPestLibrary() {
         {pests.length === 0 ? (
           <Card>
             <CardContent className="pt-6 text-center py-12">
-              <p className="text-gray-600 mb-4">No pest/disease entries yet. Create your first entry!</p>
+              <p className="text-gray-600 mb-4">No entries yet.</p>
               <Button onClick={() => openEditDialog()} className="bg-emerald-600 hover:bg-emerald-700">
-                <Plus className="w-4 h-4 mr-2" />
-                Create First Entry
+                <Plus className="w-4 h-4 mr-2" /> Create First Entry
               </Button>
             </CardContent>
           </Card>
         ) : (
-          pests.map((pest) => (
-            <Card key={pest.id}>
-              <CardContent className="pt-6">
-                <div className="flex items-start justify-between">
-                  <div className="flex items-start gap-4 flex-1">
-                    {pest.primary_photo_url && (
-                      <img
-                        src={pest.primary_photo_url}
-                        alt={pest.common_name}
-                        className="w-16 h-16 object-cover rounded-lg border shrink-0"
-                      />
-                    )}
-                    <div>
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <h3 className="font-semibold text-lg text-gray-900">{pest.common_name}</h3>
-                        {pest.is_active && (
-                          <span className="flex items-center gap-1 text-xs text-emerald-600">
-                            <CheckCircle className="w-3 h-3" /> Live
-                          </span>
-                        )}
-                        {pest.confused_with?.length > 0 && (
-                          <span className="text-xs px-2 py-0.5 bg-amber-100 text-amber-700 rounded-full">
-                            confused with: {pest.confused_with.length}
-                          </span>
-                        )}
-                      </div>
-                      <p className="text-sm italic text-gray-600">{pest.scientific_name}</p>
-                      <div className="flex gap-2 mt-2 flex-wrap">
-                        <span className="text-xs px-2 py-1 bg-gray-100 rounded capitalize">{pest.category}</span>
-                        <span className="text-xs px-2 py-1 bg-gray-100 rounded capitalize">{pest.severity_potential} severity</span>
+          pests.map((pest) => {
+            const { confused_with } = decodeLifecycle(pest.lifecycle);
+            return (
+              <Card key={pest.id}>
+                <CardContent className="pt-6">
+                  <div className="flex items-start justify-between">
+                    <div className="flex items-start gap-4 flex-1">
+                      {pest.primary_photo_url && (
+                        <img
+                          src={pest.primary_photo_url}
+                          alt={pest.common_name}
+                          className="w-16 h-16 object-cover rounded-lg border shrink-0"
+                        />
+                      )}
+                      <div>
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <h3 className="font-semibold text-lg text-gray-900">{pest.common_name}</h3>
+                          {pest.is_active && (
+                            <span className="flex items-center gap-1 text-xs text-emerald-600">
+                              <CheckCircle className="w-3 h-3" /> Live
+                            </span>
+                          )}
+                          {confused_with.length > 0 && (
+                            <span className="text-xs px-2 py-0.5 bg-amber-100 text-amber-700 rounded-full">
+                              ⚠️ confused with: {confused_with.length}
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-sm italic text-gray-600">{pest.scientific_name}</p>
+                        <div className="flex gap-2 mt-2 flex-wrap">
+                          <span className="text-xs px-2 py-1 bg-gray-100 rounded capitalize">{pest.category}</span>
+                          <span className="text-xs px-2 py-1 bg-gray-100 rounded capitalize">{pest.severity_potential} severity</span>
+                        </div>
                       </div>
                     </div>
+                    <div className="flex gap-2 shrink-0">
+                      <Button size="sm" variant="outline" onClick={() => openEditDialog(pest)}>
+                        <Edit className="w-4 h-4" />
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => handleDelete(pest.id)}
+                        className="text-red-600 hover:text-red-700"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    </div>
                   </div>
-                  <div className="flex gap-2 shrink-0">
-                    <Button size="sm" variant="outline" onClick={() => openEditDialog(pest)}>
-                      <Edit className="w-4 h-4" />
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => handleDelete(pest.id)}
-                      className="text-red-600 hover:text-red-700"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </Button>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          ))
+                </CardContent>
+              </Card>
+            );
+          })
         )}
       </div>
 
@@ -174,8 +197,10 @@ function PestEditDialog({ open, onOpenChange, pest, onSave }) {
     category: 'insect',
     appearance: '',
     symptoms: [],
+    // lifecycle is stored as the raw encoded string (lifecycle + confused_with)
     lifecycle: '',
-    confused_with: [],
+    // confused_with_text is UI-only — NOT sent to the DB directly
+    confused_with_text: '',
     affects_plant_types: ['all'],
     seasonal_occurrence: 'year-round',
     severity_potential: 'medium',
@@ -194,8 +219,18 @@ function PestEditDialog({ open, onOpenChange, pest, onSave }) {
 
   useEffect(() => {
     if (open) {
-      // Spread emptyForm first so new fields like confused_with always exist
-      setFormData(pest ? { ...emptyForm, ...pest } : emptyForm);
+      if (pest) {
+        // Decode lifecycle back into lifecycle text + confused_with items
+        const { lifecycle, confused_with } = decodeLifecycle(pest.lifecycle);
+        setFormData({
+          ...emptyForm,
+          ...pest,
+          lifecycle,                                    // clean lifecycle text only
+          confused_with_text: confused_with.join('\n') // UI-only field
+        });
+      } else {
+        setFormData(emptyForm);
+      }
     }
   }, [pest, open]);
 
@@ -213,8 +248,7 @@ function PestEditDialog({ open, onOpenChange, pest, onSave }) {
       setFormData(prev => ({ ...prev, primary_photo_url: file_url }));
       toast.success('Image uploaded!');
     } catch (error) {
-      console.error('Upload error:', error);
-      toast.error('Failed to upload image: ' + (error?.message || 'Unknown error'));
+      toast.error('Failed to upload image');
     } finally {
       setImageUploading(false);
     }
@@ -227,7 +261,23 @@ function PestEditDialog({ open, onOpenChange, pest, onSave }) {
     }
     setSaving(true);
     try {
-      await onSave(formData);
+      // Parse confused_with_text back into an array
+      const confusedWithArray = (formData.confused_with_text || '')
+        .split('\n')
+        .map(s => s.trim())
+        .filter(Boolean);
+
+      // Encode confused_with INTO the lifecycle field before saving
+      const encodedLifecycle = encodeLifecycle(formData.lifecycle, confusedWithArray);
+
+      // Build final save payload — exclude the UI-only field
+      const { confused_with_text, ...rest } = formData;
+      const dataToSave = {
+        ...rest,
+        lifecycle: encodedLifecycle   // ← this is the only field that goes to DB
+      };
+
+      await onSave(dataToSave);
     } finally {
       setSaving(false);
     }
@@ -242,7 +292,7 @@ function PestEditDialog({ open, onOpenChange, pest, onSave }) {
 
         <div className="space-y-4">
 
-          {/* ── Basic Info ── */}
+          {/* Basic Info */}
           <div className="grid grid-cols-2 gap-4">
             <div>
               <Label>Common Name *</Label>
@@ -304,14 +354,12 @@ function PestEditDialog({ open, onOpenChange, pest, onSave }) {
             </div>
           </div>
 
-          {/* ── Identification ── */}
           <div>
             <Label>Appearance Description</Label>
             <Textarea
               value={formData.appearance}
               onChange={(e) => setFormData(prev => ({ ...prev, appearance: e.target.value }))}
-              rows={3}
-              className="mt-1"
+              rows={3} className="mt-1"
               placeholder="Describe what this pest/disease looks like..."
             />
           </div>
@@ -321,8 +369,7 @@ function PestEditDialog({ open, onOpenChange, pest, onSave }) {
             <Textarea
               value={formData.symptoms?.join('\n') || ''}
               onChange={(e) => handleArrayField('symptoms', e.target.value)}
-              rows={4}
-              className="mt-1"
+              rows={4} className="mt-1"
               placeholder="Yellowing leaves&#10;Wilting stems&#10;Black spots on fruit"
             />
           </div>
@@ -332,39 +379,37 @@ function PestEditDialog({ open, onOpenChange, pest, onSave }) {
             <Textarea
               value={formData.lifecycle || ''}
               onChange={(e) => setFormData(prev => ({ ...prev, lifecycle: e.target.value }))}
-              rows={2}
-              className="mt-1"
+              rows={2} className="mt-1"
               placeholder="Optional lifecycle or additional notes..."
             />
           </div>
 
-          {/* ── ✅ NEW: Confused With ── */}
+          {/* ✅ Confused With — UI-only field, encoded into lifecycle on save */}
           <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 space-y-2">
             <div>
               <Label className="text-amber-900 font-semibold text-sm flex items-center gap-1">
-                <span>⚠️</span> Confused With (one per line)
+                ⚠️ Confused With (one per line)
               </Label>
               <p className="text-xs text-amber-700 mt-1">
-                List other problems this is commonly mistaken for. Each line becomes a separate item shown in a "Don't Confuse With" section on the detail page. Be descriptive — explain <em>why</em> it might be confused.
+                List other problems this is commonly mistaken for. Each line becomes a separate numbered item in the
+                "Don't Confuse With" section on the detail page. Be descriptive — explain <em>why</em> it might be confused.
               </p>
             </div>
             <Textarea
-              value={formData.confused_with?.join('\n') || ''}
-              onChange={(e) => handleArrayField('confused_with', e.target.value)}
+              value={formData.confused_with_text || ''}
+              onChange={(e) => setFormData(prev => ({ ...prev, confused_with_text: e.target.value }))}
               rows={4}
               className="bg-white"
-              placeholder="Early Blight — similar dark spots but with concentric rings and yellow halo&#10;Septoria Leaf Spot — smaller spots, starts lower on plant&#10;Magnesium deficiency — interveinal yellowing without spots"
+              placeholder="Early Blight — similar dark spots but with concentric rings and yellow halo&#10;Septoria Leaf Spot — smaller spots, starts lower on the plant&#10;Magnesium deficiency — interveinal yellowing without spots or lesions"
             />
           </div>
 
-          {/* ── Treatments ── */}
           <div>
             <Label>Organic Treatments (one per line)</Label>
             <Textarea
               value={formData.organic_treatments?.join('\n') || ''}
               onChange={(e) => handleArrayField('organic_treatments', e.target.value)}
-              rows={4}
-              className="mt-1"
+              rows={4} className="mt-1"
               placeholder="Neem oil spray&#10;Insecticidal soap&#10;Hand-pick and destroy"
             />
           </div>
@@ -374,8 +419,7 @@ function PestEditDialog({ open, onOpenChange, pest, onSave }) {
             <Textarea
               value={formData.chemical_treatments?.join('\n') || ''}
               onChange={(e) => handleArrayField('chemical_treatments', e.target.value)}
-              rows={3}
-              className="mt-1"
+              rows={3} className="mt-1"
               placeholder="Pyrethrin-based spray&#10;Spinosad"
             />
           </div>
@@ -385,13 +429,12 @@ function PestEditDialog({ open, onOpenChange, pest, onSave }) {
             <Textarea
               value={formData.prevention_tips?.join('\n') || ''}
               onChange={(e) => handleArrayField('prevention_tips', e.target.value)}
-              rows={4}
-              className="mt-1"
+              rows={4} className="mt-1"
               placeholder="Rotate crops annually&#10;Inspect plants weekly&#10;Maintain good air circulation"
             />
           </div>
 
-          {/* ── Image ── */}
+          {/* Image */}
           <div>
             <Label>Primary Photo (Hero Image)</Label>
             <div className="mt-1 space-y-3">
@@ -407,21 +450,18 @@ function PestEditDialog({ open, onOpenChange, pest, onSave }) {
                       <CheckCircle className="w-3 h-3" /> Image ready
                     </p>
                     <Button
-                      size="sm"
-                      variant="outline"
+                      size="sm" variant="outline"
                       onClick={() => setFormData(prev => ({ ...prev, primary_photo_url: '' }))}
                       className="text-red-600 hover:text-red-700 w-fit"
                     >
-                      <Trash2 className="w-3 h-3 mr-1" />
-                      Remove
+                      <Trash2 className="w-3 h-3 mr-1" /> Remove
                     </Button>
                   </div>
                 </div>
               )}
               <div className="flex items-center gap-3">
                 <Input
-                  type="file"
-                  accept="image/*"
+                  type="file" accept="image/*"
                   onChange={handleImageUpload}
                   disabled={imageUploading}
                   className="flex-1"
@@ -439,18 +479,17 @@ function PestEditDialog({ open, onOpenChange, pest, onSave }) {
             </div>
           </div>
 
-          {/* ── Actions ── */}
+          {/* Actions */}
           <div className="flex gap-4 pt-2 border-t">
             <Button
               onClick={handleSave}
               disabled={saving || imageUploading}
               className="flex-1 bg-emerald-600 hover:bg-emerald-700"
             >
-              {saving ? (
-                <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Saving...</>
-              ) : (
-                pest ? 'Update Entry' : 'Create Entry'
-              )}
+              {saving
+                ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Saving...</>
+                : pest ? 'Update Entry' : 'Create Entry'
+              }
             </Button>
             <Button
               variant="outline"
