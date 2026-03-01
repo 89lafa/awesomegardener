@@ -22,7 +22,6 @@ export default function AdminPestLibrary() {
 
   const loadPests = async () => {
     try {
-      // ✅ FIXED: Use base44.entities (same as PestLibrary reads from)
       const allPests = await base44.entities.PestLibrary.list();
       setPests(allPests);
     } catch (error) {
@@ -35,10 +34,7 @@ export default function AdminPestLibrary() {
 
   const handleSave = async (pestData) => {
     try {
-      // ✅ FIXED: Use base44.entities (consistent with PestLibrary page reads)
-      // ✅ Always ensure is_active is true so it shows in the library
       const dataToSave = { ...pestData, is_active: true };
-
       if (editingPest?.id) {
         await base44.entities.PestLibrary.update(editingPest.id, dataToSave);
         toast.success('Pest entry updated!');
@@ -118,27 +114,28 @@ export default function AdminPestLibrary() {
                       />
                     )}
                     <div>
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 flex-wrap">
                         <h3 className="font-semibold text-lg text-gray-900">{pest.common_name}</h3>
                         {pest.is_active && (
                           <span className="flex items-center gap-1 text-xs text-emerald-600">
                             <CheckCircle className="w-3 h-3" /> Live
                           </span>
                         )}
+                        {pest.confused_with?.length > 0 && (
+                          <span className="text-xs px-2 py-0.5 bg-amber-100 text-amber-700 rounded-full">
+                            confused with: {pest.confused_with.length}
+                          </span>
+                        )}
                       </div>
                       <p className="text-sm italic text-gray-600">{pest.scientific_name}</p>
-                      <div className="flex gap-2 mt-2">
+                      <div className="flex gap-2 mt-2 flex-wrap">
                         <span className="text-xs px-2 py-1 bg-gray-100 rounded capitalize">{pest.category}</span>
                         <span className="text-xs px-2 py-1 bg-gray-100 rounded capitalize">{pest.severity_potential} severity</span>
                       </div>
                     </div>
                   </div>
                   <div className="flex gap-2 shrink-0">
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => openEditDialog(pest)}
-                    >
+                    <Button size="sm" variant="outline" onClick={() => openEditDialog(pest)}>
                       <Edit className="w-4 h-4" />
                     </Button>
                     <Button
@@ -178,6 +175,7 @@ function PestEditDialog({ open, onOpenChange, pest, onSave }) {
     appearance: '',
     symptoms: [],
     lifecycle: '',
+    confused_with: [],
     affects_plant_types: ['all'],
     seasonal_occurrence: 'year-round',
     severity_potential: 'medium',
@@ -196,7 +194,8 @@ function PestEditDialog({ open, onOpenChange, pest, onSave }) {
 
   useEffect(() => {
     if (open) {
-      setFormData(pest ? { ...pest } : emptyForm);
+      // Spread emptyForm first so new fields like confused_with always exist
+      setFormData(pest ? { ...emptyForm, ...pest } : emptyForm);
     }
   }, [pest, open]);
 
@@ -205,11 +204,9 @@ function PestEditDialog({ open, onOpenChange, pest, onSave }) {
     setFormData(prev => ({ ...prev, [field]: array }));
   };
 
-  // ✅ FIXED: Correct response destructuring { file_url } + functional state update
   const handleImageUpload = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
-
     setImageUploading(true);
     try {
       const { file_url } = await base44.integrations.Core.UploadFile({ file });
@@ -244,7 +241,8 @@ function PestEditDialog({ open, onOpenChange, pest, onSave }) {
         </DialogHeader>
 
         <div className="space-y-4">
-          {/* Basic Info */}
+
+          {/* ── Basic Info ── */}
           <div className="grid grid-cols-2 gap-4">
             <div>
               <Label>Common Name *</Label>
@@ -269,13 +267,8 @@ function PestEditDialog({ open, onOpenChange, pest, onSave }) {
           <div className="grid grid-cols-3 gap-4">
             <div>
               <Label>Category</Label>
-              <Select
-                value={formData.category}
-                onValueChange={(v) => setFormData(prev => ({ ...prev, category: v }))}
-              >
-                <SelectTrigger className="mt-1">
-                  <SelectValue />
-                </SelectTrigger>
+              <Select value={formData.category} onValueChange={(v) => setFormData(prev => ({ ...prev, category: v }))}>
+                <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="insect">Insect</SelectItem>
                   <SelectItem value="disease">Disease</SelectItem>
@@ -289,13 +282,8 @@ function PestEditDialog({ open, onOpenChange, pest, onSave }) {
             </div>
             <div>
               <Label>Severity</Label>
-              <Select
-                value={formData.severity_potential}
-                onValueChange={(v) => setFormData(prev => ({ ...prev, severity_potential: v }))}
-              >
-                <SelectTrigger className="mt-1">
-                  <SelectValue />
-                </SelectTrigger>
+              <Select value={formData.severity_potential} onValueChange={(v) => setFormData(prev => ({ ...prev, severity_potential: v }))}>
+                <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="low">Low</SelectItem>
                   <SelectItem value="medium">Medium</SelectItem>
@@ -305,13 +293,8 @@ function PestEditDialog({ open, onOpenChange, pest, onSave }) {
             </div>
             <div>
               <Label>Spread Rate</Label>
-              <Select
-                value={formData.spread_rate}
-                onValueChange={(v) => setFormData(prev => ({ ...prev, spread_rate: v }))}
-              >
-                <SelectTrigger className="mt-1">
-                  <SelectValue />
-                </SelectTrigger>
+              <Select value={formData.spread_rate} onValueChange={(v) => setFormData(prev => ({ ...prev, spread_rate: v }))}>
+                <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="slow">Slow</SelectItem>
                   <SelectItem value="moderate">Moderate</SelectItem>
@@ -321,7 +304,7 @@ function PestEditDialog({ open, onOpenChange, pest, onSave }) {
             </div>
           </div>
 
-          {/* Appearance */}
+          {/* ── Identification ── */}
           <div>
             <Label>Appearance Description</Label>
             <Textarea
@@ -333,7 +316,6 @@ function PestEditDialog({ open, onOpenChange, pest, onSave }) {
             />
           </div>
 
-          {/* Array fields */}
           <div>
             <Label>Symptoms (one per line)</Label>
             <Textarea
@@ -356,6 +338,26 @@ function PestEditDialog({ open, onOpenChange, pest, onSave }) {
             />
           </div>
 
+          {/* ── ✅ NEW: Confused With ── */}
+          <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 space-y-2">
+            <div>
+              <Label className="text-amber-900 font-semibold text-sm flex items-center gap-1">
+                <span>⚠️</span> Confused With (one per line)
+              </Label>
+              <p className="text-xs text-amber-700 mt-1">
+                List other problems this is commonly mistaken for. Each line becomes a separate item shown in a "Don't Confuse With" section on the detail page. Be descriptive — explain <em>why</em> it might be confused.
+              </p>
+            </div>
+            <Textarea
+              value={formData.confused_with?.join('\n') || ''}
+              onChange={(e) => handleArrayField('confused_with', e.target.value)}
+              rows={4}
+              className="bg-white"
+              placeholder="Early Blight — similar dark spots but with concentric rings and yellow halo&#10;Septoria Leaf Spot — smaller spots, starts lower on plant&#10;Magnesium deficiency — interveinal yellowing without spots"
+            />
+          </div>
+
+          {/* ── Treatments ── */}
           <div>
             <Label>Organic Treatments (one per line)</Label>
             <Textarea
@@ -389,7 +391,7 @@ function PestEditDialog({ open, onOpenChange, pest, onSave }) {
             />
           </div>
 
-          {/* ✅ FIXED: Image upload with correct API call */}
+          {/* ── Image ── */}
           <div>
             <Label>Primary Photo (Hero Image)</Label>
             <div className="mt-1 space-y-3">
@@ -416,7 +418,6 @@ function PestEditDialog({ open, onOpenChange, pest, onSave }) {
                   </div>
                 </div>
               )}
-
               <div className="flex items-center gap-3">
                 <Input
                   type="file"
@@ -438,7 +439,7 @@ function PestEditDialog({ open, onOpenChange, pest, onSave }) {
             </div>
           </div>
 
-          {/* Save / Cancel */}
+          {/* ── Actions ── */}
           <div className="flex gap-4 pt-2 border-t">
             <Button
               onClick={handleSave}
@@ -446,10 +447,7 @@ function PestEditDialog({ open, onOpenChange, pest, onSave }) {
               className="flex-1 bg-emerald-600 hover:bg-emerald-700"
             >
               {saving ? (
-                <>
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  Saving...
-                </>
+                <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Saving...</>
               ) : (
                 pest ? 'Update Entry' : 'Create Entry'
               )}
@@ -462,6 +460,7 @@ function PestEditDialog({ open, onOpenChange, pest, onSave }) {
               Cancel
             </Button>
           </div>
+
         </div>
       </DialogContent>
     </Dialog>
