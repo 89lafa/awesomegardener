@@ -4,7 +4,7 @@ import { useLocation } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
-import { Bug, Loader2, AlertTriangle, Shield, Eye, Edit, HelpCircle } from 'lucide-react';
+import { Loader2, AlertTriangle, Shield, Eye, Edit, HelpCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -13,12 +13,34 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
 
+// ─────────────────────────────────────────────
+// Must match exactly what's in AdminPestLibrary
+// ─────────────────────────────────────────────
+const CONFUSED_MARKER = '\n\n__CONFUSED_WITH__\n';
+
+function encodeLifecycle(lifecycle, confusedWith) {
+  const cleanLifecycle = (lifecycle || '').split(CONFUSED_MARKER)[0].trimEnd();
+  if (!confusedWith || confusedWith.length === 0) return cleanLifecycle;
+  return cleanLifecycle + CONFUSED_MARKER + confusedWith.join('\n');
+}
+
+function decodeLifecycle(rawLifecycle) {
+  const raw = rawLifecycle || '';
+  const parts = raw.split(CONFUSED_MARKER);
+  return {
+    lifecycle: parts[0] || '',
+    confused_with: parts[1] ? parts[1].split('\n').map(s => s.trim()).filter(Boolean) : []
+  };
+}
+
+// ─────────────────────────────────────────────
 export default function PestDetail() {
   const location = useLocation();
   const params = new URLSearchParams(location.search);
   const pestId = params.get('id');
 
   const [pest, setPest] = useState(null);
+  const [decoded, setDecoded] = useState({ lifecycle: '', confused_with: [] });
   const [loading, setLoading] = useState(true);
   const [user, setUser] = useState(null);
   const [showEdit, setShowEdit] = useState(false);
@@ -37,9 +59,12 @@ export default function PestDetail() {
       ]);
       setUser(userData);
       if (results.length > 0) {
-        setPest(results[0]);
+        const p = results[0];
+        setPest(p);
+        // Decode lifecycle → separate lifecycle text + confused_with array
+        setDecoded(decodeLifecycle(p.lifecycle));
         await base44.entities.PestLibrary.update(pestId, {
-          view_count: (results[0].view_count || 0) + 1
+          view_count: (p.view_count || 0) + 1
         });
       }
     } catch (error) {
@@ -56,8 +81,9 @@ export default function PestDetail() {
       category: pest.category || 'insect',
       appearance: pest.appearance || '',
       symptoms: pest.symptoms?.join('\n') || '',
-      lifecycle: pest.lifecycle || '',
-      confused_with: pest.confused_with?.join('\n') || '',
+      // Split lifecycle back into its two parts for the edit form
+      lifecycle_text: decoded.lifecycle,
+      confused_with_text: decoded.confused_with.join('\n'),
       organic_treatments: pest.organic_treatments?.join('\n') || '',
       chemical_treatments: pest.chemical_treatments?.join('\n') || '',
       prevention_tips: pest.prevention_tips?.join('\n') || '',
@@ -69,14 +95,25 @@ export default function PestDetail() {
 
   const handleSave = async () => {
     try {
+      // Re-encode lifecycle + confused_with back into one field
+      const confusedArray = (editData.confused_with_text || '')
+        .split('\n').map(s => s.trim()).filter(Boolean);
+      const encodedLifecycle = encodeLifecycle(editData.lifecycle_text, confusedArray);
+
       const updateData = {
-        ...editData,
+        common_name: editData.common_name,
+        scientific_name: editData.scientific_name,
+        category: editData.category,
+        appearance: editData.appearance,
+        severity_potential: editData.severity_potential,
+        primary_photo_url: editData.primary_photo_url,
+        lifecycle: encodedLifecycle,   // ← encoded into this existing field
         symptoms: editData.symptoms.split('\n').map(s => s.trim()).filter(Boolean),
-        confused_with: editData.confused_with.split('\n').map(s => s.trim()).filter(Boolean),
         organic_treatments: editData.organic_treatments.split('\n').map(s => s.trim()).filter(Boolean),
         chemical_treatments: editData.chemical_treatments.split('\n').map(s => s.trim()).filter(Boolean),
         prevention_tips: editData.prevention_tips.split('\n').map(s => s.trim()).filter(Boolean)
       };
+
       await base44.entities.PestLibrary.update(pestId, updateData);
       await loadPest();
       setShowEdit(false);
@@ -87,7 +124,6 @@ export default function PestDetail() {
     }
   };
 
-  // ✅ Fixed image upload
   const handleImageUpload = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -97,7 +133,6 @@ export default function PestDetail() {
       setEditData(prev => ({ ...prev, primary_photo_url: file_url }));
       toast.success('Image uploaded!');
     } catch (error) {
-      console.error('Error uploading image:', error);
       toast.error('Failed to upload image');
     } finally {
       setImageUploading(false);
@@ -159,8 +194,7 @@ export default function PestDetail() {
           </Badge>
           {user?.role === 'admin' && (
             <Button onClick={handleEdit} size="sm" className="gap-2">
-              <Edit className="w-3 h-3" />
-              Edit
+              <Edit className="w-3 h-3" /> Edit
             </Button>
           )}
         </div>
@@ -170,8 +204,7 @@ export default function PestDetail() {
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Eye className="w-5 h-5" />
-            Identification
+            <Eye className="w-5 h-5" /> Identification
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -191,17 +224,18 @@ export default function PestDetail() {
             </div>
           )}
 
-          {pest.lifecycle && (
+          {/* Show clean lifecycle text (without the encoded confused_with portion) */}
+          {decoded.lifecycle && (
             <div>
               <h4 className="font-semibold text-gray-900 mb-2">Lifecycle:</h4>
-              <p className="text-gray-700">{pest.lifecycle}</p>
+              <p className="text-gray-700">{decoded.lifecycle}</p>
             </div>
           )}
         </CardContent>
       </Card>
 
-      {/* ✅ NEW: Confused With section */}
-      {pest.confused_with?.length > 0 && (
+      {/* ✅ Don't Confuse With — only renders when data exists */}
+      {decoded.confused_with.length > 0 && (
         <Card className="border-amber-200 bg-amber-50">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-amber-900">
@@ -211,12 +245,13 @@ export default function PestDetail() {
           </CardHeader>
           <CardContent>
             <p className="text-sm text-amber-700 mb-3">
-              These conditions are commonly mistaken for <strong>{pest.common_name}</strong>. Look carefully before treating:
+              These conditions are commonly mistaken for <strong>{pest.common_name}</strong>.
+              Look carefully before treating:
             </p>
             <ul className="space-y-2">
-              {pest.confused_with.map((item, idx) => (
-                <li key={idx} className="flex items-start gap-2 text-amber-900">
-                  <span className="mt-1 w-4 h-4 rounded-full bg-amber-300 flex items-center justify-center text-xs font-bold text-amber-900 shrink-0">
+              {decoded.confused_with.map((item, idx) => (
+                <li key={idx} className="flex items-start gap-3 text-amber-900">
+                  <span className="mt-0.5 w-5 h-5 rounded-full bg-amber-300 flex items-center justify-center text-xs font-bold text-amber-900 shrink-0">
                     {idx + 1}
                   </span>
                   <span className="text-sm">{item}</span>
@@ -231,8 +266,7 @@ export default function PestDetail() {
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <AlertTriangle className="w-5 h-5" />
-            Treatment Options
+            <AlertTriangle className="w-5 h-5" /> Treatment Options
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -244,8 +278,8 @@ export default function PestDetail() {
             <TabsContent value="organic" className="mt-4">
               {pest.organic_treatments?.length > 0 ? (
                 <ul className="list-disc list-inside space-y-2">
-                  {pest.organic_treatments.map((treatment, idx) => (
-                    <li key={idx} className="text-gray-700">{treatment}</li>
+                  {pest.organic_treatments.map((t, idx) => (
+                    <li key={idx} className="text-gray-700">{t}</li>
                   ))}
                 </ul>
               ) : (
@@ -255,8 +289,8 @@ export default function PestDetail() {
             <TabsContent value="chemical" className="mt-4">
               {pest.chemical_treatments?.length > 0 ? (
                 <ul className="list-disc list-inside space-y-2">
-                  {pest.chemical_treatments.map((treatment, idx) => (
-                    <li key={idx} className="text-gray-700">{treatment}</li>
+                  {pest.chemical_treatments.map((t, idx) => (
+                    <li key={idx} className="text-gray-700">{t}</li>
                   ))}
                 </ul>
               ) : (
@@ -272,8 +306,7 @@ export default function PestDetail() {
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <Shield className="w-5 h-5" />
-              Prevention Tips
+              <Shield className="w-5 h-5" /> Prevention Tips
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -289,18 +322,12 @@ export default function PestDetail() {
       {/* Photo Gallery */}
       {pest.photos?.length > 1 && (
         <Card>
-          <CardHeader>
-            <CardTitle>Photo Gallery</CardTitle>
-          </CardHeader>
+          <CardHeader><CardTitle>Photo Gallery</CardTitle></CardHeader>
           <CardContent>
             <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
               {pest.photos.map((photo, idx) => (
                 <div key={idx} className="aspect-square rounded-lg overflow-hidden border">
-                  <img
-                    src={photo}
-                    alt={`${pest.common_name} ${idx + 1}`}
-                    className="w-full h-full object-cover"
-                  />
+                  <img src={photo} alt={`${pest.common_name} ${idx + 1}`} className="w-full h-full object-cover" />
                 </div>
               ))}
             </div>
@@ -308,7 +335,7 @@ export default function PestDetail() {
         </Card>
       )}
 
-      {/* ── Edit Dialog ── */}
+      {/* ── Edit Dialog (admin only) ── */}
       {user?.role === 'admin' && (
         <Dialog open={showEdit} onOpenChange={setShowEdit}>
           <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
@@ -324,7 +351,7 @@ export default function PestDetail() {
                     <Label>Common Name</Label>
                     <Input
                       value={editData.common_name}
-                      onChange={(e) => setEditData({ ...editData, common_name: e.target.value })}
+                      onChange={(e) => setEditData(prev => ({ ...prev, common_name: e.target.value }))}
                       className="mt-2"
                     />
                   </div>
@@ -332,7 +359,7 @@ export default function PestDetail() {
                     <Label>Scientific Name</Label>
                     <Input
                       value={editData.scientific_name}
-                      onChange={(e) => setEditData({ ...editData, scientific_name: e.target.value })}
+                      onChange={(e) => setEditData(prev => ({ ...prev, scientific_name: e.target.value }))}
                       className="mt-2"
                     />
                   </div>
@@ -341,7 +368,7 @@ export default function PestDetail() {
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <Label>Category</Label>
-                    <Select value={editData.category} onValueChange={(v) => setEditData({ ...editData, category: v })}>
+                    <Select value={editData.category} onValueChange={(v) => setEditData(prev => ({ ...prev, category: v }))}>
                       <SelectTrigger className="mt-2"><SelectValue /></SelectTrigger>
                       <SelectContent>
                         <SelectItem value="insect">Insect</SelectItem>
@@ -356,7 +383,7 @@ export default function PestDetail() {
                   </div>
                   <div>
                     <Label>Severity</Label>
-                    <Select value={editData.severity_potential} onValueChange={(v) => setEditData({ ...editData, severity_potential: v })}>
+                    <Select value={editData.severity_potential} onValueChange={(v) => setEditData(prev => ({ ...prev, severity_potential: v }))}>
                       <SelectTrigger className="mt-2"><SelectValue /></SelectTrigger>
                       <SelectContent>
                         <SelectItem value="low">Low</SelectItem>
@@ -372,16 +399,9 @@ export default function PestDetail() {
                   <Label>Hero Image</Label>
                   <div className="mt-2 space-y-2">
                     <div className="flex items-center gap-3">
-                      <Input
-                        type="file"
-                        accept="image/*"
-                        onChange={handleImageUpload}
-                        disabled={imageUploading}
-                        className="flex-1"
-                      />
+                      <Input type="file" accept="image/*" onChange={handleImageUpload} disabled={imageUploading} className="flex-1" />
                       {imageUploading && <Loader2 className="w-5 h-5 animate-spin text-emerald-600 shrink-0" />}
                     </div>
-                    {imageUploading && <p className="text-sm text-emerald-600">Uploading image...</p>}
                     {editData.primary_photo_url && !imageUploading && (
                       <div className="mt-2">
                         <img src={editData.primary_photo_url} alt="Preview" className="h-32 object-cover rounded border" />
@@ -393,35 +413,20 @@ export default function PestDetail() {
 
                 <div>
                   <Label>Appearance Description</Label>
-                  <Textarea
-                    value={editData.appearance}
-                    onChange={(e) => setEditData({ ...editData, appearance: e.target.value })}
-                    rows={3}
-                    className="mt-2"
-                  />
+                  <Textarea value={editData.appearance} onChange={(e) => setEditData(prev => ({ ...prev, appearance: e.target.value }))} rows={3} className="mt-2" />
                 </div>
 
                 <div>
                   <Label>Symptoms (one per line)</Label>
-                  <Textarea
-                    value={editData.symptoms}
-                    onChange={(e) => setEditData({ ...editData, symptoms: e.target.value })}
-                    rows={4}
-                    className="mt-2"
-                  />
+                  <Textarea value={editData.symptoms} onChange={(e) => setEditData(prev => ({ ...prev, symptoms: e.target.value }))} rows={4} className="mt-2" />
                 </div>
 
                 <div>
                   <Label>Lifecycle / Notes</Label>
-                  <Textarea
-                    value={editData.lifecycle}
-                    onChange={(e) => setEditData({ ...editData, lifecycle: e.target.value })}
-                    rows={2}
-                    className="mt-2"
-                  />
+                  <Textarea value={editData.lifecycle_text} onChange={(e) => setEditData(prev => ({ ...prev, lifecycle_text: e.target.value }))} rows={2} className="mt-2" />
                 </div>
 
-                {/* ✅ NEW: Confused With in edit dialog */}
+                {/* ✅ Confused With in edit dialog */}
                 <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 space-y-2">
                   <Label className="text-amber-900 font-semibold text-sm flex items-center gap-1">
                     <HelpCircle className="w-4 h-4" /> Confused With (one per line)
@@ -430,8 +435,8 @@ export default function PestDetail() {
                     Each line appears as a numbered item in the "Don't Confuse With" section on the detail page.
                   </p>
                   <Textarea
-                    value={editData.confused_with}
-                    onChange={(e) => setEditData({ ...editData, confused_with: e.target.value })}
+                    value={editData.confused_with_text}
+                    onChange={(e) => setEditData(prev => ({ ...prev, confused_with_text: e.target.value }))}
                     rows={4}
                     className="bg-white"
                     placeholder="Early Blight — similar dark spots but with concentric rings&#10;Nutrient deficiency — yellowing without spots or lesions"
@@ -440,32 +445,17 @@ export default function PestDetail() {
 
                 <div>
                   <Label>Organic Treatments (one per line)</Label>
-                  <Textarea
-                    value={editData.organic_treatments}
-                    onChange={(e) => setEditData({ ...editData, organic_treatments: e.target.value })}
-                    rows={4}
-                    className="mt-2"
-                  />
+                  <Textarea value={editData.organic_treatments} onChange={(e) => setEditData(prev => ({ ...prev, organic_treatments: e.target.value }))} rows={4} className="mt-2" />
                 </div>
 
                 <div>
                   <Label>Chemical Treatments (one per line)</Label>
-                  <Textarea
-                    value={editData.chemical_treatments}
-                    onChange={(e) => setEditData({ ...editData, chemical_treatments: e.target.value })}
-                    rows={4}
-                    className="mt-2"
-                  />
+                  <Textarea value={editData.chemical_treatments} onChange={(e) => setEditData(prev => ({ ...prev, chemical_treatments: e.target.value }))} rows={4} className="mt-2" />
                 </div>
 
                 <div>
                   <Label>Prevention Tips (one per line)</Label>
-                  <Textarea
-                    value={editData.prevention_tips}
-                    onChange={(e) => setEditData({ ...editData, prevention_tips: e.target.value })}
-                    rows={4}
-                    className="mt-2"
-                  />
+                  <Textarea value={editData.prevention_tips} onChange={(e) => setEditData(prev => ({ ...prev, prevention_tips: e.target.value }))} rows={4} className="mt-2" />
                 </div>
 
               </div>
@@ -478,11 +468,10 @@ export default function PestDetail() {
                 disabled={imageUploading}
                 className="bg-emerald-600 hover:bg-emerald-700"
               >
-                {imageUploading ? (
-                  <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Uploading...</>
-                ) : (
-                  'Save Changes'
-                )}
+                {imageUploading
+                  ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Uploading...</>
+                  : 'Save Changes'
+                }
               </Button>
             </DialogFooter>
           </DialogContent>
