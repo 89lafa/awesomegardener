@@ -346,6 +346,7 @@ function PestEditDialog({ open, onOpenChange, pest, onSave }) {
               <Select value={formData.spread_rate} onValueChange={(v) => setFormData(prev => ({ ...prev, spread_rate: v }))}>
                 <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
                 <SelectContent>
+                <SelectItem value="none">None</SelectItem>
                   <SelectItem value="slow">Slow</SelectItem>
                   <SelectItem value="moderate">Moderate</SelectItem>
                   <SelectItem value="fast">Fast</SelectItem>
