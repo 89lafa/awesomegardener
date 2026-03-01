@@ -4,7 +4,7 @@ import { useLocation } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
-import { Bug, Loader2, AlertTriangle, Shield, Eye, Edit, Plus } from 'lucide-react';
+import { Bug, Loader2, AlertTriangle, Shield, Eye, Edit, HelpCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -26,9 +26,7 @@ export default function PestDetail() {
   const [imageUploading, setImageUploading] = useState(false);
 
   useEffect(() => {
-    if (pestId) {
-      loadPest();
-    }
+    if (pestId) loadPest();
   }, [pestId]);
 
   const loadPest = async () => {
@@ -37,13 +35,9 @@ export default function PestDetail() {
         base44.auth.me(),
         base44.entities.PestLibrary.filter({ id: pestId })
       ]);
-      
       setUser(userData);
-      
       if (results.length > 0) {
         setPest(results[0]);
-        
-        // Increment view count
         await base44.entities.PestLibrary.update(pestId, {
           view_count: (results[0].view_count || 0) + 1
         });
@@ -54,7 +48,7 @@ export default function PestDetail() {
       setLoading(false);
     }
   };
-  
+
   const handleEdit = () => {
     setEditData({
       common_name: pest.common_name || '',
@@ -62,6 +56,8 @@ export default function PestDetail() {
       category: pest.category || 'insect',
       appearance: pest.appearance || '',
       symptoms: pest.symptoms?.join('\n') || '',
+      lifecycle: pest.lifecycle || '',
+      confused_with: pest.confused_with?.join('\n') || '',
       organic_treatments: pest.organic_treatments?.join('\n') || '',
       chemical_treatments: pest.chemical_treatments?.join('\n') || '',
       prevention_tips: pest.prevention_tips?.join('\n') || '',
@@ -70,17 +66,17 @@ export default function PestDetail() {
     });
     setShowEdit(true);
   };
-  
+
   const handleSave = async () => {
     try {
       const updateData = {
         ...editData,
         symptoms: editData.symptoms.split('\n').map(s => s.trim()).filter(Boolean),
+        confused_with: editData.confused_with.split('\n').map(s => s.trim()).filter(Boolean),
         organic_treatments: editData.organic_treatments.split('\n').map(s => s.trim()).filter(Boolean),
         chemical_treatments: editData.chemical_treatments.split('\n').map(s => s.trim()).filter(Boolean),
         prevention_tips: editData.prevention_tips.split('\n').map(s => s.trim()).filter(Boolean)
       };
-      
       await base44.entities.PestLibrary.update(pestId, updateData);
       await loadPest();
       setShowEdit(false);
@@ -91,11 +87,10 @@ export default function PestDetail() {
     }
   };
 
-  // ✅ FIXED: Correct response destructuring + functional state update to avoid stale closure
+  // ✅ Fixed image upload
   const handleImageUpload = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
-
     setImageUploading(true);
     try {
       const { file_url } = await base44.integrations.Core.UploadFile({ file });
@@ -137,6 +132,7 @@ export default function PestDetail() {
 
   return (
     <div className="max-w-4xl space-y-6">
+
       {/* Hero Image */}
       {pest.primary_photo_url && (
         <div className="h-64 lg:h-96 rounded-xl overflow-hidden">
@@ -149,26 +145,24 @@ export default function PestDetail() {
       )}
 
       {/* Header */}
-      <div>
-        <div className="flex items-start justify-between mb-2">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900">{pest.common_name}</h1>
-            {pest.scientific_name && (
-              <p className="text-lg italic text-gray-600 mt-1">{pest.scientific_name}</p>
-            )}
-          </div>
-          <div className="flex flex-col gap-2">
-            <Badge className="capitalize">{pest.category}</Badge>
-            <Badge className={getSeverityColor(pest.severity_potential)}>
-              {pest.severity_potential} severity
-            </Badge>
-            {user?.role === 'admin' && (
-              <Button onClick={handleEdit} size="sm" className="gap-2">
-                <Edit className="w-3 h-3" />
-                Edit
-              </Button>
-            )}
-          </div>
+      <div className="flex items-start justify-between mb-2">
+        <div>
+          <h1 className="text-3xl font-bold text-gray-900">{pest.common_name}</h1>
+          {pest.scientific_name && (
+            <p className="text-lg italic text-gray-600 mt-1">{pest.scientific_name}</p>
+          )}
+        </div>
+        <div className="flex flex-col gap-2 items-end">
+          <Badge className="capitalize">{pest.category}</Badge>
+          <Badge className={getSeverityColor(pest.severity_potential)}>
+            {pest.severity_potential} severity
+          </Badge>
+          {user?.role === 'admin' && (
+            <Button onClick={handleEdit} size="sm" className="gap-2">
+              <Edit className="w-3 h-3" />
+              Edit
+            </Button>
+          )}
         </div>
       </div>
 
@@ -205,6 +199,33 @@ export default function PestDetail() {
           )}
         </CardContent>
       </Card>
+
+      {/* ✅ NEW: Confused With section */}
+      {pest.confused_with?.length > 0 && (
+        <Card className="border-amber-200 bg-amber-50">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-amber-900">
+              <HelpCircle className="w-5 h-5 text-amber-600" />
+              Don't Confuse With
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm text-amber-700 mb-3">
+              These conditions are commonly mistaken for <strong>{pest.common_name}</strong>. Look carefully before treating:
+            </p>
+            <ul className="space-y-2">
+              {pest.confused_with.map((item, idx) => (
+                <li key={idx} className="flex items-start gap-2 text-amber-900">
+                  <span className="mt-1 w-4 h-4 rounded-full bg-amber-300 flex items-center justify-center text-xs font-bold text-amber-900 shrink-0">
+                    {idx + 1}
+                  </span>
+                  <span className="text-sm">{item}</span>
+                </li>
+              ))}
+            </ul>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Treatment */}
       <Card>
@@ -286,16 +307,18 @@ export default function PestDetail() {
           </CardContent>
         </Card>
       )}
-      
-      {/* Edit Dialog */}
+
+      {/* ── Edit Dialog ── */}
       {user?.role === 'admin' && (
         <Dialog open={showEdit} onOpenChange={setShowEdit}>
           <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Edit Pest Entry</DialogTitle>
             </DialogHeader>
+
             {editData && (
               <div className="space-y-4">
+
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <Label>Common Name</Label>
@@ -314,14 +337,12 @@ export default function PestDetail() {
                     />
                   </div>
                 </div>
-                
+
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <Label>Category</Label>
                     <Select value={editData.category} onValueChange={(v) => setEditData({ ...editData, category: v })}>
-                      <SelectTrigger className="mt-2">
-                        <SelectValue />
-                      </SelectTrigger>
+                      <SelectTrigger className="mt-2"><SelectValue /></SelectTrigger>
                       <SelectContent>
                         <SelectItem value="insect">Insect</SelectItem>
                         <SelectItem value="disease">Disease</SelectItem>
@@ -336,9 +357,7 @@ export default function PestDetail() {
                   <div>
                     <Label>Severity</Label>
                     <Select value={editData.severity_potential} onValueChange={(v) => setEditData({ ...editData, severity_potential: v })}>
-                      <SelectTrigger className="mt-2">
-                        <SelectValue />
-                      </SelectTrigger>
+                      <SelectTrigger className="mt-2"><SelectValue /></SelectTrigger>
                       <SelectContent>
                         <SelectItem value="low">Low</SelectItem>
                         <SelectItem value="medium">Medium</SelectItem>
@@ -347,8 +366,8 @@ export default function PestDetail() {
                     </Select>
                   </div>
                 </div>
-                
-                {/* ✅ FIXED image upload section */}
+
+                {/* Hero Image */}
                 <div>
                   <Label>Hero Image</Label>
                   <div className="mt-2 space-y-2">
@@ -360,26 +379,18 @@ export default function PestDetail() {
                         disabled={imageUploading}
                         className="flex-1"
                       />
-                      {imageUploading && (
-                        <Loader2 className="w-5 h-5 animate-spin text-emerald-600 shrink-0" />
-                      )}
+                      {imageUploading && <Loader2 className="w-5 h-5 animate-spin text-emerald-600 shrink-0" />}
                     </div>
-                    {imageUploading && (
-                      <p className="text-sm text-emerald-600">Uploading image...</p>
-                    )}
+                    {imageUploading && <p className="text-sm text-emerald-600">Uploading image...</p>}
                     {editData.primary_photo_url && !imageUploading && (
                       <div className="mt-2">
-                        <img
-                          src={editData.primary_photo_url}
-                          alt="Preview"
-                          className="h-32 object-cover rounded border"
-                        />
+                        <img src={editData.primary_photo_url} alt="Preview" className="h-32 object-cover rounded border" />
                         <p className="text-xs text-green-600 mt-1">✓ Image ready</p>
                       </div>
                     )}
                   </div>
                 </div>
-                
+
                 <div>
                   <Label>Appearance Description</Label>
                   <Textarea
@@ -389,7 +400,7 @@ export default function PestDetail() {
                     className="mt-2"
                   />
                 </div>
-                
+
                 <div>
                   <Label>Symptoms (one per line)</Label>
                   <Textarea
@@ -399,7 +410,34 @@ export default function PestDetail() {
                     className="mt-2"
                   />
                 </div>
-                
+
+                <div>
+                  <Label>Lifecycle / Notes</Label>
+                  <Textarea
+                    value={editData.lifecycle}
+                    onChange={(e) => setEditData({ ...editData, lifecycle: e.target.value })}
+                    rows={2}
+                    className="mt-2"
+                  />
+                </div>
+
+                {/* ✅ NEW: Confused With in edit dialog */}
+                <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 space-y-2">
+                  <Label className="text-amber-900 font-semibold text-sm flex items-center gap-1">
+                    <HelpCircle className="w-4 h-4" /> Confused With (one per line)
+                  </Label>
+                  <p className="text-xs text-amber-700">
+                    Each line appears as a numbered item in the "Don't Confuse With" section on the detail page.
+                  </p>
+                  <Textarea
+                    value={editData.confused_with}
+                    onChange={(e) => setEditData({ ...editData, confused_with: e.target.value })}
+                    rows={4}
+                    className="bg-white"
+                    placeholder="Early Blight — similar dark spots but with concentric rings&#10;Nutrient deficiency — yellowing without spots or lesions"
+                  />
+                </div>
+
                 <div>
                   <Label>Organic Treatments (one per line)</Label>
                   <Textarea
@@ -409,7 +447,7 @@ export default function PestDetail() {
                     className="mt-2"
                   />
                 </div>
-                
+
                 <div>
                   <Label>Chemical Treatments (one per line)</Label>
                   <Textarea
@@ -419,7 +457,7 @@ export default function PestDetail() {
                     className="mt-2"
                   />
                 </div>
-                
+
                 <div>
                   <Label>Prevention Tips (one per line)</Label>
                   <Textarea
@@ -429,8 +467,10 @@ export default function PestDetail() {
                     className="mt-2"
                   />
                 </div>
+
               </div>
             )}
+
             <DialogFooter>
               <Button variant="outline" onClick={() => setShowEdit(false)}>Cancel</Button>
               <Button
@@ -439,10 +479,7 @@ export default function PestDetail() {
                 className="bg-emerald-600 hover:bg-emerald-700"
               >
                 {imageUploading ? (
-                  <>
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    Uploading...
-                  </>
+                  <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Uploading...</>
                 ) : (
                   'Save Changes'
                 )}
