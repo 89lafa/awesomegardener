@@ -81,14 +81,14 @@ export default function PestDetail() {
       category: pest.category || 'insect',
       appearance: pest.appearance || '',
       symptoms: pest.symptoms?.join('\n') || '',
-      // Split lifecycle back into its two parts for the edit form
       lifecycle_text: decoded.lifecycle,
       confused_with_text: decoded.confused_with.join('\n'),
       organic_treatments: pest.organic_treatments?.join('\n') || '',
       chemical_treatments: pest.chemical_treatments?.join('\n') || '',
       prevention_tips: pest.prevention_tips?.join('\n') || '',
       primary_photo_url: pest.primary_photo_url || '',
-      severity_potential: pest.severity_potential || 'medium'
+      severity_potential: pest.severity_potential || 'medium',
+      spread_rate: pest.spread_rate || 'moderate'
     });
     setShowEdit(true);
   };
@@ -106,6 +106,7 @@ export default function PestDetail() {
         category: editData.category,
         appearance: editData.appearance,
         severity_potential: editData.severity_potential,
+        spread_rate: editData.spread_rate,
         primary_photo_url: editData.primary_photo_url,
         lifecycle: encodedLifecycle,   // ← encoded into this existing field
         symptoms: editData.symptoms.split('\n').map(s => s.trim()).filter(Boolean),
@@ -139,6 +140,8 @@ export default function PestDetail() {
     }
   };
 
+  const capitalize = (str) => str ? str.charAt(0).toUpperCase() + str.slice(1) : '';
+
   const getSeverityColor = (severity) => {
     const colors = {
       low: 'bg-blue-100 text-blue-800',
@@ -146,6 +149,16 @@ export default function PestDetail() {
       high: 'bg-red-100 text-red-800'
     };
     return colors[severity] || colors.medium;
+  };
+
+  const getSpreadRateColor = (rate) => {
+    const colors = {
+      none: 'bg-gray-100 text-gray-600',
+      slow: 'bg-green-100 text-green-800',
+      moderate: 'bg-yellow-100 text-yellow-800',
+      fast: 'bg-red-100 text-red-800'
+    };
+    return colors[rate] || colors.slow;
   };
 
   if (loading) {
@@ -190,8 +203,18 @@ export default function PestDetail() {
         <div className="flex flex-col gap-2 items-end">
           <Badge className="capitalize">{pest.category}</Badge>
           <Badge className={getSeverityColor(pest.severity_potential)}>
-            {pest.severity_potential} severity
+            {capitalize(pest.severity_potential)} Severity
           </Badge>
+          {pest.spread_rate && pest.spread_rate !== 'none' && (
+            <Badge className={getSpreadRateColor(pest.spread_rate)}>
+              Spread: {capitalize(pest.spread_rate)}
+            </Badge>
+          )}
+          {pest.spread_rate === 'none' && (
+            <Badge className={getSpreadRateColor('none')}>
+              Not Contagious
+            </Badge>
+          )}
           {user?.role === 'admin' && (
             <Button onClick={handleEdit} size="sm" className="gap-2">
               <Edit className="w-3 h-3" /> Edit
@@ -365,7 +388,7 @@ export default function PestDetail() {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-3 gap-4">
                   <div>
                     <Label>Category</Label>
                     <Select value={editData.category} onValueChange={(v) => setEditData(prev => ({ ...prev, category: v }))}>
@@ -389,6 +412,18 @@ export default function PestDetail() {
                         <SelectItem value="low">Low</SelectItem>
                         <SelectItem value="medium">Medium</SelectItem>
                         <SelectItem value="high">High</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label>Spread Rate</Label>
+                    <Select value={editData.spread_rate} onValueChange={(v) => setEditData(prev => ({ ...prev, spread_rate: v }))}>
+                      <SelectTrigger className="mt-2"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">None (Not Contagious)</SelectItem>
+                        <SelectItem value="slow">Slow</SelectItem>
+                        <SelectItem value="moderate">Moderate</SelectItem>
+                        <SelectItem value="fast">Fast</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
