@@ -14,11 +14,7 @@ import {
   Sprout,
   Edit,
   Maximize2,
-  Minimize2,
-  ArrowUp,
-  ArrowDown,
-  ArrowLeft,
-  ArrowRight
+  Minimize2
 } from 'lucide-react';
 import PlotSettingsDialog from './PlotSettingsDialog';
 import PlantingModal from './PlantingModal';
@@ -85,129 +81,11 @@ const GALLON_SIZES = [
   { value: 20, footprint: 24 }, { value: 30, footprint: 30 }
 ];
 
+// â”€â”€â”€ Helper: distance between two touch points â”€â”€â”€
 function getTouchDistance(t1, t2) {
   const dx = t1.clientX - t2.clientX;
   const dy = t1.clientY - t2.clientY;
   return Math.sqrt(dx * dx + dy * dy);
-}
-
-// ═══════════════════════════════════════════════════════════════════════════
-// MoveButtons — MUST be defined outside PlotCanvas to prevent React from
-// treating it as a new component type on every render (which caused the
-// Rotate button to require a double-click due to remount disruption).
-// ═══════════════════════════════════════════════════════════════════════════
-function ItemContextMenu({ item, onClose, isMobile, showContextMenu, setShowContextMenu,
-  openEditItem, setShowPlantingModal, handleRotate, handleDeleteItem }) {
-  const itemType = ITEM_TYPES.find(t => t.value === item.item_type);
-  const isPlantable = itemType?.plantable;
-
-  const ContextContent = (
-    <>
-      <DrawerHeader>
-        <DrawerTitle>{item.label}</DrawerTitle>
-        <DrawerDescription>{item.width}" × {item.height}"</DrawerDescription>
-      </DrawerHeader>
-      <div className="px-4 space-y-2 pb-4">
-        <Button variant="outline" className="w-full justify-start gap-2" onClick={() => { openEditItem(item); onClose(); }}>
-          <Edit className="w-4 h-4" />Edit
-        </Button>
-        {isPlantable && (
-          <Button className="w-full justify-start gap-2 bg-emerald-600 hover:bg-emerald-700 text-white h-12 font-semibold"
-            onClick={() => { setShowPlantingModal(true); onClose(); }}>
-            <Sprout className="w-5 h-5" />Plant Seeds
-          </Button>
-        )}
-        <Button variant="outline" className="w-full justify-start gap-2" onClick={() => { handleRotate(); onClose(); }}>
-          <RotateCw className="w-4 h-4" />Rotate
-        </Button>
-        <Button variant="outline" className="w-full justify-start gap-2 text-red-600 hover:text-red-700 hover:bg-red-50"
-          onClick={() => { handleDeleteItem(item); onClose(); }}>
-          <Trash2 className="w-4 h-4" />Delete
-        </Button>
-      </div>
-      <DrawerFooter>
-        <DrawerClose asChild><Button variant="outline">Close</Button></DrawerClose>
-      </DrawerFooter>
-    </>
-  );
-
-  if (isMobile) {
-    return (
-      <Drawer open={showContextMenu} onOpenChange={setShowContextMenu}>
-        <DrawerContent>{ContextContent}</DrawerContent>
-      </Drawer>
-    );
-  }
-  return (
-    <Dialog open={showContextMenu} onOpenChange={setShowContextMenu}>
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader><DialogTitle>{item.label}</DialogTitle></DialogHeader>
-        <div className="space-y-2">
-          <Button variant="outline" className="w-full justify-start gap-2" onClick={() => { openEditItem(item); onClose(); }}>
-            <Edit className="w-4 h-4" />Edit
-          </Button>
-          {isPlantable && (
-            <Button className="w-full justify-start gap-2 bg-emerald-600 hover:bg-emerald-700 text-white h-12 font-semibold"
-              onClick={() => { setShowPlantingModal(true); onClose(); }}>
-              <Sprout className="w-5 h-5" />Plant Seeds
-            </Button>
-          )}
-          <Button variant="outline" className="w-full justify-start gap-2" onClick={() => { handleRotate(); onClose(); }}>
-            <RotateCw className="w-4 h-4" />Rotate
-          </Button>
-          <Button variant="outline" className="w-full justify-start gap-2 text-red-600 hover:text-red-700 hover:bg-red-50"
-            onClick={() => { handleDeleteItem(item); onClose(); }}>
-            <Trash2 className="w-4 h-4" />Delete
-          </Button>
-        </div>
-        <DialogFooter><Button variant="outline" onClick={onClose}>Close</Button></DialogFooter>
-      </DialogContent>
-    </Dialog>
-  );
-}
-
-function MoveButtons({ compact = false, handleMoveItem, selectedItem }) {
-
-  const btnClass = compact
-    ? "w-8 h-8 p-0 flex items-center justify-center"
-    : "w-9 h-9 p-0 flex items-center justify-center";
-  const iconSize = compact ? 14 : 16;
-
-  return (
-    <div className="flex flex-col items-center gap-0.5" aria-label="Move selected item">
-      <Button
-        variant="outline" size="icon" className={btnClass}
-        onClick={() => handleMoveItem('up')} disabled={!selectedItem}
-        aria-label="Move item up" title="Move Up (↑)"
-      >
-        <ArrowUp size={iconSize} />
-      </Button>
-      <div className="flex gap-0.5">
-        <Button
-          variant="outline" size="icon" className={btnClass}
-          onClick={() => handleMoveItem('left')} disabled={!selectedItem}
-          aria-label="Move item left" title="Move Left (←)"
-        >
-          <ArrowLeft size={iconSize} />
-        </Button>
-        <div className={compact ? "w-8 h-8" : "w-9 h-9"} />
-        <Button
-          variant="outline" size="icon" className={btnClass}
-          onClick={() => handleMoveItem('right')} disabled={!selectedItem}
-          aria-label="Move item right" title="Move Right (→)"
-        >
-          <ArrowRight size={iconSize} />
-        </Button>
-      </div>
-      <Button
-        variant="outline" size="icon" className={btnClass}
-        onClick={() => handleMoveItem('down')} disabled={!selectedItem}
-        aria-label="Move item down" title="Move Down (↓)"
-      >
-        <ArrowDown size={iconSize} />
-      </Button>
-    </div>
-  );
 }
 
 export default function PlotCanvas({ garden, plot, activeSeason, seasonId, onPlotUpdate, onDeleteGarden, onItemSelect }) {
@@ -251,13 +129,10 @@ export default function PlotCanvas({ garden, plot, activeSeason, seasonId, onPlo
   const [showSunPath, setShowSunPath] = useState(false);
   const [showSFGGrid, setShowSFGGrid] = useState(false);
 
+  // â”€â”€â”€ Mobile-specific state â”€â”€â”€
   const [isPinching, setIsPinching] = useState(false);
   const pinchStartDist = useRef(0);
   const pinchStartZoom = useRef(1);
-
-  // ─── Keep a ref to selectedItem so the keyboard handler always sees fresh data ───
-  const selectedItemRef = useRef(null);
-  useEffect(() => { selectedItemRef.current = selectedItem; }, [selectedItem]);
 
   const [editItemData, setEditItemData] = useState({
     label: '',
@@ -302,15 +177,17 @@ export default function PlotCanvas({ garden, plot, activeSeason, seasonId, onPlo
     }
   }, [plot, activeSeason]);
 
+  // â”€â”€â”€ Auto-zoom to fit on mobile â”€â”€â”€
   useEffect(() => {
     if (isMobile && plot && scrollContainerRef.current && !loading) {
-      const containerW = scrollContainerRef.current.clientWidth - 16;
+      const containerW = scrollContainerRef.current.clientWidth - 16; // padding
       const containerH = scrollContainerRef.current.clientHeight - 16;
       const fitZoom = Math.min(containerW / plot.width, containerH / plot.height, 1.5);
       setZoom(Math.max(0.3, Math.min(fitZoom, 1.5)));
     }
   }, [isMobile, plot, loading]);
 
+  // â”€â”€â”€ Window event listeners for reliable drag end â”€â”€â”€
   useEffect(() => {
     const handleWindowMouseUp = () => {
       if (draggingItem || isDragging) {
@@ -333,107 +210,30 @@ export default function PlotCanvas({ garden, plot, activeSeason, seasonId, onPlo
     };
   }, [draggingItem, isDragging, items]);
 
-  // ═══════════════════════════════════════════════════════════════════════════
-  // KEYBOARD NAVIGATION — Arrow keys move selected item one grid cell at a time
-  // Also supports Tab to cycle through items, Escape to deselect
-  // ═══════════════════════════════════════════════════════════════════════════
-  useEffect(() => {
-    const handleKeyDown = (e) => {
-      // Don't intercept when user is typing in an input/textarea
-      if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.isContentEditable) return;
-
-      const current = selectedItemRef.current;
-
-      // Tab: cycle through items
-      if (e.key === 'Tab') {
-        e.preventDefault();
-        setItems(prev => {
-          if (prev.length === 0) return prev;
-          const idx = current ? prev.findIndex(i => i.id === current.id) : -1;
-          const next = prev[(idx + (e.shiftKey ? -1 + prev.length : 1)) % prev.length];
-          setSelectedItem(next);
-          if (onItemSelect) onItemSelect(next);
-          return prev;
-        });
-        return;
-      }
-
-      // Escape: deselect
-      if (e.key === 'Escape') {
-        setSelectedItem(null);
-        if (onItemSelect) onItemSelect(null);
-        return;
-      }
-
-      // Arrow keys: move selected item
-      if (!current) return;
-      if (!['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) return;
-
-      e.preventDefault(); // prevent page scroll
-
-      const dirMap = {
-        ArrowUp: 'up',
-        ArrowDown: 'down',
-        ArrowLeft: 'left',
-        ArrowRight: 'right'
-      };
-      handleMoveItem(dirMap[e.key], current);
-    };
-
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [items, onItemSelect]);
-
-  // ═══════════════════════════════════════════════════════════════════════════
-  // MOVE ITEM — moves by one grid cell in any direction
-  // Used by keyboard handler AND the directional buttons in the toolbar
-  // ═══════════════════════════════════════════════════════════════════════════
-  const handleMoveItem = useCallback(async (direction, itemOverride = null) => {
-    const current = itemOverride || selectedItemRef.current;
-    if (!current || !plot) return;
-
-    const gridSize = snapToGrid ? (plot.grid_size || 12) : 6;
-    let x = current.x;
-    let y = current.y;
-
-    if (direction === 'left')  x = Math.max(0, x - gridSize);
-    if (direction === 'right') x = Math.min(plot.width  - current.width,  x + gridSize);
-    if (direction === 'up')    y = Math.max(0, y - gridSize);
-    if (direction === 'down')  y = Math.min(plot.height - current.height, y + gridSize);
-
-    // No movement — already at boundary
-    if (x === current.x && y === current.y) return;
-
-    const updatedItem = { ...current, x, y };
-
-    setItems(prev => prev.map(i => i.id === current.id ? updatedItem : i));
-    setSelectedItem(updatedItem);
-    selectedItemRef.current = updatedItem;
-    if (onItemSelect) onItemSelect(updatedItem);
-
-    try {
-      await base44.entities.PlotItem.update(current.id, { x, y });
-    } catch (error) {
-      console.error('Error moving item via keyboard/button:', error);
-      toast.error('Failed to save position');
-    }
-  }, [plot, snapToGrid, onItemSelect]);
-
+  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+  // NON-PASSIVE TOUCH LISTENERS (fixes 47 errors)
+  // React's onTouchMove is passive by default in
+  // many browsers, so we MUST use addEventListener
+  // with { passive: false } to call preventDefault.
+  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
 
     const onTouchMoveNonPassive = (e) => {
+      // Two fingers = pinch/zoom â€” let it happen on canvas, prevent page scroll
       if (e.touches.length === 2) {
         e.preventDefault();
         handlePinchMove(e);
         return;
       }
+      // One finger + dragging item = drag
       if (draggingItem) {
         e.preventDefault();
         handleDragMove(e);
         return;
       }
+      // One finger + no item = allow native scroll of overflow container
     };
 
     const onTouchStartNonPassive = (e) => {
@@ -453,6 +253,7 @@ export default function PlotCanvas({ garden, plot, activeSeason, seasonId, onPlo
     };
   }, [draggingItem, isDragging, zoom, isPinching]);
 
+  // â”€â”€â”€ Pinch-to-zoom handlers â”€â”€â”€
   const handlePinchStart = (e) => {
     if (e.touches.length !== 2) return;
     setIsPinching(true);
@@ -472,6 +273,7 @@ export default function PlotCanvas({ garden, plot, activeSeason, seasonId, onPlo
     setIsPinching(false);
   };
 
+  // â”€â”€â”€ Drag move (extracted for non-passive listener) â”€â”€â”€
   const handleDragMove = (e) => {
     if (!draggingItem) return;
     const clientX = e.touches ? e.touches[0].clientX : e.clientX;
@@ -569,8 +371,61 @@ export default function PlotCanvas({ garden, plot, activeSeason, seasonId, onPlo
     }
   };
 
+  // ─── Refresh ONLY planting counts — used by PlantingModal after planting ───
+  // Does NOT re-fetch item dimensions from DB so edited sizes are preserved.
+  const loadPlantingCounts = useCallback(async () => {
+    try {
+      const user = await base44.auth.me();
+      const { smartQuery: sq } = await import('@/components/utils/smartQuery');
+
+      const allPlantings = await sq(base44, 'PlantInstance', { garden_id: garden.id, created_by: user.email });
+
+      let plantings = allPlantings;
+      if (activeSeason) {
+        const currentYear = new Date().getFullYear();
+        const isCurrentYearSeason = activeSeason && activeSeason.startsWith(currentYear.toString());
+        plantings = allPlantings.filter(p => {
+          if (!p.season_year) return isCurrentYearSeason;
+          return p.season_year === activeSeason;
+        });
+      }
+
+      setItems(prevItems => {
+        const counts = {};
+        for (const item of prevItems) {
+          const itemPlantings = plantings.filter(p => p.bed_id === item.id);
+          const itemType = ITEM_TYPES.find(t => t.value === item.item_type);
+
+          if (itemType?.plantable) {
+            const layoutSchema = item.metadata?.gridEnabled
+              ? calculateLayoutSchema(itemType, item.width, item.height, item.metadata || {})
+              : null;
+
+            const capacity = layoutSchema?.type === 'grid'
+              ? layoutSchema.columns * layoutSchema.rows
+              : 0;
+
+            const filled = layoutSchema?.flexible
+              ? itemPlantings.length
+              : itemPlantings.reduce((sum, p) => {
+                  const cols = p.cell_span_cols || 1;
+                  const rows = p.cell_span_rows || 1;
+                  return sum + (cols * rows);
+                }, 0);
+
+            counts[item.id] = { filled, capacity };
+          }
+        }
+        setItemsPlantingCounts(counts);
+        return prevItems; // items themselves are unchanged
+      });
+    } catch (error) {
+      console.error('Error refreshing planting counts:', error);
+    }
+  }, [garden?.id, activeSeason]);
+
   const parseDimensions = (input) => {
-    const match = input.match(/(\d+\.?\d*)\s*[xX×]\s*(\d+\.?\d*)/);
+    const match = input.match(/(\d+\.?\d*)\s*[xXÃ—]\s*(\d+\.?\d*)/);
     if (match) return { width: parseFloat(match[1]), height: parseFloat(match[2]) };
     return null;
   };
@@ -739,6 +594,7 @@ export default function PlotCanvas({ garden, plot, activeSeason, seasonId, onPlo
     });
   };
 
+  // â”€â”€â”€ Canvas interaction handlers (mouse only â€” touch uses non-passive listeners) â”€â”€â”€
   const handleMouseDown = (e) => {
     if (e.target.closest('button') || e.target.closest('.plot-item-controls')) return;
     const rect = canvasRef.current.getBoundingClientRect();
@@ -751,7 +607,6 @@ export default function PlotCanvas({ garden, plot, activeSeason, seasonId, onPlo
 
     if (clickedItem) {
       setSelectedItem(clickedItem);
-      selectedItemRef.current = clickedItem;
       if (onItemSelect) onItemSelect(clickedItem);
       setDraggingItem(clickedItem);
       setDragStartPos({ x: e.clientX, y: e.clientY });
@@ -770,16 +625,8 @@ export default function PlotCanvas({ garden, plot, activeSeason, seasonId, onPlo
   const handleInteractionEnd = async () => {
     if (isPinching) { handlePinchEnd(); return; }
     if (draggingItem) {
-      const draggedId = draggingItem.id;
-      const wasDragging = isDragging;
-      const item = items.find(i => i.id === draggedId);
-      
-      setDraggingItem(null);
-      setIsDragging(false);
-      document.body.style.userSelect = '';
-      document.body.style.cursor = '';
-      
-      if (wasDragging && item) {
+      const item = items.find(i => i.id === draggingItem.id);
+      if (isDragging && item) {
         try {
           await base44.entities.PlotItem.update(item.id, { x: item.x, y: item.y });
           if (selectedItem?.id === item.id) setSelectedItem(item);
@@ -787,13 +634,17 @@ export default function PlotCanvas({ garden, plot, activeSeason, seasonId, onPlo
           console.error('Error updating position:', error);
         }
       }
+      setDraggingItem(null);
+      setIsDragging(false);
+      document.body.style.userSelect = '';
+      document.body.style.cursor = '';
     }
   };
 
+  // â”€â”€â”€ Mobile: tap on item = select, long-press = context menu â”€â”€â”€
   const handleMobileTapItem = useCallback((item) => {
     if (isPinching) return;
-setSelectedItem(item);
-    selectedItemRef.current = item;
+    setSelectedItem(item);
     if (onItemSelect) onItemSelect(item);
   }, [isPinching, onItemSelect]);
 
@@ -804,34 +655,19 @@ setSelectedItem(item);
     setShowContextMenu(true);
   }, [isPinching]);
 
-  const handleMobileDragStart = useCallback((item, touchEvent) => {
-    if (isPinching) return;
-    const touch = touchEvent.touches ? touchEvent.touches[0] : touchEvent;
-    const rect = canvasRef.current?.getBoundingClientRect();
-    if (!rect) return;
-    
-    const x = (touch.clientX - rect.left) / zoom;
-    const y = (touch.clientY - rect.top) / zoom;
-    
-    setSelectedItem(item);
-    if (onItemSelect) onItemSelect(item);
-    setDraggingItem(item);
-    setDragStartPos({ x: touch.clientX, y: touch.clientY });
-    setDragOffset({ x: x - item.x, y: y - item.y });
-    setIsDragging(true);
-    document.body.style.userSelect = 'none';
-  }, [isPinching, zoom, onItemSelect]);
-
+  // â”€â”€â”€ Mobile: tap on canvas background = deselect â”€â”€â”€
   const handleMobileCanvasTap = useCallback((e) => {
+    // Only if tapping the canvas itself, not an item
     if (e.target === canvasRef.current || e.target.closest('svg')) {
       setSelectedItem(null);
       if (onItemSelect) onItemSelect(null);
     }
   }, [onItemSelect]);
 
+  // â”€â”€â”€ Mobile: start dragging a selected item â”€â”€â”€
   const handleMobileTouchStartOnCanvas = useCallback((e) => {
     if (e.touches.length !== 1 || isPinching) return;
-    if (e.target.closest('.plot-item')) return;
+    if (e.target.closest('.plot-item')) return; // PlotItem handles its own touches
 
     const rect = canvasRef.current.getBoundingClientRect();
     const x = (e.touches[0].clientX - rect.left) / zoom;
@@ -842,6 +678,7 @@ setSelectedItem(item);
     );
 
     if (!touchedItem) {
+      // Tapping empty canvas
       handleMobileCanvasTap(e);
     }
   }, [items, zoom, isPinching, handleMobileCanvasTap]);
@@ -872,10 +709,9 @@ setSelectedItem(item);
     }
   };
 
-const handleRotate = async () => {
-    const current = selectedItemRef.current;
-    if (!current) return;
-    const currentItem = items.find(i => i.id === current.id) || current;
+  const handleRotate = async () => {
+    if (!selectedItem) return;
+    const currentItem = items.find(i => i.id === selectedItem.id) || selectedItem;
     const currentRotation = currentItem.rotation || 0;
     const newRotation = (currentRotation + 90) % 360;
     const cx = currentItem.x + currentItem.width / 2;
@@ -895,16 +731,16 @@ const handleRotate = async () => {
 
     try {
       const updatedItem = { ...currentItem, x: newX, y: newY, width: newWidth, height: newHeight, rotation: newRotation };
-      setItems(prevItems => prevItems.map(i => i.id === current.id ? updatedItem : i));
+      setItems(prevItems => prevItems.map(i => i.id === selectedItem.id ? updatedItem : i));
       setSelectedItem(updatedItem);
-      selectedItemRef.current = updatedItem;
-      await base44.entities.PlotItem.update(current.id, { x: newX, y: newY, width: newWidth, height: newHeight, rotation: newRotation });
+      await base44.entities.PlotItem.update(selectedItem.id, { x: newX, y: newY, width: newWidth, height: newHeight, rotation: newRotation });
       toast.success('Rotated');
     } catch (error) {
       console.error('Error rotating:', error);
       toast.error('Failed to rotate');
     }
   };
+
   const handlePlotSettingsSave = async (newSettings) => {
     try {
       await base44.entities.GardenPlot.update(plot.id, newSettings);
@@ -1009,12 +845,83 @@ const handleRotate = async () => {
     return { status: 'partial', label: 'Partial', color: 'amber' };
   };
 
-// MoveButtons and ItemContextMenu are defined OUTSIDE this component (above the export)
+  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+  // Item Context Menu (Mobile Drawer / Desktop Dialog)
+  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+  const ItemContextMenu = ({ item, onClose }) => {
+    const itemType = ITEM_TYPES.find(t => t.value === item.item_type);
+    const isPlantable = itemType?.plantable;
+    
+    const ContextContent = (
+      <>
+        <DrawerHeader>
+          <DrawerTitle>{item.label}</DrawerTitle>
+          <DrawerDescription>{item.width}" Ã— {item.height}"</DrawerDescription>
+        </DrawerHeader>
+        <div className="px-4 space-y-2 pb-4">
+          <Button variant="outline" className="w-full justify-start gap-2" onClick={() => { openEditItem(item); onClose(); }}>
+            <Edit className="w-4 h-4" />Edit
+          </Button>
+          {isPlantable && (
+            <Button className="w-full justify-start gap-2 bg-emerald-600 hover:bg-emerald-700 text-white h-12 font-semibold"
+              onClick={() => { setShowPlantingModal(true); onClose(); }}>
+              <Sprout className="w-5 h-5" />Plant Seeds
+            </Button>
+          )}
+          <Button variant="outline" className="w-full justify-start gap-2" onClick={() => { handleRotate(); onClose(); }}>
+            <RotateCw className="w-4 h-4" />Rotate
+          </Button>
+          <Button variant="outline" className="w-full justify-start gap-2 text-red-600 hover:text-red-700 hover:bg-red-50"
+            onClick={() => { handleDeleteItem(item); onClose(); }}>
+            <Trash2 className="w-4 h-4" />Delete
+          </Button>
+        </div>
+        <DrawerFooter>
+          <DrawerClose asChild><Button variant="outline">Close</Button></DrawerClose>
+        </DrawerFooter>
+      </>
+    );
+    
+    if (isMobile) {
+      return (
+        <Drawer open={showContextMenu} onOpenChange={setShowContextMenu}>
+          <DrawerContent>{ContextContent}</DrawerContent>
+        </Drawer>
+      );
+    }
+    return (
+      <Dialog open={showContextMenu} onOpenChange={setShowContextMenu}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader><DialogTitle>{item.label}</DialogTitle></DialogHeader>
+          <div className="space-y-2">
+            <Button variant="outline" className="w-full justify-start gap-2" onClick={() => { openEditItem(item); onClose(); }}>
+              <Edit className="w-4 h-4" />Edit
+            </Button>
+            {isPlantable && (
+              <Button className="w-full justify-start gap-2 bg-emerald-600 hover:bg-emerald-700 text-white h-12 font-semibold"
+                onClick={() => { setShowPlantingModal(true); onClose(); }}>
+                <Sprout className="w-5 h-5" />Plant Seeds
+              </Button>
+            )}
+            <Button variant="outline" className="w-full justify-start gap-2" onClick={() => { handleRotate(); onClose(); }}>
+              <RotateCw className="w-4 h-4" />Rotate
+            </Button>
+            <Button variant="outline" className="w-full justify-start gap-2 text-red-600 hover:text-red-700 hover:bg-red-50"
+              onClick={() => { handleDeleteItem(item); onClose(); }}>
+              <Trash2 className="w-4 h-4" />Delete
+            </Button>
+          </div>
+          <DialogFooter><Button variant="outline" onClick={onClose}>Close</Button></DialogFooter>
+        </DialogContent>
+      </Dialog>
+    );
+  };
+
   return (
     <div className="flex-1 flex flex-col lg:flex-row gap-4 mt-4 min-h-0">
-      {/* ═══════════════════════════════════════════
-          LEFT TOOLBAR — Desktop only
-          ═══════════════════════════════════════════ */}
+      {/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+          LEFT TOOLBAR â€” Desktop only
+          â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */}
       <Card className="hidden lg:block w-64 flex-shrink-0 h-fit relative z-10">
         <CardContent className="p-4 space-y-2">
           <Button onClick={() => setShowAddItem(true)} className="w-full bg-emerald-600 hover:bg-emerald-700 gap-2">
@@ -1046,23 +953,20 @@ const handleRotate = async () => {
               <Grid3X3 className="w-4 h-4" />{garden?.chaos_mode ? 'Fine Snap' : 'Snap to Grid'}
             </Button>
             <Button variant={showSunPath ? 'secondary' : 'outline'} size="sm" onClick={() => setShowSunPath(!showSunPath)} className="w-full gap-2">
-              ☀️ Sun Path
+              â˜€ï¸ Sun Path
             </Button>
             {garden?.planting_method === 'SQUARE_FOOT' && (
               <Button variant={showSFGGrid ? 'secondary' : 'outline'} size="sm" onClick={() => setShowSFGGrid(!showSFGGrid)} className="w-full gap-2">
-                📐 SFG Grid
+                ðŸ“ SFG Grid
               </Button>
             )}
           </div>
-
-          {/* ── Selected Item Controls ── */}
           {selectedItem && !isMobile && (
             <div className="pt-4 border-t space-y-3">
               <div>
                 <h4 className="font-semibold text-sm mb-1">Selected</h4>
                 <p className="text-sm text-gray-600 font-medium">{selectedItem.label}</p>
-                <p className="text-xs text-gray-500 mt-0.5">{selectedItem.width}" × {selectedItem.height}"</p>
-                <p className="text-[10px] text-gray-400 mt-1">Tip: Arrow keys also move selected item</p>
+                <p className="text-xs text-gray-500 mt-0.5">{selectedItem.width}" Ã— {selectedItem.height}"</p>
               </div>
               <div className="space-y-2">
                 <Button variant="outline" size="sm" onClick={() => openEditItem(selectedItem)} className="w-full gap-2 justify-start">
@@ -1074,27 +978,9 @@ const handleRotate = async () => {
                     <Sprout className="w-5 h-5" />Plant Seeds
                   </Button>
                 )}
-
-                {/* ── Rotate + Move buttons side by side ── */}
-                <div className="flex items-start gap-2">
-                  <div className="flex flex-col gap-1 flex-1">
-                    <Button
-                      variant="outline" size="sm"
-                      onClick={handleRotate}
-                      disabled={!selectedItem}
-                      className="w-full gap-2 justify-start"
-                      aria-label="Rotate item 90 degrees"
-                    >
-                      <RotateCw className="w-4 h-4" />Rotate
-                    </Button>
-                    <p className="text-[10px] text-gray-400 text-center">rotate 90°</p>
-                  </div>
-                  <div className="flex flex-col items-center gap-0.5">
-                    <MoveButtons handleMoveItem={handleMoveItem} selectedItem={selectedItem} />
-                    <p className="text-[10px] text-gray-400 mt-0.5">move</p>
-                  </div>
-                </div>
-
+                <Button variant="outline" size="sm" onClick={handleRotate} disabled={!selectedItem} className="w-full gap-2 justify-start">
+                  <RotateCw className="w-4 h-4" />Rotate
+                </Button>
                 <Button variant="outline" size="sm" onClick={() => handleDeleteItem(selectedItem)}
                   className="w-full gap-2 justify-start text-red-600 hover:text-red-700 hover:bg-red-50">
                   <Trash2 className="w-4 h-4" />Delete
@@ -1105,9 +991,9 @@ const handleRotate = async () => {
         </CardContent>
       </Card>
 
-      {/* ═══════════════════════════════════════════
-          MOBILE TOOLBAR
-          ═══════════════════════════════════════════ */}
+      {/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+          MOBILE TOOLBAR â€” Compact top bar
+          â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */}
       <div className="lg:hidden flex gap-2 mb-2 overflow-x-auto pb-1 flex-shrink-0">
         <Button onClick={() => setShowAddItem(true)} size="sm" className="bg-emerald-600 hover:bg-emerald-700 gap-1 whitespace-nowrap">
           <Plus className="w-3 h-3" />Add
@@ -1129,9 +1015,9 @@ const handleRotate = async () => {
         </div>
       </div>
 
-      {/* ═══════════════════════════════════════════
+      {/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
           CANVAS AREA
-          ═══════════════════════════════════════════ */}
+          â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */}
       <div 
         ref={scrollContainerRef}
         className={cn(
@@ -1154,11 +1040,8 @@ const handleRotate = async () => {
             <div className="w-3 h-3 border-2 border-emerald-600 rounded bg-emerald-50"></div>
             <span className="text-gray-600">Full</span>
           </div>
-          {!isMobile && (
-            <span className="text-[10px] text-gray-400 ml-auto">Click item to select • Arrow keys to move • Tab to cycle</span>
-          )}
           {isMobile && (
-            <span className="text-[10px] text-gray-400 ml-auto">Pinch to zoom • Long-press for menu</span>
+            <span className="text-[10px] text-gray-400 ml-auto">Pinch to zoom â€¢ Long-press item for menu</span>
           )}
         </div>
         
@@ -1169,12 +1052,16 @@ const handleRotate = async () => {
             width: plot.width * zoom,
             height: plot.height * zoom,
             backgroundColor: plot.background_color || '#ffffff',
+            // CRITICAL: Do NOT set touchAction: 'none' â€” breaks scrolling.
+            // Touch interception is handled by non-passive event listeners above.
             touchAction: isMobile ? 'pan-x pan-y' : 'none'
           }}
+          // Desktop mouse handlers
           onMouseDown={!isMobile ? handleMouseDown : undefined}
           onMouseMove={!isMobile ? handleMouseMove : undefined}
           onMouseUp={!isMobile ? handleInteractionEnd : undefined}
           onMouseLeave={!isMobile ? handleInteractionEnd : undefined}
+          // Mobile: canvas-level touch start for deselection
           onTouchStart={isMobile ? handleMobileTouchStartOnCanvas : undefined}
           onTouchEnd={isMobile ? (e) => { if (isPinching) handlePinchEnd(); handleInteractionEnd(); } : undefined}
           onTouchCancel={isMobile ? () => { handlePinchEnd(); handleInteractionEnd(); } : undefined}
@@ -1203,7 +1090,7 @@ const handleRotate = async () => {
               {Array.from({ length: Math.floor(plot.width / 12) }).map((_, col) =>
                 Array.from({ length: Math.floor(plot.height / 12) }).map((_, row) => (
                   <text key={`label-${col}-${row}`} x={(col * 12 + 6) * zoom} y={(row * 12 + 8) * zoom}
-                    textAnchor="middle" fontSize={9 * zoom} fill="#10b981" opacity="0.4" fontWeight="bold">1ft²</text>
+                    textAnchor="middle" fontSize={9 * zoom} fill="#10b981" opacity="0.4" fontWeight="bold">1ftÂ²</text>
                 ))
               )}
             </svg>
@@ -1211,6 +1098,7 @@ const handleRotate = async () => {
 
           <SunPathOverlay width={plot.width} height={plot.height} zoom={zoom} enabled={showSunPath} season="summer" />
 
+          {/* â”€â”€â”€ Items â”€â”€â”€ */}
           {items.map((item) => {
             const itemType = ITEM_TYPES.find(t => t.value === item.item_type);
             const status = itemType?.plantable ? getPlantingStatus(item.id) : null;
@@ -1233,9 +1121,10 @@ const handleRotate = async () => {
                 zoom={zoom}
                 isMobile={isMobile}
                 getItemColor={getItemColor}
+                // Mobile: tap to select, long-press for context menu
                 onTap={isMobile ? handleMobileTapItem : undefined}
                 onLongPress={isMobile ? handleMobileLongPressItem : undefined}
-                onDragStart={isMobile ? handleMobileDragStart : undefined}
+                // Desktop: double-click for context menu
                 onDoubleClick={() => {
                   setLongPressedItem(item);
                   setSelectedItem(item);
@@ -1247,62 +1136,43 @@ const handleRotate = async () => {
         </div>
       </div>
 
-      {/* ═══════════════════════════════════════════
+      {/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
           MOBILE: Floating Action Bar (when item selected)
-          Now includes directional move buttons
-          ═══════════════════════════════════════════ */}
+          Shows Plant Seeds / Edit / Rotate / Delete
+          â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */}
       {isMobile && selectedItem && !showContextMenu && !showPlantingModal && !showEditItem && (
         <div className="fixed bottom-4 left-3 right-3 z-30 bg-white rounded-2xl shadow-2xl border-2 border-emerald-200 px-3 py-2">
-          <div className="flex items-center gap-1.5 mb-2">
+          <div className="flex items-center gap-1.5 mb-1.5">
             <span className="text-sm font-semibold text-gray-900 truncate flex-1">{selectedItem.label}</span>
-            <span className="text-[10px] text-gray-500">{selectedItem.width}" × {selectedItem.height}"</span>
+            <span className="text-[10px] text-gray-500">{selectedItem.width}" Ã— {selectedItem.height}"</span>
           </div>
-          <div className="flex gap-2 items-center">
-            {/* Primary actions */}
-            <div className="flex gap-1.5 flex-1">
-              {ITEM_TYPES.find(t => t.value === selectedItem.item_type)?.plantable && (
-                <Button size="sm" onClick={() => setShowPlantingModal(true)}
-                  className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white gap-1 h-10 font-semibold">
-                  <Sprout className="w-4 h-4" />Plant
-                </Button>
-              )}
-              <Button size="sm" variant="outline" onClick={() => openEditItem(selectedItem)} className="gap-1 h-10" aria-label="Edit item">
-                <Edit className="w-3.5 h-3.5" />
+          <div className="flex gap-2">
+            {ITEM_TYPES.find(t => t.value === selectedItem.item_type)?.plantable && (
+              <Button size="sm" onClick={() => setShowPlantingModal(true)}
+                className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white gap-1 h-10 font-semibold">
+                <Sprout className="w-4 h-4" />Plant
               </Button>
-              <Button size="sm" variant="outline" onClick={handleRotate} className="gap-1 h-10" aria-label="Rotate item">
-                <RotateCw className="w-3.5 h-3.5" />
-              </Button>
-              <Button size="sm" variant="outline" onClick={() => handleDeleteItem(selectedItem)}
-                className="gap-1 h-10 text-red-600 hover:bg-red-50 border-red-200" aria-label="Delete item">
-                <Trash2 className="w-3.5 h-3.5" />
-              </Button>
-            </div>
-            {/* Directional move buttons (compact) */}
-            <div className="border-l pl-2 flex-shrink-0">
-              <MoveButtons compact handleMoveItem={handleMoveItem} selectedItem={selectedItem} />
-            </div>
+            )}
+            <Button size="sm" variant="outline" onClick={() => openEditItem(selectedItem)} className="gap-1 h-10">
+              <Edit className="w-3.5 h-3.5" />
+            </Button>
+            <Button size="sm" variant="outline" onClick={handleRotate} className="gap-1 h-10">
+              <RotateCw className="w-3.5 h-3.5" />
+            </Button>
+            <Button size="sm" variant="outline" onClick={() => handleDeleteItem(selectedItem)}
+              className="gap-1 h-10 text-red-600 hover:bg-red-50 border-red-200">
+              <Trash2 className="w-3.5 h-3.5" />
+            </Button>
           </div>
         </div>
       )}
 
       {/* Context Menu */}
-
-{longPressedItem && (
-        <ItemContextMenu
-          item={longPressedItem}
-          onClose={() => { setShowContextMenu(false); setLongPressedItem(null); }}
-          isMobile={isMobile}
-          showContextMenu={showContextMenu}
-          setShowContextMenu={setShowContextMenu}
-          openEditItem={openEditItem}
-          setShowPlantingModal={setShowPlantingModal}
-          handleRotate={handleRotate}
-          handleDeleteItem={handleDeleteItem}
-        />
+      {longPressedItem && (
+        <ItemContextMenu item={longPressedItem} onClose={() => { setShowContextMenu(false); setLongPressedItem(null); }} />
       )}
 
-
-      {/* ─── Add Item Dialog ─── */}
+      {/* â”€â”€â”€ Add Item Dialog â”€â”€â”€ */}
       <Dialog open={showAddItem} onOpenChange={setShowAddItem}>
         <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
           <DialogHeader><DialogTitle>Add Item</DialogTitle></DialogHeader>
@@ -1392,6 +1262,9 @@ const handleRotate = async () => {
                         <SelectItem value="rows">Traditional Rows</SelectItem>
                       </SelectContent>
                     </Select>
+                    {newItem.planting_pattern === 'diagonal' && (
+                      <p className="text-sm text-gray-500 mt-1">Odd rows offset by 50% for intensive planting.</p>
+                    )}
                   </div>
                 )}
                 {(newItem.item_type === 'IN_GROUND_BED' || newItem.item_type === 'OPEN_PLOT') && (
@@ -1437,8 +1310,10 @@ const handleRotate = async () => {
         </DialogContent>
       </Dialog>
 
+      {/* Plot Settings Dialog */}
       <PlotSettingsDialog plot={plot} open={showPlotSettings} onOpenChange={setShowPlotSettings} onSave={handlePlotSettingsSave} />
 
+      {/* Planting Modal */}
       {selectedItem && ITEM_TYPES.find(t => t.value === selectedItem.item_type)?.plantable && (
         <PlantingModal
           open={showPlantingModal}
@@ -1447,10 +1322,11 @@ const handleRotate = async () => {
           garden={garden}
           activeSeason={activeSeason}
           seasonId={seasonId}
-          onPlantingUpdate={loadItems}
+          onPlantingUpdate={loadPlantingCounts}
         />
       )}
 
+      {/* Edit Item Dialog */}
       {selectedItem && (
         <Dialog open={showEditItem} onOpenChange={setShowEditItem}>
           <DialogContent>
