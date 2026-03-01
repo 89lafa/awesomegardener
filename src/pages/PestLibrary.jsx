@@ -1,71 +1,107 @@
 import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
-import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
+import { useLocation } from 'react-router-dom';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Card, CardContent } from '@/components/ui/card';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import { Bug, Loader2, AlertTriangle, Shield, Eye, Edit, HelpCircle } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Search, Bug, Droplet, AlertTriangle, Leaf, Loader2 } from 'lucide-react';
-import { createPageUrl } from '@/utils';
-import { Link } from 'react-router-dom';
+import { toast } from 'sonner';
 
-export default function PestLibrary() {
-  const [pests, setPests] = useState([]);
+export default function PestDetail() {
+  const location = useLocation();
+  const params = new URLSearchParams(location.search);
+  const pestId = params.get('id');
+
+  const [pest, setPest] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [filters, setFilters] = useState({
-    category: 'all',
-    severity: 'all',
-    search: ''
-  });
+  const [user, setUser] = useState(null);
+  const [showEdit, setShowEdit] = useState(false);
+  const [editData, setEditData] = useState(null);
+  const [imageUploading, setImageUploading] = useState(false);
 
   useEffect(() => {
-    loadPests();
-  }, []);
+    if (pestId) loadPest();
+  }, [pestId]);
 
-  // ✅ Load ALL pests once, filter client-side — avoids re-fetching on every filter change
-  // ✅ Removed is_active filter so newly created entries always appear
-  const [allPests, setAllPests] = useState([]);
-
-  const loadPests = async () => {
+  const loadPest = async () => {
     try {
-      setLoading(true);
-      // ✅ FIXED: Use .list() instead of .filter({ is_active: true })
-      // This ensures newly created admin entries always appear.
-      // is_active filtering is now done client-side along with other filters.
-      const results = await base44.entities.PestLibrary.list();
-      setAllPests(results);
+      const [userData, results] = await Promise.all([
+        base44.auth.me(),
+        base44.entities.PestLibrary.filter({ id: pestId })
+      ]);
+      setUser(userData);
+      if (results.length > 0) {
+        setPest(results[0]);
+        await base44.entities.PestLibrary.update(pestId, {
+          view_count: (results[0].view_count || 0) + 1
+        });
+      }
     } catch (error) {
-      console.error('Error loading pests:', error);
+      console.error('Error loading pest:', error);
     } finally {
       setLoading(false);
     }
   };
 
-  // Apply filters client-side
-  const pests_filtered = allPests.filter(p => {
-    if (filters.category !== 'all' && p.category !== filters.category) return false;
-    if (filters.severity !== 'all' && p.severity_potential !== filters.severity) return false;
-    if (filters.search) {
-      const query = filters.search.toLowerCase();
-      const nameMatch = (p.common_name || '').toLowerCase().includes(query);
-      const symMatch = (p.symptoms || []).some(s => s.toLowerCase().includes(query));
-      const appearsMatch = (p.appearance || '').toLowerCase().includes(query);
-      if (!nameMatch && !symMatch && !appearsMatch) return false;
-    }
-    return true;
-  });
+  const handleEdit = () => {
+    setEditData({
+      common_name: pest.common_name || '',
+      scientific_name: pest.scientific_name || '',
+      category: pest.category || 'insect',
+      appearance: pest.appearance || '',
+      symptoms: pest.symptoms?.join('\n') || '',
+      lifecycle: pest.lifecycle || '',
+      confused_with: pest.confused_with?.join('\n') || '',
+      organic_treatments: pest.organic_treatments?.join('\n') || '',
+      chemical_treatments: pest.chemical_treatments?.join('\n') || '',
+      prevention_tips: pest.prevention_tips?.join('\n') || '',
+      primary_photo_url: pest.primary_photo_url || '',
+      severity_potential: pest.severity_potential || 'medium'
+    });
+    setShowEdit(true);
+  };
 
-  const getCategoryIcon = (category) => {
-    const icons = {
-      insect: Bug,
-      disease: AlertTriangle,
-      fungus: Droplet,
-      deficiency: Leaf,
-      bacteria: AlertTriangle,
-      virus: AlertTriangle,
-      environmental: Leaf
-    };
-    return icons[category] || Bug;
+  const handleSave = async () => {
+    try {
+      const updateData = {
+        ...editData,
+        symptoms: editData.symptoms.split('\n').map(s => s.trim()).filter(Boolean),
+        confused_with: editData.confused_with.split('\n').map(s => s.trim()).filter(Boolean),
+        organic_treatments: editData.organic_treatments.split('\n').map(s => s.trim()).filter(Boolean),
+        chemical_treatments: editData.chemical_treatments.split('\n').map(s => s.trim()).filter(Boolean),
+        prevention_tips: editData.prevention_tips.split('\n').map(s => s.trim()).filter(Boolean)
+      };
+      await base44.entities.PestLibrary.update(pestId, updateData);
+      await loadPest();
+      setShowEdit(false);
+      toast.success('Pest entry updated!');
+    } catch (error) {
+      console.error('Error saving:', error);
+      toast.error('Failed to save changes');
+    }
+  };
+
+  // ✅ Fixed image upload
+  const handleImageUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setImageUploading(true);
+    try {
+      const { file_url } = await base44.integrations.Core.UploadFile({ file });
+      setEditData(prev => ({ ...prev, primary_photo_url: file_url }));
+      toast.success('Image uploaded!');
+    } catch (error) {
+      console.error('Error uploading image:', error);
+      toast.error('Failed to upload image');
+    } finally {
+      setImageUploading(false);
+    }
   };
 
   const getSeverityColor = (severity) => {
@@ -77,129 +113,380 @@ export default function PestLibrary() {
     return colors[severity] || colors.medium;
   };
 
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <Loader2 className="w-8 h-8 animate-spin text-emerald-600" />
+      </div>
+    );
+  }
+
+  if (!pest) {
+    return (
+      <div className="text-center py-12">
+        <AlertTriangle className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+        <p className="text-gray-500">Pest or disease not found</p>
+      </div>
+    );
+  }
+
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold text-gray-900">Pest & Disease Library</h1>
-        <p className="text-gray-600 mt-2">
-          Comprehensive guide to common garden problems
-        </p>
-      </div>
+    <div className="max-w-4xl space-y-6">
 
-      {/* Filters */}
-      <div className="glass-card space-y-4">
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-          <Input
-            placeholder="Search by name or symptom..."
-            value={filters.search}
-            onChange={(e) => setFilters(prev => ({ ...prev, search: e.target.value }))}
-            className="pl-10"
+      {/* Hero Image */}
+      {pest.primary_photo_url && (
+        <div className="h-64 lg:h-96 rounded-xl overflow-hidden">
+          <img
+            src={pest.primary_photo_url}
+            alt={pest.common_name}
+            className="w-full h-full object-cover"
           />
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <Select
-            value={filters.category}
-            onValueChange={(v) => setFilters(prev => ({ ...prev, category: v }))}
-          >
-            <SelectTrigger>
-              <SelectValue placeholder="Category" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Categories</SelectItem>
-              <SelectItem value="insect">Insects</SelectItem>
-              <SelectItem value="disease">Diseases</SelectItem>
-              <SelectItem value="fungus">Fungus</SelectItem>
-              <SelectItem value="bacteria">Bacteria</SelectItem>
-              <SelectItem value="virus">Virus</SelectItem>
-              <SelectItem value="deficiency">Deficiencies</SelectItem>
-              <SelectItem value="environmental">Environmental</SelectItem>
-            </SelectContent>
-          </Select>
-
-          <Select
-            value={filters.severity}
-            onValueChange={(v) => setFilters(prev => ({ ...prev, severity: v }))}
-          >
-            <SelectTrigger>
-              <SelectValue placeholder="Severity" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Severity Levels</SelectItem>
-              <SelectItem value="low">Low</SelectItem>
-              <SelectItem value="medium">Medium</SelectItem>
-              <SelectItem value="high">High</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-      </div>
-
-      {/* Results */}
-      {loading ? (
-        <div className="flex items-center justify-center py-12">
-          <Loader2 className="w-8 h-8 animate-spin text-emerald-600" />
-        </div>
-      ) : pests_filtered.length === 0 ? (
-        <div className="text-center py-12">
-          <Bug className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-          <p className="text-gray-500">
-            {allPests.length === 0
-              ? 'No entries in the library yet.'
-              : 'No entries match your filters. Try broadening your search.'}
-          </p>
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {pests_filtered.map((pest) => {
-            const CategoryIcon = getCategoryIcon(pest.category);
-            return (
-              <Link key={pest.id} to={createPageUrl('PestDetail') + '?id=' + pest.id}>
-                <Card className="hover:shadow-lg transition cursor-pointer h-full">
-                  {pest.primary_photo_url ? (
-                    <div className="h-48 overflow-hidden rounded-t-lg">
-                      <img
-                        src={pest.primary_photo_url}
-                        alt={pest.common_name}
-                        className="w-full h-full object-cover"
-                      />
-                    </div>
-                  ) : (
-                    <div className="h-48 rounded-t-lg bg-emerald-50 flex items-center justify-center">
-                      <CategoryIcon className="w-12 h-12 text-emerald-300" />
-                    </div>
-                  )}
-                  <CardContent className="pt-4">
-                    <div className="flex items-start justify-between mb-2">
-                      <h3 className="font-semibold text-gray-900">{pest.common_name}</h3>
-                      <CategoryIcon className="w-5 h-5 text-emerald-600 shrink-0" />
-                    </div>
-                    {pest.scientific_name && (
-                      <p className="text-xs italic text-gray-600 mb-2">{pest.scientific_name}</p>
-                    )}
-                    <div className="flex gap-2 mb-3 flex-wrap">
-                      <Badge className="text-xs capitalize">{pest.category}</Badge>
-                      {pest.severity_potential && (
-                        <Badge className={getSeverityColor(pest.severity_potential)}>
-                          {pest.severity_potential}
-                        </Badge>
-                      )}
-                    </div>
-                    <p className="text-sm text-gray-700 line-clamp-2">
-                      {pest.appearance}
-                    </p>
-                  </CardContent>
-                </Card>
-              </Link>
-            );
-          })}
         </div>
       )}
 
-      {!loading && pests_filtered.length > 0 && (
-        <div className="text-center text-sm text-gray-500">
-          Showing {pests_filtered.length} of {allPests.length} {allPests.length === 1 ? 'entry' : 'entries'}
+      {/* Header */}
+      <div className="flex items-start justify-between mb-2">
+        <div>
+          <h1 className="text-3xl font-bold text-gray-900">{pest.common_name}</h1>
+          {pest.scientific_name && (
+            <p className="text-lg italic text-gray-600 mt-1">{pest.scientific_name}</p>
+          )}
         </div>
+        <div className="flex flex-col gap-2 items-end">
+          <Badge className="capitalize">{pest.category}</Badge>
+          <Badge className={getSeverityColor(pest.severity_potential)}>
+            {pest.severity_potential} severity
+          </Badge>
+          {user?.role === 'admin' && (
+            <Button onClick={handleEdit} size="sm" className="gap-2">
+              <Edit className="w-3 h-3" />
+              Edit
+            </Button>
+          )}
+        </div>
+      </div>
+
+      {/* Identification */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Eye className="w-5 h-5" />
+            Identification
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div>
+            <h4 className="font-semibold text-gray-900 mb-2">Appearance:</h4>
+            <p className="text-gray-700">{pest.appearance}</p>
+          </div>
+
+          {pest.symptoms?.length > 0 && (
+            <div>
+              <h4 className="font-semibold text-gray-900 mb-2">Symptoms to Look For:</h4>
+              <ul className="list-disc list-inside space-y-1">
+                {pest.symptoms.map((symptom, idx) => (
+                  <li key={idx} className="text-gray-700">{symptom}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {pest.lifecycle && (
+            <div>
+              <h4 className="font-semibold text-gray-900 mb-2">Lifecycle:</h4>
+              <p className="text-gray-700">{pest.lifecycle}</p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* ✅ NEW: Confused With section */}
+      {pest.confused_with?.length > 0 && (
+        <Card className="border-amber-200 bg-amber-50">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-amber-900">
+              <HelpCircle className="w-5 h-5 text-amber-600" />
+              Don't Confuse With
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm text-amber-700 mb-3">
+              These conditions are commonly mistaken for <strong>{pest.common_name}</strong>. Look carefully before treating:
+            </p>
+            <ul className="space-y-2">
+              {pest.confused_with.map((item, idx) => (
+                <li key={idx} className="flex items-start gap-2 text-amber-900">
+                  <span className="mt-1 w-4 h-4 rounded-full bg-amber-300 flex items-center justify-center text-xs font-bold text-amber-900 shrink-0">
+                    {idx + 1}
+                  </span>
+                  <span className="text-sm">{item}</span>
+                </li>
+              ))}
+            </ul>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Treatment */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <AlertTriangle className="w-5 h-5" />
+            Treatment Options
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <Tabs defaultValue="organic">
+            <TabsList className="w-full">
+              <TabsTrigger value="organic" className="flex-1">🌿 Organic</TabsTrigger>
+              <TabsTrigger value="chemical" className="flex-1">⚗️ Chemical</TabsTrigger>
+            </TabsList>
+            <TabsContent value="organic" className="mt-4">
+              {pest.organic_treatments?.length > 0 ? (
+                <ul className="list-disc list-inside space-y-2">
+                  {pest.organic_treatments.map((treatment, idx) => (
+                    <li key={idx} className="text-gray-700">{treatment}</li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="text-gray-500">No organic treatments listed</p>
+              )}
+            </TabsContent>
+            <TabsContent value="chemical" className="mt-4">
+              {pest.chemical_treatments?.length > 0 ? (
+                <ul className="list-disc list-inside space-y-2">
+                  {pest.chemical_treatments.map((treatment, idx) => (
+                    <li key={idx} className="text-gray-700">{treatment}</li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="text-gray-500">No chemical treatments listed</p>
+              )}
+            </TabsContent>
+          </Tabs>
+        </CardContent>
+      </Card>
+
+      {/* Prevention */}
+      {pest.prevention_tips?.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Shield className="w-5 h-5" />
+              Prevention Tips
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ul className="list-disc list-inside space-y-2">
+              {pest.prevention_tips.map((tip, idx) => (
+                <li key={idx} className="text-gray-700">{tip}</li>
+              ))}
+            </ul>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Photo Gallery */}
+      {pest.photos?.length > 1 && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Photo Gallery</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+              {pest.photos.map((photo, idx) => (
+                <div key={idx} className="aspect-square rounded-lg overflow-hidden border">
+                  <img
+                    src={photo}
+                    alt={`${pest.common_name} ${idx + 1}`}
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* ── Edit Dialog ── */}
+      {user?.role === 'admin' && (
+        <Dialog open={showEdit} onOpenChange={setShowEdit}>
+          <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Edit Pest Entry</DialogTitle>
+            </DialogHeader>
+
+            {editData && (
+              <div className="space-y-4">
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label>Common Name</Label>
+                    <Input
+                      value={editData.common_name}
+                      onChange={(e) => setEditData({ ...editData, common_name: e.target.value })}
+                      className="mt-2"
+                    />
+                  </div>
+                  <div>
+                    <Label>Scientific Name</Label>
+                    <Input
+                      value={editData.scientific_name}
+                      onChange={(e) => setEditData({ ...editData, scientific_name: e.target.value })}
+                      className="mt-2"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label>Category</Label>
+                    <Select value={editData.category} onValueChange={(v) => setEditData({ ...editData, category: v })}>
+                      <SelectTrigger className="mt-2"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="insect">Insect</SelectItem>
+                        <SelectItem value="disease">Disease</SelectItem>
+                        <SelectItem value="fungus">Fungus</SelectItem>
+                        <SelectItem value="bacteria">Bacteria</SelectItem>
+                        <SelectItem value="virus">Virus</SelectItem>
+                        <SelectItem value="deficiency">Deficiency</SelectItem>
+                        <SelectItem value="environmental">Environmental</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label>Severity</Label>
+                    <Select value={editData.severity_potential} onValueChange={(v) => setEditData({ ...editData, severity_potential: v })}>
+                      <SelectTrigger className="mt-2"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="low">Low</SelectItem>
+                        <SelectItem value="medium">Medium</SelectItem>
+                        <SelectItem value="high">High</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                {/* Hero Image */}
+                <div>
+                  <Label>Hero Image</Label>
+                  <div className="mt-2 space-y-2">
+                    <div className="flex items-center gap-3">
+                      <Input
+                        type="file"
+                        accept="image/*"
+                        onChange={handleImageUpload}
+                        disabled={imageUploading}
+                        className="flex-1"
+                      />
+                      {imageUploading && <Loader2 className="w-5 h-5 animate-spin text-emerald-600 shrink-0" />}
+                    </div>
+                    {imageUploading && <p className="text-sm text-emerald-600">Uploading image...</p>}
+                    {editData.primary_photo_url && !imageUploading && (
+                      <div className="mt-2">
+                        <img src={editData.primary_photo_url} alt="Preview" className="h-32 object-cover rounded border" />
+                        <p className="text-xs text-green-600 mt-1">✓ Image ready</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                <div>
+                  <Label>Appearance Description</Label>
+                  <Textarea
+                    value={editData.appearance}
+                    onChange={(e) => setEditData({ ...editData, appearance: e.target.value })}
+                    rows={3}
+                    className="mt-2"
+                  />
+                </div>
+
+                <div>
+                  <Label>Symptoms (one per line)</Label>
+                  <Textarea
+                    value={editData.symptoms}
+                    onChange={(e) => setEditData({ ...editData, symptoms: e.target.value })}
+                    rows={4}
+                    className="mt-2"
+                  />
+                </div>
+
+                <div>
+                  <Label>Lifecycle / Notes</Label>
+                  <Textarea
+                    value={editData.lifecycle}
+                    onChange={(e) => setEditData({ ...editData, lifecycle: e.target.value })}
+                    rows={2}
+                    className="mt-2"
+                  />
+                </div>
+
+                {/* ✅ NEW: Confused With in edit dialog */}
+                <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 space-y-2">
+                  <Label className="text-amber-900 font-semibold text-sm flex items-center gap-1">
+                    <HelpCircle className="w-4 h-4" /> Confused With (one per line)
+                  </Label>
+                  <p className="text-xs text-amber-700">
+                    Each line appears as a numbered item in the "Don't Confuse With" section on the detail page.
+                  </p>
+                  <Textarea
+                    value={editData.confused_with}
+                    onChange={(e) => setEditData({ ...editData, confused_with: e.target.value })}
+                    rows={4}
+                    className="bg-white"
+                    placeholder="Early Blight — similar dark spots but with concentric rings&#10;Nutrient deficiency — yellowing without spots or lesions"
+                  />
+                </div>
+
+                <div>
+                  <Label>Organic Treatments (one per line)</Label>
+                  <Textarea
+                    value={editData.organic_treatments}
+                    onChange={(e) => setEditData({ ...editData, organic_treatments: e.target.value })}
+                    rows={4}
+                    className="mt-2"
+                  />
+                </div>
+
+                <div>
+                  <Label>Chemical Treatments (one per line)</Label>
+                  <Textarea
+                    value={editData.chemical_treatments}
+                    onChange={(e) => setEditData({ ...editData, chemical_treatments: e.target.value })}
+                    rows={4}
+                    className="mt-2"
+                  />
+                </div>
+
+                <div>
+                  <Label>Prevention Tips (one per line)</Label>
+                  <Textarea
+                    value={editData.prevention_tips}
+                    onChange={(e) => setEditData({ ...editData, prevention_tips: e.target.value })}
+                    rows={4}
+                    className="mt-2"
+                  />
+                </div>
+
+              </div>
+            )}
+
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setShowEdit(false)}>Cancel</Button>
+              <Button
+                onClick={handleSave}
+                disabled={imageUploading}
+                className="bg-emerald-600 hover:bg-emerald-700"
+              >
+                {imageUploading ? (
+                  <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Uploading...</>
+                ) : (
+                  'Save Changes'
+                )}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       )}
     </div>
   );
