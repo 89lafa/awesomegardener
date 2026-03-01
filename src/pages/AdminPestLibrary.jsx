@@ -7,7 +7,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Loader2, Plus, Edit, Trash2 } from 'lucide-react';
+import { Loader2, Plus, Edit, Trash2, CheckCircle } from 'lucide-react';
 import { toast } from 'sonner';
 
 export default function AdminPestLibrary() {
@@ -22,11 +22,12 @@ export default function AdminPestLibrary() {
 
   const loadPests = async () => {
     try {
-      const allPests = await base44.asServiceRole.entities.PestLibrary.list();
+      // ✅ FIXED: Use base44.entities (same as PestLibrary reads from)
+      const allPests = await base44.entities.PestLibrary.list();
       setPests(allPests);
     } catch (error) {
       console.error('Error loading pests:', error);
-      toast.error('Failed to load pests');
+      toast.error('Failed to load pests: ' + (error?.message || 'Unknown error'));
     } finally {
       setLoading(false);
     }
@@ -34,31 +35,35 @@ export default function AdminPestLibrary() {
 
   const handleSave = async (pestData) => {
     try {
+      // ✅ FIXED: Use base44.entities (consistent with PestLibrary page reads)
+      // ✅ Always ensure is_active is true so it shows in the library
+      const dataToSave = { ...pestData, is_active: true };
+
       if (editingPest?.id) {
-        await base44.asServiceRole.entities.PestLibrary.update(editingPest.id, pestData);
+        await base44.entities.PestLibrary.update(editingPest.id, dataToSave);
         toast.success('Pest entry updated!');
       } else {
-        await base44.asServiceRole.entities.PestLibrary.create(pestData);
-        toast.success('Pest entry created!');
+        await base44.entities.PestLibrary.create(dataToSave);
+        toast.success('Pest entry created! It will now appear in the Pest & Disease Library.');
       }
       setShowDialog(false);
       setEditingPest(null);
       await loadPests();
     } catch (error) {
       console.error('Save error:', error);
-      toast.error('Failed to save');
+      toast.error('Failed to save: ' + (error?.message || 'Unknown error'));
     }
   };
 
   const handleDelete = async (id) => {
     if (!confirm('Delete this pest/disease entry?')) return;
     try {
-      await base44.asServiceRole.entities.PestLibrary.delete(id);
+      await base44.entities.PestLibrary.delete(id);
       toast.success('Deleted');
       await loadPests();
     } catch (error) {
       console.error('Delete error:', error);
-      toast.error('Failed to delete');
+      toast.error('Failed to delete: ' + (error?.message || 'Unknown error'));
     }
   };
 
@@ -80,7 +85,7 @@ export default function AdminPestLibrary() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold text-gray-900">Manage Pest & Disease Library</h1>
-          <p className="text-gray-600 mt-1">Add and edit pest/disease entries</p>
+          <p className="text-gray-600 mt-1">Add and edit pest/disease entries — {pests.length} entries total</p>
         </div>
         <Button onClick={() => openEditDialog()} className="bg-emerald-600 hover:bg-emerald-700 gap-2">
           <Plus className="w-4 h-4" />
@@ -104,15 +109,31 @@ export default function AdminPestLibrary() {
             <Card key={pest.id}>
               <CardContent className="pt-6">
                 <div className="flex items-start justify-between">
-                  <div className="flex-1">
-                    <h3 className="font-semibold text-lg text-gray-900">{pest.common_name}</h3>
-                    <p className="text-sm italic text-gray-600">{pest.scientific_name}</p>
-                    <div className="flex gap-2 mt-2">
-                      <span className="text-xs px-2 py-1 bg-gray-100 rounded capitalize">{pest.category}</span>
-                      <span className="text-xs px-2 py-1 bg-gray-100 rounded capitalize">{pest.severity_potential}</span>
+                  <div className="flex items-start gap-4 flex-1">
+                    {pest.primary_photo_url && (
+                      <img
+                        src={pest.primary_photo_url}
+                        alt={pest.common_name}
+                        className="w-16 h-16 object-cover rounded-lg border shrink-0"
+                      />
+                    )}
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <h3 className="font-semibold text-lg text-gray-900">{pest.common_name}</h3>
+                        {pest.is_active && (
+                          <span className="flex items-center gap-1 text-xs text-emerald-600">
+                            <CheckCircle className="w-3 h-3" /> Live
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-sm italic text-gray-600">{pest.scientific_name}</p>
+                      <div className="flex gap-2 mt-2">
+                        <span className="text-xs px-2 py-1 bg-gray-100 rounded capitalize">{pest.category}</span>
+                        <span className="text-xs px-2 py-1 bg-gray-100 rounded capitalize">{pest.severity_potential} severity</span>
+                      </div>
                     </div>
                   </div>
-                  <div className="flex gap-2">
+                  <div className="flex gap-2 shrink-0">
                     <Button
                       size="sm"
                       variant="outline"
@@ -146,8 +167,11 @@ export default function AdminPestLibrary() {
   );
 }
 
+// ─────────────────────────────────────────────
+// Edit / Create Dialog
+// ─────────────────────────────────────────────
 function PestEditDialog({ open, onOpenChange, pest, onSave }) {
-  const [formData, setFormData] = useState({
+  const emptyForm = {
     common_name: '',
     scientific_name: '',
     category: 'insect',
@@ -164,36 +188,52 @@ function PestEditDialog({ open, onOpenChange, pest, onSave }) {
     photos: [],
     primary_photo_url: '',
     is_active: true
-  });
+  };
+
+  const [formData, setFormData] = useState(emptyForm);
+  const [saving, setSaving] = useState(false);
+  const [imageUploading, setImageUploading] = useState(false);
 
   useEffect(() => {
-    if (pest) {
-      setFormData(pest);
-    } else {
-      setFormData({
-        common_name: '',
-        scientific_name: '',
-        category: 'insect',
-        appearance: '',
-        symptoms: [],
-        lifecycle: '',
-        affects_plant_types: ['all'],
-        seasonal_occurrence: 'year-round',
-        severity_potential: 'medium',
-        spread_rate: 'moderate',
-        organic_treatments: [],
-        chemical_treatments: [],
-        prevention_tips: [],
-        photos: [],
-        primary_photo_url: '',
-        is_active: true
-      });
+    if (open) {
+      setFormData(pest ? { ...pest } : emptyForm);
     }
   }, [pest, open]);
 
   const handleArrayField = (field, value) => {
     const array = value.split('\n').filter(v => v.trim());
-    setFormData({ ...formData, [field]: array });
+    setFormData(prev => ({ ...prev, [field]: array }));
+  };
+
+  // ✅ FIXED: Correct response destructuring { file_url } + functional state update
+  const handleImageUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setImageUploading(true);
+    try {
+      const { file_url } = await base44.integrations.Core.UploadFile({ file });
+      setFormData(prev => ({ ...prev, primary_photo_url: file_url }));
+      toast.success('Image uploaded!');
+    } catch (error) {
+      console.error('Upload error:', error);
+      toast.error('Failed to upload image: ' + (error?.message || 'Unknown error'));
+    } finally {
+      setImageUploading(false);
+    }
+  };
+
+  const handleSave = async () => {
+    if (!formData.common_name.trim()) {
+      toast.error('Common name is required');
+      return;
+    }
+    setSaving(true);
+    try {
+      await onSave(formData);
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -204,21 +244,24 @@ function PestEditDialog({ open, onOpenChange, pest, onSave }) {
         </DialogHeader>
 
         <div className="space-y-4">
+          {/* Basic Info */}
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <Label>Common Name</Label>
+              <Label>Common Name *</Label>
               <Input
                 value={formData.common_name}
-                onChange={(e) => setFormData({ ...formData, common_name: e.target.value })}
-                placeholder="Aphids"
+                onChange={(e) => setFormData(prev => ({ ...prev, common_name: e.target.value }))}
+                placeholder="e.g. Aphids"
+                className="mt-1"
               />
             </div>
             <div>
               <Label>Scientific Name</Label>
               <Input
                 value={formData.scientific_name}
-                onChange={(e) => setFormData({ ...formData, scientific_name: e.target.value })}
-                placeholder="Aphidoidea"
+                onChange={(e) => setFormData(prev => ({ ...prev, scientific_name: e.target.value }))}
+                placeholder="e.g. Aphidoidea"
+                className="mt-1"
               />
             </div>
           </div>
@@ -228,9 +271,9 @@ function PestEditDialog({ open, onOpenChange, pest, onSave }) {
               <Label>Category</Label>
               <Select
                 value={formData.category}
-                onValueChange={(v) => setFormData({ ...formData, category: v })}
+                onValueChange={(v) => setFormData(prev => ({ ...prev, category: v }))}
               >
-                <SelectTrigger>
+                <SelectTrigger className="mt-1">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -248,9 +291,9 @@ function PestEditDialog({ open, onOpenChange, pest, onSave }) {
               <Label>Severity</Label>
               <Select
                 value={formData.severity_potential}
-                onValueChange={(v) => setFormData({ ...formData, severity_potential: v })}
+                onValueChange={(v) => setFormData(prev => ({ ...prev, severity_potential: v }))}
               >
-                <SelectTrigger>
+                <SelectTrigger className="mt-1">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -264,9 +307,9 @@ function PestEditDialog({ open, onOpenChange, pest, onSave }) {
               <Label>Spread Rate</Label>
               <Select
                 value={formData.spread_rate}
-                onValueChange={(v) => setFormData({ ...formData, spread_rate: v })}
+                onValueChange={(v) => setFormData(prev => ({ ...prev, spread_rate: v }))}
               >
-                <SelectTrigger>
+                <SelectTrigger className="mt-1">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -278,21 +321,38 @@ function PestEditDialog({ open, onOpenChange, pest, onSave }) {
             </div>
           </div>
 
+          {/* Appearance */}
           <div>
             <Label>Appearance Description</Label>
             <Textarea
               value={formData.appearance}
-              onChange={(e) => setFormData({ ...formData, appearance: e.target.value })}
+              onChange={(e) => setFormData(prev => ({ ...prev, appearance: e.target.value }))}
               rows={3}
+              className="mt-1"
+              placeholder="Describe what this pest/disease looks like..."
             />
           </div>
 
+          {/* Array fields */}
           <div>
             <Label>Symptoms (one per line)</Label>
             <Textarea
               value={formData.symptoms?.join('\n') || ''}
               onChange={(e) => handleArrayField('symptoms', e.target.value)}
               rows={4}
+              className="mt-1"
+              placeholder="Yellowing leaves&#10;Wilting stems&#10;Black spots on fruit"
+            />
+          </div>
+
+          <div>
+            <Label>Lifecycle / Notes</Label>
+            <Textarea
+              value={formData.lifecycle || ''}
+              onChange={(e) => setFormData(prev => ({ ...prev, lifecycle: e.target.value }))}
+              rows={2}
+              className="mt-1"
+              placeholder="Optional lifecycle or additional notes..."
             />
           </div>
 
@@ -302,6 +362,8 @@ function PestEditDialog({ open, onOpenChange, pest, onSave }) {
               value={formData.organic_treatments?.join('\n') || ''}
               onChange={(e) => handleArrayField('organic_treatments', e.target.value)}
               rows={4}
+              className="mt-1"
+              placeholder="Neem oil spray&#10;Insecticidal soap&#10;Hand-pick and destroy"
             />
           </div>
 
@@ -311,6 +373,8 @@ function PestEditDialog({ open, onOpenChange, pest, onSave }) {
               value={formData.chemical_treatments?.join('\n') || ''}
               onChange={(e) => handleArrayField('chemical_treatments', e.target.value)}
               rows={3}
+              className="mt-1"
+              placeholder="Pyrethrin-based spray&#10;Spinosad"
             />
           </div>
 
@@ -320,58 +384,80 @@ function PestEditDialog({ open, onOpenChange, pest, onSave }) {
               value={formData.prevention_tips?.join('\n') || ''}
               onChange={(e) => handleArrayField('prevention_tips', e.target.value)}
               rows={4}
+              className="mt-1"
+              placeholder="Rotate crops annually&#10;Inspect plants weekly&#10;Maintain good air circulation"
             />
           </div>
 
+          {/* ✅ FIXED: Image upload with correct API call */}
           <div>
-            <Label>Primary Photo</Label>
-            <div className="space-y-2">
-              {formData.primary_photo_url && (
-                <div className="relative w-40 h-40">
-                  <img 
-                    src={formData.primary_photo_url} 
-                    alt="Preview" 
-                    className="w-full h-full object-cover rounded-lg border"
+            <Label>Primary Photo (Hero Image)</Label>
+            <div className="mt-1 space-y-3">
+              {formData.primary_photo_url && !imageUploading && (
+                <div className="flex items-start gap-3">
+                  <img
+                    src={formData.primary_photo_url}
+                    alt="Preview"
+                    className="w-40 h-32 object-cover rounded-lg border"
                   />
-                  <Button
-                    size="sm"
-                    variant="destructive"
-                    className="absolute top-1 right-1"
-                    onClick={() => setFormData({ ...formData, primary_photo_url: '' })}
-                  >
-                    <Trash2 className="w-3 h-3" />
-                  </Button>
+                  <div className="flex flex-col gap-2">
+                    <p className="text-xs text-emerald-600 flex items-center gap-1">
+                      <CheckCircle className="w-3 h-3" /> Image ready
+                    </p>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => setFormData(prev => ({ ...prev, primary_photo_url: '' }))}
+                      className="text-red-600 hover:text-red-700 w-fit"
+                    >
+                      <Trash2 className="w-3 h-3 mr-1" />
+                      Remove
+                    </Button>
+                  </div>
                 </div>
               )}
-              <Input
-                type="file"
-                accept="image/*"
-                onChange={async (e) => {
-                  const file = e.target.files?.[0];
-                  if (!file) return;
-                  try {
-                    const { data } = await base44.integrations.Core.UploadFile({ file });
-                    setFormData({ ...formData, primary_photo_url: data.file_url });
-                    toast.success('Image uploaded');
-                  } catch (error) {
-                    console.error('Upload error:', error);
-                    toast.error('Failed to upload image');
-                  }
-                }}
-              />
+
+              <div className="flex items-center gap-3">
+                <Input
+                  type="file"
+                  accept="image/*"
+                  onChange={handleImageUpload}
+                  disabled={imageUploading}
+                  className="flex-1"
+                />
+                {imageUploading && (
+                  <div className="flex items-center gap-2 text-emerald-600">
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <span className="text-sm">Uploading...</span>
+                  </div>
+                )}
+              </div>
+              <p className="text-xs text-gray-500">
+                This image will appear as the card thumbnail and hero banner on the detail page.
+              </p>
             </div>
           </div>
 
-          <div className="flex gap-4">
+          {/* Save / Cancel */}
+          <div className="flex gap-4 pt-2 border-t">
             <Button
-              onClick={() => onSave(formData)}
+              onClick={handleSave}
+              disabled={saving || imageUploading}
               className="flex-1 bg-emerald-600 hover:bg-emerald-700"
             >
-              {pest ? 'Update' : 'Create'} Entry
+              {saving ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Saving...
+                </>
+              ) : (
+                pest ? 'Update Entry' : 'Create Entry'
+              )}
             </Button>
             <Button
               variant="outline"
               onClick={() => onOpenChange(false)}
+              disabled={saving || imageUploading}
             >
               Cancel
             </Button>
