@@ -272,9 +272,9 @@ export default function AdminVarietyImport2() {
       // Pre-load lookups
       toast.info('Loading plant types and subcategories...');
       const [allPT, allSC, allVar] = await Promise.all([
-        apiRetry(() => base44.entities.PlantType.list(), 'PlantTypes'),
-        apiRetry(() => base44.entities.PlantSubCategory.list(), 'SubCats'),
-        apiRetry(() => base44.entities.Variety.list('variety_name', 5000), 'Varieties'),
+        apiRetry(() => base44.entities.PlantType.list('common_name', 500), 'PlantTypes'),
+        apiRetry(() => base44.entities.PlantSubCategory.list('subcat_code', 5000), 'SubCats'),
+        apiRetry(() => base44.entities.Variety.list('variety_name', 9999), 'Varieties'),
       ]);
 
       const ptById = {}, ptByCode = {}, ptByName = {};
