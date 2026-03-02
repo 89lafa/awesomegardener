@@ -1405,13 +1405,28 @@ export default function AdminDataImport() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="INSERT_ONLY">Insert Only (skip existing)</SelectItem>
-                <SelectItem value="UPSERT_BY_ID">Upsert by ID (update existing)</SelectItem>
+                <SelectItem value="UPSERT_BY_ID">Upsert (insert or update existing)</SelectItem>
               </SelectContent>
             </Select>
-            <p className="text-xs text-gray-500 mt-1">
-              Upsert mode will update existing records by ID, or insert if not found
-            </p>
           </div>
+
+          {importMode === 'UPSERT_BY_ID' && (
+            <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg space-y-2">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={upsertSafe}
+                  onChange={(e) => setUpsertSafe(e.target.checked)}
+                  className="w-4 h-4 rounded border-gray-300"
+                />
+                <span className="text-sm font-semibold text-blue-900">Safe Upsert — don't overwrite filled fields</span>
+              </label>
+              <p className="text-xs text-blue-700 ml-6">
+                ✅ <strong>Checked (recommended):</strong> Only writes fields that are empty in the DB. Existing data (subcategories, descriptions, etc.) is preserved.<br/>
+                ⬜ <strong>Unchecked:</strong> Overwrites ALL fields from CSV including subcategories — use with caution.
+              </p>
+            </div>
+          )}
 
           <div className="space-y-4">
             <div className="flex items-center gap-4">
