@@ -384,14 +384,11 @@ export default function AdminVarietyImport2() {
             rawPayload.plant_type_name = pt.common_name;
             rawPayload.variety_name = varietyName;
 
-            // Set subcategory conditionally
+            // Set subcategory
             if (resolvedSubcatId) {
-              if (upsertMode === 'overwrite_all' || upsertMode === 'selective') {
+              if (upsertMode === 'overwrite_all' || upsertMode === 'selective' ||
+                  (upsertMode === 'preserve_filled' && !existing?.plant_subcategory_id)) {
                 rawPayload.plant_subcategory_id = resolvedSubcatId;
-                rawPayload.plant_subcategory_ids = [resolvedSubcatId];
-              } else if (upsertMode === 'preserve_filled' && !existing?.plant_subcategory_id) {
-                rawPayload.plant_subcategory_id = resolvedSubcatId;
-                rawPayload.plant_subcategory_ids = [resolvedSubcatId];
               }
             }
 
