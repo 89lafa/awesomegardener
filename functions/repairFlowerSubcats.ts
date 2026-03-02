@@ -61,14 +61,25 @@ Deno.serve(async (req) => {
     existingSubcats.forEach(sc => { if (sc.subcat_code) existingByCode[sc.subcat_code] = sc; });
     console.log(`Existing subcats: ${existingSubcats.length}`);
 
-    // Load ALL varieties with missing plant_subcategory_id (up to 9999)
-    // Note: filter by null may not work perfectly — we check the value explicitly below
-    const toFixRaw = await withRetry(() => base44.asServiceRole.entities.Variety.list('variety_name', 9999));
-    const toFix = Array.isArray(toFixRaw) ? toFixRaw : (toFixRaw?.results || toFixRaw?.data || []);
-    console.log(`Total varieties loaded: ${toFix.length}`);
-    console.log(`Sample (first 3):`, toFix.slice(0, 3).map(v => `${v.variety_name} subcat_id=${v.plant_subcategory_id}`));
-    const needsSubcat = toFix.filter(v => v.plant_subcategory_id === null || v.plant_subcategory_id === undefined || v.plant_subcategory_id === '');
-    console.log(`Need subcategory: ${needsSubcat.length}`);
+    // Load varieties in batches — SDK has internal pagination limits
+    // Use plant type IDs derived from CSV data (flower types starting with 699c...)
+    const flowerPTIds = allPT
+      .filter(pt => {
+        const cat = (pt.category || '').toLowerCase();
+        return ['flower','bedding_annuals','ornamental','bulb','perennial_flower','annual_flower'].some(c => cat.includes(c));
+      })
+      .map(pt => pt.id);
+    console.log(`Flower plant type IDs: ${flowerPTIds.length}`);
+
+    const needsSubcat = [];
+    for (const ptId of flowerPTIds) {
+      const vars = await withRetry(() => base44.asServiceRole.entities.Variety.filter({ plant_type_id: ptId }, 'variety_name', 500));
+      const varArr = Array.isArray(vars) ? vars : [];
+      const missing = varArr.filter(v => v.plant_subcategory_id === null || v.plant_subcategory_id === undefined || v.plant_subcategory_id === '');
+      console.log(`  PT ${ptId}: ${varArr.length} varieties, ${missing.length} need subcat`);
+      needsSubcat.push(...missing);
+    }
+    console.log(`Total needing subcategory: ${needsSubcat.length}`);
 
     // For each variety, determine what subcat to create/assign
     const toCreate = new Map(); // subcat_code → { subcat_code, name, plant_type_id }
