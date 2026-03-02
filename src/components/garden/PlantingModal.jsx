@@ -773,16 +773,19 @@ try {
       
       if (!hasCompanionIssue) setCompanionWarning(null);
       
+      // Crop rotation: check if same plant type was grown here in a PREVIOUS season
       const currentYear = new Date().getFullYear();
-      const lastYearPlantings = plantings.filter(p => 
-        p.bed_id === item.id && 
-        p.plant_family && plantData.plant_family &&
-        p.plant_family === plantData.plant_family &&
-        p.season_year && !p.season_year.startsWith(currentYear.toString())
+      const previousSeasonPlantings = plantings.filter(p =>
+        p.bed_id === item.id &&
+        p.plant_type_id === plantData.plant_type_id &&
+        p.season_year &&
+        !p.season_year.startsWith(currentYear.toString())
       );
       
-      if (lastYearPlantings.length > 0) {
-        setRotationWarning(`⚠️ Rotation: ${plantData.plant_family} family was grown here last season`);
+      if (previousSeasonPlantings.length > 0) {
+        const seasons = [...new Set(previousSeasonPlantings.map(p => p.season_year))].join(', ');
+        const plantName = plantData.plant_type_name || plantData.variety_name || 'This plant';
+        setRotationWarning(`🔄 Crop Rotation: ${plantName} was grown here in ${seasons}. Consider rotating to a different bed to prevent soil depletion and disease buildup.`);
       } else {
         setRotationWarning(null);
       }
