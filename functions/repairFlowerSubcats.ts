@@ -66,13 +66,14 @@ Deno.serve(async (req) => {
     const toFix = await withRetry(() => base44.asServiceRole.entities.Variety.filter(
       { status: 'active' }, 'variety_name', 9999
     ));
-    console.log(`Varieties with no subcategory: ${toFix.length}`);
+    const needsSubcat = toFix.filter(v => !v.plant_subcategory_id);
+    console.log(`Varieties with no subcategory: ${needsSubcat.length} out of ${toFix.length}`);
 
     // For each variety, determine what subcat to create/assign
     const toCreate = new Map(); // subcat_code → { subcat_code, name, plant_type_id }
     const assignments = []; // { variety_id, variety_name, subcat_code }
 
-    for (const v of toFix) {
+    for (const v of needsSubcat) {
       const pt = ptById[v.plant_type_id];
       if (!pt || !pt.plant_type_code) continue;
 
