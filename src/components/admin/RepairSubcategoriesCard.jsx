@@ -132,13 +132,16 @@ export default function RepairSubcategoriesCard() {
                 <div className="space-y-2">
                   <div className="font-semibold">Results:</div>
                   <div className="grid grid-cols-2 gap-2 text-sm">
-                    <div>Subcategories Activated: <strong>{result.subcategories_activated || 0}</strong></div>
-                    <div>Varieties Repaired: <strong>{result.varieties_repaired || 0}</strong></div>
-                    <div>Varieties Skipped: <strong>{result.varieties_skipped || 0}</strong></div>
-                    <div>Missing Code: <strong>{result.missing_subcategory_code || 0}</strong></div>
-                    <div>Unresolvable Code: <strong>{result.unresolvable_subcategory_code || 0}</strong></div>
-                    <div>Junk Arrays Cleaned: <strong>{result.junk_arrays_cleaned || 0}</strong></div>
+                    <div>Total Missing: <strong>{result.total || 0}</strong></div>
+                    <div>Fixed: <strong>{result.varieties_repaired || 0}</strong></div>
+                    <div>Could Not Match: <strong>{result.varieties_skipped || 0}</strong></div>
                   </div>
+                  {result.no_match_sample?.length > 0 && (
+                    <div className="text-xs text-gray-600 mt-2">
+                      <strong>Still unmatched (sample):</strong><br />
+                      {result.no_match_sample.map((v, i) => <span key={i}>{v.name}{i < result.no_match_sample.length - 1 ? ', ' : ''}</span>)}
+                    </div>
+                  )}
                   {result.errors && result.errors.length > 0 && (
                     <div className="mt-2 p-2 bg-white rounded border text-xs">
                       <div className="font-semibold text-red-700 mb-1">Errors:</div>
