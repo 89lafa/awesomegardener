@@ -205,16 +205,13 @@ export default function PlantingModal({
   };
 
  const getSpacingForPlant = (plantTypeId, varietySpacing) => {
-    // ── Diagonal pattern: always 1×1 max per plant ──────────────
-    // In diagonal/offset planting, each plant occupies exactly one cell
-    // regardless of its normal grid spacing rules. Dense plants like
-    // radishes still get plantsPerSlot > 1, but no plant ever spans
-    // more than 1×1 cells.
+    // ★ DIAGONAL PATTERN: always 1×1 per plant — the 50% row offset means
+    // no plant ever needs more than a single grid cell regardless of size.
     if (plantingPattern === 'diagonal') {
+      // Still look up plantsPerSlot from rules (radishes can be 16/slot etc.)
       const containerType = itemType || item.item_type;
       const rule = plantingRules.find(r => r.plant_type_id === plantTypeId && r.container_type === containerType)
                 || plantingRules.find(r => r.plant_type_id === plantTypeId);
-      // Only carry over plantsPerSlot (e.g. 16 radishes per sq ft); cols/rows are always 1×1
       return { cols: 1, rows: 1, plantsPerSlot: rule?.plants_per_grid_slot || 1 };
     }
 
@@ -236,9 +233,8 @@ export default function PlantingModal({
       return { cols: anyRule.grid_cols, rows: anyRule.grid_rows, plantsPerSlot: anyRule.plants_per_grid_slot || 1 };
     }
     
-    // 3) No rules — spacing-based calculation
+    // 3) No rules — spacing-based
     const method = garden.planting_method || 'STANDARD';
-    
     if (method === 'SQUARE_FOOT') {
       const spacing = varietySpacing || 12;
       if (spacing >= 18) return { cols: 2, rows: 2, plantsPerSlot: 1 };
