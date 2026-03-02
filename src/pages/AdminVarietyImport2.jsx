@@ -357,32 +357,26 @@ export default function AdminVarietyImport2() {
             if (row.variety_code) existing = varByCode[row.variety_code];
             if (!existing) existing = varByTypeAndName[`${pt.id}__${norm(varietyName)}`];
 
-            // Build raw payload
+            // Build raw payload — iterate over CSV columns that exist in this row
             const rawPayload = {};
+            const colsToProcess = upsertMode === 'selective'
+              ? [...selectedCols]
+              : headers.filter(h => ALL_COLUMNS.includes(h) && !FORBIDDEN_FIELDS.has(h));
 
-            if (upsertMode === 'selective') {
-              for (const col of selectedCols) {
-                const raw = row[col];
-                if (raw === undefined || raw === '') continue;
-                const casted = castValue(col, raw);
-                if (casted !== null) rawPayload[col] = casted;
+            for (const col of colsToProcess) {
+              if (FORBIDDEN_FIELDS.has(col)) continue;
+              const raw = row[col];
+              if (raw === undefined || raw === null || raw === '') continue;
+
+              if (upsertMode === 'preserve_filled' && existing) {
+                const existingVal = existing[col];
+                const hasValue = existingVal !== null && existingVal !== undefined && existingVal !== '' &&
+                  !(Array.isArray(existingVal) && existingVal.length === 0);
+                if (hasValue && !['variety_name', 'plant_type_id'].includes(col)) continue;
               }
-            } else {
-              // overwrite_all or preserve_filled — use all schema columns present in CSV
-              for (const col of ALL_COLUMNS) {
-                const raw = row[col];
-                if (raw === undefined || raw === '') continue;
 
-                if (upsertMode === 'preserve_filled' && existing) {
-                  const existingVal = existing[col];
-                  const hasValue = existingVal !== null && existingVal !== undefined && existingVal !== '' &&
-                    !(Array.isArray(existingVal) && existingVal.length === 0);
-                  if (hasValue && !['variety_name', 'plant_type_id'].includes(col)) continue;
-                }
-
-                const casted = castValue(col, raw);
-                if (casted !== null) rawPayload[col] = casted;
-              }
+              const casted = castValue(col, raw);
+              if (casted !== null) rawPayload[col] = casted;
             }
 
             // Always set core identity fields
