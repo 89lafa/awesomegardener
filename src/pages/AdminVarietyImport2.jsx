@@ -14,10 +14,17 @@ import { toast } from 'sonner';
 import { motion, AnimatePresence } from 'framer-motion';
 import ErrorBoundary from '@/components/common/ErrorBoundary';
 
+// ── Columns that are resolved from codes (not direct DB fields)
+const CODE_COLUMNS = new Set([
+  'plant_type_code','plant_type_common_name','plant_subcategory_code','plant_subcategory_codes',
+  'id','created_date','updated_date','created_by_id','is_sample',
+  'is_perennial_species','perennial_from_zone','zone_7a_behavior',
+]);
+
 // ── ALL Variety schema columns (145 columns) ──────────────────────────────────
 const ALL_COLUMNS = [
   'variety_name','plant_type_id','plant_type_name','plant_subcategory_id','plant_subcategory_ids',
-  'variety_code','description','synonyms','days_to_maturity','days_to_maturity_min','days_to_maturity_max',
+  'variety_code','plant_type_code','plant_subcategory_code','plant_subcategory_codes','description','synonyms','days_to_maturity','days_to_maturity_min','days_to_maturity_max',
   'start_indoors_weeks','start_indoors_weeks_min','start_indoors_weeks_max',
   'transplant_weeks_after_last_frost_min','transplant_weeks_after_last_frost_max',
   'direct_sow_weeks_min','direct_sow_weeks_max',
@@ -233,19 +240,41 @@ export default function AdminVarietyImport2() {
               continue;
             }
 
-            // Resolve plant type
-            const pt = ptById[row.plant_type_id] || ptByCode[row.plant_type_id] || ptByName[(row.plant_type_name || '').toLowerCase()];
+            // Resolve plant type: direct ID, plant_type_code column, or common name
+            const pt = ptById[row.plant_type_id]
+              || ptByCode[row.plant_type_id]
+              || ptByCode[row.plant_type_code]
+              || ptByName[(row.plant_type_common_name || row.plant_type_name || '').toLowerCase()]
+              || ptByName[(row.plant_type_name || '').toLowerCase()];
             if (!pt) {
               rejected++;
               skipReasons.push(`Unknown plant type: ${row.plant_type_id} for "${row.variety_name}"`);
               continue;
             }
 
-            // Resolve subcategory — only if present AND not blank
+            // Resolve subcategory — support plant_subcategory_id (direct), plant_subcategory_code, plant_subcategory_codes
             let resolvedSubcatId = null;
-            const subcatId = row.plant_subcategory_id;
-            if (subcatId && subcatId.trim()) {
-              resolvedSubcatId = scById[subcatId]?.id || null;
+            // 1. Direct ID
+            if (row.plant_subcategory_id && row.plant_subcategory_id.trim()) {
+              resolvedSubcatId = scById[row.plant_subcategory_id]?.id || null;
+            }
+            // 2. Subcat code (e.g. PSC_TOMATO_CHERRY)
+            if (!resolvedSubcatId && row.plant_subcategory_code && row.plant_subcategory_code.trim()) {
+              resolvedSubcatId = scByCode[row.plant_subcategory_code.trim()]?.id || null;
+            }
+            // 3. plant_subcategory_codes array (take first resolvable)
+            if (!resolvedSubcatId && row.plant_subcategory_codes) {
+              try {
+                const codes = typeof row.plant_subcategory_codes === 'string'
+                  ? JSON.parse(row.plant_subcategory_codes)
+                  : row.plant_subcategory_codes;
+                if (Array.isArray(codes)) {
+                  for (const code of codes) {
+                    const sc = scByCode[code.trim()] || scById[code.trim()];
+                    if (sc) { resolvedSubcatId = sc.id; break; }
+                  }
+                }
+              } catch { /* ignore parse error */ }
             }
 
             // Find existing variety
@@ -351,7 +380,7 @@ export default function AdminVarietyImport2() {
   if (!user) return <div className="flex items-center justify-center h-64"><Loader2 className="w-8 h-8 animate-spin text-emerald-600" /></div>;
 
   const colsInFile = headers.filter(h => ALL_COLUMNS.includes(h));
-  const colsNotInSchema = headers.filter(h => !ALL_COLUMNS.includes(h));
+  const colsNotInSchema = headers.filter(h => !ALL_COLUMNS.includes(h) && !CODE_COLUMNS.has(h));
 
   return (
     <ErrorBoundary fallbackTitle="Import Error" fallbackMessage="An error occurred. Please refresh.">

@@ -68,6 +68,7 @@ import AdminPestLibrary from './pages/AdminPestLibrary';
 import AdminRecipeManager from './pages/AdminRecipeManager';
 import AdminRecipes from './pages/AdminRecipes';
 import AdminResources from './pages/AdminResources';
+import AdminVarietyImport2 from './pages/AdminVarietyImport2';
 import BlogList from './pages/BlogList';
 import BlogPost from './pages/BlogPost';
 import BrowseCategoryConfig from './pages/BrowseCategoryConfig';
@@ -156,7 +157,6 @@ import Users from './pages/Users';
 import VarietyReviewQueue from './pages/VarietyReviewQueue';
 import ViewVariety from './pages/ViewVariety';
 import ZoneMap from './pages/ZoneMap';
-import AdminVarietyImport2 from './pages/AdminVarietyImport2';
 import __Layout from './Layout.jsx';
 
 
@@ -182,6 +182,7 @@ export const PAGES = {
     "AdminRecipeManager": AdminRecipeManager,
     "AdminRecipes": AdminRecipes,
     "AdminResources": AdminResources,
+    "AdminVarietyImport2": AdminVarietyImport2,
     "BlogList": BlogList,
     "BlogPost": BlogPost,
     "BrowseCategoryConfig": BrowseCategoryConfig,
@@ -270,7 +271,6 @@ export const PAGES = {
     "VarietyReviewQueue": VarietyReviewQueue,
     "ViewVariety": ViewVariety,
     "ZoneMap": ZoneMap,
-    "AdminVarietyImport2": AdminVarietyImport2,
 }
 
 export const pagesConfig = {
