@@ -1359,6 +1359,9 @@ export default function AdminDataImport() {
         </CardContent>
       </Card>
 
+      {/* Plant Varieties 2 — Full 145-column importer */}
+      <VarietyImportV2Section />
+
       {/* Results */}
       {results && (
         <AnimatePresence>
