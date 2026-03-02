@@ -899,7 +899,7 @@ export default function PlantCatalogDetail() {
 
         {/* Browse Category Notice */}
         {(isSquashUmbrella || browseCategory) && (
-          <div className="px-4 py-3 bg-amber-50 border border-amber-300 rounded-lg text-sm text-amber-900">
+          <div className="px-3 py-2 bg-amber-50 border border-amber-300 rounded-lg text-xs text-amber-900">
             {browseCategory?.info_banner ||
               'ℹ️ Squash Browse View: This shows varieties from Summer Squash, Winter Squash, Zucchini, and Pumpkin.'}
           </div>
@@ -941,82 +941,21 @@ export default function PlantCatalogDetail() {
         {/* ── Zone Banner ── */}
         {renderZoneBanner()}
 
-        {/* ── Overview ── */}
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex flex-wrap items-center gap-4">
-              <div className="flex flex-col">
-                <span className="text-xs text-gray-500 mb-0.5">Water Needs</span>
-                <div className="flex items-center gap-2">
-                  <Droplets className="w-4 h-4 text-blue-600" />
-                  <span className="text-sm font-medium capitalize">{plantType?.typical_water || 'Moderate'}</span>
-                </div>
-              </div>
-
-              <div className="flex flex-col">
-                <span className="text-xs text-gray-500 mb-0.5">Sun Exposure</span>
-                <div className="flex items-center gap-2">
-                  <Sun className="w-4 h-4 text-yellow-600" />
-                  <span className="text-sm font-medium capitalize">
-                    {plantType?.typical_sun?.replace(/_/g, ' ') || 'Full Sun'}
-                  </span>
-                </div>
-              </div>
-
-              <div className="flex flex-col">
-                <span className="text-xs text-gray-500 mb-0.5">Days to Maturity</span>
-                <div className="flex items-center gap-2">
-                  <TrendingUp className="w-4 h-4 text-green-600" />
-                  <span className="text-sm font-medium">{plantType?.default_days_to_maturity || 'Varies'}</span>
-                </div>
-              </div>
-
-              {plantType?.typical_spacing_min && plantType?.typical_spacing_max && (
-                <div className="flex flex-col">
-                  <span className="text-xs text-gray-500 mb-0.5">Spacing</span>
-                  <span className="text-sm font-medium">
-                    {plantType.typical_spacing_min}" – {plantType.typical_spacing_max}"
-                  </span>
-                </div>
-              )}
-
-              {plantType?.is_perennial !== undefined && (
-                <div className="flex flex-col">
-                  <span className="text-xs text-gray-500 mb-0.5">Growth Habit</span>
-                  <span className="text-sm font-medium">
-                    {plantType.is_perennial ? 'Perennial' : 'Annual'}
-                  </span>
-                </div>
-              )}
-
-              {plantType?.default_start_indoors_weeks && (
-                <div className="flex flex-col">
-                  <span className="text-xs text-gray-500 mb-0.5">Start Indoors</span>
-                  <span className="text-sm font-medium">
-                    {plantType.default_start_indoors_weeks} wks before frost
-                  </span>
-                </div>
-              )}
-
-              {plantType?.default_transplant_weeks !== undefined && (
-                <div className="flex flex-col">
-                  <span className="text-xs text-gray-500 mb-0.5">Transplant</span>
-                  <span className="text-sm font-medium">
-                    {plantType.default_transplant_weeks} wks{' '}
-                    {plantType.default_transplant_weeks >= 0 ? 'after' : 'before'} frost
-                  </span>
-                </div>
-              )}
-
-              {user?.role === 'admin' && (
-                <Button size="sm" variant="outline" className="ml-auto"
-                  onClick={() => (window.location.href = `/EditPlantType?id=${plantType.id}`)}>
-                  Edit PlantType
-                </Button>
-              )}
-            </div>
-          </CardContent>
-        </Card>
+        {/* ── Compact Overview strip ── */}
+        <div className="flex flex-wrap items-center gap-x-5 gap-y-1 px-2 py-1.5 text-sm text-gray-600">
+          <span className="flex items-center gap-1"><Droplets className="w-3.5 h-3.5 text-blue-500" /><span className="capitalize">{plantType?.typical_water || 'Moderate'} water</span></span>
+          <span className="flex items-center gap-1"><Sun className="w-3.5 h-3.5 text-yellow-500" /><span className="capitalize">{plantType?.typical_sun?.replace(/_/g, ' ') || 'Full Sun'}</span></span>
+          {plantType?.default_days_to_maturity && <span className="flex items-center gap-1"><TrendingUp className="w-3.5 h-3.5 text-green-500" />{plantType.default_days_to_maturity} days</span>}
+          {plantType?.typical_spacing_min && plantType?.typical_spacing_max && <span>{plantType.typical_spacing_min}"–{plantType.typical_spacing_max}" spacing</span>}
+          {plantType?.default_start_indoors_weeks && <span>Start indoors {plantType.default_start_indoors_weeks}wks</span>}
+          {plantType?.is_perennial !== undefined && <span className="font-medium">{plantType.is_perennial ? '♾ Perennial' : '1yr Annual'}</span>}
+          {user?.role === 'admin' && (
+            <Button size="sm" variant="ghost" className="ml-auto h-6 text-xs px-2 text-gray-500"
+              onClick={() => (window.location.href = `/EditPlantType?id=${plantType.id}`)}>
+              Edit
+            </Button>
+          )}
+        </div>
 
         {/* ── Search, Sort, Filters ── */}
         <Card>
