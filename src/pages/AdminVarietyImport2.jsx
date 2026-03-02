@@ -250,145 +250,142 @@ export default function AdminVarietyImport2() {
 
       let inserted = 0, updated = 0, skipped = 0, rejected = 0;
       const skipReasons = [];
-      const BATCH = 5;
+      const BATCH = 3; // smaller batch for reliability
 
       for (let i = 0; i < parsedData.length; i += BATCH) {
         const chunk = parsedData.slice(i, i + BATCH);
 
         for (const row of chunk) {
           try {
-            if (!row.variety_name || !row.plant_type_id) {
+            // Accept variety_name from multiple possible column names
+            const varietyName = (row.variety_name || row.name || '').trim();
+            if (!varietyName) {
               rejected++;
-              skipReasons.push(`Row: Missing variety_name or plant_type_id — ${row.variety_name}`);
+              skipReasons.push(`Row ${i + 1}: Missing variety_name`);
               continue;
             }
 
-            // Resolve plant type: direct ID, plant_type_code column, or common name
+            // Resolve plant type: try plant_type_id as direct ID OR as code, then by code column, then by name
             const pt = ptById[row.plant_type_id]
               || ptByCode[row.plant_type_id]
               || ptByCode[row.plant_type_code]
-              || ptByName[(row.plant_type_common_name || row.plant_type_name || '').toLowerCase()]
+              || ptByName[(row.plant_type_common_name || '').toLowerCase()]
               || ptByName[(row.plant_type_name || '').toLowerCase()];
+
             if (!pt) {
               rejected++;
-              skipReasons.push(`Unknown plant type: ${row.plant_type_id} for "${row.variety_name}"`);
+              skipReasons.push(`Unknown plant type: "${row.plant_type_id || row.plant_type_code || row.plant_type_name}" for "${varietyName}"`);
               continue;
             }
 
-            // Resolve subcategory — support plant_subcategory_id (direct), plant_subcategory_code, plant_subcategory_codes
+            // Resolve subcategory
             let resolvedSubcatId = null;
-            // 1. Direct ID
             if (row.plant_subcategory_id && row.plant_subcategory_id.trim()) {
-              resolvedSubcatId = scById[row.plant_subcategory_id]?.id || null;
+              resolvedSubcatId = scById[row.plant_subcategory_id.trim()]?.id || null;
             }
-            // 2. Subcat code (e.g. PSC_TOMATO_CHERRY)
             if (!resolvedSubcatId && row.plant_subcategory_code && row.plant_subcategory_code.trim()) {
               resolvedSubcatId = scByCode[row.plant_subcategory_code.trim()]?.id || null;
             }
-            // 3. plant_subcategory_codes array (take first resolvable)
             if (!resolvedSubcatId && row.plant_subcategory_codes) {
               try {
-                const codes = typeof row.plant_subcategory_codes === 'string'
-                  ? JSON.parse(row.plant_subcategory_codes)
-                  : row.plant_subcategory_codes;
+                let codes = row.plant_subcategory_codes;
+                if (typeof codes === 'string') {
+                  codes = codes.startsWith('[') ? JSON.parse(codes) : codes.split('|').map(s => s.trim());
+                }
                 if (Array.isArray(codes)) {
                   for (const code of codes) {
                     const sc = scByCode[code.trim()] || scById[code.trim()];
                     if (sc) { resolvedSubcatId = sc.id; break; }
                   }
                 }
-              } catch { /* ignore parse error */ }
+              } catch { /* ignore */ }
             }
 
             // Find existing variety
             let existing = null;
             if (row.variety_code) existing = varByCode[row.variety_code];
-            if (!existing) existing = varByTypeAndName[`${pt.id}__${norm(row.variety_name)}`];
+            if (!existing) existing = varByTypeAndName[`${pt.id}__${norm(varietyName)}`];
 
-            // Build payload based on upsert mode
-            const payload = {};
+            // Build raw payload
+            const rawPayload = {};
 
-            if (upsertMode === 'overwrite_all' || upsertMode === 'preserve_filled') {
-              // Include ALL columns from CSV
-              for (const col of ALL_COLUMNS) {
-                if (col === 'id' || col === 'created_date' || col === 'updated_date') continue;
-                const raw = row[col];
-                if (raw === undefined) continue; // not in CSV
-
-                if (upsertMode === 'preserve_filled' && existing) {
-                  // Don't overwrite fields that are already filled
-                  const existingVal = existing[col];
-                  if (existingVal !== null && existingVal !== undefined && existingVal !== '' &&
-                      !(Array.isArray(existingVal) && existingVal.length === 0)) {
-                    // Skip if existing has a value — unless it's the key fields
-                    if (!['variety_name','plant_type_id'].includes(col)) continue;
-                  }
-                }
-
-                const casted = castValue(col, raw);
-                if (casted !== null) payload[col] = casted;
-              }
-            } else {
-              // selective — only selected columns
+            if (upsertMode === 'selective') {
               for (const col of selectedCols) {
                 const raw = row[col];
-                if (raw === undefined) continue;
+                if (raw === undefined || raw === '') continue;
                 const casted = castValue(col, raw);
-                if (casted !== null) payload[col] = casted;
+                if (casted !== null) rawPayload[col] = casted;
+              }
+            } else {
+              // overwrite_all or preserve_filled — use all schema columns present in CSV
+              for (const col of ALL_COLUMNS) {
+                const raw = row[col];
+                if (raw === undefined || raw === '') continue;
+
+                if (upsertMode === 'preserve_filled' && existing) {
+                  const existingVal = existing[col];
+                  const hasValue = existingVal !== null && existingVal !== undefined && existingVal !== '' &&
+                    !(Array.isArray(existingVal) && existingVal.length === 0);
+                  if (hasValue && !['variety_name', 'plant_type_id'].includes(col)) continue;
+                }
+
+                const casted = castValue(col, raw);
+                if (casted !== null) rawPayload[col] = casted;
               }
             }
 
-            // Always set plant type info
-            payload.plant_type_id = pt.id;
-            payload.plant_type_name = pt.common_name;
-            payload.variety_name = row.variety_name;
+            // Always set core identity fields
+            rawPayload.plant_type_id = pt.id;
+            rawPayload.plant_type_name = pt.common_name;
+            rawPayload.variety_name = varietyName;
 
-            // Subcategory: only overwrite if we have a resolved ID and mode allows it
+            // Set subcategory conditionally
             if (resolvedSubcatId) {
               if (upsertMode === 'overwrite_all' || upsertMode === 'selective') {
-                payload.plant_subcategory_id = resolvedSubcatId;
-                payload.plant_subcategory_ids = [resolvedSubcatId];
-              } else if (upsertMode === 'preserve_filled') {
-                // Only set if variety has no subcategory
-                if (!existing?.plant_subcategory_id) {
-                  payload.plant_subcategory_id = resolvedSubcatId;
-                  payload.plant_subcategory_ids = [resolvedSubcatId];
-                }
+                rawPayload.plant_subcategory_id = resolvedSubcatId;
+                rawPayload.plant_subcategory_ids = [resolvedSubcatId];
+              } else if (upsertMode === 'preserve_filled' && !existing?.plant_subcategory_id) {
+                rawPayload.plant_subcategory_id = resolvedSubcatId;
+                rawPayload.plant_subcategory_ids = [resolvedSubcatId];
               }
             }
-            // ↑ If no resolvedSubcatId from CSV, NEVER touch subcategory fields
+
+            // Strip any unknown or forbidden fields before sending to API
+            const payload = cleanPayload(rawPayload);
 
             if (dryRun) {
               existing ? updated++ : inserted++;
               continue;
             }
 
+            // Actual write
             if (existing) {
               await apiRetry(
                 () => base44.entities.Variety.update(existing.id, payload),
-                `Update ${row.variety_name}`
+                `Update ${varietyName}`
               );
-              // Update local cache
-              varByTypeAndName[`${pt.id}__${norm(row.variety_name)}`] = { ...existing, ...payload };
-              if (row.variety_code) varByCode[row.variety_code] = { ...existing, ...payload };
+              const merged = { ...existing, ...payload };
+              varByTypeAndName[`${pt.id}__${norm(varietyName)}`] = merged;
+              if (row.variety_code) varByCode[row.variety_code] = merged;
               updated++;
             } else {
+              const toCreate = { ...payload, status: payload.status || 'active', is_custom: false };
               const created = await apiRetry(
-                () => base44.entities.Variety.create({ ...payload, status: payload.status || 'active', is_custom: false }),
-                `Create ${row.variety_name}`
+                () => base44.entities.Variety.create(toCreate),
+                `Create ${varietyName}`
               );
-              varByTypeAndName[`${pt.id}__${norm(row.variety_name)}`] = created;
+              varByTypeAndName[`${pt.id}__${norm(varietyName)}`] = created;
               if (row.variety_code) varByCode[row.variety_code] = created;
               inserted++;
             }
           } catch (err) {
             skipped++;
-            skipReasons.push(`"${row.variety_name}": ${err.message}`);
+            skipReasons.push(`"${row.variety_name || row.name || '?'}": ${err.message}`);
           }
         }
 
         setProgress({ current: Math.min(i + BATCH, parsedData.length), total: parsedData.length, inserted, updated, skipped, rejected });
-        if (i + BATCH < parsedData.length) await sleep(2200);
+        if (i + BATCH < parsedData.length) await sleep(2000);
       }
 
       setResults({ inserted, updated, skipped, rejected, skipReasons: skipReasons.slice(0, 30) });
