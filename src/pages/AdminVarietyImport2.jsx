@@ -87,12 +87,35 @@ const JSON_COLS = new Set([
 
 const sleep = (ms) => new Promise(r => setTimeout(r, ms));
 
-async function apiRetry(fn, label = '', maxRetries = 5) {
-  let backoff = 3000;
+// Fields that must NEVER be sent in a create/update payload
+const FORBIDDEN_FIELDS = new Set([
+  'id','created_date','updated_date','created_by','created_by_id','is_sample',
+  'plant_type_code','plant_type_common_name','plant_subcategory_code','plant_subcategory_codes',
+  'is_perennial_species','perennial_from_zone','zone_7a_behavior',
+]);
+
+function cleanPayload(payload) {
+  const clean = {};
+  for (const [k, v] of Object.entries(payload)) {
+    if (FORBIDDEN_FIELDS.has(k)) continue;
+    if (!ALL_COLUMNS.includes(k)) continue; // only known schema fields
+    clean[k] = v;
+  }
+  return clean;
+}
+
+async function apiRetry(fn, label = '', maxRetries = 6) {
+  let backoff = 4000;
   for (let i = 0; i <= maxRetries; i++) {
     try { return await fn(); } catch (err) {
-      const isRL = (err?.message || '').toLowerCase().includes('rate') || err?.status === 429;
-      if (isRL && i < maxRetries) { await sleep(backoff); backoff = Math.min(backoff * 2, 30000); continue; }
+      const status = err?.status || err?.response?.status;
+      const isRL = (err?.message || '').toLowerCase().includes('rate') || status === 429;
+      const isServerErr = status >= 500 && status < 600;
+      if ((isRL || isServerErr) && i < maxRetries) {
+        await sleep(backoff);
+        backoff = Math.min(backoff * 2, 60000);
+        continue;
+      }
       throw err;
     }
   }
