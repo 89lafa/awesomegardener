@@ -237,24 +237,35 @@ Return structured data for each recommendation.`,
               </Button>
             </div>
             {recommendations.recommendations?.map((rec, idx) => (
-              <Card key={idx} className="border-l-4 border-l-purple-500">
+              <Card key={idx} className={`border-l-4 ${rec.has_affiliate_link ? 'border-l-emerald-500' : 'border-l-purple-400'}`}>
                 <CardContent className="p-4">
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-2">
-                        <h4 className="font-semibold text-lg">{rec.common_name}</h4>
+                  <div className="flex items-start justify-between gap-4 flex-wrap">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-1 flex-wrap">
+                        <h4 className="font-semibold text-base">{rec.common_name}</h4>
                         {rec.variety_name && (
-                          <Badge variant="outline" className="text-emerald-700 border-emerald-300">{rec.variety_name}</Badge>
+                          <Badge variant="outline" className="text-emerald-700 border-emerald-300 text-xs">{rec.variety_name}</Badge>
                         )}
-                        <Badge className="bg-gray-100 text-gray-700 text-xs">{rec.difficulty}</Badge>
+                        {rec.has_affiliate_link && (
+                          <Badge className="bg-emerald-100 text-emerald-800 text-xs">🛒 Seeds Available</Badge>
+                        )}
+                        {rec.difficulty && <Badge className="bg-gray-100 text-gray-600 text-xs">{rec.difficulty}</Badge>}
                       </div>
-                      <p className="text-sm text-gray-700 mb-3">{rec.reason}</p>
-                      <div className="flex flex-wrap gap-3 text-xs text-gray-600">
-                        <span>🌱 Start: {rec.start_timing}</span>
-                        <span>🍅 Harvest: {rec.harvest_timing}</span>
+                      <p className="text-sm text-gray-700 mb-2">{rec.reason}</p>
+                      <div className="flex flex-wrap gap-3 text-xs text-gray-500">
+                        {rec.start_timing && <span>🌱 {rec.start_timing}</span>}
+                        {rec.harvest_timing && <span>🍅 {rec.harvest_timing}</span>}
                       </div>
                     </div>
-                    <div className="flex flex-col gap-2">
+                    <div className="flex flex-col gap-1.5 flex-shrink-0">
+                      {rec.affiliate_url && (
+                        <a href={rec.affiliate_url} target="_blank" rel="noopener noreferrer">
+                          <Button size="sm" className="bg-emerald-600 hover:bg-emerald-700 gap-1 w-full">
+                            <Package className="w-3 h-3" />
+                            Buy Seeds
+                          </Button>
+                        </a>
+                      )}
                       <Button size="sm" variant="outline" asChild>
                         <Link to={createPageUrl('PlantCatalog') + `?search=${encodeURIComponent(rec.variety_name || rec.common_name)}`}>
                           <ExternalLink className="w-3 h-3 mr-1" />
@@ -262,7 +273,6 @@ Return structured data for each recommendation.`,
                         </Link>
                       </Button>
                       <AddToStashButton variety={{ variety_name: rec.variety_name || rec.common_name, plant_type_name: rec.common_name }} size="sm" />
-                      <AddToGrowListButton variety={{ variety_name: rec.variety_name || rec.common_name, plant_type_name: rec.common_name }} size="sm" />
                     </div>
                   </div>
                 </CardContent>
