@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { base44 } from '@/api/base44Client';
-import { ArrowLeft, Loader2, Save, Trash2 } from 'lucide-react';
+import { ArrowLeft, Loader2, Save, Trash2, ShieldAlert } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -25,6 +25,8 @@ export default function EditPlantType() {
   const [plantingRules, setPlantingRules] = useState([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [deletingVarieties, setDeletingVarieties] = useState(false);
+  const [deletePreview, setDeletePreview] = useState(null);
   const [formData, setFormData] = useState({
     common_name: '',
     scientific_name: '',
@@ -144,6 +146,48 @@ export default function EditPlantType() {
     } catch (error) {
       console.error('Error updating rule:', error);
       toast.error('Failed to update rule');
+    }
+  };
+
+  const handleDeleteAllVarieties = async () => {
+    if (!deletePreview) {
+      // Step 1: dry run to see count
+      setDeletingVarieties(true);
+      try {
+        const res = await base44.functions.invoke('deleteAllVarietiesForPlantTypeV2', {
+          plant_type_id: plantTypeId, dry_run: true
+        });
+        setDeletePreview(res.data);
+      } catch (err) {
+        toast.error('Preview failed: ' + err.message);
+      } finally {
+        setDeletingVarieties(false);
+      }
+      return;
+    }
+
+    // Step 2: confirm and execute
+    const confirmText = prompt(
+      `⚠️ DANGER: This will permanently delete ${deletePreview.would_delete} varieties for "${plantType?.common_name}".\n\nType DELETE to confirm:`
+    );
+    if (confirmText !== 'DELETE') {
+      toast.info('Cancelled');
+      return;
+    }
+
+    setDeletingVarieties(true);
+    try {
+      const res = await base44.functions.invoke('deleteAllVarietiesForPlantTypeV2', {
+        plant_type_id: plantTypeId,
+        dry_run: false,
+        confirm_token: `DELETE_${plantTypeId}`
+      });
+      toast.success(`Deleted ${res.data.deleted} varieties`);
+      setDeletePreview(null);
+    } catch (err) {
+      toast.error('Delete failed: ' + err.message);
+    } finally {
+      setDeletingVarieties(false);
     }
   };
 
@@ -475,6 +519,43 @@ export default function EditPlantType() {
               </div>
             </div>
           )}
+        </CardContent>
+      </Card>
+
+      {/* ⚠️ Danger Zone */}
+      <Card className="border-red-200">
+        <CardHeader>
+          <CardTitle className="text-red-700 flex items-center gap-2">
+            <ShieldAlert className="w-5 h-5" />
+            Danger Zone
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <p className="text-sm text-gray-600">
+            Delete <strong>ALL varieties</strong> for this plant type from the database.
+            Use this when you need to re-import from scratch (e.g., after a bad upsert).
+          </p>
+          {deletePreview && (
+            <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-sm">
+              <p className="font-semibold text-red-800">⚠️ Preview: {deletePreview.would_delete} varieties will be deleted</p>
+              {deletePreview.sample?.length > 0 && (
+                <p className="text-xs text-red-600 mt-1">Sample: {deletePreview.sample.slice(0, 5).map(v => v.name).join(', ')}{deletePreview.sample.length > 5 ? '...' : ''}</p>
+              )}
+              <Button
+                onClick={() => setDeletePreview(null)}
+                variant="ghost" size="sm" className="mt-2 text-gray-500"
+              >Cancel</Button>
+            </div>
+          )}
+          <Button
+            onClick={handleDeleteAllVarieties}
+            disabled={deletingVarieties}
+            variant="destructive"
+            className="gap-2"
+          >
+            {deletingVarieties ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+            {deletePreview ? `⚠️ Confirm Delete ${deletePreview.would_delete} Varieties` : 'Delete All Varieties for This Plant Type'}
+          </Button>
         </CardContent>
       </Card>
 
