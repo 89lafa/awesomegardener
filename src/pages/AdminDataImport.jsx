@@ -699,9 +699,14 @@ export default function AdminDataImport() {
                   updatePayload.variety_name = varietyData.variety_name;
                   updatePayload.plant_type_id = varietyData.plant_type_id;
                   updatePayload.plant_type_name = varietyData.plant_type_name;
-                  updatePayload.plant_subcategory_id = varietyData.plant_subcategory_id;
-                  updatePayload.plant_subcategory_ids = varietyData.plant_subcategory_ids;
-                  updatePayload.variety_code = varietyData.variety_code;
+                  // ★ FIX: Only overwrite subcategory if the CSV actually had a subcat code.
+                  // Previously, blank subcat_code rows wrote null → wiped existing assignments.
+                  if (resolvedSubcategoryId) {
+                    updatePayload.plant_subcategory_id = resolvedSubcategoryId;
+                    updatePayload.plant_subcategory_ids = [resolvedSubcategoryId];
+                  }
+                  // else: do NOT touch plant_subcategory_id or plant_subcategory_ids — preserve existing
+                  if (varietyData.variety_code) updatePayload.variety_code = varietyData.variety_code;
                   updatePayload.extended_data = varietyData.extended_data;
                   
                   if (varietyData.description && varietyData.description.trim()) updatePayload.description = varietyData.description;
