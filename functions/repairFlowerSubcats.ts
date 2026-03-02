@@ -68,7 +68,8 @@ Deno.serve(async (req) => {
     ));
     const toFix = Array.isArray(toFixRaw) ? toFixRaw : (toFixRaw?.results || toFixRaw?.data || []);
     const needsSubcat = toFix.filter(v => !v.plant_subcategory_id);
-    console.log(`Varieties with no subcategory: ${needsSubcat.length} out of ${toFix.length}`);
+    console.log(`Varieties loaded: ${toFix.length}, need subcategory: ${needsSubcat.length}`);
+    console.log(`Sample without subcat:`, needsSubcat.slice(0, 3).map(v => `${v.variety_name} (pt:${v.plant_type_id})`));
 
     // For each variety, determine what subcat to create/assign
     const toCreate = new Map(); // subcat_code → { subcat_code, name, plant_type_id }
