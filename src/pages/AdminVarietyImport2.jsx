@@ -98,7 +98,7 @@ const NUM_COLS = new Set([
 
 // Base44 stores these as JSON arrays (List type)
 const JSON_ARRAY_COLS = new Set([
-  'synonyms','sources','images','care_warnings','common_diseases',
+  'synonyms','sources','images','care_warnings',
   // display_style is a String in DB — do NOT parse it
 ]);
 
@@ -107,6 +107,7 @@ const JSON_ARRAY_COLS = new Set([
 const JSON_TO_STRING_COLS = new Set([
   'propagation_methods',  // DB: String
   'common_pests',         // DB: String
+  'common_diseases',      // DB: String (not List!)
 ]);
 
 // traits: DB stores as dict { "trait_name": true, ... }
