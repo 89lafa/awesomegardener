@@ -96,12 +96,23 @@ const NUM_COLS = new Set([
   'dormancy_duration_months_min','dormancy_duration_months_max','root_temp_max_f',
 ]);
 
-// Fields that must be sent as JSON arrays (Base44 stores as list)
+// Base44 stores these as JSON arrays (List type)
 const JSON_ARRAY_COLS = new Set([
-  'synonyms','sources','images','care_warnings','traits',
-  'propagation_methods','common_pests','common_diseases',
-  // NOTE: display_style is a String in DB — do NOT JSON-parse it
+  'synonyms','sources','images','care_warnings','common_diseases',
+  // display_style is a String in DB — do NOT parse it
 ]);
+
+// Base44 stores these as plain String — join array items with ", "
+// Error: "Input should be a valid string"
+const JSON_TO_STRING_COLS = new Set([
+  'propagation_methods',  // DB: String
+  'common_pests',         // DB: String
+]);
+
+// traits: DB stores as dict { "trait_name": true, ... }
+// CSV has array ["shade_tolerant","container_plant",...]
+// Error: "Input should be a valid dictionary"
+const TRAITS_FIELD = 'traits';
 
 // JSON object fields
 const JSON_OBJECT_COLS = new Set(['extended_data']);
@@ -338,19 +349,16 @@ function castValue(col, raw) {
     return isNaN(n) ? null : n;
   }
 
-  // JSON arrays (synonyms, traits, care_warnings, etc.)
+  // JSON arrays (synonyms, sources, images, care_warnings, common_diseases)
   if (JSON_ARRAY_COLS.has(col)) {
     if (Array.isArray(raw)) return raw;
     try {
       const parsed = JSON.parse(str);
-      // Flatten nested JSON artifacts like ["[\"Saintpaulia ionantha\"]"]
       if (Array.isArray(parsed)) {
         return parsed.map(item => {
           if (typeof item === 'string') {
-            try {
-              const inner = JSON.parse(item);
-              return Array.isArray(inner) ? inner : item;
-            } catch { return item; }
+            try { const inner = JSON.parse(item); return Array.isArray(inner) ? inner : item; }
+            catch { return item; }
           }
           return item;
         }).flat();
@@ -361,6 +369,33 @@ function castValue(col, raw) {
       if (str === '[]' || str === '') return [];
       return [str];
     }
+  }
+
+  // String fields that arrive as JSON arrays — join to comma-separated string
+  // DB type is String, not List: "Input should be a valid string"
+  if (JSON_TO_STRING_COLS.has(col)) {
+    if (str === '[]' || str === '') return null;
+    try {
+      const parsed = JSON.parse(str);
+      if (Array.isArray(parsed)) return parsed.join(', ');
+      return str;
+    } catch { return str; }
+  }
+
+  // traits: DB type is dict { "trait_name": true }
+  // CSV has ["shade_tolerant","container_plant",...] — convert to object
+  if (col === TRAITS_FIELD) {
+    if (str === '[]' || str === '') return null;
+    try {
+      const parsed = JSON.parse(str);
+      if (Array.isArray(parsed)) {
+        const dict = {};
+        parsed.forEach(t => { if (t && typeof t === 'string') dict[t] = true; });
+        return Object.keys(dict).length > 0 ? dict : null;
+      }
+      if (typeof parsed === 'object' && !Array.isArray(parsed)) return parsed;
+    } catch { /* ignore */ }
+    return null;
   }
 
   // JSON objects (extended_data)
