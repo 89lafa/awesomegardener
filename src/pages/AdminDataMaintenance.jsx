@@ -27,6 +27,7 @@ import { Link } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
 import RepairSubcategoriesCard from '@/components/admin/RepairSubcategoriesCard';
 import BulkRepairSubcategoriesCard from '@/components/admin/BulkRepairSubcategoriesCard';
+import RestoreSubcatsFromCSVCard from '@/components/admin/RestoreSubcatsFromCSVCard';
 
 export default function AdminDataMaintenance() {
   const [user, setUser] = useState(null);
@@ -735,11 +736,14 @@ export default function AdminDataMaintenance() {
         </CardContent>
       </Card>
 
-      {/* Repair Subcategories & Varieties Tool */}
-      <RepairSubcategoriesCard />
+      {/* ── RESTORE FROM CSV (most accurate — uses original export) ── */}
+      <RestoreSubcatsFromCSVCard />
 
-      {/* NEW: Bulk Repair Subcategories 2 — ALL plant types */}
+      {/* ── BULK REPAIR 2 (keyword/scoville matching) ── */}
       <BulkRepairSubcategoriesCard />
+
+      {/* Repair Subcategories & Varieties Tool (original) */}
+      <RepairSubcategoriesCard />
 
       {/* Subcategory Health by Plant Type */}
       <SubcategoryHealthByPlantType />
