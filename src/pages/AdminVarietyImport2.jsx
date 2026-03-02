@@ -59,6 +59,46 @@ const ALL_COLUMNS = [
   'status','is_custom',
 ];
 
+// Fields that have strict enums — free-text values from CSV will break 422
+const ENUM_COLS = new Set([
+  'sun_requirement','water_requirement','seed_line_type','season_timing','popularity_tier',
+  'growth_habit','light_requirement_indoor','watering_method_preferred','soil_dryness_rule',
+  'soil_type_recommended','soil_type_required','overwater_sensitivity','soil_drainage_speed',
+  'humidity_preference','humidity_support_method','rootbound_tolerance','recommended_pot_type',
+  'fertilizer_type','fertilizer_frequency','fertilizer_strength','growth_pattern','growth_speed',
+  'pruning_needs','best_repot_season','propagation_difficulty','propagation_best_season',
+  'care_difficulty','variegation_type','dormancy_required','water_type_required','fertilizer_rule',
+  'status','plant_growth',
+]);
+
+// Valid values per enum field (to validate before sending)
+const ENUM_VALUES = {
+  sun_requirement: ['full_sun','partial_sun','partial_shade','full_shade'],
+  water_requirement: ['low','moderate','high'],
+  seed_line_type: ['heirloom','hybrid','open_pollinated','unknown'],
+  season_timing: ['early','mid','late','unknown'],
+  popularity_tier: ['common','popular','rare','heirloom'],
+  growth_habit: [],  // free text — keep as-is but allow
+  soil_type_required: ['standard','carnivorous_mix','orchid_mix','succulent_mix','aquatic_none','custom'],
+  dormancy_required: ['none','required_cold','optional_beneficial','succulent_phase','turion_aquatic'],
+  water_type_required: ['any','distilled_only','distilled_preferred'],
+  fertilizer_rule: ['normal','foliar_only_dilute','none_ever'],
+  status: ['active','pending_review','removed'],
+  care_difficulty: ['beginner','easy','moderate','advanced','expert'],
+  propagation_difficulty: ['beginner','easy','moderate','advanced'],
+  overwater_sensitivity: ['low','moderate','high','extreme'],
+  soil_drainage_speed: ['fast','moderate','water_retentive'],
+  humidity_preference: ['low','medium','high','very_high'],
+  rootbound_tolerance: ['sensitive','moderate','tolerant','prefers_rootbound'],
+  fertilizer_type: ['balanced','high_nitrogen','bloom_booster','orchid_specific','none'],
+  fertilizer_frequency: ['weekly_dilute','biweekly','monthly','seasonal_only'],
+  fertilizer_strength: ['full','half','quarter'],
+  best_repot_season: ['spring','spring_summer','anytime'],
+  propagation_best_season: ['spring','spring_summer','anytime'],
+  variegation_type: ['none','stable','unstable','chimeral'],
+  growth_speed: ['slow','moderate','fast'],
+};
+
 const BOOL_COLS = new Set([
   'trellis_required','container_friendly','is_ornamental','is_organic','grow_light_compatible',
   'drought_tolerant','cold_draft_sensitive','misting_beneficial','drainage_holes_required',
