@@ -1369,33 +1369,43 @@ try {
               </div>
             )}
 
-            {/* Companion Analysis */}
-            {companionResults.length > 0 && (
-              <div className="mt-4 p-4 bg-gray-50 rounded-lg border">
-                <h4 className="font-semibold text-sm mb-2">🌱 Companion Planting</h4>
-                <div className="space-y-2">
-                  {companionResults.map((result, idx) => (
-                    <div 
-                      key={idx}
-                      className={`p-2 rounded text-xs ${
-                        result.type === 'GOOD' ? 'bg-green-50 border border-green-200' :
-                        result.type === 'BAD' ? 'bg-red-50 border border-red-200' :
-                        'bg-amber-50 border border-amber-200'
-                      }`}
-                    >
-                      <p className={`font-semibold ${
-                        result.type === 'GOOD' ? 'text-green-800' : result.type === 'BAD' ? 'text-red-800' : 'text-amber-800'
-                      }`}>
-                        {result.plantA} + {result.plantB}: {
-                          result.type === 'GOOD' ? '✓ Good' : result.type === 'BAD' ? '✗ Bad' : '⚠ Conditional'
-                        }
-                      </p>
-                      {result.notes && <p className="text-gray-600 mt-1">{result.notes}</p>}
-                    </div>
-                  ))}
+            {/* Companion Analysis — deduplicated by pair */}
+            {companionResults.length > 0 && (() => {
+              // Deduplicate: same type pair (regardless of A/B order) shown once
+              const seen = new Set();
+              const unique = companionResults.filter(r => {
+                const key = [r.type, [r.plantA, r.plantB].sort().join('|')].join('__');
+                if (seen.has(key)) return false;
+                seen.add(key);
+                return true;
+              });
+              return (
+                <div className="mt-4 p-4 bg-gray-50 rounded-lg border">
+                  <h4 className="font-semibold text-sm mb-2">🌱 Companion Planting</h4>
+                  <div className="space-y-2">
+                    {unique.map((result, idx) => (
+                      <div
+                        key={idx}
+                        className={`p-2 rounded text-xs ${
+                          result.type === 'GOOD' ? 'bg-green-50 border border-green-200' :
+                          result.type === 'BAD' ? 'bg-red-50 border border-red-200' :
+                          'bg-amber-50 border border-amber-200'
+                        }`}
+                      >
+                        <p className={`font-semibold ${
+                          result.type === 'GOOD' ? 'text-green-800' : result.type === 'BAD' ? 'text-red-800' : 'text-amber-800'
+                        }`}>
+                          {result.plantA} + {result.plantB}: {
+                            result.type === 'GOOD' ? '✓ Good' : result.type === 'BAD' ? '✗ Avoid' : '⚠ Conditional'
+                          }
+                        </p>
+                        {result.notes && <p className="text-gray-600 mt-1">{result.notes}</p>}
+                      </div>
+                    ))}
+                  </div>
                 </div>
-              </div>
-            )}
+              );
+            })()}
           </div>
         </div>
 
