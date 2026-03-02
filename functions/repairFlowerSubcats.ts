@@ -63,9 +63,7 @@ Deno.serve(async (req) => {
 
     // Load ALL varieties with missing plant_subcategory_id (up to 9999)
     // Note: filter by null may not work perfectly — we check the value explicitly below
-    const toFixRaw = await withRetry(() => base44.asServiceRole.entities.Variety.filter(
-      { status: 'active' }, 'variety_name', 9999
-    ));
+    const toFixRaw = await withRetry(() => base44.asServiceRole.entities.Variety.list('variety_name', 9999));
     const toFix = Array.isArray(toFixRaw) ? toFixRaw : (toFixRaw?.results || toFixRaw?.data || []);
     const needsSubcat = toFix.filter(v => !v.plant_subcategory_id);
     console.log(`Varieties loaded: ${toFix.length}, need subcategory: ${needsSubcat.length}`);
