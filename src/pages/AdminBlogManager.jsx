@@ -391,6 +391,17 @@ export default function AdminBlogManager() {
               />
             </div>
 
+            <div>
+              <Label>Publication Date (override to back-fill / schedule)</Label>
+              <Input
+                type="datetime-local"
+                value={formData.published_date ? new Date(formData.published_date).toISOString().slice(0, 16) : ''}
+                onChange={(e) => setFormData({ ...formData, published_date: e.target.value ? new Date(e.target.value).toISOString() : '' })}
+                className="mt-2"
+              />
+              <p className="text-xs text-gray-500 mt-1">Leave blank to use current time when publishing. Set a past date to back-fill.</p>
+            </div>
+
             <div className="flex items-center gap-2">
               <input
                 type="checkbox"
