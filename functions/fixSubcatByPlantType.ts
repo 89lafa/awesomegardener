@@ -49,6 +49,7 @@ Deno.serve(async (req) => {
     console.log(`Plant type ${plantTypeId}: ${toFix.length} varieties missing subcategory. Available subcats:`, subcats.map(s => s.subcat_code).join(', '));
 
     // Rules specific to how our variety codes are structured
+    // ALSO handles VAR_PEP_* codes and VAR_PEPPER_* codes (old format)
     const CODE_RULES = [
       // Tomato codes follow: TOM_CHERRY_*, TOM_BEEFSTEAK_*, etc.
       { pattern: /^TOM_CHERRY/i, code: 'TOM_CHERRY' },
