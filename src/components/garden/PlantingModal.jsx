@@ -1448,15 +1448,21 @@ try {
         isOpen={showSeedlingSelector}
         onClose={() => setShowSeedlingSelector(false)}
         onSeedlingSelected={(seedlingData) => {
+          // Look up the actual plant type icon from plantTypes
+          const pt = plantTypes.find(t => t.id === seedlingData.plant_type_id);
+          const icon = pt?.icon || seedlingData.icon || '🌱';
+          // Get proper spacing from planting rules
+          const spacing = getSpacingForPlant(seedlingData.plant_type_id, seedlingData.spacing_recommended);
           setSelectedPlant({
             variety_id: seedlingData.variety_id,
             variety_name: seedlingData.display_name,
             plant_type_id: seedlingData.plant_type_id,
-            plant_type_name: seedlingData.display_name?.split(' - ')[1] || 'Seedling',
+            plant_type_name: pt?.common_name || seedlingData.display_name?.split(' - ')[0] || 'Seedling',
+            plant_type_icon: icon,
             display_name: seedlingData.display_name,
-            spacing_cols: seedlingData.spacing_cols || 1,
-            spacing_rows: seedlingData.spacing_rows || 1,
-            plantsPerSlot: 1,
+            spacing_cols: spacing.cols,
+            spacing_rows: spacing.rows,
+            plantsPerSlot: spacing.plantsPerSlot || 1,
             growing_method: 'SEEDLING_TRANSPLANT',
             seedling_source_id: seedlingData.seedling_source_id,
             seedling_source_type: seedlingData.seedling_source_type,
