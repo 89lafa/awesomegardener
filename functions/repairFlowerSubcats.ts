@@ -1,36 +1,32 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.6';
 
 /**
- * Repairs flower subcategories in 2 phases:
- * Phase 1: Scan varieties that have NO plant_subcategory_id but HAVE a plant_type_id for a flower type.
- *          Derive the subcat_code from the variety_name pattern (Standard X → PSC_X_STANDARD).
- *          Create the PlantSubCategory record if it doesn't exist.
- * Phase 2: Assign plant_subcategory_id to each variety from the newly created subcats.
+ * Repairs flower subcategories — chunked per plant type to avoid timeout.
  *
- * POST { dry_run: true/false }
+ * POST { dry_run: bool, plant_type_id?: string }
+ *   - If plant_type_id is given: process only that one plant type.
+ *   - If omitted: process ALL flower plant types (creates subcats only, skips variety assignment if >50).
  */
 
 const sleep = (ms) => new Promise(r => setTimeout(r, ms));
 
-async function withRetry(fn, retries = 5) {
-  let backoff = 3000;
+async function withRetry(fn, retries = 4) {
+  let backoff = 2000;
   for (let i = 0; i <= retries; i++) {
     try { return await fn(); }
     catch (err) {
-      if (i < retries) { await sleep(backoff); backoff = Math.min(backoff * 2, 30000); continue; }
+      if (i < retries) { await sleep(backoff); backoff = Math.min(backoff * 2, 20000); continue; }
       throw err;
     }
   }
 }
 
 function makeSubcatCode(plantTypeCode) {
-  // PT_WAX_BEGONIA → PSC_WAX_BEGONIA_STANDARD
   const core = plantTypeCode.replace(/^PT_/, '');
   return `PSC_${core}_STANDARD`;
 }
 
 function makeSubcatName(subcatCode) {
-  // PSC_WAX_BEGONIA_STANDARD → Wax Begonia Standard
   return subcatCode
     .replace(/^PSC_/, '')
     .split('_')
@@ -48,125 +44,102 @@ Deno.serve(async (req) => {
 
     const body = req.method === 'POST' ? await req.json().catch(() => ({})) : {};
     const isDryRun = body.dry_run !== false;
+    const limitToPTId = body.plant_type_id || null;
 
     // Load all plant types
     const allPT = await withRetry(() => base44.asServiceRole.entities.PlantType.list('common_name', 500));
     const ptById = {};
     allPT.forEach(pt => { ptById[pt.id] = pt; });
-    console.log(`Loaded ${allPT.length} plant types`);
 
-    // Load all existing PlantSubCategory records
+    // Identify flower plant types
+    const flowerPTs = allPT.filter(pt => {
+      if (limitToPTId) return pt.id === limitToPTId;
+      const cat = (pt.category || '').toLowerCase();
+      return ['flower', 'bedding_annuals', 'ornamental', 'bulb', 'perennial_flower', 'annual_flower'].some(c => cat.includes(c));
+    });
+    console.log(`Processing ${flowerPTs.length} flower plant types`);
+
+    // Load existing subcats
     const existingSubcats = await withRetry(() => base44.asServiceRole.entities.PlantSubCategory.list('subcat_code', 5000));
     const existingByCode = {};
     existingSubcats.forEach(sc => { if (sc.subcat_code) existingByCode[sc.subcat_code] = sc; });
     console.log(`Existing subcats: ${existingSubcats.length}`);
 
-    // Load varieties in batches — SDK has internal pagination limits
-    // Use plant type IDs derived from CSV data (flower types starting with 699c...)
-    const flowerPTIds = allPT
-      .filter(pt => {
-        const cat = (pt.category || '').toLowerCase();
-        return ['flower','bedding_annuals','ornamental','bulb','perennial_flower','annual_flower'].some(c => cat.includes(c));
-      })
-      .map(pt => pt.id);
-    console.log(`Flower plant type IDs: ${flowerPTIds.length}`);
+    let subcatsCreated = 0, varietiesFixed = 0, errors = 0;
+    const createLog = [];
+    const assignLog = [];
+    const createdSubcats = { ...existingByCode };
 
-    const needsSubcat = [];
-    for (const ptId of flowerPTIds) {
-      const vars = await withRetry(() => base44.asServiceRole.entities.Variety.filter({ plant_type_id: ptId }, 'variety_name', 500));
-      const varArr = Array.isArray(vars) ? vars : [];
-      const missing = varArr.filter(v => v.plant_subcategory_id === null || v.plant_subcategory_id === undefined || v.plant_subcategory_id === '');
-      console.log(`  PT ${ptId}: ${varArr.length} varieties, ${missing.length} need subcat`);
-      needsSubcat.push(...missing);
-    }
-    console.log(`Total needing subcategory: ${needsSubcat.length}`);
-
-    // For each variety, determine what subcat to create/assign
-    const toCreate = new Map(); // subcat_code → { subcat_code, name, plant_type_id }
-    const assignments = []; // { variety_id, variety_name, subcat_code }
-
-    for (const v of needsSubcat) {
-      const pt = ptById[v.plant_type_id];
-      if (!pt || !pt.plant_type_code) continue;
+    for (const pt of flowerPTs) {
+      if (!pt.plant_type_code) {
+        console.log(`  Skipping PT ${pt.common_name} — no plant_type_code`);
+        continue;
+      }
 
       const subcatCode = makeSubcatCode(pt.plant_type_code);
 
-      // Track for creation if not yet existing
-      if (!existingByCode[subcatCode] && !toCreate.has(subcatCode)) {
-        toCreate.set(subcatCode, {
+      // Phase 1: Ensure subcat exists
+      let sc = createdSubcats[subcatCode];
+      if (!sc) {
+        const data = {
           subcat_code: subcatCode,
           name: makeSubcatName(subcatCode),
-          plant_type_id: v.plant_type_id,
+          plant_type_id: pt.id,
           is_active: true,
           sort_order: 0,
           synonyms: [],
           description: `Standard ${pt.common_name} varieties`,
-        });
+        };
+        if (!isDryRun) {
+          try {
+            const created = await withRetry(() => base44.asServiceRole.entities.PlantSubCategory.create(data));
+            createdSubcats[subcatCode] = created;
+            sc = created;
+            subcatsCreated++;
+            createLog.push({ code: subcatCode, name: data.name, id: created.id });
+            await sleep(300);
+          } catch (err) {
+            errors++;
+            console.warn(`Failed to create subcat ${subcatCode}:`, err.message);
+            continue;
+          }
+        } else {
+          const fakeId = 'DRY_' + subcatCode;
+          createdSubcats[subcatCode] = { id: fakeId, ...data };
+          sc = createdSubcats[subcatCode];
+          subcatsCreated++;
+          createLog.push({ code: subcatCode, name: data.name, plant_type_id: pt.id });
+        }
       }
 
-      assignments.push({
-        variety_id: v.id,
-        variety_name: v.variety_name,
-        subcat_code: subcatCode,
-        plant_type_id: v.plant_type_id,
-      });
-    }
+      // Phase 2: Assign varieties for this plant type
+      const vars = await withRetry(() => base44.asServiceRole.entities.Variety.filter({ plant_type_id: pt.id }, 'variety_name', 500));
+      const varArr = Array.isArray(vars) ? vars : [];
+      const missing = varArr.filter(v => !v.plant_subcategory_id);
+      console.log(`  ${pt.common_name}: ${varArr.length} varieties, ${missing.length} need subcat`);
 
-    console.log(`Subcats to create: ${toCreate.size}, varieties to assign: ${assignments.length}`);
-
-    // === Execute ===
-    const createdSubcats = { ...existingByCode };
-    let subcatsCreated = 0, varietiesFixed = 0, errors = 0;
-    const createLog = [];
-    const assignLog = [];
-
-    // Phase 1: Create subcats
-    for (const [code, data] of toCreate.entries()) {
-      if (isDryRun) {
-        createdSubcats[code] = { id: 'DRY_' + code, ...data };
-        subcatsCreated++;
-        createLog.push({ code, name: data.name, plant_type_id: data.plant_type_id });
-        continue;
-      }
-      try {
-        const created = await withRetry(() => base44.asServiceRole.entities.PlantSubCategory.create(data));
-        createdSubcats[code] = created;
-        subcatsCreated++;
-        createLog.push({ code, name: data.name, id: created.id });
-        await sleep(300);
-      } catch (err) {
-        errors++;
-        console.warn(`Failed to create subcat ${code}:`, err.message);
-      }
-    }
-
-    // Phase 2: Assign varieties
-    const BATCH = 5;
-    for (let i = 0; i < assignments.length; i += BATCH) {
-      const chunk = assignments.slice(i, i + BATCH);
-      for (const a of chunk) {
-        const sc = createdSubcats[a.subcat_code];
-        if (!sc) { errors++; continue; }
+      for (const v of missing) {
         if (isDryRun) {
           varietiesFixed++;
-          if (assignLog.length < 30) assignLog.push({ name: a.variety_name, subcat: sc.name || a.subcat_code });
+          if (assignLog.length < 50) assignLog.push({ name: v.variety_name, subcat: sc.name || subcatCode });
           continue;
         }
         try {
-          await withRetry(() => base44.asServiceRole.entities.Variety.update(a.variety_id, {
+          await withRetry(() => base44.asServiceRole.entities.Variety.update(v.id, {
             plant_subcategory_id: sc.id,
-            plant_subcategory_ids: [sc.id],
           }));
           varietiesFixed++;
-          if (assignLog.length < 30) assignLog.push({ name: a.variety_name, subcat: sc.name || a.subcat_code });
-          await sleep(120);
+          if (assignLog.length < 50) assignLog.push({ name: v.variety_name, subcat: sc.name || subcatCode });
+          await sleep(150);
         } catch (err) {
           errors++;
-          console.warn(`Failed to assign ${a.variety_name}:`, err.message);
+          console.warn(`Failed to assign ${v.variety_name}:`, err.message);
           await sleep(2000);
         }
       }
-      if (!isDryRun && i + BATCH < assignments.length) await sleep(2000);
+
+      // Small pause between plant types
+      if (!isDryRun) await sleep(500);
     }
 
     return Response.json({
@@ -176,10 +149,10 @@ Deno.serve(async (req) => {
       varieties_assigned: varietiesFixed,
       errors,
       sample_subcats_created: createLog.slice(0, 20),
-      sample_assignments: assignLog.slice(0, 30),
+      sample_assignments: assignLog.slice(0, 50),
       message: isDryRun
         ? `DRY RUN: Would create ${subcatsCreated} subcats and assign ${varietiesFixed} varieties.`
-        : `Done! Created ${subcatsCreated} subcats, assigned ${varietiesFixed} varieties. ${errors} errors.`
+        : `Done! Created ${subcatsCreated} subcats, assigned ${varietiesFixed} varieties. ${errors} errors.`,
     });
 
   } catch (err) {
