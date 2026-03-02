@@ -198,9 +198,19 @@ function castValue(col, raw) {
   if (JSON_COLS.has(col)) {
     if (typeof raw === 'object') return raw;
     try { return JSON.parse(raw); } catch {
-      if (raw.includes('|')) return raw.split('|').map(s => s.trim());
+      if (typeof raw === 'string' && raw.includes('|')) return raw.split('|').map(s => s.trim());
+      if (typeof raw === 'string' && raw.length > 0) return [raw];
       return raw;
     }
+  }
+  // Validate enum values — if invalid, return null (don't send bad data)
+  if (ENUM_COLS.has(col) && ENUM_VALUES[col] && ENUM_VALUES[col].length > 0) {
+    const valid = ENUM_VALUES[col];
+    if (valid.includes(raw)) return raw;
+    // Try lowercase match
+    const lower = (raw || '').toLowerCase().trim();
+    const match = valid.find(v => v.toLowerCase() === lower);
+    return match || null; // return null for invalid enum — skip this field
   }
   return raw;
 }
