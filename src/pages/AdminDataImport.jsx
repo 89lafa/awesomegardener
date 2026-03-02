@@ -22,6 +22,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { toast } from 'sonner';
 import { motion, AnimatePresence } from 'framer-motion';
 import ErrorBoundary from '@/components/common/ErrorBoundary';
+import VarietyImportV2Section from '@/components/admin/VarietyImportV2Section';
 import {
   Select,
   SelectContent,
