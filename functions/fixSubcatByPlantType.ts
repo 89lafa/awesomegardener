@@ -152,10 +152,19 @@ Deno.serve(async (req) => {
       }
 
       if (!isDryRun) {
-        await base44.asServiceRole.entities.Variety.update(v.id, {
-          plant_subcategory_id: targetSubcat.id,
-          plant_subcategory_ids: [targetSubcat.id]
-        });
+        try {
+          await base44.asServiceRole.entities.Variety.update(v.id, {
+            plant_subcategory_id: targetSubcat.id,
+            plant_subcategory_ids: [targetSubcat.id]
+          });
+          // 200ms throttle to avoid rate limits
+          await new Promise(r => setTimeout(r, 200));
+        } catch (err) {
+          console.warn(`Failed to update variety ${v.id}:`, err.message);
+          // Throttle on error
+          await new Promise(r => setTimeout(r, 2000));
+          continue;
+        }
       }
 
       fixLog.push({ name: v.variety_name, assignedSubcat: targetSubcat.name, reason });
