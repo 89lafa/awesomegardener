@@ -17,6 +17,7 @@ import { AddToStashButton, AddToGrowListButton } from '@/components/catalog/Quic
 export default function PlantRecommendations({ open, onOpenChange, context = 'catalog' }) {
   const [loading, setLoading] = useState(false);
   const [recommendations, setRecommendations] = useState(null);
+  const [affiliateVarieties, setAffiliateVarieties] = useState([]);
   const [formData, setFormData] = useState({
     harvest_months: '',
     container_only: false,
@@ -24,41 +25,57 @@ export default function PlantRecommendations({ open, onOpenChange, context = 'ca
     difficulty: 'any'
   });
 
+  // Pre-load varieties that have affiliate links so AI can prioritize them
+  useEffect(() => {
+    if (!open) return;
+    (async () => {
+      try {
+        const vars = await base44.entities.Variety.filter(
+          { status: 'active', affiliate_url: { $ne: null } },
+          'variety_name', 200
+        );
+        setAffiliateVarieties(vars.filter(v => v.affiliate_url));
+      } catch (e) {
+        // Non-critical — just won't have affiliate data
+      }
+    })();
+  }, [open]);
+
   const handleGenerate = async () => {
     setLoading(true);
-    console.debug('[AI_RECOMMEND] Request sent', formData);
 
     try {
       const user = await base44.auth.me();
       const randomSeed = Math.random().toString(36).substring(7);
+
+      // Build a concise list of varieties with affiliate links for the AI to reference
+      const affiliateList = affiliateVarieties.slice(0, 80).map(v =>
+        `${v.variety_name} (${v.plant_type_name || ''})`
+      ).join(', ');
+
       const response = await base44.integrations.Core.InvokeLLM({
-        prompt: `You are a gardening expert. Recommend 5-8 plant varieties based on these criteria.
+        prompt: `You are a gardening expert. Recommend 6-8 plant varieties based on the criteria below.
 
-IMPORTANT: Provide VARIED and DIVERSE recommendations. Include some unexpected or unusual varieties alongside popular ones. Mix common and heirloom varieties. [Random seed: ${randomSeed}]
+PRIORITY RULE: If any variety in the "Available for purchase" list below matches the user's criteria, prefer those — they are available to buy seeds directly. Flag them with has_affiliate_link=true.
 
-Criteria:
+Available for purchase (prioritize these if suitable):
+${affiliateList || 'None loaded yet'}
 
-Location Profile:
+IMPORTANT: Also include diverse, interesting recommendations beyond the list above. Mix heirlooms, rare finds, and beginner-friendly picks. [Random seed: ${randomSeed}]
+
+User Profile:
 - USDA Zone: ${user.usda_zone || 'unknown'}
 - Last Frost: ${user.last_frost_date || 'unknown'}
 - First Frost: ${user.first_frost_date || 'unknown'}
 
-User Preferences:
-- Desired harvest months: ${formData.harvest_months || 'any'}
-- Container gardening only: ${formData.container_only ? 'yes' : 'no'}
-- Sun exposure: ${formData.sun_exposure}
-- Difficulty preference: ${formData.difficulty}
+Preferences:
+- Harvest target: ${formData.harvest_months || 'any'}
+- Container only: ${formData.container_only ? 'yes' : 'no'}
+- Sun: ${formData.sun_exposure}
+- Difficulty: ${formData.difficulty}
 
-For each recommendation, provide:
-1. Common name (e.g., "Tomato")
-2. Specific variety name if you have a good suggestion
-3. Brief reason why it's a good fit (1-2 sentences)
-4. Difficulty level (beginner/intermediate/advanced)
-5. When to start (weeks before/after last frost)
-6. When to harvest (approximate month range)
-
-Return structured data.`,
-        add_context_from_internet: true,
+Return structured data for each recommendation.`,
+        add_context_from_internet: false,
         response_json_schema: {
           type: "object",
           properties: {
@@ -72,7 +89,8 @@ Return structured data.`,
                   reason: { type: "string" },
                   difficulty: { type: "string" },
                   start_timing: { type: "string" },
-                  harvest_timing: { type: "string" }
+                  harvest_timing: { type: "string" },
+                  has_affiliate_link: { type: "boolean" }
                 }
               }
             }
@@ -80,8 +98,17 @@ Return structured data.`,
         }
       });
 
-      console.debug('[AI_RECOMMEND] Response received', response);
-      setRecommendations(response);
+      // Enrich each recommendation with the actual affiliate URL if we have it
+      const enriched = (response.recommendations || []).map(rec => {
+        if (!rec.has_affiliate_link) return rec;
+        const match = affiliateVarieties.find(v =>
+          v.variety_name?.toLowerCase() === rec.variety_name?.toLowerCase() ||
+          v.variety_name?.toLowerCase().includes(rec.variety_name?.toLowerCase())
+        );
+        return { ...rec, affiliate_url: match?.affiliate_url || null };
+      });
+
+      setRecommendations({ recommendations: enriched });
     } catch (error) {
       console.error('[AI_RECOMMEND] Error:', error);
       toast.error('Failed to generate recommendations');
