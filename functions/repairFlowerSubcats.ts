@@ -65,9 +65,10 @@ Deno.serve(async (req) => {
     // Note: filter by null may not work perfectly — we check the value explicitly below
     const toFixRaw = await withRetry(() => base44.asServiceRole.entities.Variety.list('variety_name', 9999));
     const toFix = Array.isArray(toFixRaw) ? toFixRaw : (toFixRaw?.results || toFixRaw?.data || []);
-    const needsSubcat = toFix.filter(v => !v.plant_subcategory_id);
-    console.log(`Varieties loaded: ${toFix.length}, need subcategory: ${needsSubcat.length}`);
-    console.log(`Sample without subcat:`, needsSubcat.slice(0, 3).map(v => `${v.variety_name} (pt:${v.plant_type_id})`));
+    console.log(`Total varieties loaded: ${toFix.length}`);
+    console.log(`Sample (first 3):`, toFix.slice(0, 3).map(v => `${v.variety_name} subcat_id=${v.plant_subcategory_id}`));
+    const needsSubcat = toFix.filter(v => v.plant_subcategory_id === null || v.plant_subcategory_id === undefined || v.plant_subcategory_id === '');
+    console.log(`Need subcategory: ${needsSubcat.length}`);
 
     // For each variety, determine what subcat to create/assign
     const toCreate = new Map(); // subcat_code → { subcat_code, name, plant_type_id }
