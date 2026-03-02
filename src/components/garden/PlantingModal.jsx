@@ -207,6 +207,16 @@ export default function PlantingModal({
  const getSpacingForPlant = (plantTypeId, varietySpacing) => {
     const containerType = itemType || item.item_type;
     
+    // DIAGONAL PLANTING: each plant always occupies exactly 1×1 cell —
+    // the 50% offset between rows means plants never need more than one cell.
+    if (plantingPattern === 'diagonal') {
+      // Look up plants_per_grid_slot from rule for density, but span is always 1×1
+      const rule = plantingRules.find(r => r.plant_type_id === plantTypeId && r.container_type === containerType)
+        || plantingRules.find(r => r.plant_type_id === plantTypeId);
+      const plantsPerSlot = rule?.plants_per_grid_slot || 1;
+      return { cols: 1, rows: 1, plantsPerSlot };
+    }
+
     // 1) Exact match: plant_type_id + container_type
     const rule = plantingRules.find(r => 
       r.plant_type_id === plantTypeId && 
