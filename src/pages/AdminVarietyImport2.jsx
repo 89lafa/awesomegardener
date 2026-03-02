@@ -132,6 +132,7 @@ const FORBIDDEN_FIELDS = new Set([
   'id','created_date','updated_date','created_by','created_by_id','is_sample',
   'plant_type_code','plant_type_common_name','plant_subcategory_code','plant_subcategory_codes',
   'is_perennial_species','perennial_from_zone','zone_7a_behavior',
+  'plant_subcategory_ids', // legacy array — causes 422, we only use plant_subcategory_id
 ]);
 
 function cleanPayload(payload) {
