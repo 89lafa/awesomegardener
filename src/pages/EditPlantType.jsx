@@ -45,6 +45,7 @@ export default function EditPlantType() {
     default_direct_sow_weeks_max: null,
     trellis_common: false,
     is_perennial: false,
+    start_indoors_not_recommended: false,
     buy_seeds_link: '',
     affiliate_link2: '',
     affiliate_link3: '',
@@ -90,6 +91,7 @@ export default function EditPlantType() {
         default_direct_sow_weeks_max: type.default_direct_sow_weeks_max || null,
         trellis_common: type.trellis_common || false,
         is_perennial: type.is_perennial || false,
+        start_indoors_not_recommended: type.start_indoors_not_recommended || false,
         buy_seeds_link: type.buy_seeds_link || '',
         affiliate_link2: type.affiliate_link2 || '',
         affiliate_link3: type.affiliate_link3 || '',
@@ -380,6 +382,15 @@ export default function EditPlantType() {
                 onChange={(e) => setFormData({ ...formData, default_start_indoors_weeks: e.target.value ? parseInt(e.target.value) : null })}
                 className="mt-2"
               />
+              <label className="flex items-center gap-2 mt-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={formData.start_indoors_not_recommended || false}
+                  onChange={(e) => setFormData({ ...formData, start_indoors_not_recommended: e.target.checked })}
+                  className="w-4 h-4 accent-orange-500"
+                />
+                <span className="text-xs text-orange-700 font-medium">⚠ Not Recommended (root disturbance / taproot)</span>
+              </label>
             </div>
             <div>
               <Label>Transplant (weeks after last frost)</Label>
