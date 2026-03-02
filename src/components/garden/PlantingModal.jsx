@@ -309,7 +309,7 @@ export default function PlantingModal({
       ? `${selectedPlant.plant_type_name} - ${selectedPlant.variety_name}`
       : selectedPlant.variety_name;
     const plantType = plantTypes.find(t => t.id === selectedPlant.plant_type_id || t.common_name === selectedPlant.plant_type_name);
-    const icon = plantType?.icon || '🌱';
+    const icon = plantType?.icon || selectedPlant.plant_type_icon || '🌱';
     const plantFamily = plantType?.plant_family_id || selectedPlant.plant_family;
     
     const newPlantings = [];
