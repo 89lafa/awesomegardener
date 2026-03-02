@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { base44 } from '@/api/base44Client';
-import { ArrowLeft, Loader2, Save, Trash2 } from 'lucide-react';
+import { ArrowLeft, Loader2, Save, Trash2, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -25,6 +25,10 @@ export default function EditPlantType() {
   const [plantingRules, setPlantingRules] = useState([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [deletingVarieties, setDeletingVarieties] = useState(false);
+  const [deleteConfirmText, setDeleteConfirmText] = useState('');
+  const [showDangerZone, setShowDangerZone] = useState(false);
+  const [deleteResult, setDeleteResult] = useState(null);
   const [formData, setFormData] = useState({
     common_name: '',
     scientific_name: '',
@@ -144,6 +148,31 @@ export default function EditPlantType() {
     } catch (error) {
       console.error('Error updating rule:', error);
       toast.error('Failed to update rule');
+    }
+  };
+
+  const handleDeleteAllVarieties = async () => {
+    if (deleteConfirmText !== 'DELETE ALL') {
+      toast.error('Type "DELETE ALL" to confirm');
+      return;
+    }
+    setDeletingVarieties(true);
+    setDeleteResult(null);
+    try {
+      const response = await base44.functions.invoke('deleteAllVarietiesForPlantType', {
+        plant_type_id: plantTypeId,
+        confirmation_text: 'DELETE ALL',
+        dry_run: false
+      });
+      const d = response.data;
+      setDeleteResult(d);
+      setDeleteConfirmText('');
+      toast.success(`Deleted ${d.deleted} varieties from ${formData.common_name}`);
+    } catch (error) {
+      console.error('Delete error:', error);
+      toast.error('Failed to delete: ' + error.message);
+    } finally {
+      setDeletingVarieties(false);
     }
   };
 
@@ -525,6 +554,52 @@ export default function EditPlantType() {
             />
           </div>
         </CardContent>
+      </Card>
+      {/* ── Danger Zone ── */}
+      <Card className="border-red-200">
+        <CardHeader className="cursor-pointer" onClick={() => setShowDangerZone(v => !v)}>
+          <CardTitle className="text-red-700 flex items-center gap-2">
+            <AlertTriangle className="w-5 h-5" />
+            Danger Zone
+            <span className="text-sm font-normal text-red-500 ml-2">{showDangerZone ? '▲ Hide' : '▼ Show'}</span>
+          </CardTitle>
+        </CardHeader>
+        {showDangerZone && (
+          <CardContent className="space-y-4">
+            <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
+              <h4 className="font-semibold text-red-800 mb-1">Delete ALL Varieties for {formData.common_name}</h4>
+              <p className="text-sm text-red-700 mb-3">
+                This permanently deletes every variety record for this plant type from the database. 
+                Use this when you need to re-import from CSV from scratch. <strong>This cannot be undone.</strong>
+              </p>
+              <div className="flex gap-2 items-center flex-wrap">
+                <input
+                  type="text"
+                  value={deleteConfirmText}
+                  onChange={e => setDeleteConfirmText(e.target.value)}
+                  placeholder='Type "DELETE ALL" to confirm'
+                  className="border border-red-300 rounded px-3 py-2 text-sm flex-1 min-w-48 focus:outline-none focus:ring-2 focus:ring-red-400"
+                />
+                <Button
+                  onClick={handleDeleteAllVarieties}
+                  disabled={deletingVarieties || deleteConfirmText !== 'DELETE ALL'}
+                  className="bg-red-600 hover:bg-red-700 text-white gap-2"
+                >
+                  {deletingVarieties ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+                  Delete All Varieties
+                </Button>
+              </div>
+              {deleteResult && (
+                <div className="mt-3 p-3 bg-white border border-red-200 rounded text-sm">
+                  <p className="font-semibold text-red-800">✓ Done: Deleted {deleteResult.deleted}/{deleteResult.total} varieties</p>
+                  {deleteResult.errors?.length > 0 && (
+                    <p className="text-red-600 text-xs mt-1">Failed: {deleteResult.errors.join(', ')}</p>
+                  )}
+                </div>
+              )}
+            </div>
+          </CardContent>
+        )}
       </Card>
     </div>
   );
