@@ -26,6 +26,7 @@ import { toast } from 'sonner';
 import { Link } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
 import RepairSubcategoriesCard from '@/components/admin/RepairSubcategoriesCard';
+// RepairSubcategoriesCard is accessible via Admin Hub → "Repair Subcategories"
 
 export default function AdminDataMaintenance() {
   const [user, setUser] = useState(null);
