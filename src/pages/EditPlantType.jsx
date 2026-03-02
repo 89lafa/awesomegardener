@@ -44,6 +44,8 @@ export default function EditPlantType() {
     trellis_common: false,
     is_perennial: false,
     buy_seeds_link: '',
+    affiliate_link2: '',
+    affiliate_link3: '',
     color: '#10b981'
   });
 
@@ -87,6 +89,8 @@ export default function EditPlantType() {
         trellis_common: type.trellis_common || false,
         is_perennial: type.is_perennial || false,
         buy_seeds_link: type.buy_seeds_link || '',
+        affiliate_link2: type.affiliate_link2 || '',
+        affiliate_link3: type.affiliate_link3 || '',
         color: type.color || '#10b981'
       });
     } catch (error) {

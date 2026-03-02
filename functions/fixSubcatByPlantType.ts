@@ -1,103 +1,126 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.6';
 
 /**
- * Runs the fixSubcatFromVarietyCode logic but ONE PLANT TYPE AT A TIME,
- * using the admin service role to bypass RLS.
+ * Repairs plant_subcategory_id for a single plant type's varieties that have it wiped to null.
+ * Uses scoville data for peppers (which have no fruit_shape/code patterns to match).
  * 
- * POST with { "plant_type_id": "...", "dry_run": false }
- * or GET with ?plant_type_id=...&dry_run=false
+ * POST { plant_type_id, dry_run }
  */
 Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
     const user = await base44.auth.me();
-
     if (user?.role !== 'admin') {
       return Response.json({ error: 'Admin access required' }, { status: 403 });
     }
 
-    const url = new URL(req.url);
     const body = req.method === 'POST' ? await req.json().catch(() => ({})) : {};
-    const isDryRun = (body.dry_run ?? url.searchParams.get('dry_run') ?? 'true') !== false && (body.dry_run ?? url.searchParams.get('dry_run') ?? 'true') !== 'false';
+    const url = new URL(req.url);
     const plantTypeId = body.plant_type_id || url.searchParams.get('plant_type_id');
+    const isDryRun = body.dry_run !== false && body.dry_run !== 'false';
 
     if (!plantTypeId) {
       return Response.json({ error: 'plant_type_id is required' }, { status: 400 });
     }
 
-    // Load subcategories for this plant type only
+    // Load subcats for this plant type
     const subcats = await base44.asServiceRole.entities.PlantSubCategory.filter({ plant_type_id: plantTypeId });
+    
+    // Build lookup map by code (try many formats)
     const subcatByCode = {};
     subcats.forEach(sc => {
-      if (sc.subcat_code) {
-        subcatByCode[sc.subcat_code] = sc;
-        subcatByCode[sc.subcat_code.replace(/^PSC_/, '')] = sc;
-      }
+      if (!sc.subcat_code) return;
+      const code = sc.subcat_code;
+      subcatByCode[code] = sc;
+      subcatByCode[code.replace(/^PSC_/, '')] = sc;
+      subcatByCode['PSC_' + code] = sc;
     });
 
     const findSubcat = (code) => {
-      return subcatByCode[code] || subcatByCode['PSC_' + code] || subcatByCode[code?.replace(/^PSC_/, '')] || null;
+      if (!code) return null;
+      return subcatByCode[code] || subcatByCode[code.toUpperCase()] || null;
     };
 
-    // Load only varieties for this plant type that are missing subcategory
+    // Load all varieties for this plant type that are missing subcategory
     const toFix = await base44.asServiceRole.entities.Variety.filter(
       { plant_type_id: plantTypeId, plant_subcategory_id: null, status: 'active' },
       'variety_name',
       9999
     );
 
-    console.log(`Plant type ${plantTypeId}: ${toFix.length} varieties missing subcategory. Available subcats:`, subcats.map(s => s.subcat_code).join(', '));
+    console.log(`[fixSubcatByPlantType] ${plantTypeId}: ${toFix.length} varieties missing subcat`);
+    console.log('Available subcats:', subcats.map(s => `${s.subcat_code}=${s.name}`).join(', '));
 
-    // Rules specific to how our variety codes are structured
-    // ALSO handles VAR_PEP_* codes and VAR_PEPPER_* codes (old format)
-    const CODE_RULES = [
-      // Tomato codes follow: TOM_CHERRY_*, TOM_BEEFSTEAK_*, etc.
-      { pattern: /^TOM_CHERRY/i, code: 'TOM_CHERRY' },
-      { pattern: /^TOM_GRAPE/i, code: 'TOM_GRAPE' },
-      { pattern: /^TOM_PLUM|^TOM_ROMA|^TOM_SAUCE/i, code: 'TOM_PLUM' },
-      { pattern: /^TOM_BEEFSTEAK/i, code: 'TOM_BEEFSTEAK' },
-      { pattern: /^TOM_OXHEART/i, code: 'TOM_OXHEART' },
-      { pattern: /^TOM_CURRANT/i, code: 'TOM_CURRANT_SPOON' },
-      // Pepper codes: PEP_HOT_*, PEP_BELL_*, etc.
-      { pattern: /^PEP_BELL|^PEP_SWEET/i, code: 'PSC_PEP_BELL' },
-      { pattern: /^PEP_SUPERHOT/i, code: 'PSC_PEP_SUPERHOT' },
-      { pattern: /^PEP_HOT/i, code: 'PSC_PEP_HOT' },
-      { pattern: /^PEP_MILD/i, code: 'PSC_PEP_MILD' },
-      { pattern: /^PEP_MEDIUM/i, code: 'PSC_PEP_MEDIUM_HEAT' },
-      { pattern: /^PEP_ANNUUM/i, code: 'PSC_PEP_ANNUUM' },
-      { pattern: /^PEP_CHINENSE/i, code: 'PSC_PEP_CHINENSE' },
-      { pattern: /^PEP_BACCATUM/i, code: 'PSC_PEP_BACCATUM' },
-      // Cucumber
-      { pattern: /^CUC_SLICING/i, code: 'PSC_CUC_SLICING' },
-      { pattern: /^CUC_PICKLING/i, code: 'PSC_CUC_PICKLING' },
-      { pattern: /^CUC_BURPLESS/i, code: 'PSC_CUC_BURPLESS' },
-      // Bean
-      { pattern: /^BEAN_BUSH/i, code: 'PSC_BEAN_BUSH' },
-      { pattern: /^BEAN_POLE/i, code: 'PSC_BEAN_POLE' },
+    // ─── Matching rules ────────────────────────────────────────────
+
+    // TOMATO: match by fruit_shape → then variety name
+    const TOMATO_SHAPE_RULES = [
+      { pattern: /cherry/i,              codes: ['PSC_TOMATO_CHERRY_SMALL', 'TOM_CHERRY', 'PSC_TOM_CHERRY', 'TOMATO_CHERRY'] },
+      { pattern: /grape/i,               codes: ['PSC_TOMATO_GRAPE', 'TOM_GRAPE', 'PSC_TOM_GRAPE', 'TOMATO_GRAPE'] },
+      { pattern: /plum|roma|paste|sauce/i, codes: ['PSC_TOMATO_PASTE_ROMA', 'TOM_PLUM', 'PSC_TOM_PLUM', 'TOMATO_PLUM', 'TOMATO_PASTE', 'PSC_TOMATO_PASTE'] },
+      { pattern: /beefsteak/i,           codes: ['PSC_TOMATO_BEEFSTEAK', 'TOM_BEEFSTEAK', 'PSC_TOM_BEEFSTEAK', 'TOMATO_BEEFSTEAK'] },
+      { pattern: /oxheart|heart/i,       codes: ['PSC_TOMATO_OXHEART', 'TOM_OXHEART', 'PSC_TOM_OXHEART', 'TOMATO_OXHEART'] },
+      { pattern: /currant|spoon/i,       codes: ['PSC_TOM_CURRANT_SPOON', 'TOMATO_CURRANT', 'TOM_CURRANT_SPOON'] },
+      { pattern: /slicer|globe|oblate|round/i, codes: ['PSC_TOMATO_SLICER', 'TOM_SLICER', 'PSC_TOM_SLICER', 'TOMATO_SLICER'] },
+      { pattern: /dwarf|micro|compact/i, codes: ['PSC_TOMATO_DWARF_COMPACT', 'PSC_TOM_DWARF', 'TOMATO_DWARF', 'TOMATO_MICRO'] },
+      { pattern: /saladette/i,           codes: ['TOMATO_SALADETTE'] },
     ];
 
-    const FRUIT_SHAPE_RULES = [
-      { pattern: /cherry/i, code: 'TOM_CHERRY' },
-      { pattern: /grape/i, code: 'TOM_GRAPE' },
-      { pattern: /plum|roma|paste/i, code: 'TOM_PLUM' },
-      { pattern: /beefsteak/i, code: 'TOM_BEEFSTEAK' },
-      { pattern: /oxheart|heart/i, code: 'TOM_OXHEART' },
-      { pattern: /slicer|globe|oblate|round/i, code: 'TOM_SLICER' },
+    const TOMATO_NAME_RULES = [
+      { pattern: /cherry|currant|tumbler|sweet 100|sun gold|sun sugar|gold nugget|juliet|grape/i, codes: ['PSC_TOMATO_CHERRY_SMALL', 'TOM_CHERRY', 'PSC_TOM_CHERRY', 'TOMATO_CHERRY'] },
+      { pattern: /\bgrape\b/i, codes: ['PSC_TOMATO_GRAPE', 'TOM_GRAPE', 'PSC_TOM_GRAPE', 'TOMATO_GRAPE'] },
+      { pattern: /roma|san marzano|amish paste|jersey devil|plum|paste/i, codes: ['PSC_TOMATO_PASTE_ROMA', 'TOM_PLUM', 'PSC_TOM_PLUM', 'TOMATO_PLUM', 'TOMATO_PASTE', 'PSC_TOMATO_PASTE'] },
+      { pattern: /beefsteak|brandywine|mortgage lifter|big boy|big girl|crimson cushion/i, codes: ['PSC_TOMATO_BEEFSTEAK', 'TOM_BEEFSTEAK', 'PSC_TOM_BEEFSTEAK', 'TOMATO_BEEFSTEAK'] },
+      { pattern: /oxheart|pineapple|cossack|hungarian/i, codes: ['PSC_TOMATO_OXHEART', 'TOM_OXHEART', 'PSC_TOM_OXHEART', 'TOMATO_OXHEART'] },
+      { pattern: /dwarf|micro\s*dwarf|patio|tiny tim|window box/i, codes: ['PSC_TOMATO_DWARF_COMPACT', 'PSC_TOM_DWARF', 'TOMATO_DWARF', 'TOMATO_MICRO'] },
     ];
 
-    const NAME_RULES = [
-      // Tomato by name
-      { pattern: /cherry|currant|spoon/i, code: 'TOM_CHERRY' },
-      { pattern: /grape/i, code: 'TOM_GRAPE' },
-      { pattern: /plum|roma|san marzano|amish paste|jersey devil/i, code: 'TOM_PLUM' },
-      { pattern: /beefsteak|brandywine|mortgage lifter|big boy|big girl/i, code: 'TOM_BEEFSTEAK' },
-      { pattern: /oxheart|pineapple|cossack/i, code: 'TOM_OXHEART' },
-      // Pepper by name
-      { pattern: /habanero|scotch bonnet|ghost|reaper|scorpion|7.?pot|bhut/i, code: 'PSC_PEP_SUPERHOT' },
-      { pattern: /jalapen|serrano|cayenne|thai|tabasco|pequin/i, code: 'PSC_PEP_HOT' },
-      { pattern: /banana|cuban|pepperoncini|friggitello|anaheim|new mexico|ancho|poblano|pasilla|sweet cherry pepper/i, code: 'PSC_PEP_MILD' },
-      { pattern: /bell pepper|sweet pepper|sweet red|sweet green|sweet yellow|sweet orange/i, code: 'PSC_PEP_BELL' },
+    // PEPPER: match by scoville
+    const PEPPER_SCOVILLE_RULES = [
+      { min: 0, max: 0, codes: ['PSC_PEPPER_HEAT_SWEET', 'PSC_PEP_BELL'] },
+      { min: 1, max: 2500, codes: ['PSC_PEPPER_HEAT_MILD', 'PSC_PEP_MILD'] },
+      { min: 2501, max: 30000, codes: ['PSC_PEPPER_HEAT_MEDIUM', 'PSC_PEPPER_MEDIUM', 'PSC_PEP_MEDIUM_HEAT'] },
+      { min: 30001, max: 100000, codes: ['PSC_PEPPER_HEAT_HOT', 'PSC_PEP_HOT'] },
+      { min: 100001, max: 300000, codes: ['PSC_PEPPER_HEAT_EXTRA_HOT', 'PSC_PEPPER_EXTRAHOT', 'PSC_PEP_EXTRAHOT'] },
+      { min: 300001, max: Infinity, codes: ['PSC_PEPPER_HEAT_SUPERHOT', 'PSC_PEP_SUPERHOT'] },
     ];
+
+    const PEPPER_NAME_RULES = [
+      { pattern: /habanero|scotch bonnet|ghost|reaper|scorpion|7.?pot|bhut|carolina\s+reaper|peri\s*peri/i, codes: ['PSC_PEPPER_HEAT_SUPERHOT', 'PSC_PEPPER_HEAT_EXTRA_HOT'] },
+      { pattern: /jalapen|serrano|cayenne|thai|tabasco|pequin|bird\s*s?\s*eye/i, codes: ['PSC_PEPPER_HEAT_HOT', 'PSC_PEPPER_HEAT_MEDIUM'] },
+      { pattern: /banana|cuban|pepperoncini|friggitello|anaheim|new mexico|ancho|poblano|pasilla|guajillo|aji|wax/i, codes: ['PSC_PEPPER_HEAT_MILD', 'PSC_PEPPER_HEAT_MEDIUM'] },
+      { pattern: /bell|sweet\s+pepper|sweet\s+red|sweet\s+green|sweet\s+yellow|sweet\s+orange|lipstick|carnival/i, codes: ['PSC_PEPPER_HEAT_SWEET', 'PSC_PEP_BELL'] },
+      { pattern: /cubanelle|italian\s+frying|corno|biscayne/i, codes: ['PSC_PEPPER_HEAT_SWEET', 'PSC_PEPPER_HEAT_MILD'] },
+      { pattern: /rocoto|manzano/i, codes: ['PSC_PEPPER_PUBESCENS'] },
+      { pattern: /aji.*(amarillo|lemon|crystal|charapita|norteño)/i, codes: ['PSC_PEPPER_BACCATUM', 'PSC_PEPPER_HEAT_HOT'] },
+    ];
+
+    // CUCUMBER
+    const CUC_NAME_RULES = [
+      { pattern: /pickling|kirby|cornichon|gherkin/i, codes: ['PSC_CUC_PICKLING'] },
+      { pattern: /burpless|english|european|seedless|thin\s+skin/i, codes: ['PSC_CUC_BURPLESS'] },
+      { pattern: /lemon|round|armenian|persian|asian|japanese/i, codes: ['PSC_CUC_SPECIALTY'] },
+    ];
+
+    // BEAN
+    const BEAN_NAME_RULES = [
+      { pattern: /pole|runner|climbing|rattlesnake/i, codes: ['PSC_BEAN_POLE'] },
+      { pattern: /lima|butter/i, codes: ['PSC_BEAN_LIMA'] },
+      { pattern: /\bsoy\b|soybean|edamame/i, codes: ['PSC_BEAN_SOY'] },
+    ];
+
+    const findFirstMatch = (rules, testFn, valueGetter) => {
+      for (const rule of rules) {
+        if (testFn(rule)) {
+          const codes = rule.codes || [rule.code];
+          for (const code of codes) {
+            const found = findSubcat(code);
+            if (found) return { subcat: found, reason: valueGetter(rule) };
+          }
+        }
+      }
+      return null;
+    };
 
     let fixed = 0, noMatch = 0;
     const fixLog = [], noMatchLog = [];
@@ -106,49 +129,62 @@ Deno.serve(async (req) => {
       let targetSubcat = null;
       let reason = '';
 
-      // 1. variety_code prefix
-      if (v.variety_code) {
-        for (const rule of CODE_RULES) {
-          if (rule.pattern.test(v.variety_code)) {
-            targetSubcat = findSubcat(rule.code);
-            if (targetSubcat) { reason = `code:${v.variety_code}`; break; }
-          }
-        }
-      }
-
-      // 2. fruit_shape
+      // ── TOMATO ──
       if (!targetSubcat && v.fruit_shape) {
-        for (const rule of FRUIT_SHAPE_RULES) {
-          if (rule.pattern.test(v.fruit_shape)) {
-            targetSubcat = findSubcat(rule.code);
-            if (targetSubcat) { reason = `shape:${v.fruit_shape}`; break; }
-          }
-        }
+        const r = findFirstMatch(TOMATO_SHAPE_RULES,
+          rule => rule.pattern.test(v.fruit_shape),
+          () => `shape:${v.fruit_shape}`
+        );
+        if (r) { targetSubcat = r.subcat; reason = r.reason; }
       }
-
-      // 3. variety name
       if (!targetSubcat && v.variety_name) {
-        for (const rule of NAME_RULES) {
-          if (rule.pattern.test(v.variety_name)) {
-            targetSubcat = findSubcat(rule.code);
-            if (targetSubcat) { reason = `name:${v.variety_name}`; break; }
-          }
-        }
+        const r = findFirstMatch(TOMATO_NAME_RULES,
+          rule => rule.pattern.test(v.variety_name),
+          () => `name:${v.variety_name}`
+        );
+        if (r) { targetSubcat = r.subcat; reason = r.reason; }
       }
 
-      // 4. Scoville for peppers
-      if (!targetSubcat && (v.scoville_max || v.heat_scoville_max)) {
-        const sco = v.scoville_max || v.heat_scoville_max || 0;
-        if (sco > 200000) targetSubcat = findSubcat('PSC_PEP_SUPERHOT');
-        else if (sco > 50000) targetSubcat = findSubcat('PSC_PEP_HOT');
-        else if (sco > 5000) targetSubcat = findSubcat('PSC_PEP_MEDIUM_HEAT');
-        else if (sco > 0) targetSubcat = findSubcat('PSC_PEP_MILD');
-        if (targetSubcat) reason = `scoville:${sco}`;
+      // ── PEPPER: scoville ──
+      if (!targetSubcat) {
+        const sco = Number(v.scoville_max || v.heat_scoville_max || v.scoville_min || v.heat_scoville_min || -1);
+        if (sco >= 0) {
+          const r = findFirstMatch(PEPPER_SCOVILLE_RULES,
+            rule => sco >= rule.min && sco <= rule.max,
+            () => `scoville:${sco}`
+          );
+          if (r) { targetSubcat = r.subcat; reason = r.reason; }
+        }
+      }
+      if (!targetSubcat && v.variety_name) {
+        const r = findFirstMatch(PEPPER_NAME_RULES,
+          rule => rule.pattern.test(v.variety_name),
+          () => `pepper_name:${v.variety_name}`
+        );
+        if (r) { targetSubcat = r.subcat; reason = r.reason; }
+      }
+
+      // ── CUCUMBER ──
+      if (!targetSubcat && v.variety_name) {
+        const r = findFirstMatch(CUC_NAME_RULES,
+          rule => rule.pattern.test(v.variety_name),
+          () => `cuc_name:${v.variety_name}`
+        );
+        if (r) { targetSubcat = r.subcat; reason = r.reason; }
+      }
+
+      // ── BEAN ──
+      if (!targetSubcat && v.variety_name) {
+        const r = findFirstMatch(BEAN_NAME_RULES,
+          rule => rule.pattern.test(v.variety_name),
+          () => `bean_name:${v.variety_name}`
+        );
+        if (r) { targetSubcat = r.subcat; reason = r.reason; }
       }
 
       if (!targetSubcat) {
         noMatch++;
-        if (noMatchLog.length < 20) noMatchLog.push({ name: v.variety_name, code: v.variety_code, shape: v.fruit_shape });
+        if (noMatchLog.length < 20) noMatchLog.push({ name: v.variety_name, code: v.variety_code, shape: v.fruit_shape, sco: v.scoville_max });
         continue;
       }
 
@@ -158,11 +194,9 @@ Deno.serve(async (req) => {
             plant_subcategory_id: targetSubcat.id,
             plant_subcategory_ids: [targetSubcat.id]
           });
-          // 200ms throttle to avoid rate limits
-          await new Promise(r => setTimeout(r, 200));
+          await new Promise(r => setTimeout(r, 150));
         } catch (err) {
-          console.warn(`Failed to update variety ${v.id}:`, err.message);
-          // Throttle on error
+          console.warn(`Failed to update ${v.id}:`, err.message);
           await new Promise(r => setTimeout(r, 2000));
           continue;
         }
@@ -187,7 +221,7 @@ Deno.serve(async (req) => {
     });
 
   } catch (error) {
-    console.error('[FixSubcatByType] Error:', error);
+    console.error('[fixSubcatByPlantType] Error:', error);
     return Response.json({ error: error.message }, { status: 500 });
   }
 });
