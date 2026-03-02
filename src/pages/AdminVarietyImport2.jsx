@@ -305,11 +305,15 @@ function parseCSV(text) {
   let i = 0, cur = '', inQ = false, currentRecord = [];
 
   while (i < raw.length) {
-    const c = raw[i], n = raw[i + 1];
+    const c = raw[i], n = raw[i + 1] ?? '', nn = raw[i + 2] ?? '';
     if (inQ) {
-      if (c === '\\' && n === '"') { cur += '"'; i += 2; continue; }
-      if (c === '"' && n === '"')  { cur += '"'; i += 2; continue; }
-      if (c === '"') { inQ = false; i++; continue; }
+      // Backslash-quote: treat as escape ONLY when char after the " is not a field terminator.
+      // If next char after " is , or \n or " or end-of-string, then \ is content and " closes the field.
+      if (c === '\\' && n === '"' && nn !== ',' && nn !== '\n' && nn !== '"' && nn !== '') {
+        cur += '"'; i += 2; continue;
+      }
+      if (c === '"' && n === '"')  { cur += '"'; i += 2; continue; }  // doubled-quote escape
+      if (c === '"') { inQ = false; i++; continue; }                  // closing quote
       cur += c; i++;
     } else {
       if (c === '"')  { inQ = true; i++; continue; }
