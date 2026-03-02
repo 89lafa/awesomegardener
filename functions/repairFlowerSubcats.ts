@@ -62,8 +62,9 @@ Deno.serve(async (req) => {
     console.log(`Existing subcats: ${existingSubcats.length}`);
 
     // Load ALL varieties with missing plant_subcategory_id (up to 9999)
+    // Note: filter by null may not work perfectly — we check the value explicitly below
     const toFix = await withRetry(() => base44.asServiceRole.entities.Variety.filter(
-      { plant_subcategory_id: null, status: 'active' }, 'variety_name', 9999
+      { status: 'active' }, 'variety_name', 9999
     ));
     console.log(`Varieties with no subcategory: ${toFix.length}`);
 
