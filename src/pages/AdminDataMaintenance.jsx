@@ -26,6 +26,7 @@ import { toast } from 'sonner';
 import { Link } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
 import RepairSubcategoriesCard from '@/components/admin/RepairSubcategoriesCard';
+import BulkRepairSubcategoriesCard from '@/components/admin/BulkRepairSubcategoriesCard';
 
 export default function AdminDataMaintenance() {
   const [user, setUser] = useState(null);
@@ -736,6 +737,9 @@ export default function AdminDataMaintenance() {
 
       {/* Repair Subcategories & Varieties Tool */}
       <RepairSubcategoriesCard />
+
+      {/* NEW: Bulk Repair Subcategories 2 — ALL plant types */}
+      <BulkRepairSubcategoriesCard />
 
       {/* Subcategory Health by Plant Type */}
       <SubcategoryHealthByPlantType />
