@@ -153,9 +153,6 @@ export default function AdminDataImport() {
   const [importing, setImporting] = useState(false);
   const [dryRun, setDryRun] = useState(true);
   const [importMode, setImportMode] = useState('UPSERT_BY_ID');
-  // UPSERT_SAFE = never overwrite fields that already have data in DB
-  // UPSERT_BY_ID = overwrite all fields from CSV (existing behavior)
-  const [upsertSafe, setUpsertSafe] = useState(true);
   const [results, setResults] = useState(null);
   const [importProgress, setImportProgress] = useState({ 
     current: 0, total: 0, currentFile: '', 
@@ -697,174 +694,54 @@ export default function AdminDataImport() {
                 varietyData.is_organic = row.is_organic === 'true' || row.is_organic === '1';
 
                 if (existingRecord) {
-                  // Build update payload from all non-empty CSV fields
+                  // UPSERT — update non-empty fields only
                   const updatePayload = {};
                   updatePayload.variety_name = varietyData.variety_name;
                   updatePayload.plant_type_id = varietyData.plant_type_id;
                   updatePayload.plant_type_name = varietyData.plant_type_name;
-
-                  // ★ SAFE UPSERT: Only overwrite subcategory if CSV has a code AND (not safe mode OR existing is empty)
-                  const existingSubcatId = existingRecord.plant_subcategory_id;
+                  // ★ FIX: Only overwrite subcategory if the CSV actually had a subcat code.
+                  // Previously, blank subcat_code rows wrote null → wiped existing assignments.
                   if (resolvedSubcategoryId) {
-                    if (!upsertSafe || !existingSubcatId) {
-                      updatePayload.plant_subcategory_id = resolvedSubcategoryId;
-                      updatePayload.plant_subcategory_ids = [resolvedSubcategoryId];
-                    }
-                    // In safe mode with existing subcat: skip — don't wipe it
+                    updatePayload.plant_subcategory_id = resolvedSubcategoryId;
+                    updatePayload.plant_subcategory_ids = [resolvedSubcategoryId];
                   }
-
+                  // else: do NOT touch plant_subcategory_id or plant_subcategory_ids — preserve existing
                   if (varietyData.variety_code) updatePayload.variety_code = varietyData.variety_code;
                   updatePayload.extended_data = varietyData.extended_data;
-
-                  // Helper: only set if CSV value is non-empty, AND (not safe or field is empty in DB)
-                  const setField = (key, csvVal, existingVal, transform) => {
-                    if (!csvVal && csvVal !== 0) return;
-                    const val = transform ? transform(csvVal) : csvVal;
-                    if (upsertSafe && existingVal !== null && existingVal !== undefined && existingVal !== '') return;
-                    updatePayload[key] = val;
-                  };
-
-                  setField('description', row.description?.trim(), existingRecord.description);
-                  setField('days_to_maturity', row.days_to_maturity?.trim(), existingRecord.days_to_maturity, parseInt);
-                  setField('days_to_maturity_min', row.days_to_maturity_min?.trim(), existingRecord.days_to_maturity_min, parseInt);
-                  setField('days_to_maturity_max', row.days_to_maturity_max?.trim(), existingRecord.days_to_maturity_max, parseInt);
-                  setField('spacing_recommended', row.spacing_recommended?.trim(), existingRecord.spacing_recommended, parseInt);
-                  setField('spacing_min', row.spacing_min?.trim(), existingRecord.spacing_min, parseInt);
-                  setField('spacing_max', row.spacing_max?.trim(), existingRecord.spacing_max, parseInt);
-                  setField('sun_requirement', row.sun_requirement?.trim(), existingRecord.sun_requirement);
-                  setField('water_requirement', row.water_requirement?.trim(), existingRecord.water_requirement);
-                  setField('growth_habit', row.growth_habit?.trim(), existingRecord.growth_habit);
-                  setField('species', row.species?.trim(), existingRecord.species);
-                  setField('seed_line_type', row.seed_line_type?.trim(), existingRecord.seed_line_type);
-                  setField('season_timing', row.season_timing?.trim(), existingRecord.season_timing);
-                  setField('grower_notes', row.grower_notes?.trim(), existingRecord.grower_notes);
-                  setField('flavor_profile', row.flavor_profile?.trim(), existingRecord.flavor_profile);
-                  setField('uses', row.uses?.trim(), existingRecord.uses);
-                  setField('fruit_color', row.fruit_color?.trim(), existingRecord.fruit_color);
-                  setField('fruit_shape', row.fruit_shape?.trim(), existingRecord.fruit_shape);
-                  setField('fruit_size', row.fruit_size?.trim(), existingRecord.fruit_size);
-                  setField('pod_color', row.pod_color?.trim(), existingRecord.pod_color);
-                  setField('pod_shape', row.pod_shape?.trim(), existingRecord.pod_shape);
-                  setField('pod_size', row.pod_size?.trim(), existingRecord.pod_size);
-                  setField('disease_resistance', row.disease_resistance?.trim(), existingRecord.disease_resistance);
-                  setField('breeder_or_origin', row.breeder_or_origin?.trim(), existingRecord.breeder_or_origin);
-                  setField('seed_saving_notes', row.seed_saving_notes?.trim(), existingRecord.seed_saving_notes);
-                  setField('pollination_notes', row.pollination_notes?.trim(), existingRecord.pollination_notes);
-                  setField('affiliate_url', row.affiliate_url?.trim(), existingRecord.affiliate_url);
-                  setField('popularity_tier', row.popularity_tier?.trim(), existingRecord.popularity_tier);
-                  setField('source_attribution', row.source_attribution?.trim(), existingRecord.source_attribution);
-                  setField('plant_height_typical', row.plant_height_typical?.trim(), existingRecord.plant_height_typical);
-                  setField('height_min', row.height_min?.trim(), existingRecord.height_min, parseInt);
-                  setField('height_max', row.height_max?.trim(), existingRecord.height_max, parseInt);
-                  setField('direct_sow_weeks_min', row.direct_sow_weeks_min?.trim(), existingRecord.direct_sow_weeks_min, parseFloat);
-                  setField('direct_sow_weeks_max', row.direct_sow_weeks_max?.trim(), existingRecord.direct_sow_weeks_max, parseFloat);
-                  setField('start_indoors_weeks', row.start_indoors_weeks?.trim(), existingRecord.start_indoors_weeks, parseFloat);
-                  setField('start_indoors_weeks_min', row.start_indoors_weeks_min?.trim(), existingRecord.start_indoors_weeks_min, parseFloat);
-                  setField('start_indoors_weeks_max', row.start_indoors_weeks_max?.trim(), existingRecord.start_indoors_weeks_max, parseFloat);
-                  setField('transplant_weeks_after_last_frost_min', row.transplant_weeks_after_last_frost_min?.trim(), existingRecord.transplant_weeks_after_last_frost_min, parseFloat);
-                  setField('transplant_weeks_after_last_frost_max', row.transplant_weeks_after_last_frost_max?.trim(), existingRecord.transplant_weeks_after_last_frost_max, parseFloat);
-                  // Scoville
-                  const scoMin = row.scoville_min || row.heat_scoville_min;
-                  const scoMax = row.scoville_max || row.heat_scoville_max;
-                  if (scoMin) { setField('scoville_min', scoMin, existingRecord.scoville_min, parseInt); setField('heat_scoville_min', scoMin, existingRecord.heat_scoville_min, parseInt); }
-                  if (scoMax) { setField('scoville_max', scoMax, existingRecord.scoville_max, parseInt); setField('heat_scoville_max', scoMax, existingRecord.heat_scoville_max, parseInt); }
-                  // Indoor/care fields
-                  setField('light_requirement_indoor', row.light_requirement_indoor?.trim(), existingRecord.light_requirement_indoor);
-                  setField('light_tolerance_range', row.light_tolerance_range?.trim(), existingRecord.light_tolerance_range);
-                  setField('min_light_hours', row.min_light_hours?.trim(), existingRecord.min_light_hours, parseFloat);
-                  setField('max_light_hours', row.max_light_hours?.trim(), existingRecord.max_light_hours, parseFloat);
-                  setField('watering_frequency_range', row.watering_frequency_range?.trim(), existingRecord.watering_frequency_range);
-                  setField('watering_method_preferred', row.watering_method_preferred?.trim(), existingRecord.watering_method_preferred);
-                  setField('soil_dryness_rule', row.soil_dryness_rule?.trim(), existingRecord.soil_dryness_rule);
-                  setField('overwater_sensitivity', row.overwater_sensitivity?.trim(), existingRecord.overwater_sensitivity);
-                  setField('humidity_preference', row.humidity_preference?.trim(), existingRecord.humidity_preference);
-                  setField('humidity_support_method', row.humidity_support_method?.trim(), existingRecord.humidity_support_method);
-                  setField('soil_type_recommended', row.soil_type_recommended?.trim(), existingRecord.soil_type_recommended);
-                  setField('soil_type_required', row.soil_type_required?.trim(), existingRecord.soil_type_required);
-                  setField('soil_drainage_speed', row.soil_drainage_speed?.trim(), existingRecord.soil_drainage_speed);
-                  setField('recommended_pot_type', row.recommended_pot_type?.trim(), existingRecord.recommended_pot_type);
-                  setField('temp_min_f', row.temp_min_f?.trim(), existingRecord.temp_min_f, parseFloat);
-                  setField('temp_max_f', row.temp_max_f?.trim(), existingRecord.temp_max_f, parseFloat);
-                  setField('temp_ideal_min_f', row.temp_ideal_min_f?.trim(), existingRecord.temp_ideal_min_f, parseFloat);
-                  setField('temp_ideal_max_f', row.temp_ideal_max_f?.trim(), existingRecord.temp_ideal_max_f, parseFloat);
-                  setField('growth_pattern', row.growth_pattern?.trim(), existingRecord.growth_pattern);
-                  setField('growth_speed', row.growth_speed?.trim(), existingRecord.growth_speed);
-                  setField('mature_indoor_height', row.mature_indoor_height?.trim(), existingRecord.mature_indoor_height);
-                  setField('mature_indoor_width', row.mature_indoor_width?.trim(), existingRecord.mature_indoor_width);
-                  setField('pruning_needs', row.pruning_needs?.trim(), existingRecord.pruning_needs);
-                  setField('repot_frequency_years', row.repot_frequency_years?.trim(), existingRecord.repot_frequency_years);
-                  setField('rootbound_tolerance', row.rootbound_tolerance?.trim(), existingRecord.rootbound_tolerance);
-                  setField('best_repot_season', row.best_repot_season?.trim(), existingRecord.best_repot_season);
-                  setField('fertilizer_type', row.fertilizer_type?.trim(), existingRecord.fertilizer_type);
-                  setField('fertilizer_frequency', row.fertilizer_frequency?.trim(), existingRecord.fertilizer_frequency);
-                  setField('fertilizer_strength', row.fertilizer_strength?.trim(), existingRecord.fertilizer_strength);
-                  setField('fertilizer_rule', row.fertilizer_rule?.trim(), existingRecord.fertilizer_rule);
-                  setField('water_type_required', row.water_type_required?.trim(), existingRecord.water_type_required);
-                  setField('care_difficulty', row.care_difficulty?.trim(), existingRecord.care_difficulty);
-                  setField('propagation_methods', row.propagation_methods?.trim(), existingRecord.propagation_methods);
-                  setField('propagation_difficulty', row.propagation_difficulty?.trim(), existingRecord.propagation_difficulty);
-                  setField('propagation_best_season', row.propagation_best_season?.trim(), existingRecord.propagation_best_season);
-                  setField('propagation_notes', row.propagation_notes?.trim(), existingRecord.propagation_notes);
-                  setField('toxicity_notes', row.toxicity_notes?.trim(), existingRecord.toxicity_notes);
-                  setField('common_pests', row.common_pests?.trim(), existingRecord.common_pests);
-                  setField('common_diseases', row.common_diseases?.trim(), existingRecord.common_diseases);
-                  setField('preventive_care_tips', row.preventive_care_tips?.trim(), existingRecord.preventive_care_tips);
-                  setField('pest_susceptibility', row.pest_susceptibility?.trim(), existingRecord.pest_susceptibility);
-                  setField('seasonal_notes', row.seasonal_notes?.trim(), existingRecord.seasonal_notes);
-                  setField('variegation_type', row.variegation_type?.trim(), existingRecord.variegation_type);
-                  setField('display_style', row.display_style?.trim(), existingRecord.display_style);
-                  setField('dormancy_required', row.dormancy_required?.trim(), existingRecord.dormancy_required);
-                  setField('dormancy_temp_min_f', row.dormancy_temp_min_f?.trim(), existingRecord.dormancy_temp_min_f, parseFloat);
-                  setField('dormancy_temp_max_f', row.dormancy_temp_max_f?.trim(), existingRecord.dormancy_temp_max_f, parseFloat);
-                  setField('dormancy_duration_months_min', row.dormancy_duration_months_min?.trim(), existingRecord.dormancy_duration_months_min, parseFloat);
-                  setField('dormancy_duration_months_max', row.dormancy_duration_months_max?.trim(), existingRecord.dormancy_duration_months_max, parseFloat);
-                  setField('root_temp_max_f', row.root_temp_max_f?.trim(), existingRecord.root_temp_max_f, parseFloat);
-                  // Array fields
-                  if (row.care_warnings && row.care_warnings.trim() && row.care_warnings !== '[]') {
-                    const arr = row.care_warnings.startsWith('[') 
-                      ? JSON.parse(row.care_warnings) 
-                      : row.care_warnings.split('|').map(s => s.trim()).filter(Boolean);
-                    if (arr.length > 0 && (!upsertSafe || !existingRecord.care_warnings?.length)) updatePayload.care_warnings = arr;
-                  }
-                  if (row.sources && row.sources !== '[]') {
-                    const arr = row.sources.startsWith('[') ? JSON.parse(row.sources) : row.sources.split('|').map(s => s.trim()).filter(Boolean);
-                    if (arr.length > 0 && (!upsertSafe || !existingRecord.sources?.length)) updatePayload.sources = arr;
-                  }
-                  if (row.synonyms && row.synonyms !== '[]') {
-                    const arr = row.synonyms.startsWith('[') ? JSON.parse(row.synonyms) : row.synonyms.split('|').map(s => s.trim()).filter(Boolean);
-                    if (arr.length > 0 && (!upsertSafe || !existingRecord.synonyms?.length)) updatePayload.synonyms = arr;
-                  }
-                  // Boolean fields — in safe mode only write if not yet set in DB
-                  const setBool = (key, csvVal) => {
-                    if (csvVal === '' || csvVal === undefined || csvVal === null) return;
-                    const val = csvVal === 'true' || csvVal === '1' || csvVal === true;
-                    if (upsertSafe && existingRecord[key] !== null && existingRecord[key] !== undefined) return;
-                    updatePayload[key] = val;
-                  };
-                  setBool('trellis_required', row.trellis_required);
-                  setBool('container_friendly', row.container_friendly);
-                  setBool('is_ornamental', row.is_ornamental);
-                  setBool('is_organic', row.is_organic);
-                  setBool('toxic_to_cats', row.toxic_to_cats);
-                  setBool('toxic_to_dogs', row.toxic_to_dogs);
-                  setBool('toxic_to_humans', row.toxic_to_humans);
-                  setBool('pet_safe', row.pet_safe);
-                  setBool('air_purifying', row.air_purifying);
-                  setBool('fragrant', row.fragrant);
-                  setBool('drought_tolerant', row.drought_tolerant);
-                  setBool('flowering_indoors', row.flowering_indoors);
-                  setBool('misting_beneficial', row.misting_beneficial);
-                  setBool('cold_draft_sensitive', row.cold_draft_sensitive);
-                  setBool('needs_support', row.needs_support);
-                  setBool('grow_light_compatible', row.grow_light_compatible);
-                  setBool('is_aquatic', row.is_aquatic);
-                  setBool('root_cooling_required', row.root_cooling_required);
-                  setBool('winter_dormancy', row.winter_dormancy);
-                  setBool('reduced_winter_watering', row.reduced_winter_watering);
-                  setBool('winter_leaf_drop_normal', row.winter_leaf_drop_normal);
-                  setBool('dormant_season_feeding', row.dormant_season_feeding);
-                  setBool('drainage_holes_required', row.drainage_holes_required);
-                  setBool('sap_irritant', row.sap_irritant);
+                  
+                  if (varietyData.description && varietyData.description.trim()) updatePayload.description = varietyData.description;
+                  if (varietyData.days_to_maturity !== null && varietyData.days_to_maturity !== undefined) updatePayload.days_to_maturity = varietyData.days_to_maturity;
+                  if (varietyData.spacing_recommended) updatePayload.spacing_recommended = varietyData.spacing_recommended;
+                  if (varietyData.sun_requirement) updatePayload.sun_requirement = varietyData.sun_requirement;
+                  if (varietyData.water_requirement) updatePayload.water_requirement = varietyData.water_requirement;
+                  if (varietyData.growth_habit) updatePayload.growth_habit = varietyData.growth_habit;
+                  if (varietyData.species) updatePayload.species = varietyData.species;
+                  if (varietyData.seed_line_type) updatePayload.seed_line_type = varietyData.seed_line_type;
+                  if (varietyData.season_timing) updatePayload.season_timing = varietyData.season_timing;
+                  if (varietyData.grower_notes) updatePayload.grower_notes = varietyData.grower_notes;
+                  if (varietyData.scoville_min !== null && varietyData.scoville_min !== undefined) updatePayload.scoville_min = varietyData.scoville_min;
+                  if (varietyData.scoville_max !== null && varietyData.scoville_max !== undefined) updatePayload.scoville_max = varietyData.scoville_max;
+                  if (varietyData.heat_scoville_min !== null && varietyData.heat_scoville_min !== undefined) updatePayload.heat_scoville_min = varietyData.heat_scoville_min;
+                  if (varietyData.heat_scoville_max !== null && varietyData.heat_scoville_max !== undefined) updatePayload.heat_scoville_max = varietyData.heat_scoville_max;
+                  if (row.direct_sow_weeks_min) updatePayload.direct_sow_weeks_min = parseFloat(row.direct_sow_weeks_min);
+                  if (row.direct_sow_weeks_max) updatePayload.direct_sow_weeks_max = parseFloat(row.direct_sow_weeks_max);
+                  if (row.start_indoors_weeks_min) updatePayload.start_indoors_weeks_min = parseFloat(row.start_indoors_weeks_min);
+                  if (row.start_indoors_weeks_max) updatePayload.start_indoors_weeks_max = parseFloat(row.start_indoors_weeks_max);
+                  if (row.transplant_weeks_after_last_frost_min) updatePayload.transplant_weeks_after_last_frost_min = parseFloat(row.transplant_weeks_after_last_frost_min);
+                  if (row.transplant_weeks_after_last_frost_max) updatePayload.transplant_weeks_after_last_frost_max = parseFloat(row.transplant_weeks_after_last_frost_max);
+                  if (row.light_requirement_indoor) updatePayload.light_requirement_indoor = row.light_requirement_indoor;
+                  if (row.watering_frequency_range) updatePayload.watering_frequency_range = row.watering_frequency_range;
+                  if (row.humidity_preference) updatePayload.humidity_preference = row.humidity_preference;
+                  if (row.soil_type_recommended) updatePayload.soil_type_recommended = row.soil_type_recommended;
+                  if (row.temp_min_f) updatePayload.temp_min_f = parseFloat(row.temp_min_f);
+                  if (row.temp_max_f) updatePayload.temp_max_f = parseFloat(row.temp_max_f);
+                  if (row.toxic_to_cats !== undefined) updatePayload.toxic_to_cats = row.toxic_to_cats === 'true' || row.toxic_to_cats === '1';
+                  if (row.toxic_to_dogs !== undefined) updatePayload.toxic_to_dogs = row.toxic_to_dogs === 'true' || row.toxic_to_dogs === '1';
+                  if (row.air_purifying !== undefined) updatePayload.air_purifying = row.air_purifying === 'true' || row.air_purifying === '1';
+                  updatePayload.trellis_required = varietyData.trellis_required;
+                  updatePayload.container_friendly = varietyData.container_friendly;
+                  updatePayload.is_ornamental = varietyData.is_ornamental;
+                  updatePayload.is_organic = varietyData.is_organic;
                   
                   await apiCallWithRetry(
                     () => base44.entities.Variety.update(existingRecord.id, updatePayload),
@@ -1405,28 +1282,13 @@ export default function AdminDataImport() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="INSERT_ONLY">Insert Only (skip existing)</SelectItem>
-                <SelectItem value="UPSERT_BY_ID">Upsert (insert or update existing)</SelectItem>
+                <SelectItem value="UPSERT_BY_ID">Upsert by ID (update existing)</SelectItem>
               </SelectContent>
             </Select>
+            <p className="text-xs text-gray-500 mt-1">
+              Upsert mode will update existing records by ID, or insert if not found
+            </p>
           </div>
-
-          {importMode === 'UPSERT_BY_ID' && (
-            <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg space-y-2">
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={upsertSafe}
-                  onChange={(e) => setUpsertSafe(e.target.checked)}
-                  className="w-4 h-4 rounded border-gray-300"
-                />
-                <span className="text-sm font-semibold text-blue-900">Safe Upsert — don't overwrite filled fields</span>
-              </label>
-              <p className="text-xs text-blue-700 ml-6">
-                ✅ <strong>Checked (recommended):</strong> Only writes fields that are empty in the DB. Existing data (subcategories, descriptions, etc.) is preserved.<br/>
-                ⬜ <strong>Unchecked:</strong> Overwrites ALL fields from CSV including subcategories — use with caution.
-              </p>
-            </div>
-          )}
 
           <div className="space-y-4">
             <div className="flex items-center gap-4">

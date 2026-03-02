@@ -536,7 +536,7 @@ export default function PlantCatalogDetail() {
   // Works even when plant_type_code is not populated in DB by falling
   // back to matching PLANT_ZONE_DATA keys via common_name.
   const plantTypeZoneInfo = useMemo(() => {
-    if (userZoneMinTemp === null || userZoneMinTemp === undefined || !plantType) return null;
+    if (!userZoneMinTemp || !plantType) return null;
 
     let zd = null;
     let matchedCode = null;

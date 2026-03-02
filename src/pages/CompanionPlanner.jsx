@@ -10,10 +10,8 @@ import {
   AlertTriangle,
   Upload,
   Download,
-  Edit,
-  Grid3x3
+  Edit
 } from 'lucide-react';
-import CompanionChartModal from '@/components/companion/CompanionChartModal';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -49,7 +47,6 @@ export default function CompanionPlanner() {
   const [csvFile, setCsvFile] = useState(null);
   const [importResults, setImportResults] = useState(null);
   const [filterPlantId, setFilterPlantId] = useState('');
-  const [showChart, setShowChart] = useState(false);
   
   const [formData, setFormData] = useState({
     plant_type_id: '',
@@ -247,11 +244,7 @@ Cucumber,Radish,Good Conditional,Radishes can deter cucumber beetles but compete
               : 'View companion relationships • Rules are curated by admins'}
           </p>
         </div>
-        <div className="flex gap-2 flex-wrap">
-          <Button onClick={() => setShowChart(true)} variant="outline" className="gap-2 border-emerald-300 text-emerald-700 hover:bg-emerald-50">
-            <Grid3x3 className="w-4 h-4" />
-            View Chart
-          </Button>
+        <div className="flex gap-2">
           {user?.role === 'admin' && (
             <>
               <Button 
@@ -545,8 +538,6 @@ Cucumber,Radish,Good Conditional,Radishes can deter cucumber beetles but compete
           </DialogFooter>
         </DialogContent>
       </Dialog>
-
-      <CompanionChartModal open={showChart} onOpenChange={setShowChart} />
 
       {/* Import CSV Dialog */}
       <Dialog open={showImportDialog} onOpenChange={setShowImportDialog}>
