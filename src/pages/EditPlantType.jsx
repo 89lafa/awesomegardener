@@ -484,16 +484,34 @@ export default function EditPlantType() {
         </CardHeader>
         <CardContent className="space-y-4">
           <div>
-            <Label>Buy Seeds Link</Label>
+            <Label>Affiliate / Buy Seeds Link 1 (Primary)</Label>
             <Input
               value={formData.buy_seeds_link}
               onChange={(e) => setFormData({ ...formData, buy_seeds_link: e.target.value })}
               placeholder="https://pepperseeds.com/... or affiliate link"
               className="mt-2"
             />
-            <p className="text-xs text-gray-500 mt-1">
-              This will power the "Buy Seeds" button shown to users
-            </p>
+            <p className="text-xs text-gray-500 mt-1">Primary "Buy Seeds" button shown to users</p>
+          </div>
+
+          <div>
+            <Label>Affiliate / Buy Seeds Link 2</Label>
+            <Input
+              value={formData.affiliate_link2}
+              onChange={(e) => setFormData({ ...formData, affiliate_link2: e.target.value })}
+              placeholder="https://baker-creek.com/... second vendor"
+              className="mt-2"
+            />
+          </div>
+
+          <div>
+            <Label>Affiliate / Buy Seeds Link 3</Label>
+            <Input
+              value={formData.affiliate_link3}
+              onChange={(e) => setFormData({ ...formData, affiliate_link3: e.target.value })}
+              placeholder="https://trueleafmarket.com/... third vendor"
+              className="mt-2"
+            />
           </div>
 
           <div>

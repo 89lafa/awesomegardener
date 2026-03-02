@@ -905,23 +905,36 @@ export default function PlantCatalogDetail() {
           </div>
         )}
 
-        {/* Buy Seeds Banner */}
-        {plantType?.buy_seeds_link && !plantType?._is_browse_only && (
-          <div className="flex items-center justify-between p-4 bg-emerald-50 border border-emerald-200 rounded-xl">
-            <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-full bg-emerald-100 flex items-center justify-center">🌱</div>
-              <div>
-                <p className="font-semibold text-emerald-900 text-sm">Buy {plantDisplayName} Seeds</p>
-                <p className="text-emerald-700 text-xs">Get seeds from our trusted partner</p>
+        {/* Buy Seeds Banner — supports up to 3 affiliate links */}
+        {!plantType?._is_browse_only && (() => {
+          const links = [
+            plantType?.buy_seeds_link,
+            plantType?.affiliate_link2,
+            plantType?.affiliate_link3,
+          ].filter(Boolean);
+          if (!links.length) return null;
+          return (
+            <div className="flex items-center justify-between p-3 bg-emerald-50 border border-emerald-200 rounded-xl flex-wrap gap-2">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-full bg-emerald-100 flex items-center justify-center text-sm">🌱</div>
+                <div>
+                  <p className="font-semibold text-emerald-900 text-sm">Buy {plantDisplayName} Seeds</p>
+                  <p className="text-emerald-700 text-xs">From our trusted partners</p>
+                </div>
+              </div>
+              <div className="flex gap-2 flex-wrap">
+                {links.map((link, i) => (
+                  <a key={i} href={link} target="_blank" rel="noopener noreferrer">
+                    <Button size="sm" className="bg-emerald-600 hover:bg-emerald-700 gap-1">
+                      <ExternalLink className="w-3 h-3" />
+                      {links.length === 1 ? 'Buy Now' : `Vendor ${i + 1}`}
+                    </Button>
+                  </a>
+                ))}
               </div>
             </div>
-            <a href={plantType.buy_seeds_link} target="_blank" rel="noopener noreferrer">
-              <Button className="bg-emerald-600 hover:bg-emerald-700 gap-2">
-                <ExternalLink className="w-4 h-4" />Buy Now
-              </Button>
-            </a>
-          </div>
-        )}
+          );
+        })()}
 
         <SpecialCareWarnings variety={varieties[0]} />
 
