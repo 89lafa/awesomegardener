@@ -1,264 +1,240 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Search, X } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Printer, Search, X, ZoomIn, ZoomOut } from 'lucide-react';
 
-// ─── Chart data extracted from the HTML reference ──────────────
-// Relationship matrix: 'G'=Good, 'C'=Conditional, 'B'=Bad, '~'=Same, ''=Unknown
+// Companion data embedded from the HTML chart
 const PLANTS = [
-  { name: 'Tomato',       emoji: '🍅', cat: 'Nightshade' },
-  { name: 'Pepper',       emoji: '🌶️', cat: 'Nightshade' },
-  { name: 'Eggplant',     emoji: '🍆', cat: 'Nightshade' },
-  { name: 'Potato',       emoji: '🥔', cat: 'Nightshade' },
-  { name: 'Cucumber',     emoji: '🥒', cat: 'Cucurbit' },
-  { name: 'Squash',       emoji: '🎃', cat: 'Cucurbit' },
-  { name: 'Melon',        emoji: '🍈', cat: 'Cucurbit' },
-  { name: 'Pumpkin',      emoji: '🎃', cat: 'Cucurbit' },
-  { name: 'Carrot',       emoji: '🥕', cat: 'Root' },
-  { name: 'Beet',         emoji: '🫚', cat: 'Root' },
-  { name: 'Radish',       emoji: '🔴', cat: 'Root' },
-  { name: 'Onion',        emoji: '🧅', cat: 'Allium' },
-  { name: 'Garlic',       emoji: '🧄', cat: 'Allium' },
-  { name: 'Leek',         emoji: '🌿', cat: 'Allium' },
-  { name: 'Bean',         emoji: '🫘', cat: 'Legume' },
-  { name: 'Pea',          emoji: '🟢', cat: 'Legume' },
-  { name: 'Corn',         emoji: '🌽', cat: 'Grain' },
-  { name: 'Lettuce',      emoji: '🥬', cat: 'Leafy' },
-  { name: 'Spinach',      emoji: '🍃', cat: 'Leafy' },
-  { name: 'Kale',         emoji: '🥦', cat: 'Leafy' },
-  { name: 'Cabbage',      emoji: '🥬', cat: 'Brassica' },
-  { name: 'Broccoli',     emoji: '🥦', cat: 'Brassica' },
-  { name: 'Cauliflower',  emoji: '⚪', cat: 'Brassica' },
-  { name: 'Brussels Spr.', emoji: '🟢', cat: 'Brassica' },
-  { name: 'Basil',        emoji: '🌿', cat: 'Herb' },
-  { name: 'Parsley',      emoji: '🌿', cat: 'Herb' },
-  { name: 'Dill',         emoji: '🌾', cat: 'Herb' },
-  { name: 'Cilantro',     emoji: '🌿', cat: 'Herb' },
-  { name: 'Mint',         emoji: '🌿', cat: 'Herb' },
-  { name: 'Marigold',     emoji: '🌼', cat: 'Flower' },
-  { name: 'Nasturtium',   emoji: '🌸', cat: 'Flower' },
-  { name: 'Sunflower',    emoji: '🌻', cat: 'Flower' },
-  { name: 'Lavender',     emoji: '💜', cat: 'Flower' },
-  { name: 'Borage',       emoji: '🔵', cat: 'Flower' },
-  { name: 'Chamomile',    emoji: '🌼', cat: 'Flower' },
-  { name: 'Calendula',    emoji: '🟡', cat: 'Flower' },
+  'Basil','Beans','Beets','Borage','Cabbage','Carrots','Celery','Chamomile',
+  'Chives','Corn','Cucumber','Dill','Eggplant','Fennel','Garlic','Kale',
+  'Lavender','Leeks','Lettuce','Marigold','Mint','Nasturtium','Onions',
+  'Parsley','Peas','Peppers','Potatoes','Pumpkin','Radishes','Rosemary',
+  'Sage','Spinach','Squash','Strawberries','Sunflowers','Thyme','Tomatoes',
+  'Turnips','Yarrow','Zucchini'
 ];
 
-// Relationship data [rowIdx][colIdx]: 'G','C','B','~','?'
-// Source: AwesomeGardener Companion Planting Chart
-const RAW_MATRIX = {
-  'Tomato':    { 'Basil':'G','Marigold':'G','Nasturtium':'G','Borage':'G','Carrot':'G','Parsley':'G','Garlic':'G','Spinach':'G','Lettuce':'G','Calendula':'G','Chamomile':'G','Lavender':'G','Dill':'C','Pepper':'C','Squash':'C','Cucumber':'C','Bean':'C','Corn':'C','Potato':'B','Eggplant':'C','Fennel':'B','Beet':'C','Onion':'C','Cilantro':'C' },
-  'Pepper':    { 'Basil':'G','Carrot':'G','Onion':'G','Tomato':'C','Marigold':'G','Spinach':'G','Parsley':'G','Nasturtium':'G','Garlic':'G','Potato':'B','Fennel':'B','Beet':'C','Lettuce':'G','Cucumber':'C' },
-  'Eggplant':  { 'Bean':'G','Marigold':'G','Pepper':'C','Tomato':'C','Nasturtium':'G','Potato':'C','Basil':'G','Dill':'C','Spinach':'G','Garlic':'G','Fennel':'B','Pea':'G' },
-  'Potato':    { 'Bean':'G','Pea':'G','Marigold':'G','Nasturtium':'G','Horseradish':'G','Corn':'C','Cabbage':'C','Tomato':'B','Pepper':'B','Eggplant':'C','Cucumber':'B','Fennel':'B','Onion':'B','Garlic':'C','Squash':'C','Sunflower':'B' },
-  'Cucumber':  { 'Bean':'G','Dill':'G','Marigold':'G','Nasturtium':'G','Pea':'G','Sunflower':'G','Radish':'G','Borage':'G','Celery':'G','Tomato':'C','Squash':'C','Melon':'C','Corn':'C','Potato':'B','Fennel':'B','Sage':'B','Basil':'C','Onion':'C','Garlic':'G' },
-  'Squash':    { 'Bean':'G','Corn':'G','Nasturtium':'G','Marigold':'G','Borage':'G','Radish':'G','Dill':'G','Pea':'C','Tomato':'C','Cucumber':'C','Melon':'C','Fennel':'B','Potato':'C','Sunflower':'C','Garlic':'G' },
-  'Melon':     { 'Marigold':'G','Nasturtium':'G','Corn':'G','Radish':'G','Basil':'G','Sunflower':'C','Cucumber':'C','Squash':'C','Potato':'B','Fennel':'B','Onion':'C' },
-  'Corn':      { 'Bean':'G','Squash':'G','Pea':'G','Cucumber':'C','Melon':'G','Tomato':'C','Potato':'C','Pumpkin':'G','Radish':'C','Sunflower':'C','Dill':'G','Marigold':'G','Basil':'G','Fennel':'B' },
-  'Carrot':    { 'Onion':'G','Leek':'G','Chive':'G','Rosemary':'G','Sage':'G','Lettuce':'G','Tomato':'G','Bean':'G','Dill':'B','Fennel':'B','Parsley':'C','Radish':'C','Pepper':'G','Marigold':'G','Pea':'G' },
-  'Beet':      { 'Lettuce':'G','Onion':'G','Garlic':'G','Cabbage':'G','Kale':'G','Kohlrabi':'G','Broccoli':'G','Bean':'B','Fennel':'B','Tomato':'C','Radish':'C','Spinach':'G','Chard':'G' },
-  'Radish':    { 'Nasturtium':'G','Chervil':'G','Cucumber':'G','Squash':'G','Bean':'C','Pea':'C','Carrot':'C','Beet':'C','Spinach':'G','Lettuce':'G','Marigold':'G','Tomato':'C','Onion':'C','Hyssop':'C','Fennel':'B' },
-  'Onion':     { 'Carrot':'G','Beet':'G','Pepper':'G','Tomato':'C','Chamomile':'G','Marigold':'G','Strawberry':'G','Lettuce':'G','Dill':'C','Summer Savory':'G','Bean':'B','Pea':'B','Garlic':'C','Asparagus':'B','Sage':'G','Potato':'B' },
-  'Garlic':    { 'Rose':'G','Tomato':'G','Pepper':'G','Carrot':'G','Cucumber':'G','Beet':'G','Spinach':'G','Celery':'G','Raspberry':'G','Marigold':'G','Bean':'B','Pea':'B','Cabbage':'G','Onion':'C','Asparagus':'B','Fennel':'B','Strawberry':'C' },
-  'Bean':      { 'Carrot':'G','Cucumber':'G','Corn':'G','Squash':'G','Strawberry':'G','Eggplant':'G','Radish':'C','Pea':'C','Potato':'G','Celery':'C','Marigold':'G','Summer Savory':'G','Nasturtium':'G','Onion':'B','Garlic':'B','Fennel':'B','Beet':'B','Leek':'B','Shallot':'B' },
-  'Pea':       { 'Carrot':'G','Radish':'G','Turnip':'G','Cucumber':'G','Bean':'C','Corn':'G','Mint':'C','Lettuce':'G','Spinach':'G','Potato':'G','Fennel':'B','Onion':'B','Garlic':'B','Leek':'B','Chive':'B' },
-  'Lettuce':   { 'Carrot':'G','Radish':'G','Strawberry':'G','Onion':'G','Beet':'G','Tomato':'G','Spinach':'G','Chive':'G','Marigold':'G','Cucumber':'G','Dill':'G','Celery':'G','Parsley':'G','Nasturtium':'G','Fennel':'B','Broccoli':'C','Cabbage':'C' },
-  'Spinach':   { 'Strawberry':'G','Lettuce':'G','Tomato':'G','Pea':'G','Bean':'G','Celery':'G','Nasturtium':'G','Fennel':'B','Beet':'G','Radish':'G','Garlic':'G','Onion':'G','Eggplant':'G','Pepper':'G','Cucumber':'G' },
-  'Kale':      { 'Beet':'G','Celery':'G','Dill':'C','Marigold':'G','Nasturtium':'G','Garlic':'G','Onion':'G','Catnip':'G','Hyssop':'G','Rosemary':'G','Sage':'G','Potato':'C','Bean':'C','Strawberry':'C','Fennel':'B','Tomato':'C','Rue':'C' },
-  'Cabbage':   { 'Dill':'G','Celery':'G','Onion':'G','Garlic':'G','Beet':'G','Marigold':'G','Mint':'G','Rosemary':'G','Sage':'G','Hyssop':'G','Nasturtium':'G','Chamomile':'G','Potato':'C','Tomato':'C','Lettuce':'C','Bean':'C','Strawberry':'C','Fennel':'B','Rue':'G','Broccoli':'C' },
-  'Broccoli':  { 'Celery':'G','Dill':'G','Marigold':'G','Onion':'G','Garlic':'G','Rosemary':'G','Sage':'G','Nasturtium':'G','Beet':'G','Lettuce':'C','Cabbage':'C','Tomato':'C','Fennel':'B','Strawberry':'C','Bean':'C' },
-  'Cauliflower':{ 'Celery':'G','Dill':'G','Onion':'G','Garlic':'G','Marigold':'G','Nasturtium':'G','Spinach':'G','Bean':'C','Broccoli':'C','Fennel':'B','Tomato':'C' },
-  'Basil':     { 'Tomato':'G','Pepper':'G','Marigold':'G','Oregano':'G','Eggplant':'G','Asparagus':'G','Chamomile':'G','Borage':'G','Fennel':'B','Sage':'B','Rue':'B','Thyme':'C','Cucumber':'C' },
-  'Parsley':   { 'Tomato':'G','Asparagus':'G','Corn':'G','Carrot':'C','Rose':'G','Chive':'G','Pea':'G','Fennel':'B','Onion':'C','Mint':'C' },
-  'Dill':      { 'Cabbage':'G','Lettuce':'G','Cucumber':'G','Corn':'G','Onion':'G','Fennel':'B','Carrot':'B','Tomato':'C','Pepper':'C','Lavender':'C','Cilantro':'C' },
-  'Marigold':  { 'Tomato':'G','Pepper':'G','Cucumber':'G','Squash':'G','Melon':'G','Basil':'G','Carrot':'G','Bean':'G','Corn':'G','Beet':'G','Lettuce':'G','Kale':'G','Cabbage':'G','Broccoli':'G','Radish':'G','Nasturtium':'G','Lavender':'G','Calendula':'G','Borage':'G','Garlic':'G','Eggplant':'G','Potato':'G','Onion':'G','Spinach':'G' },
-  'Nasturtium':{ 'Tomato':'G','Cucumber':'G','Squash':'G','Melon':'G','Radish':'G','Marigold':'G','Bean':'G','Cabbage':'G','Broccoli':'G','Kale':'G','Cauliflower':'G','Lettuce':'G','Spinach':'G','Potato':'G','Eggplant':'G','Pepper':'G','Beet':'G','Corn':'C','Fennel':'C' },
-  'Sunflower': { 'Cucumber':'G','Corn':'C','Squash':'C','Melon':'C','Tomato':'C','Potato':'B','Bean':'C','Basil':'G','Marigold':'G' },
-  'Borage':    { 'Tomato':'G','Squash':'G','Strawberry':'G','Cucumber':'G','Basil':'G','Marigold':'G','Cabbage':'G','Chamomile':'G','Nasturtium':'G','Fennel':'C' },
-  'Lavender':  { 'Tomato':'G','Cabbage':'G','Kale':'G','Marigold':'G','Vegetable garden':'G','Dill':'C','Cilantro':'C','Mint':'C','Fennel':'C' },
-  'Chamomile': { 'Tomato':'G','Cabbage':'G','Onion':'G','Cucumber':'G','Basil':'G','Borage':'G','Marigold':'G','Lavender':'G','Nasturtium':'G','Mint':'C','Dill':'C' },
-  'Calendula': { 'Tomato':'G','Marigold':'G','Basil':'G','Cucumber':'G','Squash':'G','Bean':'G','Nasturtium':'G','Carrot':'G','Asparagus':'G','Fennel':'C' },
+// Relationship matrix — G=Good, B=Bad, C=Conditional, "=self
+const MATRIX = {
+  'Basil|Tomatoes': 'G', 'Basil|Peppers': 'G', 'Basil|Marigold': 'G', 'Basil|Oregano': 'G',
+  'Basil|Beans': 'B', 'Basil|Sage': 'B', 'Basil|Cucumber': 'G',
+  'Beans|Corn': 'G', 'Beans|Squash': 'G', 'Beans|Carrots': 'G', 'Beans|Lettuce': 'G',
+  'Beans|Strawberries': 'G', 'Beans|Radishes': 'G',
+  'Beans|Onions': 'B', 'Beans|Garlic': 'B', 'Beans|Fennel': 'B', 'Beans|Leeks': 'B',
+  'Beets|Cabbage': 'G', 'Beets|Lettuce': 'G', 'Beets|Onions': 'G', 'Beets|Radishes': 'G',
+  'Beets|Fennel': 'B',
+  'Borage|Tomatoes': 'G', 'Borage|Strawberries': 'G', 'Borage|Squash': 'G', 'Borage|Cucumber': 'G',
+  'Cabbage|Celery': 'G', 'Cabbage|Dill': 'G', 'Cabbage|Onions': 'G', 'Cabbage|Nasturtium': 'G',
+  'Cabbage|Rosemary': 'G', 'Cabbage|Thyme': 'G',
+  'Cabbage|Strawberries': 'B', 'Cabbage|Tomatoes': 'B',
+  'Carrots|Chives': 'G', 'Carrots|Leeks': 'G', 'Carrots|Onions': 'G', 'Carrots|Rosemary': 'G',
+  'Carrots|Sage': 'G', 'Carrots|Tomatoes': 'G', 'Carrots|Lettuce': 'G',
+  'Carrots|Dill': 'B', 'Carrots|Fennel': 'B',
+  'Celery|Tomatoes': 'G', 'Celery|Leeks': 'G', 'Celery|Chives': 'G', 'Celery|Nasturtium': 'G',
+  'Chamomile|Cabbage': 'G', 'Chamomile|Onions': 'G',
+  'Chives|Carrots': 'G', 'Chives|Tomatoes': 'G', 'Chives|Roses': 'G',
+  'Corn|Beans': 'G', 'Corn|Squash': 'G', 'Corn|Cucumber': 'G', 'Corn|Pumpkin': 'G',
+  'Corn|Tomatoes': 'B',
+  'Cucumber|Beans': 'G', 'Cucumber|Corn': 'G', 'Cucumber|Peas': 'G', 'Cucumber|Radishes': 'G',
+  'Cucumber|Sunflowers': 'G', 'Cucumber|Nasturtium': 'G', 'Cucumber|Lettuce': 'G',
+  'Cucumber|Sage': 'B', 'Cucumber|Fennel': 'B',
+  'Dill|Cabbage': 'G', 'Dill|Lettuce': 'G', 'Dill|Onions': 'G',
+  'Dill|Tomatoes': 'B', 'Dill|Carrots': 'B', 'Dill|Fennel': 'B',
+  'Eggplant|Beans': 'G', 'Eggplant|Marigold': 'G', 'Eggplant|Peppers': 'G', 'Eggplant|Spinach': 'G',
+  'Eggplant|Fennel': 'B',
+  'Fennel|Dill': 'C', 'Fennel|Yarrow': 'G',
+  'Fennel|Tomatoes': 'B', 'Fennel|Beans': 'B', 'Fennel|Peppers': 'B', 'Fennel|Cabbage': 'B',
+  'Fennel|Eggplant': 'B', 'Fennel|Potatoes': 'B',
+  'Garlic|Tomatoes': 'G', 'Garlic|Roses': 'G', 'Garlic|Carrots': 'G', 'Garlic|Fruit trees': 'G',
+  'Garlic|Beans': 'B', 'Garlic|Peas': 'B',
+  'Kale|Beets': 'G', 'Kale|Onions': 'G', 'Kale|Marigold': 'G',
+  'Lavender|Tomatoes': 'G', 'Lavender|Roses': 'G', 'Lavender|Cabbage': 'G',
+  'Leeks|Carrots': 'G', 'Leeks|Celery': 'G', 'Leeks|Onions': 'G',
+  'Leeks|Beans': 'B',
+  'Lettuce|Radishes': 'G', 'Lettuce|Carrots': 'G', 'Lettuce|Strawberries': 'G',
+  'Lettuce|Tall plants': 'C',
+  'Marigold|Tomatoes': 'G', 'Marigold|Peppers': 'G', 'Marigold|Squash': 'G', 'Marigold|Cucumber': 'G',
+  'Mint|Cabbage': 'G', 'Mint|Tomatoes': 'G', 'Mint|Peas': 'G',
+  'Nasturtium|Tomatoes': 'G', 'Nasturtium|Cucumber': 'G', 'Nasturtium|Squash': 'G',
+  'Nasturtium|Beans': 'G', 'Nasturtium|Radishes': 'G',
+  'Onions|Carrots': 'G', 'Onions|Beets': 'G', 'Onions|Tomatoes': 'G', 'Onions|Lettuce': 'G',
+  'Onions|Beans': 'B', 'Onions|Peas': 'B',
+  'Parsley|Tomatoes': 'G', 'Parsley|Carrots': 'G', 'Parsley|Asparagus': 'G',
+  'Peas|Carrots': 'G', 'Peas|Corn': 'G', 'Peas|Radishes': 'G', 'Peas|Spinach': 'G',
+  'Peas|Garlic': 'B', 'Peas|Onions': 'B',
+  'Peppers|Basil': 'G', 'Peppers|Carrots': 'G', 'Peppers|Tomatoes': 'G', 'Peppers|Eggplant': 'G',
+  'Peppers|Fennel': 'B',
+  'Potatoes|Beans': 'G', 'Potatoes|Corn': 'G', 'Potatoes|Horseradish': 'G', 'Potatoes|Marigold': 'G',
+  'Potatoes|Tomatoes': 'B', 'Potatoes|Fennel': 'B', 'Potatoes|Sunflowers': 'B', 'Potatoes|Cucumber': 'B',
+  'Pumpkin|Corn': 'G', 'Pumpkin|Beans': 'G', 'Pumpkin|Marigold': 'G', 'Pumpkin|Nasturtium': 'G',
+  'Radishes|Lettuce': 'G', 'Radishes|Nasturtium': 'G', 'Radishes|Cucumber': 'G', 'Radishes|Peas': 'G',
+  'Rosemary|Cabbage': 'G', 'Rosemary|Beans': 'G', 'Rosemary|Carrots': 'G', 'Rosemary|Sage': 'G',
+  'Sage|Carrots': 'G', 'Sage|Cabbage': 'G', 'Sage|Rosemary': 'G',
+  'Sage|Cucumber': 'B', 'Sage|Basil': 'B',
+  'Spinach|Strawberries': 'G', 'Spinach|Peas': 'G', 'Spinach|Tomatoes': 'G', 'Spinach|Eggplant': 'G',
+  'Squash|Corn': 'G', 'Squash|Beans': 'G', 'Squash|Nasturtium': 'G', 'Squash|Marigold': 'G',
+  'Strawberries|Spinach': 'G', 'Strawberries|Borage': 'G', 'Strawberries|Lettuce': 'G',
+  'Strawberries|Cabbage': 'B', 'Strawberries|Broccoli': 'B',
+  'Sunflowers|Cucumber': 'G', 'Sunflowers|Corn': 'G', 'Sunflowers|Squash': 'G',
+  'Sunflowers|Potatoes': 'B', 'Sunflowers|Beans': 'C',
+  'Thyme|Cabbage': 'G', 'Thyme|Eggplant': 'G', 'Thyme|Tomatoes': 'G',
+  'Tomatoes|Basil': 'G', 'Tomatoes|Garlic': 'G', 'Tomatoes|Parsley': 'G', 'Tomatoes|Marigold': 'G',
+  'Tomatoes|Carrots': 'G', 'Tomatoes|Spinach': 'G', 'Tomatoes|Borage': 'G', 'Tomatoes|Celery': 'G',
+  'Tomatoes|Corn': 'B', 'Tomatoes|Potatoes': 'B', 'Tomatoes|Fennel': 'B', 'Tomatoes|Dill': 'B', 'Tomatoes|Cabbage': 'B',
+  'Turnips|Peas': 'G', 'Turnips|Nasturtium': 'G',
+  'Turnips|Tomatoes': 'B',
+  'Yarrow|Fennel': 'G', 'Yarrow|Lavender': 'G',
+  'Zucchini|Nasturtium': 'G', 'Zucchini|Beans': 'G', 'Zucchini|Corn': 'G', 'Zucchini|Marigold': 'G',
 };
 
-const REL_COLORS = {
-  G: { bg: 'bg-emerald-500', text: 'text-white', label: 'Good', symbol: '✓' },
-  C: { bg: 'bg-amber-500',   text: 'text-white', label: 'Conditional', symbol: '~' },
-  B: { bg: 'bg-red-500',     text: 'text-white', label: 'Bad', symbol: '✗' },
-  '~': { bg: 'bg-gray-700',  text: 'text-white', label: 'Same plant', symbol: '=' },
-  '?': { bg: 'bg-gray-100',  text: 'text-gray-400', label: 'Unknown', symbol: '' },
-};
-
-function getRelationship(plantA, plantB) {
-  if (plantA === plantB) return '~';
-  const row = RAW_MATRIX[plantA] || {};
-  if (row[plantB]) return row[plantB];
-  const rowB = RAW_MATRIX[plantB] || {};
-  if (rowB[plantA]) return rowB[plantA];
-  return '?';
+function getRelationship(a, b) {
+  if (a === b) return '=';
+  return MATRIX[`${a}|${b}`] || MATRIX[`${b}|${a}`] || '';
 }
+
+const CELL_BG = {
+  'G': 'bg-green-400 text-white',
+  'B': 'bg-red-400 text-white',
+  'C': 'bg-amber-300 text-gray-900',
+  '=': 'bg-gray-200 text-gray-400',
+  '': 'bg-gray-50 text-gray-300',
+};
+const CELL_LABEL = { 'G': '✓', 'B': '✗', 'C': '~', '=': '—', '': '' };
 
 export default function CompanionChartModal({ open, onOpenChange }) {
   const [search, setSearch] = useState('');
-  const [hoveredCell, setHoveredCell] = useState(null);
-  const [selectedPlant, setSelectedPlant] = useState(null);
+  const [highlighted, setHighlighted] = useState(null);
+  const [zoom, setZoom] = useState(1);
+  const printRef = useRef();
 
-  const filteredPlants = useMemo(() => {
-    if (!search) return PLANTS;
-    const q = search.toLowerCase();
-    return PLANTS.filter(p => p.name.toLowerCase().includes(q));
-  }, [search]);
+  const filteredPlants = search
+    ? PLANTS.filter(p => p.toLowerCase().includes(search.toLowerCase()))
+    : PLANTS;
 
-  const displayPlants = search ? filteredPlants : PLANTS;
+  const activePlants = highlighted
+    ? PLANTS
+    : filteredPlants;
 
-  const getGoodCompanions = (plant) => PLANTS.filter(p => getRelationship(plant.name, p.name) === 'G');
-  const getBadCompanions  = (plant) => PLANTS.filter(p => getRelationship(plant.name, p.name) === 'B');
-  const getCondCompanions = (plant) => PLANTS.filter(p => getRelationship(plant.name, p.name) === 'C');
+  const handlePrint = () => {
+    const printWindow = window.open('', '_blank');
+    const tableHtml = printRef.current?.innerHTML || '';
+    printWindow.document.write(`
+      <html><head><title>Companion Planting Chart — AwesomeGardener</title>
+      <style>
+        body { font-family: sans-serif; font-size: 9px; }
+        table { border-collapse: collapse; }
+        th, td { border: 1px solid #ddd; padding: 2px; text-align: center; min-width: 22px; }
+        .g { background: #4ade80; color: white; }
+        .b { background: #f87171; color: white; }
+        .c { background: #fcd34d; }
+        .s { background: #e5e7eb; color: #9ca3af; }
+        .hdr { writing-mode: vertical-rl; transform: rotate(180deg); font-size: 8px; padding: 4px 2px; background: #f9fafb; font-weight: bold; }
+      </style></head><body>
+      <h2 style="text-align:center">Companion Planting Chart — AwesomeGardener.com</h2>
+      <p style="text-align:center">🟢 Good companion &nbsp; 🔴 Avoid &nbsp; 🟡 Conditional</p>
+      ${tableHtml}
+      </body></html>
+    `);
+    printWindow.document.close();
+    printWindow.print();
+  };
+
+  const rowPlants = highlighted ? PLANTS : activePlants;
+  const colPlants = PLANTS;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-6xl max-h-[90vh] overflow-hidden flex flex-col p-0">
-        <DialogHeader className="px-6 pt-5 pb-3 border-b bg-gradient-to-r from-emerald-900 to-emerald-700 text-white rounded-t-lg">
-          <DialogTitle className="text-xl font-bold text-white">🌿 Companion Planting Chart</DialogTitle>
-          <p className="text-emerald-200 text-sm mt-1">Click any plant row or column to see its compatibility details</p>
+      <DialogContent className="max-w-[98vw] max-h-[95vh] w-full overflow-hidden flex flex-col p-0">
+        <DialogHeader className="px-4 pt-4 pb-2 border-b flex-shrink-0">
+          <div className="flex items-center justify-between gap-3 flex-wrap">
+            <DialogTitle className="text-lg font-bold">🌿 Companion Planting Chart</DialogTitle>
+            <div className="flex items-center gap-2 flex-wrap">
+              <div className="relative">
+                <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3 h-3 text-gray-400" />
+                <Input
+                  value={search}
+                  onChange={e => { setSearch(e.target.value); setHighlighted(null); }}
+                  placeholder="Search plant..."
+                  className="pl-7 h-8 text-sm w-40"
+                />
+              </div>
+              <Button size="sm" variant="outline" onClick={() => setZoom(z => Math.max(0.5, z - 0.1))} className="h-8 px-2">
+                <ZoomOut className="w-3 h-3" />
+              </Button>
+              <span className="text-xs text-gray-500">{Math.round(zoom * 100)}%</span>
+              <Button size="sm" variant="outline" onClick={() => setZoom(z => Math.min(1.5, z + 0.1))} className="h-8 px-2">
+                <ZoomIn className="w-3 h-3" />
+              </Button>
+              <Button size="sm" variant="outline" onClick={handlePrint} className="h-8 gap-1">
+                <Printer className="w-3 h-3" />Print
+              </Button>
+            </div>
+          </div>
+          {/* Legend */}
+          <div className="flex gap-4 text-xs mt-2 flex-wrap">
+            <span className="flex items-center gap-1"><span className="w-4 h-4 rounded bg-green-400 inline-block"/><strong>Good</strong> companions</span>
+            <span className="flex items-center gap-1"><span className="w-4 h-4 rounded bg-red-400 inline-block"/><strong>Avoid</strong> planting together</span>
+            <span className="flex items-center gap-1"><span className="w-4 h-4 rounded bg-amber-300 inline-block"/><strong>Conditional</strong></span>
+            <span className="text-gray-400 ml-2">Click a plant name to highlight its row</span>
+          </div>
         </DialogHeader>
 
-        <div className="flex flex-col flex-1 overflow-hidden">
-          {/* Legend + Search */}
-          <div className="flex flex-wrap items-center gap-4 px-4 py-2 bg-amber-50 border-b text-xs">
-            <span className="font-semibold text-gray-700">Legend:</span>
-            {Object.entries(REL_COLORS).filter(([k]) => k !== '~').map(([key, cfg]) => (
-              <div key={key} className="flex items-center gap-1.5">
-                <div className={`w-5 h-5 rounded ${cfg.bg} flex items-center justify-center ${cfg.text} font-bold text-xs`}>{cfg.symbol}</div>
-                <span className="text-gray-600">{cfg.label}</span>
-              </div>
-            ))}
-            <div className="ml-auto relative">
-              <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3 h-3 text-gray-400" />
-              <Input value={search} onChange={e => setSearch(e.target.value)} placeholder="Filter plants..." className="pl-6 h-7 text-xs w-40" />
-            </div>
-          </div>
-
-          <div className="flex flex-1 overflow-hidden">
-            {/* Matrix */}
-            <div className="flex-1 overflow-auto p-4">
-              <div className="inline-block min-w-max">
-                {/* Column headers */}
-                <div className="flex">
-                  <div className="w-28 flex-shrink-0" />
-                  {displayPlants.map(p => (
-                    <button
-                      key={p.name}
-                      onClick={() => setSelectedPlant(selectedPlant?.name === p.name ? null : p)}
-                      className={`w-8 flex-shrink-0 h-28 flex flex-col items-center justify-end pb-1 cursor-pointer hover:bg-emerald-50 rounded transition-colors ${selectedPlant?.name === p.name ? 'bg-emerald-100' : ''}`}
-                      title={p.name}
-                    >
-                      <span className="text-[9px] font-semibold text-gray-700 leading-tight" style={{ writingMode: 'vertical-rl', transform: 'rotate(180deg)' }}>
-                        {p.emoji} {p.name}
-                      </span>
-                    </button>
-                  ))}
-                </div>
-
-                {/* Rows */}
-                {displayPlants.map((rowPlant, ri) => (
-                  <div key={rowPlant.name} className="flex items-center">
-                    <button
-                      onClick={() => setSelectedPlant(selectedPlant?.name === rowPlant.name ? null : rowPlant)}
-                      className={`w-28 flex-shrink-0 h-8 flex items-center justify-end pr-2 gap-1 text-[11px] font-semibold text-gray-700 hover:bg-emerald-50 cursor-pointer transition-colors rounded ${selectedPlant?.name === rowPlant.name ? 'bg-emerald-100' : ri % 2 === 0 ? 'bg-gray-50/50' : ''}`}
-                    >
-                      <span>{rowPlant.emoji}</span>
-                      <span className="truncate">{rowPlant.name}</span>
-                    </button>
-                    {displayPlants.map(colPlant => {
-                      const rel = getRelationship(rowPlant.name, colPlant.name);
-                      const cfg = REL_COLORS[rel] || REL_COLORS['?'];
-                      const isHighlighted = selectedPlant && (selectedPlant.name === rowPlant.name || selectedPlant.name === colPlant.name);
-                      return (
-                        <div
-                          key={colPlant.name}
-                          className={`w-8 h-8 flex-shrink-0 border border-white/60 flex items-center justify-center text-xs font-bold transition-all cursor-default
-                            ${cfg.bg} ${cfg.text}
-                            ${rel === '~' ? 'opacity-60' : ''}
-                            ${isHighlighted && rel !== '~' ? 'ring-2 ring-emerald-400 z-10 scale-110' : ''}
-                            ${!isHighlighted && selectedPlant ? 'opacity-40' : ''}
-                            hover:scale-125 hover:z-20 hover:shadow-lg`}
-                          title={rel === '~' ? 'Same plant' : rel === '?' ? 'Unknown / Not studied' : `${rowPlant.name} + ${colPlant.name}: ${cfg.label}`}
-                          onMouseEnter={() => setHoveredCell({ row: rowPlant.name, col: colPlant.name, rel })}
-                          onMouseLeave={() => setHoveredCell(null)}
+        <div className="overflow-auto flex-1 p-2">
+          <div style={{ transform: `scale(${zoom})`, transformOrigin: 'top left', minWidth: 'max-content' }}>
+            <div ref={printRef}>
+              <table className="border-collapse text-[10px]">
+                <thead>
+                  <tr>
+                    <th className="sticky left-0 z-20 bg-white border border-gray-200 min-w-[90px] text-left px-2 py-1 text-xs font-bold">Plant</th>
+                    {colPlants.map(col => (
+                      <th key={col}
+                        className={`border border-gray-200 text-center cursor-pointer transition-colors ${highlighted === col ? 'bg-emerald-100' : 'bg-gray-50 hover:bg-emerald-50'}`}
+                        style={{ writingMode: 'vertical-rl', transform: 'rotate(180deg)', padding: '4px 2px', minWidth: 22, maxWidth: 22 }}
+                        onClick={() => setHighlighted(highlighted === col ? null : col)}
+                        title={col}
+                      >
+                        {col}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {rowPlants.map(row => {
+                    const isHighlightedRow = highlighted === row;
+                    return (
+                      <tr key={row} className={isHighlightedRow ? 'ring-1 ring-emerald-400' : ''}>
+                        <td
+                          className={`sticky left-0 z-10 border border-gray-200 px-2 py-0.5 font-semibold cursor-pointer whitespace-nowrap transition-colors ${
+                            highlighted === row ? 'bg-emerald-100 text-emerald-900' : 'bg-white hover:bg-emerald-50 text-gray-800'
+                          }`}
+                          style={{ minWidth: 90 }}
+                          onClick={() => setHighlighted(highlighted === row ? null : row)}
                         >
-                          {cfg.symbol}
-                        </div>
-                      );
-                    })}
-                  </div>
-                ))}
-              </div>
+                          {row}
+                        </td>
+                        {colPlants.map(col => {
+                          const rel = getRelationship(row, col);
+                          const dim = highlighted && highlighted !== row && highlighted !== col;
+                          return (
+                            <td
+                              key={col}
+                              title={rel === 'G' ? `✓ ${row} + ${col}: Good companions` :
+                                     rel === 'B' ? `✗ ${row} + ${col}: Avoid` :
+                                     rel === 'C' ? `~ ${row} + ${col}: Conditional` : ''}
+                              className={`border border-gray-200 text-center font-bold transition-all ${CELL_BG[rel]} ${dim ? 'opacity-20' : ''}`}
+                              style={{ width: 22, height: 22, minWidth: 22 }}
+                            >
+                              {CELL_LABEL[rel]}
+                            </td>
+                          );
+                        })}
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
             </div>
-
-            {/* Selected plant detail panel */}
-            {selectedPlant && (
-              <div className="w-56 border-l bg-white p-4 overflow-y-auto flex-shrink-0">
-                <div className="flex items-center justify-between mb-3">
-                  <h3 className="font-bold text-sm">{selectedPlant.emoji} {selectedPlant.name}</h3>
-                  <button onClick={() => setSelectedPlant(null)}><X className="w-4 h-4 text-gray-400" /></button>
-                </div>
-                <Badge variant="outline" className="mb-3 text-xs">{selectedPlant.cat}</Badge>
-
-                {getGoodCompanions(selectedPlant).length > 0 && (
-                  <div className="mb-3">
-                    <p className="text-xs font-semibold text-emerald-700 mb-1">✓ Good Companions ({getGoodCompanions(selectedPlant).length})</p>
-                    <div className="flex flex-wrap gap-1">
-                      {getGoodCompanions(selectedPlant).map(p => (
-                        <button key={p.name} onClick={() => setSelectedPlant(p)} className="text-[10px] bg-emerald-50 text-emerald-800 border border-emerald-200 px-1.5 py-0.5 rounded hover:bg-emerald-100 transition-colors">
-                          {p.emoji} {p.name}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {getCondCompanions(selectedPlant).length > 0 && (
-                  <div className="mb-3">
-                    <p className="text-xs font-semibold text-amber-700 mb-1">~ Conditional ({getCondCompanions(selectedPlant).length})</p>
-                    <div className="flex flex-wrap gap-1">
-                      {getCondCompanions(selectedPlant).map(p => (
-                        <button key={p.name} onClick={() => setSelectedPlant(p)} className="text-[10px] bg-amber-50 text-amber-800 border border-amber-200 px-1.5 py-0.5 rounded hover:bg-amber-100 transition-colors">
-                          {p.emoji} {p.name}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {getBadCompanions(selectedPlant).length > 0 && (
-                  <div className="mb-3">
-                    <p className="text-xs font-semibold text-red-700 mb-1">✗ Avoid Together ({getBadCompanions(selectedPlant).length})</p>
-                    <div className="flex flex-wrap gap-1">
-                      {getBadCompanions(selectedPlant).map(p => (
-                        <button key={p.name} onClick={() => setSelectedPlant(p)} className="text-[10px] bg-red-50 text-red-800 border border-red-200 px-1.5 py-0.5 rounded hover:bg-red-100 transition-colors">
-                          {p.emoji} {p.name}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-
-          {/* Hover tooltip bar */}
-          <div className="px-4 py-2 border-t bg-gray-50 text-xs text-gray-600 h-8 flex items-center">
-            {hoveredCell ? (
-              <span>
-                <strong>{hoveredCell.row}</strong> + <strong>{hoveredCell.col}</strong>:{' '}
-                <span className={hoveredCell.rel === 'G' ? 'text-emerald-700 font-semibold' : hoveredCell.rel === 'B' ? 'text-red-700 font-semibold' : hoveredCell.rel === 'C' ? 'text-amber-700 font-semibold' : 'text-gray-500'}>
-                  {REL_COLORS[hoveredCell.rel]?.label || 'Unknown'}
-                </span>
-              </span>
-            ) : (
-              <span className="text-gray-400">Hover over a cell to see details · Click a plant name to highlight its relationships</span>
-            )}
           </div>
         </div>
       </DialogContent>

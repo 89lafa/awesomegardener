@@ -156,6 +156,7 @@ import Users from './pages/Users';
 import VarietyReviewQueue from './pages/VarietyReviewQueue';
 import ViewVariety from './pages/ViewVariety';
 import ZoneMap from './pages/ZoneMap';
+import AdminVarietyImport2 from './pages/AdminVarietyImport2';
 import __Layout from './Layout.jsx';
 
 
@@ -269,6 +270,7 @@ export const PAGES = {
     "VarietyReviewQueue": VarietyReviewQueue,
     "ViewVariety": ViewVariety,
     "ZoneMap": ZoneMap,
+    "AdminVarietyImport2": AdminVarietyImport2,
 }
 
 export const pagesConfig = {
