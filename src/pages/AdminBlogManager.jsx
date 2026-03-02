@@ -87,7 +87,7 @@ export default function AdminBlogManager() {
         slug,
         author_email: user.email,
         author_name: user.full_name,
-        published_date: formData.status === 'published' && !editingPost ? new Date().toISOString() : formData.published_date
+        published_date: formData.published_date || (formData.status === 'published' ? new Date().toISOString() : undefined)
       };
 
       if (editingPost) {
