@@ -41,57 +41,22 @@ export default function RepairSubcategoriesCard() {
 
     setRepairing(true);
     setResult(null);
+    toast.info('Running repair — this may take 1-3 minutes for large plant types...');
 
     try {
-      // Get variety count for selected plant type
-      const varieties = await base44.entities.Variety.filter({ 
+      const response = await base44.functions.invoke('fixSubcatByPlantType', {
         plant_type_id: selectedType,
-        status: 'active'
+        dry_run: false
       });
-      
-      const totalVarieties = varieties.length;
-      const BATCH_SIZE = 30;
-      let processedCount = 0;
-      let repaired = 0;
-      let skipped = 0;
-      let errors = [];
 
-      // Process in batches
-      for (let i = 0; i < totalVarieties; i += BATCH_SIZE) {
-        const batchEnd = Math.min(i + BATCH_SIZE, totalVarieties);
-        toast.info(`Processing batch ${Math.floor(i / BATCH_SIZE) + 1}/${Math.ceil(totalVarieties / BATCH_SIZE)}... (${batchEnd}/${totalVarieties})`);
-
-        const response = await base44.functions.invoke('repairPlantTypeSubcategories', {
-          plant_type_id: selectedType,
-          batch_offset: i,
-          batch_size: BATCH_SIZE
-        });
-
-        if (response.data.success) {
-          repaired += response.data.stats.varieties_repaired || 0;
-          skipped += response.data.stats.varieties_skipped || 0;
-          if (response.data.stats.errors) {
-            errors = errors.concat(response.data.stats.errors);
-          }
-        } else {
-          throw new Error(response.data.error || 'Batch repair failed');
-        }
-
-        processedCount = batchEnd;
-
-        // Pause between batches to avoid rate limits
-        if (batchEnd < totalVarieties) {
-          await new Promise(resolve => setTimeout(resolve, 3000));
-        }
-      }
-
+      const d = response.data;
       setResult({
-        subcategories_activated: varieties.length > 0 ? 1 : 0,
-        varieties_repaired: repaired,
-        varieties_skipped: skipped,
-        errors: errors
+        varieties_repaired: d.fixed || 0,
+        varieties_skipped: d.no_match || 0,
+        total: d.total_missing || 0,
+        no_match_sample: d.no_match_sample || []
       });
-      toast.success(`Repair completed! Processed ${processedCount} varieties`);
+      toast.success(`Done! Fixed ${d.fixed}/${d.total_missing} missing subcategories.`);
     } catch (error) {
       console.error('Repair error:', error);
       toast.error('Repair failed: ' + error.message);
