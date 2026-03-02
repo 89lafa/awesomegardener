@@ -25,8 +25,9 @@ Deno.serve(async (req) => {
 
     console.log(`[RepairSubcats] Starting repair. dry_run=${isDryRun}`);
 
-    // Load all varieties in bulk
-    const allVarieties = await base44.asServiceRole.entities.Variety.list();
+    // Load all varieties using filter (avoids pagination issues with list())
+    // We load varieties that have plant_subcategory_ids array populated but might be missing plant_subcategory_id
+    const allVarieties = await base44.asServiceRole.entities.Variety.filter({ status: 'active' }, 'variety_name', 9999);
     console.log(`[RepairSubcats] Loaded ${allVarieties.length} varieties`);
 
     let repaired = 0;
