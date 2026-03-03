@@ -122,7 +122,6 @@ import ManageForumCategories from './pages/ManageForumCategories';
 import Messages from './pages/Messages';
 import MyGarden from './pages/MyGarden';
 import MyIndoorPlants from './pages/MyIndoorPlants';
-import MyPlants from './pages/MyPlants';
 import NeedToBuy from './pages/NeedToBuy';
 import Notifications from './pages/Notifications';
 import Onboarding from './pages/Onboarding';
@@ -237,7 +236,6 @@ export const PAGES = {
     "Messages": Messages,
     "MyGarden": MyGarden,
     "MyIndoorPlants": MyIndoorPlants,
-    "MyPlants": MyPlants,
     "NeedToBuy": NeedToBuy,
     "Notifications": Notifications,
     "Onboarding": Onboarding,
