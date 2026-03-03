@@ -1318,12 +1318,16 @@ try {
                                   }}
                                 >
                                   <span className="text-xl lg:text-2xl">{p.plant_type_icon || '🌱'}</span>
-                                  {/* ×N badge — computed from PlantingRule, no schema change */}
+                                   {/* ×N badge — computed from PlantingRule, no schema change */}
                                   {getPlantsPerSlot(p) > 1 && (
                                     <span className="absolute bottom-0 right-0 bg-white text-emerald-700 text-[9px] font-bold px-1 rounded-tl-md rounded-br shadow leading-tight">
                                       ×{getPlantsPerSlot(p)}
                                     </span>
                                   )}
+                                  {/* Hover name tooltip */}
+                                  <span className="absolute -top-7 left-1/2 -translate-x-1/2 bg-gray-900 text-white text-[10px] px-2 py-0.5 rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-30">
+                                    {p.display_name || p.variety_name || p.plant_type_name || 'Plant'}
+                                  </span>
                                   {selectedPlanting?.id === p.id && (
                                     <div className="absolute -bottom-12 left-0 right-0 flex gap-1 z-10">
                                       <Button size="sm" variant="secondary" onClick={(e) => { e.stopPropagation(); setIsMoving(true); }} className="flex-1">
