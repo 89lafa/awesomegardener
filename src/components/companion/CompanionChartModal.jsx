@@ -36,6 +36,7 @@ export default function CompanionChartModal({ open, onOpenChange }) {
       const nameSet = new Set();
       const rawMatrix = {};
 
+      const rawNotes = {};
       allRules.forEach(rule => {
         const nameA = ptById[rule.plant_type_id];
         const nameB = ptById[rule.companion_plant_type_id];
@@ -55,14 +56,16 @@ export default function CompanionChartModal({ open, onOpenChange }) {
 
         // Priority: BAD > GOOD > CONDITIONAL
         const priority = { B: 3, G: 2, C: 1 };
-        const set = (key, t) => {
+        const set = (key, t, notes) => {
           if (!rawMatrix[key] || priority[t] > priority[rawMatrix[key]]) {
             rawMatrix[key] = t;
+            if (notes) rawNotes[key] = notes;
           }
         };
-        set(keyAB, type);
-        set(keyBA, type);
+        set(keyAB, type, rule.notes);
+        set(keyBA, type, rule.notes);
       });
+      setNotesMap(rawNotes);
 
       const sortedPlants = Array.from(nameSet).sort();
       setPlants(sortedPlants);
