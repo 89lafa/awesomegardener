@@ -157,6 +157,7 @@ import VarietyReviewQueue from './pages/VarietyReviewQueue';
 import ViewVariety from './pages/ViewVariety';
 import ZoneMap from './pages/ZoneMap';
 import GardenPlantDetail from './pages/GardenPlantDetail';
+import MyPlants from './pages/MyPlants';
 import __Layout from './Layout.jsx';
 
 
@@ -271,6 +272,7 @@ export const PAGES = {
     "ViewVariety": ViewVariety,
     "ZoneMap": ZoneMap,
     "GardenPlantDetail": GardenPlantDetail,
+    "MyPlants": MyPlants,
 }
 
 export const pagesConfig = {
