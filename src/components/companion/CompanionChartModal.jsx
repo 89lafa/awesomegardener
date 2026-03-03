@@ -87,9 +87,10 @@ export default function CompanionChartModal({ open, onOpenChange }) {
     plants.forEach(other => {
       if (other === plant) return;
       const rel = getRel(plant, other);
-      if (rel === 'G') good.push(other);
-      else if (rel === 'B') bad.push(other);
-      else if (rel === 'C') conditional.push(other);
+      const notes = notesMap[`${plant}|${other}`] || notesMap[`${other}|${plant}`] || '';
+      if (rel === 'G') good.push({ name: other, notes });
+      else if (rel === 'B') bad.push({ name: other, notes });
+      else if (rel === 'C') conditional.push({ name: other, notes });
     });
     return { good, bad, conditional };
   };
