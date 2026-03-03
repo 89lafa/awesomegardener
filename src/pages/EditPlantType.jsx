@@ -435,103 +435,78 @@ export default function EditPlantType() {
         <CardHeader>
           <CardTitle>Grid Planting Rules</CardTitle>
           <p className="text-sm text-gray-600 mt-1">
-            Define how much space this plant type requires in different container types
+            Define how much space this plant type requires in different container types. You can also add <strong>variety-specific overrides</strong> (e.g., cherry tomatoes vs. beefsteak).
           </p>
         </CardHeader>
         <CardContent className="space-y-4">
-          {plantingRules.length === 0 ? (
-            <div className="text-center py-8 bg-gray-50 rounded-lg">
-              <p className="text-gray-600 text-sm mb-4">No planting rules defined yet</p>
+          {/* Plant-type level rules */}
+          <h4 className="text-sm font-semibold text-gray-700">Plant Type Rules (default for all varieties)</h4>
+          {plantingRules.filter(r => !r.variety_id).length === 0 ? (
+            <div className="text-center py-6 bg-gray-50 rounded-lg">
+              <p className="text-gray-600 text-sm mb-3">No plant type rules defined yet</p>
               <div className="flex flex-wrap gap-2 justify-center">
                 {['RAISED_BED', 'IN_GROUND_BED', 'GREENHOUSE', 'GROW_BAG', 'CONTAINER'].map(type => (
-                  <Button 
-                    key={type}
-                    size="sm" 
-                    variant="outline" 
-                    onClick={() => handleAddRule(type)}
-                  >
+                  <Button key={type} size="sm" variant="outline" onClick={() => handleAddRule(type)}>
                     + {type.replace(/_/g, ' ')}
                   </Button>
                 ))}
               </div>
             </div>
           ) : (
-            <div className="space-y-4">
-              {plantingRules.map(rule => (
+            <div className="space-y-3">
+              {plantingRules.filter(r => !r.variety_id).map(rule => (
                 <div key={rule.id} className="p-4 border rounded-lg bg-gray-50">
                   <div className="flex items-center justify-between mb-3">
-                    <h4 className="font-semibold text-sm">{rule.container_type.replace(/_/g, ' ')}</h4>
-                    <Button 
-                      size="sm" 
-                      variant="ghost" 
-                      onClick={() => handleDeleteRule(rule.id)}
-                    >
+                    <h4 className="font-semibold text-sm text-gray-800">{rule.container_type.replace(/_/g, ' ')}</h4>
+                    <Button size="sm" variant="ghost" onClick={() => handleDeleteRule(rule.id)}>
                       <Trash2 className="w-4 h-4 text-red-600" />
                     </Button>
                   </div>
-                  <div className="grid md:grid-cols-3 gap-3">
-                    <div>
-                      <Label className="text-xs">Grid Columns</Label>
-                      <Input
-                        type="number"
-                        min="1"
-                        value={rule.grid_cols}
-                        onChange={(e) => handleUpdateRule(rule.id, { grid_cols: parseInt(e.target.value) || 1 })}
-                        className="mt-1"
-                      />
-                      <p className="text-xs text-gray-500 mt-1">Width in 1-ft squares</p>
-                    </div>
-                    <div>
-                      <Label className="text-xs">Grid Rows</Label>
-                      <Input
-                        type="number"
-                        min="1"
-                        value={rule.grid_rows}
-                        onChange={(e) => handleUpdateRule(rule.id, { grid_rows: parseInt(e.target.value) || 1 })}
-                        className="mt-1"
-                      />
-                      <p className="text-xs text-gray-500 mt-1">Height in 1-ft squares</p>
-                    </div>
-                    <div>
-                      <Label className="text-xs">Plants Per Slot</Label>
-                      <Input
-                        type="number"
-                        min="1"
-                        value={rule.plants_per_grid_slot}
-                        onChange={(e) => handleUpdateRule(rule.id, { plants_per_grid_slot: parseInt(e.target.value) || 1 })}
-                        className="mt-1"
-                      />
-                      <p className="text-xs text-gray-500 mt-1">e.g., 16 for radishes</p>
-                    </div>
-                  </div>
-                  <div className="mt-3">
-                    <Label className="text-xs">Notes (Optional)</Label>
-                    <Input
-                      value={rule.notes || ''}
-                      onChange={(e) => handleUpdateRule(rule.id, { notes: e.target.value })}
-                      placeholder="Additional spacing notes..."
-                      className="mt-1"
-                    />
-                  </div>
+                  <RuleFields rule={rule} onUpdate={handleUpdateRule} />
                 </div>
               ))}
-              <div className="flex flex-wrap gap-2">
-                <p className="text-xs text-gray-600 w-full mb-1">Add rule for:</p>
+              <div className="flex flex-wrap gap-2 pt-1">
+                <p className="text-xs text-gray-500 w-full">Add plant-type rule for:</p>
                 {['RAISED_BED', 'IN_GROUND_BED', 'GREENHOUSE', 'GROW_BAG', 'CONTAINER', 'OPEN_PLOT']
-                  .filter(type => !plantingRules.find(r => r.container_type === type))
+                  .filter(type => !plantingRules.find(r => r.container_type === type && !r.variety_id))
                   .map(type => (
-                    <Button 
-                      key={type}
-                      size="sm" 
-                      variant="outline" 
-                      onClick={() => handleAddRule(type)}
-                    >
+                    <Button key={type} size="sm" variant="outline" onClick={() => handleAddRule(type)}>
                       + {type.replace(/_/g, ' ')}
                     </Button>
                   ))}
               </div>
             </div>
           )}
+
+          {/* Variety-specific overrides */}
+          <div className="pt-4 border-t">
+            <h4 className="text-sm font-semibold text-gray-700 mb-1">Variety-Specific Overrides</h4>
+            <p className="text-xs text-gray-500 mb-3">
+              Override spacing for a specific variety (e.g., cherry tomatoes = 1×1, large indeterminate = 2×2).
+              These take priority over the plant-type rules above.
+            </p>
+            {plantingRules.filter(r => r.variety_id).length === 0 ? (
+              <p className="text-xs text-gray-400 italic">No variety overrides yet.</p>
+            ) : (
+              <div className="space-y-3">
+                {plantingRules.filter(r => r.variety_id).map(rule => (
+                  <div key={rule.id} className="p-4 border-2 border-blue-200 rounded-lg bg-blue-50">
+                    <div className="flex items-center justify-between mb-2">
+                      <div>
+                        <span className="text-xs font-bold text-blue-700 uppercase">Variety Override</span>
+                        <p className="font-semibold text-sm text-gray-800">{rule.variety_name || rule.variety_id} — {rule.container_type.replace(/_/g, ' ')}</p>
+                      </div>
+                      <Button size="sm" variant="ghost" onClick={() => handleDeleteRule(rule.id)}>
+                        <Trash2 className="w-4 h-4 text-red-600" />
+                      </Button>
+                    </div>
+                    <RuleFields rule={rule} onUpdate={handleUpdateRule} />
+                  </div>
+                ))}
+              </div>
+            )}
+            <AddVarietyRuleButton plantTypeId={plantTypeId} onAdded={(newRule) => setPlantingRules(prev => [...prev, newRule])} />
+          </div>
         </CardContent>
       </Card>
 
