@@ -14,7 +14,8 @@ import {
   Sprout,
   Edit,
   Maximize2,
-  Minimize2
+  Minimize2,
+  Sun,
 } from 'lucide-react';
 import PlotSettingsDialog from './PlotSettingsDialog';
 import PlantingModal from './PlantingModal';
@@ -81,7 +82,7 @@ const GALLON_SIZES = [
   { value: 20, footprint: 24 }, { value: 30, footprint: 30 }
 ];
 
-// â”€â”€â”€ Helper: distance between two touch points â”€â”€â”€
+// Helper: distance between two touch points
 function getTouchDistance(t1, t2) {
   const dx = t1.clientX - t2.clientX;
   const dy = t1.clientY - t2.clientY;
@@ -129,7 +130,7 @@ export default function PlotCanvas({ garden, plot, activeSeason, seasonId, onPlo
   const [showSunPath, setShowSunPath] = useState(false);
   const [showSFGGrid, setShowSFGGrid] = useState(false);
 
-  // â”€â”€â”€ Mobile-specific state â”€â”€â”€
+  // Mobile-specific state
   const [isPinching, setIsPinching] = useState(false);
   const pinchStartDist = useRef(0);
   const pinchStartZoom = useRef(1);
@@ -177,17 +178,17 @@ export default function PlotCanvas({ garden, plot, activeSeason, seasonId, onPlo
     }
   }, [plot, activeSeason]);
 
-  // â”€â”€â”€ Auto-zoom to fit on mobile â”€â”€â”€
+  // Auto-zoom to fit on mobile
   useEffect(() => {
     if (isMobile && plot && scrollContainerRef.current && !loading) {
-      const containerW = scrollContainerRef.current.clientWidth - 16; // padding
+      const containerW = scrollContainerRef.current.clientWidth - 16;
       const containerH = scrollContainerRef.current.clientHeight - 16;
       const fitZoom = Math.min(containerW / plot.width, containerH / plot.height, 1.5);
       setZoom(Math.max(0.3, Math.min(fitZoom, 1.5)));
     }
   }, [isMobile, plot, loading]);
 
-  // â”€â”€â”€ Window event listeners for reliable drag end â”€â”€â”€
+  // Window event listeners for reliable drag end
   useEffect(() => {
     const handleWindowMouseUp = () => {
       if (draggingItem || isDragging) {
@@ -210,30 +211,22 @@ export default function PlotCanvas({ garden, plot, activeSeason, seasonId, onPlo
     };
   }, [draggingItem, isDragging, items]);
 
-  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-  // NON-PASSIVE TOUCH LISTENERS (fixes 47 errors)
-  // React's onTouchMove is passive by default in
-  // many browsers, so we MUST use addEventListener
-  // with { passive: false } to call preventDefault.
-  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+  // NON-PASSIVE TOUCH LISTENERS
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
 
     const onTouchMoveNonPassive = (e) => {
-      // Two fingers = pinch/zoom â€” let it happen on canvas, prevent page scroll
       if (e.touches.length === 2) {
         e.preventDefault();
         handlePinchMove(e);
         return;
       }
-      // One finger + dragging item = drag
       if (draggingItem) {
         e.preventDefault();
         handleDragMove(e);
         return;
       }
-      // One finger + no item = allow native scroll of overflow container
     };
 
     const onTouchStartNonPassive = (e) => {
@@ -253,7 +246,7 @@ export default function PlotCanvas({ garden, plot, activeSeason, seasonId, onPlo
     };
   }, [draggingItem, isDragging, zoom, isPinching]);
 
-  // â”€â”€â”€ Pinch-to-zoom handlers â”€â”€â”€
+  // Pinch-to-zoom handlers
   const handlePinchStart = (e) => {
     if (e.touches.length !== 2) return;
     setIsPinching(true);
@@ -273,7 +266,7 @@ export default function PlotCanvas({ garden, plot, activeSeason, seasonId, onPlo
     setIsPinching(false);
   };
 
-  // â”€â”€â”€ Drag move (extracted for non-passive listener) â”€â”€â”€
+  // Drag move
   const handleDragMove = (e) => {
     if (!draggingItem) return;
     const clientX = e.touches ? e.touches[0].clientX : e.clientX;
@@ -371,8 +364,7 @@ export default function PlotCanvas({ garden, plot, activeSeason, seasonId, onPlo
     }
   };
 
-  // ─── Refresh ONLY planting counts — used by PlantingModal after planting ───
-  // Does NOT re-fetch item dimensions from DB so edited sizes are preserved.
+  // Refresh ONLY planting counts
   const loadPlantingCounts = useCallback(async () => {
     try {
       const user = await base44.auth.me();
@@ -417,7 +409,7 @@ export default function PlotCanvas({ garden, plot, activeSeason, seasonId, onPlo
           }
         }
         setItemsPlantingCounts(counts);
-        return prevItems; // items themselves are unchanged
+        return prevItems;
       });
     } catch (error) {
       console.error('Error refreshing planting counts:', error);
@@ -425,7 +417,7 @@ export default function PlotCanvas({ garden, plot, activeSeason, seasonId, onPlo
   }, [garden?.id, activeSeason]);
 
   const parseDimensions = (input) => {
-    const match = input.match(/(\d+\.?\d*)\s*[xXÃ—]\s*(\d+\.?\d*)/);
+    const match = input.match(/(\d+\.?\d*)\s*[xX×]\s*(\d+\.?\d*)/);
     if (match) return { width: parseFloat(match[1]), height: parseFloat(match[2]) };
     return null;
   };
@@ -594,7 +586,7 @@ export default function PlotCanvas({ garden, plot, activeSeason, seasonId, onPlo
     });
   };
 
-  // â”€â”€â”€ Canvas interaction handlers (mouse only â€” touch uses non-passive listeners) â”€â”€â”€
+  // Canvas interaction handlers (mouse only)
   const handleMouseDown = (e) => {
     if (e.target.closest('button') || e.target.closest('.plot-item-controls')) return;
     const rect = canvasRef.current.getBoundingClientRect();
@@ -641,7 +633,7 @@ export default function PlotCanvas({ garden, plot, activeSeason, seasonId, onPlo
     }
   };
 
-  // â”€â”€â”€ Mobile: tap on item = select, long-press = context menu â”€â”€â”€
+  // Mobile: tap on item = select, long-press = context menu
   const handleMobileTapItem = useCallback((item) => {
     if (isPinching) return;
     setSelectedItem(item);
@@ -655,19 +647,18 @@ export default function PlotCanvas({ garden, plot, activeSeason, seasonId, onPlo
     setShowContextMenu(true);
   }, [isPinching]);
 
-  // â”€â”€â”€ Mobile: tap on canvas background = deselect â”€â”€â”€
+  // Mobile: tap on canvas background = deselect
   const handleMobileCanvasTap = useCallback((e) => {
-    // Only if tapping the canvas itself, not an item
     if (e.target === canvasRef.current || e.target.closest('svg')) {
       setSelectedItem(null);
       if (onItemSelect) onItemSelect(null);
     }
   }, [onItemSelect]);
 
-  // â”€â”€â”€ Mobile: start dragging a selected item â”€â”€â”€
+  // Mobile: start dragging a selected item
   const handleMobileTouchStartOnCanvas = useCallback((e) => {
     if (e.touches.length !== 1 || isPinching) return;
-    if (e.target.closest('.plot-item')) return; // PlotItem handles its own touches
+    if (e.target.closest('.plot-item')) return;
 
     const rect = canvasRef.current.getBoundingClientRect();
     const x = (e.touches[0].clientX - rect.left) / zoom;
@@ -678,7 +669,6 @@ export default function PlotCanvas({ garden, plot, activeSeason, seasonId, onPlo
     );
 
     if (!touchedItem) {
-      // Tapping empty canvas
       handleMobileCanvasTap(e);
     }
   }, [items, zoom, isPinching, handleMobileCanvasTap]);
@@ -845,9 +835,7 @@ export default function PlotCanvas({ garden, plot, activeSeason, seasonId, onPlo
     return { status: 'partial', label: 'Partial', color: 'amber' };
   };
 
-  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
   // Item Context Menu (Mobile Drawer / Desktop Dialog)
-  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
   const ItemContextMenu = ({ item, onClose }) => {
     const itemType = ITEM_TYPES.find(t => t.value === item.item_type);
     const isPlantable = itemType?.plantable;
@@ -856,7 +844,7 @@ export default function PlotCanvas({ garden, plot, activeSeason, seasonId, onPlo
       <>
         <DrawerHeader>
           <DrawerTitle>{item.label}</DrawerTitle>
-          <DrawerDescription>{item.width}" Ã— {item.height}"</DrawerDescription>
+          <DrawerDescription>{item.width}" × {item.height}"</DrawerDescription>
         </DrawerHeader>
         <div className="px-4 space-y-2 pb-4">
           <Button variant="outline" className="w-full justify-start gap-2" onClick={() => { openEditItem(item); onClose(); }}>
@@ -919,9 +907,7 @@ export default function PlotCanvas({ garden, plot, activeSeason, seasonId, onPlo
 
   return (
     <div className="flex-1 flex flex-col lg:flex-row gap-4 mt-4 min-h-0">
-      {/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-          LEFT TOOLBAR â€” Desktop only
-          â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */}
+      {/* LEFT TOOLBAR — Desktop only */}
       <Card className="hidden lg:block w-64 flex-shrink-0 h-fit relative z-10">
         <CardContent className="p-4 space-y-2">
           <Button onClick={() => setShowAddItem(true)} className="w-full bg-emerald-600 hover:bg-emerald-700 gap-2">
@@ -953,11 +939,11 @@ export default function PlotCanvas({ garden, plot, activeSeason, seasonId, onPlo
               <Grid3X3 className="w-4 h-4" />{garden?.chaos_mode ? 'Fine Snap' : 'Snap to Grid'}
             </Button>
             <Button variant={showSunPath ? 'secondary' : 'outline'} size="sm" onClick={() => setShowSunPath(!showSunPath)} className="w-full gap-2">
-              â˜€ï¸ Sun Path
+              <Sun className="w-4 h-4" />Sun Path
             </Button>
             {garden?.planting_method === 'SQUARE_FOOT' && (
               <Button variant={showSFGGrid ? 'secondary' : 'outline'} size="sm" onClick={() => setShowSFGGrid(!showSFGGrid)} className="w-full gap-2">
-                ðŸ“ SFG Grid
+                <Grid3X3 className="w-4 h-4" />SFG Grid
               </Button>
             )}
           </div>
@@ -966,7 +952,7 @@ export default function PlotCanvas({ garden, plot, activeSeason, seasonId, onPlo
               <div>
                 <h4 className="font-semibold text-sm mb-1">Selected</h4>
                 <p className="text-sm text-gray-600 font-medium">{selectedItem.label}</p>
-                <p className="text-xs text-gray-500 mt-0.5">{selectedItem.width}" Ã— {selectedItem.height}"</p>
+                <p className="text-xs text-gray-500 mt-0.5">{selectedItem.width}" × {selectedItem.height}"</p>
               </div>
               <div className="space-y-2">
                 <Button variant="outline" size="sm" onClick={() => openEditItem(selectedItem)} className="w-full gap-2 justify-start">
@@ -991,9 +977,7 @@ export default function PlotCanvas({ garden, plot, activeSeason, seasonId, onPlo
         </CardContent>
       </Card>
 
-      {/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-          MOBILE TOOLBAR â€” Compact top bar
-          â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */}
+      {/* MOBILE TOOLBAR — Compact top bar */}
       <div className="lg:hidden flex gap-2 mb-2 overflow-x-auto pb-1 flex-shrink-0">
         <Button onClick={() => setShowAddItem(true)} size="sm" className="bg-emerald-600 hover:bg-emerald-700 gap-1 whitespace-nowrap">
           <Plus className="w-3 h-3" />Add
@@ -1015,9 +999,7 @@ export default function PlotCanvas({ garden, plot, activeSeason, seasonId, onPlo
         </div>
       </div>
 
-      {/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-          CANVAS AREA
-          â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */}
+      {/* CANVAS AREA */}
       <div 
         ref={scrollContainerRef}
         className={cn(
@@ -1041,7 +1023,7 @@ export default function PlotCanvas({ garden, plot, activeSeason, seasonId, onPlo
             <span className="text-gray-600">Full</span>
           </div>
           {isMobile && (
-            <span className="text-[10px] text-gray-400 ml-auto">Pinch to zoom â€¢ Long-press item for menu</span>
+            <span className="text-[10px] text-gray-400 ml-auto">Pinch to zoom • Long-press item for menu</span>
           )}
         </div>
         
@@ -1052,16 +1034,12 @@ export default function PlotCanvas({ garden, plot, activeSeason, seasonId, onPlo
             width: plot.width * zoom,
             height: plot.height * zoom,
             backgroundColor: plot.background_color || '#ffffff',
-            // CRITICAL: Do NOT set touchAction: 'none' â€” breaks scrolling.
-            // Touch interception is handled by non-passive event listeners above.
             touchAction: isMobile ? 'pan-x pan-y' : 'none'
           }}
-          // Desktop mouse handlers
           onMouseDown={!isMobile ? handleMouseDown : undefined}
           onMouseMove={!isMobile ? handleMouseMove : undefined}
           onMouseUp={!isMobile ? handleInteractionEnd : undefined}
           onMouseLeave={!isMobile ? handleInteractionEnd : undefined}
-          // Mobile: canvas-level touch start for deselection
           onTouchStart={isMobile ? handleMobileTouchStartOnCanvas : undefined}
           onTouchEnd={isMobile ? (e) => { if (isPinching) handlePinchEnd(); handleInteractionEnd(); } : undefined}
           onTouchCancel={isMobile ? () => { handlePinchEnd(); handleInteractionEnd(); } : undefined}
@@ -1090,15 +1068,22 @@ export default function PlotCanvas({ garden, plot, activeSeason, seasonId, onPlo
               {Array.from({ length: Math.floor(plot.width / 12) }).map((_, col) =>
                 Array.from({ length: Math.floor(plot.height / 12) }).map((_, row) => (
                   <text key={`label-${col}-${row}`} x={(col * 12 + 6) * zoom} y={(row * 12 + 8) * zoom}
-                    textAnchor="middle" fontSize={9 * zoom} fill="#10b981" opacity="0.4" fontWeight="bold">1ftÂ²</text>
+                    textAnchor="middle" fontSize={9 * zoom} fill="#10b981" opacity="0.4" fontWeight="bold">1ft²</text>
                 ))
               )}
             </svg>
           )}
 
-          <SunPathOverlay width={plot.width} height={plot.height} zoom={zoom} enabled={showSunPath} season="summer" />
+          <SunPathOverlay 
+            width={plot.width} 
+            height={plot.height} 
+            zoom={zoom} 
+            enabled={showSunPath} 
+            season="summer" 
+            sunOrientation={garden?.sun_orientation || 'south'} 
+          />
 
-          {/* â”€â”€â”€ Items â”€â”€â”€ */}
+          {/* Items */}
           {items.map((item) => {
             const itemType = ITEM_TYPES.find(t => t.value === item.item_type);
             const status = itemType?.plantable ? getPlantingStatus(item.id) : null;
@@ -1121,10 +1106,8 @@ export default function PlotCanvas({ garden, plot, activeSeason, seasonId, onPlo
                 zoom={zoom}
                 isMobile={isMobile}
                 getItemColor={getItemColor}
-                // Mobile: tap to select, long-press for context menu
                 onTap={isMobile ? handleMobileTapItem : undefined}
                 onLongPress={isMobile ? handleMobileLongPressItem : undefined}
-                // Desktop: double-click for context menu
                 onDoubleClick={() => {
                   setLongPressedItem(item);
                   setSelectedItem(item);
@@ -1136,15 +1119,12 @@ export default function PlotCanvas({ garden, plot, activeSeason, seasonId, onPlo
         </div>
       </div>
 
-      {/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-          MOBILE: Floating Action Bar (when item selected)
-          Shows Plant Seeds / Edit / Rotate / Delete
-          â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */}
+      {/* MOBILE: Floating Action Bar */}
       {isMobile && selectedItem && !showContextMenu && !showPlantingModal && !showEditItem && (
         <div className="fixed bottom-4 left-3 right-3 z-30 bg-white rounded-2xl shadow-2xl border-2 border-emerald-200 px-3 py-2">
           <div className="flex items-center gap-1.5 mb-1.5">
             <span className="text-sm font-semibold text-gray-900 truncate flex-1">{selectedItem.label}</span>
-            <span className="text-[10px] text-gray-500">{selectedItem.width}" Ã— {selectedItem.height}"</span>
+            <span className="text-[10px] text-gray-500">{selectedItem.width}" × {selectedItem.height}"</span>
           </div>
           <div className="flex gap-2">
             {ITEM_TYPES.find(t => t.value === selectedItem.item_type)?.plantable && (
@@ -1172,7 +1152,7 @@ export default function PlotCanvas({ garden, plot, activeSeason, seasonId, onPlo
         <ItemContextMenu item={longPressedItem} onClose={() => { setShowContextMenu(false); setLongPressedItem(null); }} />
       )}
 
-      {/* â”€â”€â”€ Add Item Dialog â”€â”€â”€ */}
+      {/* Add Item Dialog */}
       <Dialog open={showAddItem} onOpenChange={setShowAddItem}>
         <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
           <DialogHeader><DialogTitle>Add Item</DialogTitle></DialogHeader>
