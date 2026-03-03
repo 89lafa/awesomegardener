@@ -1,81 +1,84 @@
 import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
-import { Sprout, Plus, Loader2, Image as ImageIcon, Upload } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { createPageUrl } from '@/utils';
+import { Sprout, Plus, Loader2, Search, MapPin, Calendar, Camera, ChevronRight, Filter, Leaf } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from '@/components/ui/dialog';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
-import { format } from 'date-fns';
-import PlantDetailModal from '@/components/myplants/PlantDetailModal';
+import { format, differenceInDays } from 'date-fns';
+import { cn } from '@/lib/utils';
 import { usePullToRefresh } from '@/components/utils/usePullToRefresh';
 import PullToRefreshIndicator from '@/components/common/PullToRefreshIndicator';
-import QuickCheckInModal from '@/components/ai/QuickCheckInModal';
-import DiagnosisModal from '@/components/ai/DiagnosisModal';
 
-const STATUS_OPTIONS = [
-  { value: 'seed', label: '🌰 Seed', color: 'bg-gray-100 text-gray-800' },
-  { value: 'sprout', label: '🌱 Sprout', color: 'bg-green-100 text-green-800' },
-  { value: 'seedling', label: '🌿 Seedling', color: 'bg-emerald-100 text-emerald-800' },
-  { value: 'transplanted', label: '🪴 Transplanted', color: 'bg-blue-100 text-blue-800' },
-  { value: 'flowering', label: '🌸 Flowering', color: 'bg-pink-100 text-pink-800' },
-  { value: 'fruiting', label: '🍅 Fruiting', color: 'bg-orange-100 text-orange-800' },
-  { value: 'harvested', label: '✂️ Harvested', color: 'bg-purple-100 text-purple-800' },
-  { value: 'done', label: '✓ Done', color: 'bg-gray-200 text-gray-600' }
-];
+// Row crops that are tracked as a group (not individually)
+const ROW_CROP_KEYWORDS = ['lettuce', 'radish', 'arugula', 'spinach', 'chard', 'kale', 'carrot', 'beet', 'turnip', 'onion', 'garlic', 'scallion', 'leek', 'cilantro', 'dill', 'parsley', 'basil', 'chive', 'mache', 'mizuna', 'mustard', 'cress', 'endive', 'escarole', 'radicchio', 'fennel'];
+
+const isRowCrop = (name) => {
+  if (!name) return false;
+  const lower = name.toLowerCase();
+  return ROW_CROP_KEYWORDS.some(k => lower.includes(k));
+};
+
+const STATUS_CONFIG = {
+  planned:      { label: '📋 Planned',          color: 'bg-gray-100 text-gray-700' },
+  started:      { label: '🌱 Started',           color: 'bg-lime-100 text-lime-800' },
+  transplanted: { label: '🪴 Transplanted',      color: 'bg-teal-100 text-teal-800' },
+  in_ground:    { label: '🌿 In Ground',         color: 'bg-green-100 text-green-800' },
+  flowering:    { label: '🌸 Flowering',         color: 'bg-pink-100 text-pink-800' },
+  fruiting:     { label: '🍅 Fruiting',          color: 'bg-orange-100 text-orange-800' },
+  harvested:    { label: '✂️ Harvesting',        color: 'bg-purple-100 text-purple-800' },
+  removed:      { label: '🗑 Removed',           color: 'bg-red-100 text-red-600' },
+};
+
+// Group PlantInstances by bed + plant_type for row crops
+function groupRowCrops(instances) {
+  const groups = {};
+  const individuals = [];
+
+  for (const inst of instances) {
+    const name = inst.display_name || '';
+    if (isRowCrop(name)) {
+      const key = `${inst.bed_id}__${inst.plant_type_id || name}`;
+      if (!groups[key]) {
+        groups[key] = { ...inst, _isGroup: true, _groupCount: 1, _ids: [inst.id] };
+      } else {
+        groups[key]._groupCount++;
+        groups[key]._ids.push(inst.id);
+        // Keep most recent photo
+        if (inst.photos?.length && !groups[key].photos?.length) {
+          groups[key].photos = inst.photos;
+        }
+      }
+    } else {
+      individuals.push(inst);
+    }
+  }
+
+  return [...individuals, ...Object.values(groups)];
+}
 
 export default function MyPlants() {
+  const navigate = useNavigate();
   const [user, setUser] = useState(null);
   const [gardens, setGardens] = useState([]);
-  const [activeGarden, setActiveGarden] = useState(null);
-  const [seasons, setSeasons] = useState([]);
-  const [activeSeason, setActiveSeason] = useState(null);
-  const [myPlants, setMyPlants] = useState([]);
-  const [profiles, setProfiles] = useState({});
+  const [activeGardenId, setActiveGardenId] = useState(null);
+  const [beds, setBeds] = useState([]);
+  const [instances, setInstances] = useState([]);
+  const [plantTypes, setPlantTypes] = useState({});
   const [loading, setLoading] = useState(true);
-  const [statusFilter, setStatusFilter] = useState('all');
-  const [plannerStageFilter, setPlannerStageFilter] = useState('all');
-  const [locationFilter, setLocationFilter] = useState('all');
-  const [hasPhotosFilter, setHasPhotosFilter] = useState(false);
-  const [hasIssuesFilter, setHasIssuesFilter] = useState(false);
-  const [hasHarvestFilter, setHasHarvestFilter] = useState('all');
-  const [sortBy, setSortBy] = useState('updated');
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedPlantId, setSelectedPlantId] = useState(null);
-  const [showAddPlant, setShowAddPlant] = useState(false);
-  const [cropPlans, setCropPlans] = useState([]);
-  const [issuesCounts, setIssuesCounts] = useState({});
-  const [harvestsCounts, setHarvestsCounts] = useState({});
-  const [checkInOpen, setCheckInOpen] = useState(false);
-  const [diagnosisOpen, setDiagnosisOpen] = useState(false);
-  const [selectedPlantForAction, setSelectedPlantForAction] = useState(null);
-  
-  const [newPlant, setNewPlant] = useState({
-    plant_profile_id: '',
-    name: '',
-    status: 'seed',
-    notes: ''
-  });
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [bedFilter, setBedFilter] = useState('all');
+  const [seasonFilter, setSeasonFilter] = useState('all');
+  const [sortBy, setSortBy] = useState('updated');
 
   const { isPulling, pullDistance, isRefreshing } = usePullToRefresh(async () => {
-    await Promise.all([loadData(), activeSeason && loadMyPlants()]);
-    toast.success('Plants refreshed');
+    await loadInstances(activeGardenId);
+    toast.success('Refreshed');
   });
 
   useEffect(() => {
@@ -83,178 +86,104 @@ export default function MyPlants() {
   }, []);
 
   useEffect(() => {
-    if (activeSeason) {
-      loadMyPlants();
-    }
-  }, [activeSeason]);
+    if (activeGardenId) loadInstances(activeGardenId);
+  }, [activeGardenId]);
 
   const loadData = async () => {
     try {
       const userData = await base44.auth.me();
       setUser(userData);
 
-      const [gardensData, profilesData] = await Promise.all([
-        base44.entities.Garden.filter({
-          archived: false,
-          created_by: userData.email
-        }, '-updated_date'),
-        base44.entities.PlantProfile.list('variety_name', 500)
-      ]);
-
+      const gardensData = await base44.entities.Garden.filter({ created_by: userData.email, archived: false }, '-updated_date');
       setGardens(gardensData);
 
-      const profilesMap = {};
-      profilesData.forEach(p => { profilesMap[p.id] = p; });
-      setProfiles(profilesMap);
-
       if (gardensData.length > 0) {
-        const garden = gardensData[0];
-        setActiveGarden(garden);
-
-        const seasonsData = await base44.entities.GardenSeason.filter({
-          garden_id: garden.id
-        }, '-year');
-
-        if (seasonsData.length > 0) {
-          setSeasons(seasonsData);
-          setActiveSeason(seasonsData[0]);
-        }
+        setActiveGardenId(gardensData[0].id);
       }
-    } catch (error) {
-      console.error('Error loading data:', error);
+    } catch (e) {
+      console.error(e);
     } finally {
       setLoading(false);
     }
   };
 
-  const loadMyPlants = async () => {
+  const loadInstances = async (gardenId) => {
+    if (!gardenId) return;
+    setLoading(true);
     try {
-      const [plants, plans, allIssues, allHarvests] = await Promise.all([
-        base44.entities.MyPlant.filter({
-          garden_season_id: activeSeason.id,
-          created_by: user.email
-        }, '-updated_date'),
-        base44.entities.CropPlan.filter({
-          garden_season_id: activeSeason.id
-        }),
-        base44.entities.IssueLog.filter({
-          garden_season_id: activeSeason.id,
-          status: 'open'
-        }),
-        base44.entities.HarvestLog.filter({
-          garden_season_id: activeSeason.id
-        })
+      const [allInstances, bedsData, typesData] = await Promise.all([
+        base44.entities.PlantInstance.filter({ garden_id: gardenId }),
+        base44.entities.Bed.filter({ garden_id: gardenId }),
+        base44.entities.PlantType.list('common_name', 500),
       ]);
-      
-      setMyPlants(plants);
-      setCropPlans(plans);
-      
-      // Build counts maps
-      const issuesMap = {};
-      const harvestsMap = {};
-      
-      allIssues.forEach(issue => {
-        if (issue.plant_instance_id) {
-          issuesMap[issue.plant_instance_id] = (issuesMap[issue.plant_instance_id] || 0) + 1;
-        }
-      });
-      
-      allHarvests.forEach(harvest => {
-        if (harvest.plant_instance_id) {
-          harvestsMap[harvest.plant_instance_id] = (harvestsMap[harvest.plant_instance_id] || 0) + 1;
-        }
-      });
-      
-      setIssuesCounts(issuesMap);
-      setHarvestsCounts(harvestsMap);
-    } catch (error) {
-      console.error('Error loading plants:', error);
+
+      setBeds(bedsData);
+
+      const typesMap = {};
+      typesData.forEach(t => { typesMap[t.id] = t; });
+      setPlantTypes(typesMap);
+
+      // Exclude removed
+      setInstances(allInstances.filter(i => i.status !== 'removed'));
+    } catch (e) {
+      console.error(e);
+      toast.error('Failed to load plants');
+    } finally {
+      setLoading(false);
     }
   };
 
-  const handleAddPlant = async () => {
-    if (!newPlant.plant_profile_id) {
-      toast.error('Please select a plant variety');
-      return;
-    }
+  // All unique seasons
+  const allSeasons = [...new Set(instances.map(i => i.season_year).filter(Boolean))].sort().reverse();
 
-    try {
-      await base44.entities.MyPlant.create({
-        garden_season_id: activeSeason.id,
-        plant_profile_id: newPlant.plant_profile_id,
-        name: newPlant.name,
-        status: newPlant.status,
-        notes: newPlant.notes
-      });
-
-      await loadMyPlants();
-      setShowAddPlant(false);
-      setNewPlant({ plant_profile_id: '', name: '', status: 'seed', notes: '' });
-      toast.success('Plant added!');
-    } catch (error) {
-      console.error('Error adding plant:', error);
-      toast.error('Failed to add plant');
-    }
-  };
-
-
-
-  const filteredPlants = myPlants.filter(plant => {
-    if (statusFilter !== 'all' && plant.status !== statusFilter) return false;
-    
-    if (plannerStageFilter !== 'all') {
-      const plan = cropPlans.find(cp => cp.id === plant.crop_plan_id);
-      if (!plan || plan.status !== plannerStageFilter) return false;
-    }
-    
-    if (locationFilter !== 'all' && plant.location_name !== locationFilter) return false;
-    if (hasPhotosFilter && (!plant.photos || plant.photos.length === 0)) return false;
-    if (hasIssuesFilter && !issuesCounts[plant.id]) return false;
-    
-    if (hasHarvestFilter === 'harvested' && !harvestsCounts[plant.id]) return false;
-    if (hasHarvestFilter === 'not_harvested' && harvestsCounts[plant.id]) return false;
-    
+  // Filter
+  const filtered = instances.filter(inst => {
+    if (statusFilter !== 'all' && inst.status !== statusFilter) return false;
+    if (bedFilter !== 'all' && inst.bed_id !== bedFilter) return false;
+    if (seasonFilter !== 'all' && inst.season_year !== seasonFilter) return false;
     if (searchQuery) {
-      const profile = profiles[plant.plant_profile_id];
-      const searchStr = `${plant.name || ''} ${profile?.variety_name || ''} ${profile?.common_name || ''}`.toLowerCase();
-      if (!searchStr.includes(searchQuery.toLowerCase())) return false;
+      const q = searchQuery.toLowerCase();
+      if (!(inst.display_name || '').toLowerCase().includes(q) &&
+          !(inst.custom_name || '').toLowerCase().includes(q)) return false;
     }
     return true;
   });
-  
-  // Sort plants
-  const sortedPlants = [...filteredPlants].sort((a, b) => {
-    const profileA = profiles[a.plant_profile_id];
-    const profileB = profiles[b.plant_profile_id];
-    
+
+  // Group row crops
+  const grouped = groupRowCrops(filtered);
+
+  // Sort
+  const sorted = [...grouped].sort((a, b) => {
     switch (sortBy) {
-      case 'name':
-        return (a.name || profileA?.variety_name || '').localeCompare(b.name || profileB?.variety_name || '');
-      case 'stage':
-        const planA = cropPlans.find(cp => cp.id === a.crop_plan_id);
-        const planB = cropPlans.find(cp => cp.id === b.crop_plan_id);
-        return (planA?.status || '').localeCompare(planB?.status || '');
-      case 'issues':
-        return (issuesCounts[b.id] || 0) - (issuesCounts[a.id] || 0);
-      case 'harvests':
-        return (harvestsCounts[b.id] || 0) - (harvestsCounts[a.id] || 0);
-      case 'photos':
-        return (b.photos?.length || 0) - (a.photos?.length || 0);
+      case 'name': return (a.display_name || '').localeCompare(b.display_name || '');
+      case 'planted': return new Date(b.actual_plant_out_date || b.created_date) - new Date(a.actual_plant_out_date || a.created_date);
+      case 'status': return (a.status || '').localeCompare(b.status || '');
       case 'updated':
-      default:
-        return new Date(b.updated_date) - new Date(a.updated_date);
+      default: return new Date(b.updated_date) - new Date(a.updated_date);
     }
   });
-  
-  const uniqueLocations = [...new Set(myPlants.map(p => p.location_name).filter(Boolean))];
 
-  // Group by status
-  const plantsByStatus = STATUS_OPTIONS.reduce((acc, status) => {
-    acc[status.value] = sortedPlants.filter(p => p.status === status.value);
-    return acc;
-  }, {});
+  // Group by status for display
+  const byStatus = {};
+  sorted.forEach(inst => {
+    const s = inst.status || 'planned';
+    if (!byStatus[s]) byStatus[s] = [];
+    byStatus[s].push(inst);
+  });
 
-  if (loading) {
+  const statusOrder = ['in_ground', 'transplanted', 'flowering', 'fruiting', 'harvested', 'started', 'planned', 'removed'];
+
+  const getBed = (bedId) => beds.find(b => b.id === bedId);
+  const getOriginLabel = (inst) => {
+    if (inst.growing_method === 'SEEDLING_TRANSPLANT') return '🪴 Transplanted Seedling';
+    if (inst.growing_method === 'DIRECT_SOW') return '🌰 Direct Sown';
+    if (inst.growing_method === 'INDOOR_TRANSPLANT') return '🏠 Started Indoors';
+    if (inst.actual_transplant_date) return '🪴 Transplanted';
+    if (inst.actual_sow_date) return '🌰 Direct Sown';
+    return null;
+  };
+
+  if (loading && instances.length === 0) {
     return (
       <div className="flex items-center justify-center h-64">
         <Loader2 className="w-8 h-8 animate-spin text-emerald-600" />
@@ -262,381 +191,201 @@ export default function MyPlants() {
     );
   }
 
-  if (!activeSeason) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="text-center">
-          <Sprout className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-          <p className="text-gray-600">No active season</p>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <>
-      <PullToRefreshIndicator 
-        isPulling={isPulling} 
-        pullDistance={pullDistance} 
-        isRefreshing={isRefreshing} 
-      />
-      <div className="max-w-7xl mx-auto space-y-6">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <Sprout className="w-6 h-6 text-emerald-600" />
-          <h1 className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>My Plants</h1>
-        </div>
-        <div className="flex gap-2">
-          <Button
-            onClick={() => setCheckInOpen(true)}
-            variant="outline"
-            className="interactive-button"
-            size="sm"
-          >
-            ✓ Check In
-          </Button>
-          <Button
-            onClick={() => setShowAddPlant(true)}
-            className="bg-emerald-600 hover:bg-emerald-700 interactive-button"
-            size="sm"
-          >
-            <Plus className="w-4 h-4 mr-2" />
-            Add Plant
-          </Button>
-        </div>
-      </div>
+      <PullToRefreshIndicator isPulling={isPulling} pullDistance={pullDistance} isRefreshing={isRefreshing} />
+      <div className="max-w-7xl mx-auto space-y-5">
 
-      {/* Filters */}
-      <div className="flex flex-wrap gap-2">
-        <div className="relative flex-1 min-w-[200px]">
-          <Input
-            placeholder="Search plants..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="h-9 text-sm"
-          />
+        {/* Header */}
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <h1 className="text-2xl font-bold flex items-center gap-2" style={{ color: 'var(--text-primary)' }}>
+              <Sprout className="w-6 h-6 text-emerald-600" />
+              My Garden Plants
+            </h1>
+            <p className="text-sm text-gray-500 mt-0.5">{sorted.length} plant{sorted.length !== 1 ? 's' : ''} in garden</p>
+          </div>
+          {gardens.length > 1 && (
+            <Select value={activeGardenId} onValueChange={setActiveGardenId}>
+              <SelectTrigger className="w-40 h-9 text-xs">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {gardens.map(g => <SelectItem key={g.id} value={g.id}>{g.name}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          )}
         </div>
-        {gardens.length > 1 && (
-          <Select value={activeGarden?.id} onValueChange={(id) => {
-            const garden = gardens.find(g => g.id === id);
-            setActiveGarden(garden);
-          }}>
-            <SelectTrigger className="w-32 h-9 text-xs">
-              <SelectValue />
-            </SelectTrigger>
+
+        {/* Filters */}
+        <div className="flex flex-wrap gap-2">
+          <div className="relative flex-1 min-w-[180px]">
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+            <Input
+              placeholder="Search plants..."
+              value={searchQuery}
+              onChange={e => setSearchQuery(e.target.value)}
+              className="pl-8 h-9 text-sm"
+            />
+          </div>
+          <Select value={statusFilter} onValueChange={setStatusFilter}>
+            <SelectTrigger className="w-36 h-9 text-xs"><SelectValue /></SelectTrigger>
             <SelectContent>
-              {gardens.map(g => (
-                <SelectItem key={g.id} value={g.id}>{g.name}</SelectItem>
+              <SelectItem value="all">All Status</SelectItem>
+              {Object.entries(STATUS_CONFIG).map(([v, c]) => (
+                <SelectItem key={v} value={v}>{c.label}</SelectItem>
               ))}
             </SelectContent>
           </Select>
-        )}
-        <Select value={activeSeason?.id} onValueChange={(id) => setActiveSeason(seasons.find(s => s.id === id))}>
-          <SelectTrigger className="w-28 h-9 text-xs">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {seasons.map(s => (
-              <SelectItem key={s.id} value={s.id}>{s.year} {s.season}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
-      
-      {/* Row 2 - Status and Stage */}
-      <div className="flex flex-wrap gap-2">
-        <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger className="w-32 h-9 text-xs">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Status</SelectItem>
-            {STATUS_OPTIONS.map(opt => (
-              <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <Select value={plannerStageFilter} onValueChange={setPlannerStageFilter}>
-          <SelectTrigger className="w-32 h-9 text-xs">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Stage</SelectItem>
-            <SelectItem value="planned">Planned</SelectItem>
-            <SelectItem value="scheduled">Scheduled</SelectItem>
-            <SelectItem value="planted">Planted</SelectItem>
-            <SelectItem value="completed">Completed</SelectItem>
-          </SelectContent>
-        </Select>
-        {uniqueLocations.length > 0 && (
-          <Select value={locationFilter} onValueChange={setLocationFilter}>
-            <SelectTrigger className="w-32 h-9 text-xs">
-              <SelectValue />
-            </SelectTrigger>
+          {beds.length > 0 && (
+            <Select value={bedFilter} onValueChange={setBedFilter}>
+              <SelectTrigger className="w-36 h-9 text-xs"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Beds</SelectItem>
+                {beds.map(b => <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          )}
+          {allSeasons.length > 1 && (
+            <Select value={seasonFilter} onValueChange={setSeasonFilter}>
+              <SelectTrigger className="w-32 h-9 text-xs"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Seasons</SelectItem>
+                {allSeasons.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          )}
+          <Select value={sortBy} onValueChange={setSortBy}>
+            <SelectTrigger className="w-28 h-9 text-xs"><SelectValue /></SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All Loc.</SelectItem>
-              {uniqueLocations.map(loc => (
-                <SelectItem key={loc} value={loc}>{loc}</SelectItem>
-              ))}
+              <SelectItem value="updated">Recent</SelectItem>
+              <SelectItem value="name">Name</SelectItem>
+              <SelectItem value="planted">Planted</SelectItem>
+              <SelectItem value="status">Stage</SelectItem>
             </SelectContent>
           </Select>
+        </div>
+
+        {/* Empty state */}
+        {sorted.length === 0 && !loading && (
+          <div className="text-center py-16">
+            <Sprout className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+            <h2 className="text-xl font-semibold text-gray-600 mb-2">No plants in garden yet</h2>
+            <p className="text-gray-500 mb-6 max-w-sm mx-auto">
+              Plants appear here automatically when you place them in the Garden Spaces or Plot Layout.
+            </p>
+            <Button onClick={() => navigate(createPageUrl('GardenPlanting'))} className="bg-emerald-600 hover:bg-emerald-700">
+              Go to Garden Spaces
+            </Button>
+          </div>
         )}
-        <Select value={sortBy} onValueChange={setSortBy}>
-          <SelectTrigger className="w-28 h-9 text-xs">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="updated">Recent</SelectItem>
-            <SelectItem value="name">Name</SelectItem>
-            <SelectItem value="stage">Stage</SelectItem>
-            <SelectItem value="photos">Photos</SelectItem>
-            <SelectItem value="issues">Issues</SelectItem>
-            <SelectItem value="harvests">Harvest</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
-      
-      {/* Row 3 - Quick Filters */}
-      <div className="flex gap-2">
-        <Button
-          variant={hasPhotosFilter ? "default" : "outline"}
-          size="sm"
-          onClick={() => setHasPhotosFilter(!hasPhotosFilter)}
-          className="h-8 text-xs px-3"
-        >
-          📷
-        </Button>
-        <Button
-          variant={hasIssuesFilter ? "default" : "outline"}
-          size="sm"
-          onClick={() => setHasIssuesFilter(!hasIssuesFilter)}
-          className="h-8 text-xs px-3"
-        >
-          ⚠️
-        </Button>
-        <Select value={hasHarvestFilter} onValueChange={setHasHarvestFilter}>
-          <SelectTrigger className="w-28 h-8 text-xs">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Harvest</SelectItem>
-            <SelectItem value="harvested">Yes</SelectItem>
-            <SelectItem value="not_harvested">No</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
 
-      {/* Plants by Status */}
-      <div className="space-y-6">
-        {STATUS_OPTIONS.map(statusOpt => {
-          const plants = plantsByStatus[statusOpt.value] || [];
-          if (plants.length === 0) return null;
+        {/* Plants by status */}
+        <div className="space-y-6">
+          {statusOrder.map(status => {
+            const plants = byStatus[status];
+            if (!plants?.length) return null;
+            const cfg = STATUS_CONFIG[status] || STATUS_CONFIG.planned;
 
-          return (
-            <div key={statusOpt.value}>
-              <h3 className="font-semibold text-lg mb-3 flex items-center gap-2">
-                {statusOpt.label}
-                <Badge variant="outline">{plants.length}</Badge>
-              </h3>
-              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                {plants.map(plant => {
-                  const profile = profiles[plant.plant_profile_id];
-                  const mainPhoto = plant.photos?.[0];
-                  
-                  return (
-                    <Card 
-                      key={plant.id} 
-                      className="interactive-card hover:shadow-lg transition-all duration-300"
-                      style={{ 
-                        background: 'var(--glass-bg)',
-                        backdropFilter: 'blur(12px)',
-                        WebkitBackdropFilter: 'blur(12px)',
-                        border: '1px solid var(--glass-border)'
-                      }}
-                    >
-                      <div onClick={() => setSelectedPlantId(plant.id)}>
-                        {mainPhoto && (
-                          <div className="h-48 overflow-hidden rounded-t-lg">
-                            <img
-                              src={mainPhoto.url}
-                              alt={plant.name || profile?.variety_name}
-                              className="w-full h-full object-cover"
-                            />
+            return (
+              <div key={status}>
+                <h3 className="font-bold text-base mb-3 flex items-center gap-2" style={{ color: 'var(--text-primary)' }}>
+                  {cfg.label}
+                  <Badge variant="outline" className="text-xs">{plants.length}</Badge>
+                </h3>
+                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                  {plants.map(inst => {
+                    const bed = getBed(inst.bed_id);
+                    const mainPhoto = inst.photos?.[0];
+                    const originLabel = getOriginLabel(inst);
+                    const plantedDate = inst.actual_plant_out_date || inst.actual_sow_date || inst.actual_transplant_date;
+                    const daysGrowing = plantedDate ? differenceInDays(new Date(), new Date(plantedDate)) : null;
+                    const plantType = plantTypes[inst.plant_type_id];
+
+                    return (
+                      <Card
+                        key={inst.id}
+                        className="cursor-pointer hover:shadow-lg transition-all duration-200 overflow-hidden group"
+                        onClick={() => navigate(createPageUrl('GardenPlantDetail') + `?id=${inst.id}`)}
+                      >
+                        {/* Photo or placeholder */}
+                        <div className={cn('h-36 flex items-center justify-center relative overflow-hidden', mainPhoto ? '' : 'bg-gradient-to-br from-emerald-50 to-green-100')}>
+                          {mainPhoto ? (
+                            <img src={mainPhoto.url} alt={inst.display_name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+                          ) : (
+                            <span className="text-5xl">{plantType?.icon || inst.plant_type_icon || '🌱'}</span>
+                          )}
+                          {/* Status badge */}
+                          <div className="absolute top-2 left-2">
+                            <span className={cn('text-xs font-semibold px-2 py-0.5 rounded-full', cfg.color)}>
+                              {cfg.label}
+                            </span>
                           </div>
-                        )}
-                        <CardHeader className="pb-3">
-                          <CardTitle className="text-base" style={{ color: 'var(--text-primary)' }}>
-                            {plant.name || profile?.variety_name || 'Unnamed Plant'}
-                          </CardTitle>
-                          <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>{profile?.common_name}</p>
-                        </CardHeader>
-                        <CardContent>
-                          <div className="space-y-2">
-                            <Badge className={STATUS_OPTIONS.find(s => s.value === plant.status)?.color}>
-                              {STATUS_OPTIONS.find(s => s.value === plant.status)?.label}
-                            </Badge>
-                            {plant.germination_date && (
-                              <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
-                                Germinated: {format(new Date(plant.germination_date), 'MMM d, yyyy')}
+                          {/* Row crop badge */}
+                          {inst._isGroup && (
+                            <div className="absolute top-2 right-2 bg-purple-600 text-white text-xs font-bold px-2 py-0.5 rounded-full">
+                              {inst._groupCount} plants
+                            </div>
+                          )}
+                          {/* Photo count */}
+                          {(inst.photos?.length > 0) && (
+                            <div className="absolute bottom-2 right-2 bg-black/50 text-white text-xs px-1.5 py-0.5 rounded-full flex items-center gap-1">
+                              <Camera className="w-3 h-3" />
+                              {inst.photos.length}
+                            </div>
+                          )}
+                        </div>
+
+                        <CardContent className="p-3">
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="flex-1 min-w-0">
+                              <p className="font-semibold text-sm truncate" style={{ color: 'var(--text-primary)' }}>
+                                {inst.custom_name || inst.display_name || 'Unknown Plant'}
                               </p>
+                              {bed && (
+                                <p className="text-xs text-gray-500 flex items-center gap-1 mt-0.5">
+                                  <MapPin className="w-3 h-3" />{bed.name}
+                                </p>
+                              )}
+                            </div>
+                            <ChevronRight className="w-4 h-4 text-gray-400 flex-shrink-0 mt-0.5" />
+                          </div>
+
+                          <div className="flex flex-wrap gap-1.5 mt-2">
+                            {originLabel && (
+                              <span className="text-[10px] bg-amber-100 text-amber-800 px-1.5 py-0.5 rounded-full font-medium">
+                                {originLabel}
+                              </span>
+                            )}
+                            {inst.season_year && (
+                              <span className="text-[10px] bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded-full font-medium">
+                                {inst.season_year}
+                              </span>
+                            )}
+                            {daysGrowing !== null && daysGrowing >= 0 && (
+                              <span className="text-[10px] bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded-full font-medium">
+                                Day {daysGrowing}
+                              </span>
                             )}
                           </div>
+
+                          {/* Harvest info */}
+                          {(inst.harvest_count > 0 || inst.total_yield_lbs > 0) && (
+                            <div className="mt-2 pt-2 border-t flex items-center gap-2 text-xs text-purple-700">
+                              <span>✂️ {inst.harvest_count || 0} harvest{(inst.harvest_count || 0) !== 1 ? 's' : ''}</span>
+                              {inst.total_yield_lbs > 0 && <span>· {inst.total_yield_lbs.toFixed(1)} lbs</span>}
+                            </div>
+                          )}
                         </CardContent>
-                      </div>
-                      
-                      {/* Quick Actions */}
-                      <div className="px-4 pb-4 flex gap-2">
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setSelectedPlantForAction(plant.crop_plan_id);
-                            setCheckInOpen(true);
-                          }}
-                          className="flex-1 text-xs"
-                        >
-                          ✓ Log
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setDiagnosisOpen(true);
-                          }}
-                          className="flex-1 text-xs"
-                        >
-                          🔍 Diagnose
-                        </Button>
-                      </div>
-                    </Card>
-                  );
-                })}
+                      </Card>
+                    );
+                  })}
+                </div>
               </div>
-            </div>
-          );
-        })}
-      </div>
-
-      {filteredPlants.length === 0 && (
-        <div className="text-center py-12">
-          <Sprout className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-          <p className="text-gray-600">No plants yet</p>
-          <Button
-            onClick={() => setShowAddPlant(true)}
-            variant="outline"
-            className="mt-4"
-          >
-            <Plus className="w-4 h-4 mr-2" />
-            Add Your First Plant
-          </Button>
+            );
+          })}
         </div>
-      )}
-
-      {/* Add Plant Modal */}
-      <Dialog open={showAddPlant} onOpenChange={setShowAddPlant}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Add Plant to Track</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div>
-              <Label>Variety</Label>
-              <Select
-                value={newPlant.plant_profile_id}
-                onValueChange={(v) => {
-                  const profile = profiles[v];
-                  setNewPlant({ 
-                    ...newPlant, 
-                    plant_profile_id: v,
-                    name: profile?.variety_name || ''
-                  });
-                }}
-              >
-                <SelectTrigger className="mt-2">
-                  <SelectValue placeholder="Select variety" />
-                </SelectTrigger>
-                <SelectContent className="max-h-64">
-                  {Object.values(profiles).slice(0, 100).map(p => (
-                    <SelectItem key={p.id} value={p.id}>
-                      {p.variety_name} ({p.common_name})
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div>
-              <Label>Custom Name (optional)</Label>
-              <Input
-                value={newPlant.name}
-                onChange={(e) => setNewPlant({ ...newPlant, name: e.target.value })}
-                placeholder="e.g., Cherry Tom #1"
-                className="mt-2"
-              />
-            </div>
-            <div>
-              <Label>Current Status</Label>
-              <Select
-                value={newPlant.status}
-                onValueChange={(v) => setNewPlant({ ...newPlant, status: v })}
-              >
-                <SelectTrigger className="mt-2">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {STATUS_OPTIONS.map(opt => (
-                    <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div>
-              <Label>Notes</Label>
-              <Textarea
-                value={newPlant.notes}
-                onChange={(e) => setNewPlant({ ...newPlant, notes: e.target.value })}
-                placeholder="Add notes..."
-                className="mt-2"
-                rows={3}
-              />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowAddPlant(false)}>Cancel</Button>
-            <Button
-              onClick={handleAddPlant}
-              disabled={!newPlant.plant_profile_id}
-              className="bg-emerald-600 hover:bg-emerald-700"
-            >
-              Add Plant
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Plant Detail Modal */}
-      <PlantDetailModal
-        plantId={selectedPlantId}
-        open={!!selectedPlantId}
-        onOpenChange={(open) => !open && setSelectedPlantId(null)}
-        onUpdate={loadMyPlants}
-      />
-
-      {/* Quick Check-In Modal */}
-      <QuickCheckInModal
-        open={checkInOpen}
-        onOpenChange={setCheckInOpen}
-        preselectedCropPlanIds={selectedPlantForAction ? [selectedPlantForAction] : undefined}
-      />
-
-      {/* Diagnosis Modal */}
-      <DiagnosisModal
-        open={diagnosisOpen}
-        onOpenChange={setDiagnosisOpen}
-      />
-    </div>
+      </div>
     </>
   );
 }
