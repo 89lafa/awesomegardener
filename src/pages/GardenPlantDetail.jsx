@@ -207,7 +207,7 @@ export default function GardenPlantDetail() {
   };
 
   const saveUpdate = async (updates) => {
-    await base44.entities.MyPlant.update(plant.id, updates);
+    await base44.entities.PlantInstance.update(plant.id, updates);
     setPlant(prev => ({ ...prev, ...updates }));
   };
 
