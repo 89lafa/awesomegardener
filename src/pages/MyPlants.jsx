@@ -98,14 +98,41 @@ export default function MyPlants() {
       setGardens(gardensData);
 
       if (gardensData.length > 0) {
-        // Load instances directly here instead of relying on the useEffect chain
-        await loadInstances(gardensData[0].id, gardensData[0].id);
-        setActiveGardenId(gardensData[0].id);
-      } else {
-        setLoading(false);
+        // Find the garden with the most plants, or default to first
+        // Load all instances across all gardens to find which one has plants
+        const allGardenIds = gardensData.map(g => g.id);
+        
+        // Fetch all instances for all gardens in parallel
+        const allInstancesArrays = await Promise.all(
+          allGardenIds.map(gid => base44.entities.PlantInstance.filter({ garden_id: gid }, '-updated_date', 500))
+        );
+        
+        // Find the garden with the most plants
+        let bestGardenIdx = 0;
+        let maxCount = 0;
+        allInstancesArrays.forEach((arr, idx) => {
+          if (arr.length > maxCount) { maxCount = arr.length; bestGardenIdx = idx; }
+        });
+
+        const selectedGardenId = gardensData[bestGardenIdx].id;
+        const selectedInstances = allInstancesArrays[bestGardenIdx];
+
+        const [bedsData, typesData] = await Promise.all([
+          base44.entities.Bed.filter({ garden_id: selectedGardenId }),
+          base44.entities.PlantType.list('common_name', 500),
+        ]);
+
+        const typesMap = {};
+        typesData.forEach(t => { typesMap[t.id] = t; });
+
+        setPlantTypes(typesMap);
+        setBeds(bedsData);
+        setInstances(selectedInstances.filter(i => i.status !== 'removed'));
+        setActiveGardenId(selectedGardenId);
       }
     } catch (e) {
       console.error(e);
+    } finally {
       setLoading(false);
     }
   };
