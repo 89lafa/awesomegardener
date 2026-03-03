@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useSearchParams, Link } from 'react-router-dom';
+import { useSearchParams, Link, useLocation } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
 import { base44 } from '@/api/base44Client';
 import { 
@@ -231,15 +231,21 @@ export default function SeedStash() {
     is_wishlist: false
   });
 
-  const { isPulling, pullDistance, isRefreshing } = usePullToRefresh(async () => {
+const { isPulling, pullDistance, isRefreshing } = usePullToRefresh(async () => {
     await loadData();
     toast.success('Seeds refreshed');
   });
 
+  const location = useLocation();
+
   useEffect(() => {
+    // location.key changes every time React Router navigates to this page,
+    // even coming back from another page. This guarantees a fresh fetch
+    // every time the user arrives here — whether first load or returning.
+    loadingRef.current = false;
     loadData();
-    // NOTE: loadViewPreference is now MERGED into loadData() to avoid duplicate auth.me() calls
-  }, []);
+  }, [location.key]);
+
 
   // ==========================================================
   // FIX: MERGED loadViewPreference INTO loadData
