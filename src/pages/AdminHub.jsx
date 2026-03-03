@@ -65,6 +65,7 @@ const ADMIN_TOOLS = {
   ],
   'User Management': [
     { name: 'Manage Users', route: 'Users', icon: Users, description: 'View and manage user accounts' },
+    { name: 'User Activity', route: 'AdminUserActivity', icon: Users, description: 'Daily/weekly active users, session stats, and engagement metrics' },
   ]
 };
 

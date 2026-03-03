@@ -84,6 +84,7 @@ const PlotItem = React.memo(({
 
   return (
     <div
+      title={!isMobile ? item.label : undefined}
       onDoubleClick={!isMobile ? onDoubleClick : undefined}
       onTouchStart={isMobile ? handlePointerDown : undefined}
       onTouchMove={isMobile ? handlePointerMove : undefined}
