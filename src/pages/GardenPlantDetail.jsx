@@ -186,23 +186,19 @@ export default function GardenPlantDetail() {
   const loadPlant = async () => {
     setLoading(true);
     try {
-      const [plants, user] = await Promise.all([
-        base44.entities.MyPlant.filter({ id: plantId }),
+      const [instances, user] = await Promise.all([
+        base44.entities.PlantInstance.filter({ id: plantId }),
         base44.auth.me().catch(() => null)
       ]);
-      if (!plants.length) { setLoading(false); return; }
-      const p = plants[0];
+      if (!instances.length) { setLoading(false); return; }
+      const p = instances[0];
       setPlant(p);
       setIsOwner(user && p.created_by === user.email);
 
-      if (p.variety_id) {
-        const vars = await base44.entities.Variety.filter({ id: p.variety_id });
-        if (vars.length) setVariety(vars[0]);
-      }
-      if (p.plant_type_id) {
-        const types = await base44.entities.PlantType.filter({ id: p.plant_type_id });
-        if (types.length) setPlantType(types[0]);
-      }
+      const fetches = [];
+      if (p.variety_id) fetches.push(base44.entities.Variety.filter({ id: p.variety_id }).then(r => r[0] && setVariety(r[0])));
+      if (p.plant_type_id) fetches.push(base44.entities.PlantType.filter({ id: p.plant_type_id }).then(r => r[0] && setPlantType(r[0])));
+      await Promise.all(fetches);
     } catch (err) {
       toast.error('Failed to load plant');
     } finally {
