@@ -359,6 +359,7 @@ try {
           plants_per_slot: selectedPlant.plantsPerSlot || 1,
           season_year: activeSeason || `${new Date().getFullYear()}-Spring`,
           status: 'planned',
+          location_name: item.label,
           ...seedlingData
         });
         
