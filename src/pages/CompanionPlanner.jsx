@@ -49,6 +49,7 @@ export default function CompanionPlanner() {
   const [csvFile, setCsvFile] = useState(null);
   const [importResults, setImportResults] = useState(null);
   const [filterPlantId, setFilterPlantId] = useState('');
+  const [filterSearch, setFilterSearch] = useState('');
   const [showChartModal, setShowChartModal] = useState(false);
   
   const [formData, setFormData] = useState({
@@ -323,20 +324,46 @@ Cucumber,Radish,Good Conditional,Radishes can deter cucumber beetles but compete
       <Card>
         <CardContent className="p-4">
           <Label>Filter by Plant</Label>
-          <Select value={filterPlantId} onValueChange={setFilterPlantId}>
-            <SelectTrigger className="mt-2">
-              <SelectValue placeholder="Select a plant to see its companions..." />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value={null}>All Plants</SelectItem>
-              {plantTypes.map((type) => (
-                <SelectItem key={type.id} value={type.id}>
-                  {type.icon && <span className="mr-2">{type.icon}</span>}
-                  {type.common_name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <div className="flex gap-2 mt-2">
+            <Input
+              placeholder="Search plant name (e.g. Tomato)..."
+              value={filterSearch}
+              onChange={(e) => {
+                setFilterSearch(e.target.value);
+                if (!e.target.value) setFilterPlantId('');
+              }}
+              className="flex-1"
+            />
+            {filterPlantId && (
+              <Button variant="outline" size="sm" onClick={() => { setFilterPlantId(''); setFilterSearch(''); }}>
+                Clear
+              </Button>
+            )}
+          </div>
+          {filterSearch && !filterPlantId && (
+            <div className="mt-1 border rounded-lg overflow-hidden shadow-sm max-h-48 overflow-y-auto bg-white z-10 relative">
+              {plantTypes
+                .filter(t => t.common_name.toLowerCase().includes(filterSearch.toLowerCase()))
+                .slice(0, 20)
+                .map(type => (
+                  <button
+                    key={type.id}
+                    className="w-full text-left px-3 py-2 hover:bg-emerald-50 text-sm flex items-center gap-2"
+                    onClick={() => { setFilterPlantId(type.id); setFilterSearch(type.common_name); }}
+                  >
+                    {type.icon && <span>{type.icon}</span>}
+                    {type.common_name}
+                  </button>
+                ))
+              }
+              {plantTypes.filter(t => t.common_name.toLowerCase().includes(filterSearch.toLowerCase())).length === 0 && (
+                <p className="px-3 py-2 text-sm text-gray-400">No plants found</p>
+              )}
+            </div>
+          )}
+          {filterPlantId && (
+            <p className="text-xs text-emerald-700 mt-1">Showing companions for: <strong>{filterSearch}</strong></p>
+          )}
         </CardContent>
       </Card>
 
