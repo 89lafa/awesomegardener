@@ -1305,6 +1305,7 @@ try {
                               return (
                                 <div
                                   key={`${colIdx}-${rowIdx}`}
+                                  title={p.display_name || p.variety_name || p.plant_type_name || 'Plant'}
                                   className={`relative bg-emerald-500 border-4 rounded flex items-center justify-center text-white font-medium cursor-pointer hover:bg-emerald-600 transition-colors group ${borderColor}`}
                                   style={{
                                     gridColumn: `span ${p.cell_span_cols || 1}`,
