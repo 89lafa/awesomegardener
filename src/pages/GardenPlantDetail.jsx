@@ -176,7 +176,11 @@ export default function GardenPlantDetail() {
   const [uploadingLogPhoto, setUploadingLogPhoto] = useState(false);
 
   useEffect(() => {
-    if (plantId) loadPlant();
+    if (plantId) {
+      loadPlant();
+    } else {
+      setLoading(false);
+    }
   }, [plantId]);
 
   const loadPlant = async () => {

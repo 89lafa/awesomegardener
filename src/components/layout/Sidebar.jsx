@@ -42,6 +42,7 @@ const getNavItems = (userRole, isEditor, user) => {
     { name: 'Grow Lists', icon: ListChecks, page: 'GrowLists' },
     { name: 'Gardens', icon: Globe, page: 'Gardens' },
     { name: 'My Garden Plants', icon: Apple, page: 'MyPlants' },
+    { name: 'Plant Detail Tracker', icon: Sprout, page: 'GardenPlantDetail' },
     
     // Garden management
     { category: true, label: 'GARDEN MANAGEMENT' },

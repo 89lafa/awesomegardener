@@ -97,6 +97,7 @@ import GardenBuilder from './pages/GardenBuilder';
 import GardenCare from './pages/GardenCare';
 import GardenDiary from './pages/GardenDiary';
 import GardenExpenses from './pages/GardenExpenses';
+import GardenPlantDetail from './pages/GardenPlantDetail';
 import GardenPlanting from './pages/GardenPlanting';
 import GardeningBasics from './pages/GardeningBasics';
 import Gardens from './pages/Gardens';
@@ -122,6 +123,7 @@ import ManageForumCategories from './pages/ManageForumCategories';
 import Messages from './pages/Messages';
 import MyGarden from './pages/MyGarden';
 import MyIndoorPlants from './pages/MyIndoorPlants';
+import MyPlants from './pages/MyPlants';
 import NeedToBuy from './pages/NeedToBuy';
 import Notifications from './pages/Notifications';
 import Onboarding from './pages/Onboarding';
@@ -156,8 +158,6 @@ import Users from './pages/Users';
 import VarietyReviewQueue from './pages/VarietyReviewQueue';
 import ViewVariety from './pages/ViewVariety';
 import ZoneMap from './pages/ZoneMap';
-import GardenPlantDetail from './pages/GardenPlantDetail';
-import MyPlants from './pages/MyPlants';
 import __Layout from './Layout.jsx';
 
 
@@ -212,6 +212,7 @@ export const PAGES = {
     "GardenCare": GardenCare,
     "GardenDiary": GardenDiary,
     "GardenExpenses": GardenExpenses,
+    "GardenPlantDetail": GardenPlantDetail,
     "GardenPlanting": GardenPlanting,
     "GardeningBasics": GardeningBasics,
     "Gardens": Gardens,
@@ -237,6 +238,7 @@ export const PAGES = {
     "Messages": Messages,
     "MyGarden": MyGarden,
     "MyIndoorPlants": MyIndoorPlants,
+    "MyPlants": MyPlants,
     "NeedToBuy": NeedToBuy,
     "Notifications": Notifications,
     "Onboarding": Onboarding,
@@ -271,8 +273,6 @@ export const PAGES = {
     "VarietyReviewQueue": VarietyReviewQueue,
     "ViewVariety": ViewVariety,
     "ZoneMap": ZoneMap,
-    "GardenPlantDetail": GardenPlantDetail,
-    "MyPlants": MyPlants,
 }
 
 export const pagesConfig = {
