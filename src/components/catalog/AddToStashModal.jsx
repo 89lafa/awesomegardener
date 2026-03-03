@@ -104,11 +104,27 @@ export default function AddToStashModal({ open, onOpenChange, variety, plantType
       });
       
       let profileId;
-      
+
       if (existingProfiles.length > 0) {
         profileId = existingProfiles[0].id;
         console.log('[AddToStashModal] Using existing PlantProfile:', profileId);
-      } else {
+        // If this old profile is missing variety_id, patch it now so SeedStashDetail loads full data
+        if (!existingProfiles[0].variety_id && variety.id) {
+          try {
+            await base44.entities.PlantProfile.update(profileId, {
+              variety_id: variety.id,
+              days_to_maturity_seed: existingProfiles[0].days_to_maturity_seed || variety.days_to_maturity || variety.days_to_maturity_min || null,
+              spacing_in_min: existingProfiles[0].spacing_in_min || variety.spacing_min || variety.spacing_recommended || null,
+              spacing_in_max: existingProfiles[0].spacing_in_max || variety.spacing_max || variety.spacing_recommended || null,
+              common_name: existingProfiles[0].common_name || plantType?.common_name || null,
+            });
+            console.log('[AddToStashModal] Patched existing profile with variety_id:', variety.id);
+          } catch (patchErr) {
+            console.warn('[AddToStashModal] Could not patch existing profile:', patchErr);
+          }
+        }
+      } else {      
+
         // Get PlantType for common_name
         const plantTypeResults = await base44.entities.PlantType.filter({ id: variety.plant_type_id });
         const plantTypeData = plantTypeResults.length > 0 ? plantTypeResults[0] : null;
@@ -123,9 +139,9 @@ export default function AddToStashModal({ open, onOpenChange, variety, plantType
           plant_family: plantTypeData?.plant_family_id || null,
           common_name: plantTypeData?.common_name || plantType?.common_name || 'Unknown',
           variety_name: variety.variety_name,
-          days_to_maturity_seed: variety.days_to_maturity || null,
-          spacing_in_min: variety.spacing_recommended || null,
-          spacing_in_max: variety.spacing_recommended || null,
+          days_to_maturity_seed: variety.days_to_maturity || variety.days_to_maturity_min || null,
+          spacing_in_min: variety.spacing_min || variety.spacing_recommended || null,
+          spacing_in_max: variety.spacing_max || variety.spacing_recommended || null,
           height_in_min: variety.height_min || null,
           height_in_max: variety.height_max || null,
           sun_requirement: variety.sun_requirement || null,
