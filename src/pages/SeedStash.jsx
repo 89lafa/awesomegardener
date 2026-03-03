@@ -653,9 +653,9 @@ const handleSubmit = async () => {
       if (filterTab === 'stash' && seed.is_wishlist) return false;
       if (filterTab === 'wishlist' && !seed.is_wishlist) return false;
 
-      const profile = profiles[seed.plant_profile_id];
-      if (!profile && seed.plant_profile_id) return false;
-
+const profile = profiles[seed.plant_profile_id];
+      // Do not hide seeds just because the profile hasn't loaded yet —
+      // they will show as "Unknown" briefly then fill in once profiles load.
       // Search filter
       const searchLower = debouncedSearchQuery.toLowerCase();
       if (debouncedSearchQuery) {
