@@ -82,6 +82,28 @@ export default function MyPlants() {
     toast.success('Refreshed');
   });
 
+  const STATUS_OPTIONS = [
+    { value: 'planned', label: '📋 Planned' },
+    { value: 'started', label: '🌱 Started (Seed Started Indoors)' },
+    { value: 'transplanted', label: '🪴 Transplanted' },
+    { value: 'in_ground', label: '🌿 In Ground / Planted' },
+    { value: 'flowering', label: '🌸 Flowering' },
+    { value: 'fruiting', label: '🍅 Fruiting' },
+    { value: 'harvested', label: '✂️ Harvesting' },
+    { value: 'removed', label: '🗑 Removed' },
+  ];
+
+  const handleQuickStatusChange = async (inst, newStatus, e) => {
+    e.stopPropagation();
+    try {
+      await base44.entities.PlantInstance.update(inst.id, { status: newStatus });
+      setInstances(prev => prev.map(i => i.id === inst.id ? { ...i, status: newStatus } : i));
+      toast.success(`Updated to ${STATUS_OPTIONS.find(s => s.value === newStatus)?.label || newStatus}`);
+    } catch (err) {
+      toast.error('Failed to update status');
+    }
+  };
+
   useEffect(() => {
     loadData();
   }, []);
