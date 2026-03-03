@@ -241,7 +241,7 @@ export default function PlantingModal({
     }
     
     // 2) Fallback: any rule for this plant type (user may not have set up this container type yet)
-    const anyRule = plantingRules.find(r => r.plant_type_id === plantTypeId);
+    const anyRule = plantingRules.find(r => r.plant_type_id === plantTypeId && !r.variety_id);
     if (anyRule) {
       console.log(`[PlantingRule] ⚠ No rule for ${containerType}, using ${anyRule.container_type} fallback: ${anyRule.grid_cols}×${anyRule.grid_rows}, ${anyRule.plants_per_grid_slot} plants/slot`);
       return { cols: anyRule.grid_cols, rows: anyRule.grid_rows, plantsPerSlot: anyRule.plants_per_grid_slot || 1 };
