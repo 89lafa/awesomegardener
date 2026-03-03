@@ -78,8 +78,9 @@ export default function AddCustomSeedDialog({ open, onOpenChange, onSuccess, pre
       console.error('Error loading plant types:', error);
     }
   };
-
   const resetForm = () => {
+    setLoading(false);
+    setShowSuggestButton(false);
     setFormData({
       plant_type_id: '',
       variety_name: '',
@@ -193,15 +194,14 @@ export default function AddCustomSeedDialog({ open, onOpenChange, onSuccess, pre
         is_wishlist: false,
         from_catalog: false
       });
-
       toast.success('Custom seed added to stash!');
+      setLoading(false);
       setShowSuggestButton(true);
       
       // Don't close immediately - show suggest button
       setTimeout(() => {
         onSuccess?.();
         onOpenChange(false);
-        setShowSuggestButton(false);
       }, 3000);
     } catch (error) {
       console.error('Error adding custom seed:', error);
