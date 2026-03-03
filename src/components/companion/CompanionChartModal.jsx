@@ -294,51 +294,60 @@ export default function CompanionChartModal({ open, onOpenChange }) {
                     <X className="w-4 h-4" />
                   </button>
                 </div>
-                <div className="flex-1 overflow-y-auto p-3 space-y-3">
+                <div className="flex-1 overflow-y-auto p-3 space-y-4">
                   {companions.good.length > 0 && (
                     <div>
-                      <div className="flex items-center gap-1.5 mb-1.5">
+                      <div className="flex items-center gap-1.5 mb-2">
                         <span className="inline-block w-3 h-3 rounded-full flex-shrink-0" style={{ background: '#22c55e' }} />
                         <span className="text-xs font-bold text-green-800">Good Companions ({companions.good.length})</span>
                       </div>
-                      <div className="flex flex-wrap gap-1">
-                        {companions.good.map(p => (
-                          <span key={p} className="text-xs px-2 py-0.5 rounded-full font-medium cursor-pointer"
-                            style={{ background: '#dcfce7', color: '#166534' }}
-                            onClick={() => setHighlighted(p)}
-                          >{p}</span>
+                      <div className="space-y-1.5">
+                        {companions.good.map(({ name, notes }) => (
+                          <div key={name} className="rounded-lg p-2 cursor-pointer hover:opacity-90 transition-opacity"
+                            style={{ background: '#dcfce7', border: '1px solid #bbf7d0' }}
+                            onClick={() => setHighlighted(name)}
+                          >
+                            <p className="text-xs font-semibold" style={{ color: '#166534' }}>{name}</p>
+                            {notes && <p className="text-[10px] mt-0.5" style={{ color: '#15803d' }}>{notes}</p>}
+                          </div>
                         ))}
                       </div>
                     </div>
                   )}
                   {companions.bad.length > 0 && (
                     <div>
-                      <div className="flex items-center gap-1.5 mb-1.5">
+                      <div className="flex items-center gap-1.5 mb-2">
                         <span className="inline-block w-3 h-3 rounded-full flex-shrink-0" style={{ background: '#ef4444' }} />
                         <span className="text-xs font-bold text-red-800">Avoid ({companions.bad.length})</span>
                       </div>
-                      <div className="flex flex-wrap gap-1">
-                        {companions.bad.map(p => (
-                          <span key={p} className="text-xs px-2 py-0.5 rounded-full font-medium cursor-pointer"
-                            style={{ background: '#fee2e2', color: '#991b1b' }}
-                            onClick={() => setHighlighted(p)}
-                          >{p}</span>
+                      <div className="space-y-1.5">
+                        {companions.bad.map(({ name, notes }) => (
+                          <div key={name} className="rounded-lg p-2 cursor-pointer hover:opacity-90 transition-opacity"
+                            style={{ background: '#fee2e2', border: '1px solid #fecaca' }}
+                            onClick={() => setHighlighted(name)}
+                          >
+                            <p className="text-xs font-semibold" style={{ color: '#991b1b' }}>{name}</p>
+                            {notes && <p className="text-[10px] mt-0.5" style={{ color: '#b91c1c' }}>{notes}</p>}
+                          </div>
                         ))}
                       </div>
                     </div>
                   )}
                   {companions.conditional.length > 0 && (
                     <div>
-                      <div className="flex items-center gap-1.5 mb-1.5">
+                      <div className="flex items-center gap-1.5 mb-2">
                         <span className="inline-block w-3 h-3 rounded-full flex-shrink-0" style={{ background: '#eab308' }} />
                         <span className="text-xs font-bold text-yellow-800">Conditional ({companions.conditional.length})</span>
                       </div>
-                      <div className="flex flex-wrap gap-1">
-                        {companions.conditional.map(p => (
-                          <span key={p} className="text-xs px-2 py-0.5 rounded-full font-medium cursor-pointer"
-                            style={{ background: '#fef9c3', color: '#854d0e' }}
-                            onClick={() => setHighlighted(p)}
-                          >{p}</span>
+                      <div className="space-y-1.5">
+                        {companions.conditional.map(({ name, notes }) => (
+                          <div key={name} className="rounded-lg p-2 cursor-pointer hover:opacity-90 transition-opacity"
+                            style={{ background: '#fef9c3', border: '1px solid #fde68a' }}
+                            onClick={() => setHighlighted(name)}
+                          >
+                            <p className="text-xs font-semibold" style={{ color: '#854d0e' }}>{name}</p>
+                            {notes && <p className="text-[10px] mt-0.5" style={{ color: '#92400e' }}>{notes}</p>}
+                          </div>
                         ))}
                       </div>
                     </div>
@@ -346,7 +355,27 @@ export default function CompanionChartModal({ open, onOpenChange }) {
                   {companions.good.length === 0 && companions.bad.length === 0 && companions.conditional.length === 0 && (
                     <p className="text-xs text-gray-500 italic">No known companion relationships.</p>
                   )}
-                  <p className="text-[10px] text-gray-400 mt-2">Click any plant name to switch focus.</p>
+
+                  {/* Hovered cell detail */}
+                  {hoveredCell && (
+                    <div className="sticky bottom-0 bg-white border-t pt-2 mt-2">
+                      <p className="text-[10px] font-bold text-gray-700 mb-1">Hovered:</p>
+                      <div className={`rounded-lg p-2 text-xs ${
+                        hoveredCell.rel === 'G' ? 'bg-green-50 border border-green-200' :
+                        hoveredCell.rel === 'B' ? 'bg-red-50 border border-red-200' :
+                        'bg-yellow-50 border border-yellow-200'
+                      }`}>
+                        <p className="font-semibold">
+                          {hoveredCell.row} + {hoveredCell.col}: {
+                            hoveredCell.rel === 'G' ? '✓ Good' :
+                            hoveredCell.rel === 'B' ? '✗ Avoid' : '~ Conditional'
+                          }
+                        </p>
+                        {hoveredCell.notes && <p className="text-[10px] mt-0.5 text-gray-600">{hoveredCell.notes}</p>}
+                      </div>
+                    </div>
+                  )}
+                  <p className="text-[10px] text-gray-400">Click any plant to switch focus.</p>
                 </div>
               </div>
             )}
