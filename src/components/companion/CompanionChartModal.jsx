@@ -251,24 +251,31 @@ export default function CompanionChartModal({ open, onOpenChange }) {
                             }}
                           >{row}</td>
                           {plants.map(col => {
-                            const rel = getRel(row, col);
-                            const s = CELL_STYLE[rel] || CELL_STYLE[''];
-                            const dim = highlighted && highlighted !== row && highlighted !== col;
-                            return (
-                              <td key={col}
-                                title={rel === 'G' ? `✓ ${row} + ${col}: Good companions` :
-                                       rel === 'B' ? `✗ ${row} + ${col}: Avoid` :
-                                       rel === 'C' ? `~ ${row} + ${col}: Conditional` : ''}
-                                style={{
-                                  border: '1px solid #e5e7eb',
-                                  width: 22, height: 22, minWidth: 22,
-                                  textAlign: 'center', fontWeight: 700, fontSize: 11,
-                                  background: s.bg, color: s.color,
-                                  opacity: dim ? 0.12 : 1,
-                                  transition: 'opacity 0.15s',
-                                }}
-                              >{s.label}</td>
-                            );
+                           const rel = getRel(row, col);
+                           const s = CELL_STYLE[rel] || CELL_STYLE[''];
+                           const dim = highlighted && highlighted !== row && highlighted !== col;
+                           const notes = notesMap[`${row}|${col}`] || notesMap[`${col}|${row}`] || '';
+                           const isHovered = hoveredCell?.row === row && hoveredCell?.col === col;
+                           return (
+                             <td key={col}
+                               title={rel === 'G' ? `✓ ${row} + ${col}${notes ? ': ' + notes : ': Good companions'}` :
+                                      rel === 'B' ? `✗ ${row} + ${col}${notes ? ': ' + notes : ': Avoid'}` :
+                                      rel === 'C' ? `~ ${row} + ${col}${notes ? ': ' + notes : ': Conditional'}` : ''}
+                               onMouseEnter={() => rel && rel !== '=' ? setHoveredCell({ row, col, rel, notes }) : null}
+                               onMouseLeave={() => setHoveredCell(null)}
+                               style={{
+                                 border: '1px solid #e5e7eb',
+                                 width: 22, height: 22, minWidth: 22,
+                                 textAlign: 'center', fontWeight: 700, fontSize: 11,
+                                 background: s.bg, color: s.color,
+                                 opacity: dim ? 0.12 : 1,
+                                 transition: 'opacity 0.15s',
+                                 cursor: rel && rel !== '=' ? 'pointer' : 'default',
+                                 outline: isHovered ? '2px solid #374151' : 'none',
+                                 position: 'relative',
+                               }}
+                             >{s.label}</td>
+                           );
                           })}
                         </tr>
                       );
