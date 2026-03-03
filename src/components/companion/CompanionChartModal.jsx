@@ -12,6 +12,8 @@ export default function CompanionChartModal({ open, onOpenChange }) {
   const [loading, setLoading] = useState(true);
   const [plants, setPlants] = useState([]);   // sorted plant type names
   const [matrix, setMatrix] = useState({});   // key: "nameA|nameB" => 'G'|'B'|'C'
+  const [notesMap, setNotesMap] = useState({}); // key: "nameA|nameB" => notes string
+  const [hoveredCell, setHoveredCell] = useState(null); // { row, col, rel, notes }
   const tableRef = useRef();
 
   useEffect(() => {
