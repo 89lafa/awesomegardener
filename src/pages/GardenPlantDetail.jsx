@@ -327,6 +327,15 @@ export default function GardenPlantDetail() {
     </div>
   );
 
+  if (!plantId) return (
+    <div className="text-center py-16">
+      <Sprout className="w-16 h-16 text-emerald-300 mx-auto mb-4" />
+      <h2 className="text-xl font-bold text-gray-700 mb-2">Plant Detail Tracker</h2>
+      <p className="text-gray-500 mb-6">Open a plant from your My Garden Plants page to see its full detail, grow log, photos, and harvest tracking.</p>
+      <Link to={createPageUrl('MyPlants')}><Button className="bg-emerald-600 hover:bg-emerald-700">Go to My Garden Plants</Button></Link>
+    </div>
+  );
+
   if (!plant) return (
     <div className="text-center py-16">
       <Sprout className="w-16 h-16 text-gray-300 mx-auto mb-4" />
