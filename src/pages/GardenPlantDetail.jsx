@@ -394,8 +394,8 @@ export default function GardenPlantDetail() {
         <div className="flex flex-wrap gap-2">
           {isOwner && (
             <>
-              <Button variant="outline" size="sm" onClick={() => setShowEditStatus(true)} className="gap-1">
-                <Edit2 className="w-3.5 h-3.5" />Stage
+              <Button size="sm" onClick={() => setShowEditStatus(true)} className="gap-1 bg-emerald-600 hover:bg-emerald-700 text-white">
+                <Edit2 className="w-3.5 h-3.5" />Change Stage
               </Button>
               <Button onClick={() => setShowHarvestDialog(true)} size="sm" className="bg-purple-600 hover:bg-purple-700 gap-1">
                 <Scissors className="w-3.5 h-3.5" />Harvest
