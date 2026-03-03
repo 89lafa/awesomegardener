@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from 'react';
+import RuleFields from '@/components/admin/RuleFields';
+import AddVarietyRuleButton from '@/components/admin/AddVarietyRuleButton';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { base44 } from '@/api/base44Client';
 import { ArrowLeft, Loader2, Save, Trash2, ShieldAlert } from 'lucide-react';
