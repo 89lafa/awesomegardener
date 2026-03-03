@@ -98,11 +98,14 @@ export default function MyPlants() {
       setGardens(gardensData);
 
       if (gardensData.length > 0) {
+        // Load instances directly here instead of relying on the useEffect chain
+        await loadInstances(gardensData[0].id, gardensData[0].id);
         setActiveGardenId(gardensData[0].id);
+      } else {
+        setLoading(false);
       }
     } catch (e) {
       console.error(e);
-    } finally {
       setLoading(false);
     }
   };
@@ -112,7 +115,7 @@ export default function MyPlants() {
     setLoading(true);
     try {
       const [allInstances, bedsData, typesData] = await Promise.all([
-        base44.entities.PlantInstance.filter({ garden_id: gardenId }),
+        base44.entities.PlantInstance.filter({ garden_id: gardenId }, '-updated_date', 500),
         base44.entities.Bed.filter({ garden_id: gardenId }),
         base44.entities.PlantType.list('common_name', 500),
       ]);
@@ -123,7 +126,6 @@ export default function MyPlants() {
       typesData.forEach(t => { typesMap[t.id] = t; });
       setPlantTypes(typesMap);
 
-      // Exclude removed
       setInstances(allInstances.filter(i => i.status !== 'removed'));
     } catch (e) {
       console.error(e);
