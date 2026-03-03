@@ -400,7 +400,33 @@ export default function MyPlants() {
                                 </p>
                               )}
                             </div>
-                            <ChevronRight className="w-4 h-4 text-gray-400 flex-shrink-0 mt-0.5" />
+                            <div className="flex items-center gap-1 flex-shrink-0">
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    className="h-7 px-1.5 text-xs gap-1"
+                                    onClick={e => e.stopPropagation()}
+                                    title="Change Status"
+                                  >
+                                    <Edit2 className="w-3 h-3" />
+                                  </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end" className="z-50">
+                                  {STATUS_OPTIONS.map(opt => (
+                                    <DropdownMenuItem
+                                      key={opt.value}
+                                      onClick={e => handleQuickStatusChange(inst, opt.value, e)}
+                                      className={inst.status === opt.value ? 'font-bold bg-emerald-50' : ''}
+                                    >
+                                      {opt.label}
+                                    </DropdownMenuItem>
+                                  ))}
+                                </DropdownMenuContent>
+                              </DropdownMenu>
+                              <ChevronRight className="w-4 h-4 text-gray-400 mt-0.5" />
+                            </div>
                           </div>
 
                           <div className="flex flex-wrap gap-1.5 mt-2">
