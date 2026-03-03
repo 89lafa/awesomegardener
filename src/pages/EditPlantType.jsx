@@ -378,8 +378,9 @@ export default function EditPlantType() {
               <Label>Start Indoors (weeks before last frost)</Label>
               <Input
                 type="number"
-                value={formData.default_start_indoors_weeks || ''}
-                onChange={(e) => setFormData({ ...formData, default_start_indoors_weeks: e.target.value ? parseInt(e.target.value) : null })}
+                value={formData.default_start_indoors_weeks ?? ''}
+                onChange={(e) => setFormData({ ...formData, default_start_indoors_weeks: e.target.value !== '' ? parseInt(e.target.value) : null })}
+                placeholder="blank = not set, 0 = at frost"
                 className="mt-2"
               />
               <label className="flex items-center gap-2 mt-2 cursor-pointer">
@@ -396,8 +397,9 @@ export default function EditPlantType() {
               <Label>Transplant (weeks after last frost)</Label>
               <Input
                 type="number"
-                value={formData.default_transplant_weeks || ''}
-                onChange={(e) => setFormData({ ...formData, default_transplant_weeks: e.target.value ? parseInt(e.target.value) : null })}
+                value={formData.default_transplant_weeks ?? ''}
+                onChange={(e) => setFormData({ ...formData, default_transplant_weeks: e.target.value !== '' ? parseInt(e.target.value) : null })}
+                placeholder="blank = not set, 0 = at frost"
                 className="mt-2"
               />
             </div>
@@ -408,9 +410,9 @@ export default function EditPlantType() {
               <Label>Direct Sow Min (weeks relative to last frost)</Label>
               <Input
                 type="number"
-                value={formData.default_direct_sow_weeks_min || ''}
-                onChange={(e) => setFormData({ ...formData, default_direct_sow_weeks_min: e.target.value ? parseInt(e.target.value) : null })}
-                placeholder="e.g., -2 (before) or 2 (after)"
+                value={formData.default_direct_sow_weeks_min ?? ''}
+                onChange={(e) => setFormData({ ...formData, default_direct_sow_weeks_min: e.target.value !== '' ? parseInt(e.target.value) : null })}
+                placeholder="e.g., -2 (before), 0 (at frost), 2 (after)"
                 className="mt-2"
               />
               <p className="text-xs text-gray-500 mt-1">Negative = before frost, Positive = after</p>
@@ -419,9 +421,9 @@ export default function EditPlantType() {
               <Label>Direct Sow Max (weeks relative to last frost)</Label>
               <Input
                 type="number"
-                value={formData.default_direct_sow_weeks_max || ''}
-                onChange={(e) => setFormData({ ...formData, default_direct_sow_weeks_max: e.target.value ? parseInt(e.target.value) : null })}
-                placeholder="e.g., 4"
+                value={formData.default_direct_sow_weeks_max ?? ''}
+                onChange={(e) => setFormData({ ...formData, default_direct_sow_weeks_max: e.target.value !== '' ? parseInt(e.target.value) : null })}
+                placeholder="e.g., 0 (at frost) or 4 (after)"
                 className="mt-2"
               />
             </div>
