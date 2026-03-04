@@ -410,11 +410,11 @@ export default function MyPlants() {
                               <p className="font-semibold text-sm truncate" style={{ color: 'var(--text-primary)' }}>
                                 {inst.custom_name || inst.display_name || 'Unknown Plant'}
                               </p>
-                              {(inst.location_name || bed) && (
+                              {(() => { const loc = getLocationName(inst); return loc ? (
                                 <p className="text-xs text-gray-500 flex items-center gap-1 mt-0.5">
-                                  <MapPin className="w-3 h-3" />{inst.location_name || bed?.name}
+                                  <MapPin className="w-3 h-3" />{loc}
                                 </p>
-                              )}
+                              ) : null; })()}
                             </div>
                             <div className="flex items-center gap-1 flex-shrink-0">
                               <DropdownMenu>
