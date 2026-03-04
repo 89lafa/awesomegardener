@@ -200,6 +200,17 @@ export default function GardenPlantDetail() {
       const fetches = [];
       if (p.variety_id) fetches.push(base44.entities.Variety.filter({ id: p.variety_id }).then(r => r[0] && setVariety(r[0])));
       if (p.plant_type_id) fetches.push(base44.entities.PlantType.filter({ id: p.plant_type_id }).then(r => r[0] && setPlantType(r[0])));
+      // Resolve location name: use stored location_name, or look up PlantingSpace by bed_id
+      if (p.location_name) {
+        setLocationName(p.location_name);
+      } else if (p.bed_id) {
+        fetches.push(
+          base44.entities.PlantingSpace.filter({ garden_id: p.garden_id, is_active: true }).then(spaces => {
+            const space = spaces.find(s => s.plot_item_id === p.bed_id || s.id === p.bed_id);
+            if (space) setLocationName(space.name);
+          }).catch(() => {})
+        );
+      }
       await Promise.all(fetches);
     } catch (err) {
       toast.error('Failed to load plant');
