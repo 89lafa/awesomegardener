@@ -231,6 +231,17 @@ export default function MyPlants() {
   const statusOrder = ['in_ground', 'transplanted', 'vegetative', 'flowering', 'fruiting', 'harvesting', 'harvested', 'fruiting', 'seedling', 'sprouted', 'planted', 'started', 'seed_started', 'planned', 'done', 'removed'];
 
   const getBed = (bedId) => beds.find(b => b.id === bedId);
+  // PlantInstance.bed_id actually references PlotItem/PlantingSpace, not Bed entity
+  const getLocationName = (inst) => {
+    if (inst.location_name) return inst.location_name;
+    // Try PlantingSpace (plot_item_id matches bed_id on PlantInstance)
+    const space = plantingSpaces.find(s => s.plot_item_id === inst.bed_id || s.id === inst.bed_id);
+    if (space) return space.name;
+    // Fall back to Bed entity
+    const bed = getBed(inst.bed_id);
+    if (bed) return bed.name;
+    return null;
+  };
   const getOriginLabel = (inst) => {
     if (inst.growing_method === 'SEEDLING_TRANSPLANT') return '🪴 Transplanted Seedling';
     if (inst.growing_method === 'DIRECT_SOW') return '🌰 Direct Sown';
