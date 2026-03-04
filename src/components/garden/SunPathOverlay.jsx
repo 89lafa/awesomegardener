@@ -26,12 +26,19 @@ export default function SunPathOverlay({ width, height, zoom, enabled, season = 
   const W = width * zoom;
   const H = height * zoom;
 
-  // Arc: starts at left (6am/sunrise), peaks in middle (noon), ends right (sunset)
-  const startX = W * 0.05;
-  const endX   = W * 0.95;
-  const startY = H * 0.65;
-  const endY   = H * 0.65;
-  const peakY  = H * arcHeight;
+  // Arc direction depends on sun_orientation.
+  // south-facing garden: sun travels left→right (east=right, west=left)
+  // north-facing garden: sun is behind you, arc crosses lower
+  // east-facing: sun rises in front, sets behind — arc goes bottom→top
+  // west-facing: sun rises behind, sets in front — arc goes top→bottom
+  const isVertical = sunOrientation === 'east' || sunOrientation === 'west';
+
+  const startX = isVertical ? W * 0.5 : W * 0.05;
+  const endX   = isVertical ? W * 0.5 : W * 0.95;
+  const startY = isVertical ? (sunOrientation === 'east' ? H * 0.95 : H * 0.05) : H * 0.65;
+  const endY   = isVertical ? (sunOrientation === 'east' ? H * 0.05 : H * 0.95) : H * 0.65;
+  const peakX  = isVertical ? W * arcHeight : W / 2;
+  const peakY  = isVertical ? H * 0.5 : H * arcHeight;
 
   const arcPath = `M ${startX},${startY} Q ${W / 2},${peakY} ${endX},${endY}`;
 
