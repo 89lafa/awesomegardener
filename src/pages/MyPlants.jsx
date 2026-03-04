@@ -77,6 +77,7 @@ export default function MyPlants() {
   const [gardens, setGardens] = useState([]);
   const [activeGardenId, setActiveGardenId] = useState(null);
   const [beds, setBeds] = useState([]);
+  const [plantingSpaces, setPlantingSpaces] = useState([]);
   const [instances, setInstances] = useState([]);
   const [plantTypes, setPlantTypes] = useState({});
   const [loading, setLoading] = useState(true);
