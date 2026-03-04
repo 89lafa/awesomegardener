@@ -54,12 +54,21 @@ export default function EditPlantType() {
     color: '#10b981'
   });
 
+  const [allPlantTypes, setAllPlantTypes] = useState([]);
+  const [search, setSearch] = useState('');
+
   useEffect(() => {
     if (plantTypeId) {
       loadPlantType();
     } else {
-      // No ID provided — show a search/list to pick a plant type
-      setLoading(false);
+      // No ID provided — load list to pick from
+      base44.entities.PlantType.list('common_name', 500).then(types => {
+        setAllPlantTypes(types);
+        setLoading(false);
+      }).catch(err => {
+        toast.error('Failed to load plant types');
+        setLoading(false);
+      });
     }
   }, [plantTypeId]);
 
