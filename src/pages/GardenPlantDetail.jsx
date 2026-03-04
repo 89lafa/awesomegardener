@@ -390,7 +390,7 @@ export default function GardenPlantDetail() {
           </div>
           <div className="flex flex-wrap items-center gap-3 mt-2 text-sm text-gray-600">
             {plant.plant_type_name && <span className="flex items-center gap-1"><Leaf className="w-3.5 h-3.5 text-emerald-500" />{plant.plant_type_name}</span>}
-            {plant.location_name && <span className="flex items-center gap-1"><MapPin className="w-3.5 h-3.5 text-red-400" />{plant.location_name}</span>}
+            {locationName && <span className="flex items-center gap-1"><MapPin className="w-3.5 h-3.5 text-red-400" />{locationName}</span>}
             {daysSincePlanted !== null && <span className="flex items-center gap-1"><Clock className="w-3.5 h-3.5 text-blue-400" />Day {daysSincePlanted}</span>}
             {plant.tracking_mode === 'row_group' && (
               <span className="flex items-center gap-1 text-purple-600"><TrendingUp className="w-3.5 h-3.5" />Row Group{plant.row_quantity ? ` · ${plant.row_quantity} plants` : ''}</span>
