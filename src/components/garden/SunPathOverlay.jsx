@@ -101,12 +101,11 @@ export default function SunPathOverlay({ width, height, zoom, enabled, season = 
 
       {/* Info legend box */}
       <g transform="translate(10,10)">
-        <rect x={0} y={0} width={195} height={58} fill="white" opacity={0.93} rx={6} />
-        <text x={10} y={20} fontSize={12} fontWeight="bold" fill="#374151">Sun Path</text>
-        <text x={10} y={36} fontSize={10} fill="#6b7280">
-          {season.charAt(0).toUpperCase() + season.slice(1)} — {orientationNote.split('—')[0].trim()}
-        </text>
-        <text x={10} y={50} fontSize={10} fill="#9ca3af">Top = most sun intensity</text>
+        <rect x={0} y={0} width={220} height={70} fill="white" opacity={0.93} rx={6} />
+        <text x={10} y={20} fontSize={12} fontWeight="bold" fill="#374151">☀️ Sun Path</text>
+        <text x={10} y={36} fontSize={10} fill="#6b7280">{orientationNote}</text>
+        <text x={10} y={50} fontSize={10} fill="#9ca3af">{season.charAt(0).toUpperCase() + season.slice(1)} arc shown</text>
+        <text x={10} y={64} fontSize={9} fill="#d1d5db">Set orientation: Garden Settings → Sun Orientation</text>
       </g>
     </svg>
   );
