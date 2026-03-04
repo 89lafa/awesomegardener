@@ -40,7 +40,7 @@ export default function SunPathOverlay({ width, height, zoom, enabled, season = 
   const peakX  = isVertical ? W * arcHeight : W / 2;
   const peakY  = isVertical ? H * 0.5 : H * arcHeight;
 
-  const arcPath = `M ${startX},${startY} Q ${W / 2},${peakY} ${endX},${endY}`;
+  const arcPath = `M ${startX},${startY} Q ${peakX},${peakY} ${endX},${endY}`;
 
   const sunPoints = [
     { t: 0.05, label: 'Sunrise' },
