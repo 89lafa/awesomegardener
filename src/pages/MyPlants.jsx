@@ -141,8 +141,9 @@ export default function MyPlants() {
         const selectedGardenId = gardensData[bestGardenIdx].id;
         const selectedInstances = allInstancesArrays[bestGardenIdx];
 
-        const [bedsData, typesData] = await Promise.all([
+        const [bedsData, spacesData, typesData] = await Promise.all([
           base44.entities.Bed.filter({ garden_id: selectedGardenId }),
+          base44.entities.PlantingSpace.filter({ garden_id: selectedGardenId, is_active: true }),
           base44.entities.PlantType.list('common_name', 500),
         ]);
 
@@ -151,6 +152,7 @@ export default function MyPlants() {
 
         setPlantTypes(typesMap);
         setBeds(bedsData);
+        setPlantingSpaces(spacesData);
         setInstances(selectedInstances.filter(i => i.status !== 'removed'));
         setActiveGardenId(selectedGardenId);
       }
