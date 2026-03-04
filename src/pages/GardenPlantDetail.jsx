@@ -162,6 +162,7 @@ export default function GardenPlantDetail() {
   const [plant, setPlant] = useState(null);
   const [variety, setVariety] = useState(null);
   const [plantType, setPlantType] = useState(null);
+  const [locationName, setLocationName] = useState(null);
   const [loading, setLoading] = useState(true);
   const [isOwner, setIsOwner] = useState(false);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
