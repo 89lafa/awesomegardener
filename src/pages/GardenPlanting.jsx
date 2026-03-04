@@ -95,8 +95,16 @@ function SpaceCard({ space, garden, activeSeason, seasonId, sharedData }) {
   };
 
   const handlePlantingUpdate = (updatedPlantings) => {
-    if (updatedPlantings) {
-      setPlantings(updatedPlantings);
+    if (updatedPlantings && Array.isArray(updatedPlantings)) {
+      // Filter by season before storing
+      const seasonKey = activeSeason;
+      const currentYear = new Date().getFullYear();
+      const isCurrentYearSeason = seasonKey && seasonKey.startsWith(currentYear.toString());
+      const filtered = updatedPlantings.filter(p => {
+        if (!p.season_year) return isCurrentYearSeason;
+        return p.season_year === seasonKey;
+      });
+      setPlantings(filtered);
     } else {
       loadPlantings();
     }
