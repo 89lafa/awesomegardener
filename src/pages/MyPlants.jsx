@@ -167,13 +167,15 @@ export default function MyPlants() {
     if (!gardenId) return;
     setLoading(true);
     try {
-      const [allInstances, bedsData, typesData] = await Promise.all([
+      const [allInstances, bedsData, spacesData, typesData] = await Promise.all([
         base44.entities.PlantInstance.filter({ garden_id: gardenId }, '-updated_date', 500),
         base44.entities.Bed.filter({ garden_id: gardenId }),
+        base44.entities.PlantingSpace.filter({ garden_id: gardenId, is_active: true }),
         base44.entities.PlantType.list('common_name', 500),
       ]);
 
       setBeds(bedsData);
+      setPlantingSpaces(spacesData);
 
       const typesMap = {};
       typesData.forEach(t => { typesMap[t.id] = t; });
