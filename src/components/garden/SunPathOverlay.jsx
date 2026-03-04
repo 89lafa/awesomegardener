@@ -51,7 +51,7 @@ export default function SunPathOverlay({ width, height, zoom, enabled, season = 
   ].map(({ t, label }) => {
     // Quadratic bezier: B(t) = (1-t)^2*P0 + 2(1-t)t*P1 + t^2*P2
     const mt = 1 - t;
-    const cx = mt * mt * startX + 2 * mt * t * (W / 2) + t * t * endX;
+    const cx = mt * mt * startX + 2 * mt * t * peakX + t * t * endX;
     const cy = mt * mt * startY + 2 * mt * t * peakY + t * t * endY;
     return { x: cx, y: cy, label };
   });
