@@ -895,6 +895,9 @@ try {
     );
   }
 
+  // Derive location_name reliably from item
+  const locationName = item?.label || item?.name || 'Unknown Location';
+
   const handleDone = () => {
     setSelectedPlanting(null);
     setSelectedPlant(null);
@@ -902,7 +905,7 @@ try {
     setCompanionWarning(null);
     setRotationWarning(null);
     onOpenChange(false);
-    if (onPlantingUpdate) onPlantingUpdate();
+    if (onPlantingUpdate) onPlantingUpdate(plantings);
   };
 
   // Count empty cells for the "Fill All" button label
