@@ -532,7 +532,8 @@ export default function GardenPlantDetail() {
             <CardHeader className="pb-3"><CardTitle className="text-base">🌱 Planting Info</CardTitle></CardHeader>
             <CardContent className="space-y-3 text-sm">
               {plant.origin && <div className="flex justify-between"><span className="text-gray-500">Origin</span><span className="font-medium">{ORIGIN_LABELS[plant.origin]}</span></div>}
-              {plant.location_name && <div className="flex justify-between"><span className="text-gray-500">Location</span><span className="font-medium">{plant.location_name}</span></div>}
+              {locationName && <div className="flex justify-between"><span className="text-gray-500">📍 Location</span><span className="font-medium text-emerald-700">{locationName}</span></div>}
+              {!locationName && plant.bed_id && <div className="flex justify-between"><span className="text-gray-500">Bed ID</span><span className="font-medium text-xs text-gray-400">{plant.bed_id}</span></div>}
               {plant.position_in_bed && <div className="flex justify-between"><span className="text-gray-500">Position</span><span className="font-medium">{plant.position_in_bed}</span></div>}
               {plant.tracking_mode === 'row_group' && plant.row_quantity && <div className="flex justify-between"><span className="text-gray-500">Row Plants</span><span className="font-medium">~{plant.row_quantity}</span></div>}
               {plant.tracking_mode === 'row_group' && plant.row_length_feet && <div className="flex justify-between"><span className="text-gray-500">Row Length</span><span className="font-medium">{plant.row_length_feet} ft</span></div>}
