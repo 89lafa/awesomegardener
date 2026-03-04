@@ -96,7 +96,6 @@ function SpaceCard({ space, garden, activeSeason, seasonId, sharedData }) {
 
   const handlePlantingUpdate = (updatedPlantings) => {
     if (updatedPlantings && Array.isArray(updatedPlantings)) {
-      // Filter by season before storing
       const seasonKey = activeSeason;
       const currentYear = new Date().getFullYear();
       const isCurrentYearSeason = seasonKey && seasonKey.startsWith(currentYear.toString());
@@ -105,6 +104,14 @@ function SpaceCard({ space, garden, activeSeason, seasonId, sharedData }) {
         return p.season_year === seasonKey;
       });
       setPlantings(filtered);
+      // Also update sharedData.plantings so other cards reflect changes
+      setSharedData(prev => ({
+        ...prev,
+        plantings: {
+          ...prev.plantings,
+          [space.plot_item_id]: updatedPlantings
+        }
+      }));
     } else {
       loadPlantings();
     }
