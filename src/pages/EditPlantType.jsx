@@ -57,6 +57,9 @@ export default function EditPlantType() {
   useEffect(() => {
     if (plantTypeId) {
       loadPlantType();
+    } else {
+      // No ID provided — show a search/list to pick a plant type
+      setLoading(false);
     }
   }, [plantTypeId]);
 
