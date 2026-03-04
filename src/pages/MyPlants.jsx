@@ -25,14 +25,23 @@ const isRowCrop = (name) => {
 };
 
 const STATUS_CONFIG = {
+  // PlantInstance statuses (from garden planting)
   planned:      { label: '📋 Planned',          color: 'bg-gray-100 text-gray-700' },
   started:      { label: '🌱 Started',           color: 'bg-lime-100 text-lime-800' },
   transplanted: { label: '🪴 Transplanted',      color: 'bg-teal-100 text-teal-800' },
   in_ground:    { label: '🌿 In Ground',         color: 'bg-green-100 text-green-800' },
-  flowering:    { label: '🌸 Flowering',         color: 'bg-pink-100 text-pink-800' },
-  fruiting:     { label: '🍅 Fruiting',          color: 'bg-orange-100 text-orange-800' },
   harvested:    { label: '✂️ Harvesting',        color: 'bg-purple-100 text-purple-800' },
   removed:      { label: '🗑 Removed',           color: 'bg-red-100 text-red-600' },
+  // Additional statuses set via GardenPlantDetail stage change
+  seed_started: { label: '🌰 Seed Started',     color: 'bg-gray-100 text-gray-800' },
+  planted:      { label: '🌱 Planted',           color: 'bg-lime-100 text-lime-800' },
+  sprouted:     { label: '🌿 Sprouted',          color: 'bg-green-100 text-green-800' },
+  seedling:     { label: '🌿 Seedling',          color: 'bg-emerald-100 text-emerald-800' },
+  vegetative:   { label: '🌿 Vegetative',        color: 'bg-cyan-100 text-cyan-800' },
+  flowering:    { label: '🌸 Flowering',         color: 'bg-pink-100 text-pink-800' },
+  fruiting:     { label: '🍅 Fruiting',          color: 'bg-orange-100 text-orange-800' },
+  harvesting:   { label: '✂️ Harvesting',        color: 'bg-purple-100 text-purple-800' },
+  done:         { label: '✓ Season Done',        color: 'bg-gray-200 text-gray-600' },
 };
 
 // Group PlantInstances by bed + plant_type for row crops
