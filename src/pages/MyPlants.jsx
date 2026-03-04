@@ -91,16 +91,7 @@ export default function MyPlants() {
     toast.success('Refreshed');
   });
 
-  const STATUS_OPTIONS = [
-    { value: 'planned', label: '📋 Planned' },
-    { value: 'started', label: '🌱 Started (Seed Started Indoors)' },
-    { value: 'transplanted', label: '🪴 Transplanted' },
-    { value: 'in_ground', label: '🌿 In Ground / Planted' },
-    { value: 'flowering', label: '🌸 Flowering' },
-    { value: 'fruiting', label: '🍅 Fruiting' },
-    { value: 'harvested', label: '✂️ Harvesting' },
-    { value: 'removed', label: '🗑 Removed' },
-  ];
+  const STATUS_OPTIONS = Object.entries(STATUS_CONFIG).map(([value, cfg]) => ({ value, label: cfg.label }));
 
   const handleQuickStatusChange = async (inst, newStatus, e) => {
     e.stopPropagation();
