@@ -28,6 +28,7 @@ import ErrorBoundary from '@/components/common/ErrorBoundary';
 
 const ADMIN_TOOLS = {
   'Data & Catalog': [
+    { name: 'Edit Plant Types', route: 'EditPlantType', icon: Edit, description: 'Edit plant type details, spacing rules, and variety-specific grid overrides' },
     { name: 'Data Import', route: 'AdminDataImport', icon: Upload, description: 'Import plant types, varieties, and taxonomy via CSV' },
     { name: 'Variety Import 2', route: 'AdminVarietyImport2', icon: Upload, description: 'Advanced variety import — all 145 columns, smart upsert modes, never wipes subcategories' },
     { name: 'Barcode Editor', route: 'AdminBarcodeEditor', icon: Database, description: 'Manually add and edit seed packet barcodes' },
