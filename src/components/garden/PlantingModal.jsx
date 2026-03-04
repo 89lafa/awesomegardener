@@ -883,6 +883,9 @@ try {
     return null;
   };
 
+  // Derive location_name reliably from item — MUST be before any early return
+  const locationName = item?.label || item?.name || 'Unknown Location';
+
   if (loading) {
     return (
       <Dialog open={open} onOpenChange={onOpenChange}>
@@ -894,9 +897,6 @@ try {
       </Dialog>
     );
   }
-
-  // Derive location_name reliably from item
-  const locationName = item?.label || item?.name || 'Unknown Location';
 
   const handleDone = () => {
     setSelectedPlanting(null);
