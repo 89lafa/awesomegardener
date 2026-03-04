@@ -394,9 +394,9 @@ export default function MyPlants() {
                               <p className="font-semibold text-sm truncate" style={{ color: 'var(--text-primary)' }}>
                                 {inst.custom_name || inst.display_name || 'Unknown Plant'}
                               </p>
-                              {bed && (
+                              {(inst.location_name || bed) && (
                                 <p className="text-xs text-gray-500 flex items-center gap-1 mt-0.5">
-                                  <MapPin className="w-3 h-3" />{bed.name}
+                                  <MapPin className="w-3 h-3" />{inst.location_name || bed?.name}
                                 </p>
                               )}
                             </div>
