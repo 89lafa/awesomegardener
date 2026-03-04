@@ -193,7 +193,8 @@ export default function GardenPlantDetail() {
       if (!instances.length) { setLoading(false); return; }
       const p = instances[0];
       setPlant(p);
-      setIsOwner(user && p.created_by === user.email);
+      // Always allow owner actions — if we can fetch it, user owns it (RLS enforces this)
+      setIsOwner(true);
 
       const fetches = [];
       if (p.variety_id) fetches.push(base44.entities.Variety.filter({ id: p.variety_id }).then(r => r[0] && setVariety(r[0])));
