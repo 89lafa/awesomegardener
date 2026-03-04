@@ -228,7 +228,7 @@ export default function MyPlants() {
     byStatus[s].push(inst);
   });
 
-  const statusOrder = ['in_ground', 'transplanted', 'vegetative', 'flowering', 'fruiting', 'harvesting', 'harvested', 'fruiting', 'seedling', 'sprouted', 'planted', 'started', 'seed_started', 'planned', 'done', 'removed'];
+  const statusOrder = ['in_ground', 'transplanted', 'vegetative', 'flowering', 'fruiting', 'harvesting', 'harvested', 'seedling', 'sprouted', 'planted', 'started', 'seed_started', 'planned', 'done', 'removed'];
 
   const getBed = (bedId) => beds.find(b => b.id === bedId);
   // PlantInstance.bed_id actually references PlotItem/PlantingSpace, not Bed entity
