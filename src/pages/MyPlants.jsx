@@ -223,7 +223,7 @@ export default function MyPlants() {
     byStatus[s].push(inst);
   });
 
-  const statusOrder = ['in_ground', 'transplanted', 'flowering', 'fruiting', 'harvested', 'started', 'planned', 'removed'];
+  const statusOrder = ['in_ground', 'transplanted', 'vegetative', 'flowering', 'fruiting', 'harvesting', 'harvested', 'fruiting', 'seedling', 'sprouted', 'planted', 'started', 'seed_started', 'planned', 'done', 'removed'];
 
   const getBed = (bedId) => beds.find(b => b.id === bedId);
   const getOriginLabel = (inst) => {
