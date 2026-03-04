@@ -227,6 +227,43 @@ export default function EditPlantType() {
     );
   }
 
+  // No ID provided: show plant type picker
+  if (!plantTypeId) {
+    const filtered = allPlantTypes.filter(t =>
+      !search || t.common_name?.toLowerCase().includes(search.toLowerCase()) ||
+      t.scientific_name?.toLowerCase().includes(search.toLowerCase())
+    );
+    return (
+      <div className="max-w-2xl space-y-4">
+        <h1 className="text-2xl font-bold">Edit Plant Type</h1>
+        <p className="text-gray-600 text-sm">Select a plant type to edit its details and planting rules.</p>
+        <Input
+          placeholder="Search plant types..."
+          value={search}
+          onChange={e => setSearch(e.target.value)}
+          className="max-w-sm"
+        />
+        <div className="grid gap-2 max-h-[70vh] overflow-y-auto">
+          {filtered.map(type => (
+            <button
+              key={type.id}
+              onClick={() => navigate(`?id=${type.id}`)}
+              className="flex items-center gap-3 p-3 rounded-lg border bg-white hover:bg-emerald-50 hover:border-emerald-300 text-left transition-colors"
+            >
+              <span className="text-2xl">{type.icon || '🌱'}</span>
+              <div>
+                <p className="font-semibold text-sm">{type.common_name}</p>
+                {type.scientific_name && <p className="text-xs text-gray-500 italic">{type.scientific_name}</p>}
+                <p className="text-xs text-gray-400 capitalize">{type.category}</p>
+              </div>
+            </button>
+          ))}
+          {filtered.length === 0 && <p className="text-gray-500 text-sm py-4 text-center">No plant types found</p>}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="max-w-4xl space-y-6">
       <div className="flex items-center gap-3">
