@@ -185,12 +185,15 @@ export default function TrayImportDialog({ open, onClose, tray, cells, onImporte
   const [preview, setPreview] = useState([]);
 
   // Column mapping
-  const [colVariety, setColVariety] = useState('');
-  const [colPlantType, setColPlantType] = useState('');
-  const [colSource, setColSource] = useState('');
-  const [colQty, setColQty] = useState('');
-  const [colCellId, setColCellId] = useState('');
-  const [colPlantId, setColPlantId] = useState('');
+  const [colVariety, setColVariety] = useState('__none__');
+  const [colPlantType, setColPlantType] = useState('__none__');
+  const [colSource, setColSource] = useState('__none__');
+  const [colQty, setColQty] = useState('__none__');
+  const [colCellId, setColCellId] = useState('__none__');
+  const [colPlantId, setColPlantId] = useState('__none__');
+
+  // Helper: treat __none__ as empty
+  const col = (v) => (v && v !== '__none__' ? v : '');
 
   const [fillPattern, setFillPattern] = useState('pairs_down');
   const [customOrder, setCustomOrder] = useState([]);
