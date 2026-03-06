@@ -255,32 +255,29 @@ export default function TrayImportDialog({ open, onClose, tray, cells, onImporte
 
   // ── Build import plan ──
   const buildImportPlan = () => {
-    const cVariety = col(colVariety);
-    const cPlantType = col(colPlantType);
-    const cSource = col(colSource);
-    const cQty = col(colQty);
-    const cCellId = col(colCellId);
-    const cPlantId = col(colPlantId);
-
     // Filter rows with variety names
-    const validRows = allRows.filter(r => cVariety && r[cVariety]?.trim());
+    const validRows = allRows.filter(r => colVariety && r[colVariety]?.trim());
 
     // If user has Cell IDs in the sheet, map by cell ID → app cell number
     // Otherwise use the chosen fill pattern
-    const hasCellIds = cCellId && validRows.every(r => r[cCellId]);
+    const hasCellIds = colCellId && validRows.every(r => r[colCellId]);
 
     let assignments = []; // [{row, cellNumber}]
 
     if (hasCellIds) {
+      // Use user's cell IDs mapped to our cell numbering via pairs_down default
+      // User's cell 1 → our cell 1, user's cell 2 → our cell 2,
+      // user's cell 3 → our cell 13 (if pairs_down) etc.
       const userOrder = buildCellOrder(rows, cols, fillPattern, customOrder);
-      validRows.forEach((row) => {
+      validRows.forEach((row, i) => {
         const userCellId = parseInt(row[cCellId]) - 1; // 0-indexed
         const appCellNum = userOrder[userCellId];
-        if (appCellNum) assignments.push({ row, cellNumber: appCellNum, cVariety, cPlantType, cSource, cQty, cPlantId });
+        if (appCellNum) assignments.push({ row, cellNumber: appCellNum });
       });
     } else {
       // Sequential fill
       const cellOrder = buildCellOrder(rows, cols, fillPattern, customOrder);
+      // Group rows by variety to know how many cells each gets
       const varietyBlocks = [];
       let lastVariety = null;
       validRows.forEach(row => {
@@ -297,7 +294,7 @@ export default function TrayImportDialog({ open, onClose, tray, cells, onImporte
       varietyBlocks.forEach(block => {
         block.rows.forEach(row => {
           if (cellIdx < cellOrder.length) {
-            assignments.push({ row, cellNumber: cellOrder[cellIdx++], cVariety, cPlantType, cSource, cQty, cPlantId });
+            assignments.push({ row, cellNumber: cellOrder[cellIdx++] });
           }
         });
       });
@@ -336,12 +333,17 @@ export default function TrayImportDialog({ open, onClose, tray, cells, onImporte
       for (let i = 0; i < plan.length; i++) {
         if (cancelRef.current) { addLog('⛔ Cancelled'); break; }
 
-        const { row, cellNumber, cVariety: cv, cPlantType: cpt, cSource: cs, cQty: cq, cPlantId: cpi } = plan[i];
-        const varietyName = row[cv]?.trim();
-        const plantTypeName = cpt ? row[cpt]?.trim() : '';
-        const sourceName = cs ? row[cs]?.trim() : '';
-        const plantedQty = cq ? parseInt(row[cq]) || 1 : 1;
-        const plantId = cpi ? row[cpi]?.trim() : '';
+        const { row, cellNumber } = plan[i];
+        const cVariety2 = col(colVariety);
+        const cPlantType2 = col(colPlantType);
+        const cSource2 = col(colSource);
+        const cQty2 = col(colQty);
+        const cPlantId2 = col(colPlantId);
+        const varietyName = row[cVariety2]?.trim();
+        const plantTypeName = cPlantType2 ? row[cPlantType2]?.trim() : '';
+        const sourceName = cSource2 ? row[cSource2]?.trim() : '';
+        const plantedQty = cQty2 ? parseInt(row[cQty2]) || 1 : 1;
+        const plantId = cPlantId2 ? row[cPlantId2]?.trim() : '';
 
         // Find the tray cell
         const trayCell = cells.find(c => c.cell_number === cellNumber);
@@ -498,7 +500,7 @@ export default function TrayImportDialog({ open, onClose, tray, cells, onImporte
                     <SelectTrigger className="mt-1 h-8 text-xs"><SelectValue placeholder="Select column…" /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="__none__">— None —</SelectItem>
-                      {headers.map(h => <SelectItem key={h} value={h}>{h}</SelectItem>)}
+                      {headers.filter(h => h !== '').map(h => <SelectItem key={h} value={h}>{h}</SelectItem>)}
                     </SelectContent>
                   </Select>
                 </div>
@@ -594,18 +596,18 @@ export default function TrayImportDialog({ open, onClose, tray, cells, onImporte
                     <th className="px-3 py-2 text-left text-gray-500">Cell #</th>
                     <th className="px-3 py-2 text-left text-gray-500">Variety</th>
                     <th className="px-3 py-2 text-left text-gray-500">Type</th>
-                    {col(colPlantId) && <th className="px-3 py-2 text-left text-gray-500">Plant ID</th>}
-                    {col(colSource) && <th className="px-3 py-2 text-left text-gray-500">Source</th>}
+                    {col(colPlantId) ? <th className="px-3 py-2 text-left text-gray-500">Plant ID</th> : null}
+                    {col(colSource) ? <th className="px-3 py-2 text-left text-gray-500">Source</th> : null}
                   </tr>
                 </thead>
                 <tbody>
                   {plan.map(({ row, cellNumber }, i) => (
                     <tr key={i} className={i % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
                       <td className="px-3 py-1.5 font-bold text-emerald-700">Cell {cellNumber}</td>
-                      <td className="px-3 py-1.5 font-medium">{row[colVariety]}</td>
-                      <td className="px-3 py-1.5 text-gray-500">{col(colPlantType) ? row[col(colPlantType)] : '—'}</td>
-                      {col(colPlantId) && <td className="px-3 py-1.5 text-gray-500">{row[col(colPlantId)] || '—'}</td>}
-                      {col(colSource) && <td className="px-3 py-1.5 text-gray-500">{row[col(colSource)] || '—'}</td>}
+                      <td className="px-3 py-1.5 font-medium">{row[col(colVariety)]}</td>
+                       <td className="px-3 py-1.5 text-gray-500">{col(colPlantType) ? row[col(colPlantType)] : '—'}</td>
+                       {col(colPlantId) && <td className="px-3 py-1.5 text-gray-500">{row[col(colPlantId)] || '—'}</td>}
+                       {col(colSource) && <td className="px-3 py-1.5 text-gray-500">{row[col(colSource)] || '—'}</td>}
                     </tr>
                   ))}
                 </tbody>
