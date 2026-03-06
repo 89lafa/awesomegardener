@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
-import { Upload, Loader2, CheckCircle2, AlertCircle, FileSpreadsheet, ArrowRight, Info } from 'lucide-react';
+import { Upload, Loader2, CheckCircle2, AlertCircle, FileSpreadsheet, ArrowRight, Info, Download } from 'lucide-react';
 
 // ─── Rate limit helpers ────────────────────────────────────────────────────
 const sleep = (ms) => new Promise(r => setTimeout(r, ms));
