@@ -726,6 +726,19 @@ export default function TrayDetail() {
           navigate(-1);
         }}
       />
+
+      {showImport && (
+        <TrayImportDialog
+          open={showImport}
+          onClose={() => setShowImport(false)}
+          tray={tray}
+          cells={cells}
+          onImported={() => {
+            loadTrayData();
+            setShowImport(false);
+          }}
+        />
+      )}
     </div>
   );
 }
