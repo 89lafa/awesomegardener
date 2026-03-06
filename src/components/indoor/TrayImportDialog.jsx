@@ -491,7 +491,7 @@ export default function TrayImportDialog({ open, onClose, tray, cells, onImporte
                   <Select value={state} onValueChange={set}>
                     <SelectTrigger className="mt-1 h-8 text-xs"><SelectValue placeholder="Select column…" /></SelectTrigger>
                     <SelectContent>
-                      <SelectItem value={null}>— None —</SelectItem>
+                      <SelectItem value="__none__">— None —</SelectItem>
                       {headers.map(h => <SelectItem key={h} value={h}>{h}</SelectItem>)}
                     </SelectContent>
                   </Select>
