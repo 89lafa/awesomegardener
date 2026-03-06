@@ -498,7 +498,7 @@ export default function TrayImportDialog({ open, onClose, tray, cells, onImporte
                     <SelectTrigger className="mt-1 h-8 text-xs"><SelectValue placeholder="Select column…" /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="__none__">— None —</SelectItem>
-                      {headers.map(h => <SelectItem key={h} value={h}>{h}</SelectItem>)}
+                      {headers.filter(h => h && h.trim() !== '').map(h => <SelectItem key={h} value={h}>{h}</SelectItem>)}
                     </SelectContent>
                   </Select>
                 </div>
