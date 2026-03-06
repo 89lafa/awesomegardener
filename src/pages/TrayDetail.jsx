@@ -27,6 +27,7 @@ export default function TrayDetail() {
   const [showPlantSeeds, setShowPlantSeeds] = useState(false);
   const [showTransplant, setShowTransplant] = useState(false);
   const [showEditTray, setShowEditTray] = useState(false);
+  const [showImport, setShowImport] = useState(false);
   const [lastClickedCell, setLastClickedCell] = useState(null);
 
   useEffect(() => {
