@@ -396,6 +396,14 @@ export default function TrayDetail() {
           <Settings className="w-4 h-4 mr-2" />
           Edit Tray
         </Button>
+        <Button
+          onClick={() => setShowImport(true)}
+          variant="outline"
+          className="gap-2 border-emerald-300 text-emerald-700 hover:bg-emerald-50"
+        >
+          <FileSpreadsheet className="w-4 h-4" />
+          Import CSV/XLS
+        </Button>
 
         <div className="h-9 w-px bg-gray-300 mx-1 hidden sm:block" />
 
