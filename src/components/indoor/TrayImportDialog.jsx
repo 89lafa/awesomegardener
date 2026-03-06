@@ -239,7 +239,7 @@ export default function TrayImportDialog({ open, onClose, tray, cells, onImporte
       setPreview(dataRows.slice(0, 5));
 
       // Auto-detect columns
-      const find = (...terms) => hdrs.find(h => terms.some(t => h.toLowerCase().includes(t.toLowerCase()))) || '';
+      const find = (...terms) => hdrs.find(h => terms.some(t => h.toLowerCase().includes(t.toLowerCase()))) || '__none__';
       setColVariety(find('variety', 'name', 'plant'));
       setColPlantType(find('type', 'plant type', 'kind'));
       setColSource(find('source', 'vendor', 'supplier'));
