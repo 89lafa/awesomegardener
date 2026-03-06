@@ -255,12 +255,19 @@ export default function TrayImportDialog({ open, onClose, tray, cells, onImporte
 
   // ── Build import plan ──
   const buildImportPlan = () => {
+    const cVariety = col(colVariety);
+    const cPlantType = col(colPlantType);
+    const cSource = col(colSource);
+    const cQty = col(colQty);
+    const cCellId = col(colCellId);
+    const cPlantId = col(colPlantId);
+
     // Filter rows with variety names
-    const validRows = allRows.filter(r => colVariety && r[colVariety]?.trim());
+    const validRows = allRows.filter(r => cVariety && r[cVariety]?.trim());
 
     // If user has Cell IDs in the sheet, map by cell ID → app cell number
     // Otherwise use the chosen fill pattern
-    const hasCellIds = colCellId && validRows.every(r => r[colCellId]);
+    const hasCellIds = cCellId && validRows.every(r => r[cCellId]);
 
     let assignments = []; // [{row, cellNumber}]
 
