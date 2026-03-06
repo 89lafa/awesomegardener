@@ -255,33 +255,36 @@ export default function TrayImportDialog({ open, onClose, tray, cells, onImporte
 
   // ── Build import plan ──
   const buildImportPlan = () => {
+    const cVariety = col(colVariety);
+    const cPlantType = col(colPlantType);
+    const cSource = col(colSource);
+    const cQty = col(colQty);
+    const cCellId = col(colCellId);
+    const cPlantId = col(colPlantId);
+
     // Filter rows with variety names
-    const validRows = allRows.filter(r => colVariety && r[colVariety]?.trim());
+    const validRows = allRows.filter(r => cVariety && r[cVariety]?.trim());
 
     // If user has Cell IDs in the sheet, map by cell ID → app cell number
     // Otherwise use the chosen fill pattern
-    const hasCellIds = colCellId && validRows.every(r => r[colCellId]);
+    const hasCellIds = cCellId && validRows.every(r => r[cCellId]);
 
     let assignments = []; // [{row, cellNumber}]
 
     if (hasCellIds) {
-      // Use user's cell IDs mapped to our cell numbering via pairs_down default
-      // User's cell 1 → our cell 1, user's cell 2 → our cell 2,
-      // user's cell 3 → our cell 13 (if pairs_down) etc.
       const userOrder = buildCellOrder(rows, cols, fillPattern, customOrder);
-      validRows.forEach((row, i) => {
-        const userCellId = parseInt(row[colCellId]) - 1; // 0-indexed
+      validRows.forEach((row) => {
+        const userCellId = parseInt(row[cCellId]) - 1; // 0-indexed
         const appCellNum = userOrder[userCellId];
-        if (appCellNum) assignments.push({ row, cellNumber: appCellNum });
+        if (appCellNum) assignments.push({ row, cellNumber: appCellNum, cVariety, cPlantType, cSource, cQty, cPlantId });
       });
     } else {
       // Sequential fill
       const cellOrder = buildCellOrder(rows, cols, fillPattern, customOrder);
-      // Group rows by variety to know how many cells each gets
       const varietyBlocks = [];
       let lastVariety = null;
       validRows.forEach(row => {
-        const v = row[colVariety]?.trim();
+        const v = row[cVariety]?.trim();
         if (v === lastVariety && varietyBlocks.length > 0) {
           varietyBlocks[varietyBlocks.length - 1].rows.push(row);
         } else {
@@ -495,7 +498,7 @@ export default function TrayImportDialog({ open, onClose, tray, cells, onImporte
                     <SelectTrigger className="mt-1 h-8 text-xs"><SelectValue placeholder="Select column…" /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="__none__">— None —</SelectItem>
-                      {headers.filter(h => h !== '').map(h => <SelectItem key={h} value={h}>{h}</SelectItem>)}
+                      {headers.map(h => <SelectItem key={h} value={h}>{h}</SelectItem>)}
                     </SelectContent>
                   </Select>
                 </div>
