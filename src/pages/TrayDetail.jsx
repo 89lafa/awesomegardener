@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { base44 } from '@/api/base44Client';
-import { ArrowLeft, Plus, Loader2, Check, X, Upload, Settings, Trash2, Grid, Rows, Columns, ArrowDown, ArrowRight } from 'lucide-react';
+import { ArrowLeft, Plus, Loader2, Check, X, Upload, Settings, Trash2, Grid, Rows, Columns, ArrowDown, ArrowRight, FileSpreadsheet } from 'lucide-react';
+import TrayImportDialog from '@/components/indoor/TrayImportDialog';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
