@@ -252,14 +252,18 @@ export default function TrayImportDialog({ open, onClose, tray, cells, onImporte
       setAllRows(dataRows);
       setPreview(dataRows.slice(0, 5));
 
-      // Auto-detect columns
-      const find = (...terms) => hdrs.find(h => terms.some(t => h.toLowerCase().includes(t.toLowerCase()))) || '__none__';
-      setColVariety(find('variety', 'name', 'plant'));
-      setColPlantType(find('type', 'plant type', 'kind'));
-      setColSource(find('source', 'vendor', 'supplier'));
-      setColQty(find('qty', 'quantity', 'count', 'seeds'));
-      setColCellId(find('cell id', 'cell#', 'cell number', 'cell_id'));
-      setColPlantId(find('plant id', 'plant#', 'plant_id', 'id#'));
+      // Auto-detect columns (matches template headers exactly first, then fuzzy)
+      const find = (...terms) => {
+        const exact = hdrs.find(h => terms.some(t => h.toLowerCase() === t.toLowerCase()));
+        if (exact) return exact;
+        return hdrs.find(h => terms.some(t => h.toLowerCase().includes(t.toLowerCase()))) || '__none__';
+      };
+      setColVariety(find('variety_name', 'variety', 'name', 'plant'));
+      setColPlantType(find('plant_type', 'type', 'plant type', 'kind'));
+      setColSource(find('seed_source', 'source', 'vendor', 'supplier'));
+      setColQty(find('qty_planted', 'qty', 'quantity', 'count', 'seeds'));
+      setColCellId(find('cell_id', 'cell id', 'cell#', 'cell number'));
+      setColPlantId(find('plant_id', 'plant id', 'plant#', 'id#'));
 
       setStep(2);
       toast.success(`Loaded ${dataRows.length} rows from ${wb.SheetNames[0]}`);
