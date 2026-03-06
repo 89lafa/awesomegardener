@@ -207,6 +207,20 @@ export default function TrayImportDialog({ open, onClose, tray, cells, onImporte
 
   const addLog = (msg) => setLog(prev => [...prev, msg]);
 
+  // ── Download template ──
+  const downloadTemplate = () => {
+    const headers = ['variety_name', 'plant_type', 'seed_source', 'qty_planted', 'cell_id', 'plant_id'];
+    const exampleRows = [
+      ['Cherokee Purple', 'Tomato', 'Baker Creek', '2', '1', 'TP-001'],
+      ['Jalapeño M', 'Pepper', 'Burpee', '2', '2', 'PP-001'],
+      ['Basil Genovese', 'Herb', 'Home Saved', '1', '3', ''],
+    ];
+    const ws = XLSX.utils.aoa_to_sheet([headers, ...exampleRows]);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Tray Import');
+    XLSX.writeFile(wb, 'tray_import_template.xlsx');
+  };
+
   // ── Parse uploaded file ──
   const handleFileUpload = (e) => {
     const f = e.target.files?.[0];
