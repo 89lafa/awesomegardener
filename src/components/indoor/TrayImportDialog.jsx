@@ -483,9 +483,15 @@ export default function TrayImportDialog({ open, onClose, tray, cells, onImporte
             <div className="p-4 bg-amber-50 border border-amber-200 rounded-lg text-xs text-amber-800">
               <strong>Tray:</strong> {tray?.name} — {rows}×{cols} grid ({rows * cols} total cells)
             </div>
-            <div>
-              <Label>Upload your spreadsheet (.xls, .xlsx, or .csv)</Label>
-              <Input type="file" accept=".xls,.xlsx,.csv" onChange={handleFileUpload} className="mt-2" />
+            <div className="flex flex-col gap-3">
+              <Button variant="outline" className="w-full border-emerald-300 text-emerald-700 hover:bg-emerald-50" onClick={downloadTemplate}>
+                <Download className="w-4 h-4 mr-2" />
+                Download Template (.xlsx)
+              </Button>
+              <div>
+                <Label>Upload your spreadsheet (.xls, .xlsx, or .csv)</Label>
+                <Input type="file" accept=".xls,.xlsx,.csv" onChange={handleFileUpload} className="mt-2" />
+              </div>
             </div>
           </div>
         )}
