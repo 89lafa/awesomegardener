@@ -50,6 +50,7 @@ import { smartQuery, clearCache } from '@/components/utils/smartQuery';
 import RateLimitBanner from '@/components/common/RateLimitBanner';
 import BuildCalendarWizard from '@/components/ai/BuildCalendarWizard';
 import WhenToPlantChartModal from '@/components/calendar/WhenToPlantChartModal';
+import SuccessionPlannerWizard from '@/components/calendar/SuccessionPlannerWizard';
 import { getPlantTypesCached } from '@/components/utils/dataCache';
 import { createPageUrl } from '@/utils';
 import { KanbanBoard } from '@/components/tasks/KanbanBoard';
@@ -83,6 +84,7 @@ export default function Calendar() {
   const [retrying, setRetrying] = useState(false);
   const [showAIWizard, setShowAIWizard] = useState(false);
   const [showPlantingChart, setShowPlantingChart] = useState(false);
+  const [showSuccessionPlanner, setShowSuccessionPlanner] = useState(false);
   const [currentMonth, setCurrentMonth] = useState(new Date());
 
   // =================================================================
@@ -435,6 +437,14 @@ await loadPlansAndTasks(true, seasonId);
             >
               ✨ AI Build My Calendar
             </Button>
+            <Button
+              onClick={() => setShowSuccessionPlanner(true)}
+              variant="outline" size="sm"
+              className="w-full gap-2 bg-teal-50 hover:bg-teal-100 text-teal-700 border-teal-300"
+              disabled={cropPlans.length === 0}
+            >
+              🔄 AI Succession Planner
+            </Button>
             <Link to={createPageUrl('NeedToBuy')} className="w-full">
               <Button variant="outline" size="sm" className="w-full gap-2 bg-blue-50 hover:bg-blue-100 text-blue-700 border-blue-300">
                 <ShoppingCart className="w-4 h-4" />Need to Buy
@@ -687,6 +697,13 @@ await loadPlansAndTasks(true, seasonId);
         onComplete={() => { loadPlansAndTasks(true); toast.success('AI crop plans created!'); }}
       />
       <WhenToPlantChartModal open={showPlantingChart} onOpenChange={setShowPlantingChart} />
+      <SuccessionPlannerWizard
+        open={showSuccessionPlanner}
+        onOpenChange={setShowSuccessionPlanner}
+        seasonId={activeSeasonId}
+        cropPlans={cropPlans}
+        onSuccess={() => loadPlansAndTasks(true)}
+      />
     </div>
   );
 }
