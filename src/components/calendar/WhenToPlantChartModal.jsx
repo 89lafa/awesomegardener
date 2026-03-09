@@ -123,18 +123,24 @@ export default function WhenToPlantChartModal({ open, onOpenChange }) {
 
   const load = async (force = false) => {
     setPhase('loading');
-    const user         = await base44.auth.me();
-    const settingsList = await base44.entities.UserSettings.filter({ user_email: user.email });
-    const s            = settingsList[0] || null;
+    // ONE SOURCE OF TRUTH: frost dates live on the User object (Settings → Location tab)
+    const user = await base44.auth.me();
+    const s = {
+      usda_zone:        user.usda_zone_override || user.usda_zone || '',
+      last_frost_date:  user.last_frost_override || user.last_frost_date || '',
+      first_frost_date: user.first_frost_override || user.first_frost_date || '',
+      location_city:    user.location_city || '',
+      location_state:   user.location_state || '',
+    };
     setSettings(s);
 
-    if (!s?.last_frost_date) { setPhase('no_settings'); return; }
+    if (!s.last_frost_date) { setPhase('no_settings'); return; }
 
     const key = `${s.usda_zone || 'X'}|${s.last_frost_date}|${s.first_frost_date || ''}`;
 
     // ── Check cache ──
     if (!force) {
-      const cached = await base44.entities.PlantingCalendarCache.filter({ zone_key: key, created_by: user.email });
+      const cached = await base44.entities.PlantingCalendarCache.filter({ zone_key: key, created_by: user.email }, '', 1);
       if (cached.length > 0) {
         const ageDays = (Date.now() - new Date(cached[0].generated_at).getTime()) / 86400000;
         if (ageDays < 30) {
@@ -275,7 +281,7 @@ export default function WhenToPlantChartModal({ open, onOpenChange }) {
               <h3 className="text-lg font-bold text-gray-800 mb-2">Frost Dates Required</h3>
               <p className="text-sm text-gray-500 mb-5">
                 Set your <strong>last frost</strong> and <strong>first frost</strong> dates in{' '}
-                <strong>Settings → Growing Profile</strong> to generate a personalized planting calendar.
+                <strong>Settings → Location</strong> to generate a personalized planting calendar.
               </p>
               <Button onClick={() => onOpenChange(false)} className="text-white" style={{ background: LEAF }}>
                 Got It
