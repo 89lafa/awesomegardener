@@ -48,6 +48,7 @@ import { cn } from '@/lib/utils';
 import { smartQuery, clearCache } from '@/components/utils/smartQuery';
 import RateLimitBanner from '@/components/common/RateLimitBanner';
 import BuildCalendarWizard from '@/components/ai/BuildCalendarWizard';
+import WhenToPlantChartModal from '@/components/calendar/WhenToPlantChartModal';
 import { getPlantTypesCached } from '@/components/utils/dataCache';
 import { createPageUrl } from '@/utils';
 import { KanbanBoard } from '@/components/tasks/KanbanBoard';
@@ -80,6 +81,7 @@ export default function Calendar() {
   const [rateLimitError, setRateLimitError] = useState(null);
   const [retrying, setRetrying] = useState(false);
   const [showAIWizard, setShowAIWizard] = useState(false);
+  const [showPlantingChart, setShowPlantingChart] = useState(false);
   const [currentMonth, setCurrentMonth] = useState(new Date());
 
   // =================================================================
@@ -603,6 +605,16 @@ await loadPlansAndTasks(true, seasonId);
                 <SelectItem value="harvest">Harvest</SelectItem>
               </SelectContent>
             </Select>
+
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => setShowPlantingChart(true)}
+              className="gap-1.5 text-xs bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border-emerald-300 whitespace-nowrap hidden sm:flex h-9"
+            >
+              <BarChart2 className="w-3.5 h-3.5" />
+              When To Plant
+            </Button>
           </div>
           
           {/* View Area */}
@@ -673,6 +685,7 @@ await loadPlansAndTasks(true, seasonId);
         onOpenChange={setShowAIWizard}
         onComplete={() => { loadPlansAndTasks(true); toast.success('AI crop plans created!'); }}
       />
+      <WhenToPlantChartModal open={showPlantingChart} onOpenChange={setShowPlantingChart} />
     </div>
   );
 }
