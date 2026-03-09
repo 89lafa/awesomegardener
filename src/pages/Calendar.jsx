@@ -16,7 +16,8 @@ import {
   Download,
   ShoppingCart,
   List,
-  LayoutGrid
+  LayoutGrid,
+  BarChart2
 } from 'lucide-react';
 import { useSwipe } from '@/components/utils/useTouch';
 import { Link } from 'react-router-dom';
