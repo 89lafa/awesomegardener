@@ -301,12 +301,15 @@ export default function Dashboard() {
   }, []);
 
   useEffect(() => {
-    // Try session cache first
+    // Try session cache first (5 min TTL, skip if popularCrops is old empty data)
     const cached = sessionStorage.getItem('dashboard_state');
     if (cached) {
       try {
         const parsed = JSON.parse(cached);
-        if (Date.now() - (parsed.timestamp || 0) < 120000) {
+        const age = Date.now() - (parsed.timestamp || 0);
+        const hasGoodCrops = parsed.popularCrops && 
+          (parsed.popularCrops.tomatoes?.length > 0 || parsed.popularCrops.peppers?.length > 0);
+        if (age < 120000 && hasGoodCrops) {
           setStats(parsed.stats || {});
           setPopularCrops(parsed.popularCrops);
           setWeather(parsed.weather);
