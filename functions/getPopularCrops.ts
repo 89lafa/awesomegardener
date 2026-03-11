@@ -4,103 +4,80 @@ Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
 
-    // Fetch from multiple data sources in parallel for maximum coverage
-    const [plantInstances, cropPlans, trayCells, myPlants, varieties, plantTypes] = await Promise.all([
-      base44.asServiceRole.entities.PlantInstance.list('-created_date', 200),
-      base44.asServiceRole.entities.CropPlan.list('-created_date', 200),   // all statuses
-      base44.asServiceRole.entities.TrayCell.filter({ status: { $ne: 'empty' } }, '-created_date', 300),
-      base44.asServiceRole.entities.MyPlant.list('-created_date', 300),
-      base44.asServiceRole.entities.Variety.list('variety_name', 1000),
-      base44.asServiceRole.entities.PlantType.list('common_name', 100),
+    // Fetch all data sources in parallel
+    const [plantInstances, cropPlans, trayCells, myPlants] = await Promise.all([
+      base44.asServiceRole.entities.PlantInstance.list('-created_date', 300),
+      base44.asServiceRole.entities.CropPlan.list('-created_date', 300),
+      base44.asServiceRole.entities.TrayCell.list('-created_date', 500),
+      base44.asServiceRole.entities.MyPlant.list('-created_date', 500),
     ]);
 
-    const varietiesArr  = Array.isArray(varieties)  ? varieties  : [];
-    const plantTypesArr = Array.isArray(plantTypes) ? plantTypes : [];
+    // NAME-BASED grouping: key = `${normalized_plant_type}|${normalized_variety}`
+    // This works for all data sources regardless of whether IDs are populated.
+    // Map value: { plant_type_name, variety_name, users: Set<email> }
+    const groups = new Map();
 
-    const typeMap    = new Map(plantTypesArr.map(t => [t.id, t]));
-    const varietyMap = new Map(varietiesArr.map(v => [v.id, v]));
-
-    // Track unique users per variety_id and plant_type_id
-    const varietyUsers   = new Map(); // variety_id → Set<email>
-    const plantTypeUsers = new Map(); // plant_type_id → Set<email>
-
-    const recordUser = (email, varietyId, plantTypeId) => {
-      const user = email || 'unknown';
-      if (varietyId) {
-        if (!varietyUsers.has(varietyId)) varietyUsers.set(varietyId, new Set());
-        varietyUsers.get(varietyId).add(user);
-      } else if (plantTypeId) {
-        if (!plantTypeUsers.has(plantTypeId)) plantTypeUsers.set(plantTypeId, new Set());
-        plantTypeUsers.get(plantTypeId).add(user);
+    const record = (email, plantTypeName, varietyName) => {
+      if (!plantTypeName) return;
+      const ptNorm  = plantTypeName.trim();
+      const varNorm = (varietyName || '').trim() || ptNorm;
+      const key     = `${ptNorm.toLowerCase()}|${varNorm.toLowerCase()}`;
+      if (!groups.has(key)) {
+        groups.set(key, { plant_type_name: ptNorm, variety_name: varNorm, users: new Set() });
       }
+      groups.get(key).users.add(email || 'unknown');
     };
 
-    for (const p of plantInstances) recordUser(p.created_by, p.variety_id, p.plant_type_id);
-    for (const c of cropPlans)      recordUser(c.created_by, c.variety_id, c.plant_type_id);
-    for (const t of trayCells)      recordUser(t.created_by, t.variety_id, t.plant_type_id);
-    for (const m of myPlants)       recordUser(m.created_by, m.variety_id, m.plant_type_id);
+    // Process all 4 sources
+    for (const p of plantInstances) {
+      record(p.created_by, p.plant_type_name || p.display_name, p.variety_name || p.custom_name);
+    }
+    for (const c of cropPlans) {
+      record(c.created_by, c.plant_type_name || c.label, c.variety_name);
+    }
+    for (const t of trayCells) {
+      if (t.status === 'empty') continue;
+      record(t.created_by, t.plant_type_name, t.variety_name);
+    }
+    for (const m of myPlants) {
+      record(m.created_by, m.plant_type_name, m.variety_name);
+    }
 
-    console.log('[getPopularCrops] varieties tracked:', varietyUsers.size, 'plant types tracked:', plantTypeUsers.size);
+    console.log('[getPopularCrops] groups found:', groups.size,
+      '| plantInstances:', plantInstances.length,
+      '| cropPlans:', cropPlans.length,
+      '| trayCells:', trayCells.length,
+      '| myPlants:', myPlants.length
+    );
 
     // Build popularity list
-    const pop = [];
+    const pop = Array.from(groups.entries()).map(([, v]) => ({
+      variety_id:      null,          // not needed for display
+      variety_name:    v.variety_name,
+      plant_type_name: v.plant_type_name,
+      unique_users:    v.users.size,
+    })).sort((a, b) => b.unique_users - a.unique_users);
 
-    for (const [vid, users] of varietyUsers.entries()) {
-      const variety   = varietyMap.get(vid);
-      if (!variety) continue;
-      const plantType = typeMap.get(variety.plant_type_id);
-      pop.push({
-        variety_id:      variety.id,
-        variety_name:    variety.variety_name,
-        plant_type_id:   plantType?.id,
-        plant_type_name: plantType?.common_name,
-        unique_users:    users.size,
-      });
-    }
+    const isTomato = n => /tomato/i.test(n);
+    const isPepper = n => /pepper/i.test(n);
 
-    // Add plant-type-only entries (no variety_id), pick most popular variety as representative
-    for (const [ptId, users] of plantTypeUsers.entries()) {
-      const plantType = typeMap.get(ptId);
-      if (!plantType) continue;
-      // Only add if no variety-level entry already exists for this type
-      const alreadyHasVariety = pop.some(v => v.plant_type_id === ptId);
-      if (!alreadyHasVariety) {
-        // Find any variety for this type to serve as label
-        const rep = varietiesArr.find(v => v.plant_type_id === ptId);
-        if (rep) {
-          pop.push({
-            variety_id:      rep.id,
-            variety_name:    rep.variety_name,
-            plant_type_id:   plantType.id,
-            plant_type_name: plantType.common_name,
-            unique_users:    users.size,
-          });
-        } else {
-          // No variety at all — show plant type name as label
-          pop.push({
-            variety_id:      ptId,
-            variety_name:    plantType.common_name,
-            plant_type_id:   plantType.id,
-            plant_type_name: plantType.common_name,
-            unique_users:    users.size,
-          });
+    // De-dupe display names within each category, keep highest count
+    const dedup = (arr) => {
+      const seen = new Map();
+      for (const item of arr) {
+        const k = item.variety_name.toLowerCase();
+        if (!seen.has(k) || seen.get(k).unique_users < item.unique_users) {
+          seen.set(k, item);
         }
-      } else {
-        // Boost the count for existing variety entries of this type
-        pop
-          .filter(v => v.plant_type_id === ptId)
-          .forEach(v => v.unique_users = Math.max(v.unique_users, users.size));
       }
-    }
+      return Array.from(seen.values()).sort((a, b) => b.unique_users - a.unique_users).slice(0, 5);
+    };
 
-    pop.sort((a, b) => b.unique_users - a.unique_users);
+    const tomatoes = dedup(pop.filter(v => isTomato(v.plant_type_name)));
+    const peppers  = dedup(pop.filter(v => isPepper(v.plant_type_name)));
+    const other    = dedup(pop.filter(v => !isTomato(v.plant_type_name) && !isPepper(v.plant_type_name)));
 
-    const isTomato  = n => n?.toLowerCase().includes('tomato');
-    const isPepper  = n => n?.toLowerCase().includes('pepper');
-
-    const tomatoes = pop.filter(v => isTomato(v.plant_type_name)).slice(0, 5);
-    const peppers  = pop.filter(v => isPepper(v.plant_type_name)).slice(0, 5);
-    const other    = pop.filter(v => !isTomato(v.plant_type_name) && !isPepper(v.plant_type_name)).slice(0, 5);
+    console.log('[getPopularCrops] results → tomatoes:', tomatoes.length, 'peppers:', peppers.length, 'other:', other.length);
 
     return Response.json({ tomatoes, peppers, other, total_varieties: pop.length });
   } catch (error) {
