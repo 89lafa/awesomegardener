@@ -622,18 +622,22 @@ export default function Dashboard() {
                   </h3>
                   <div className="space-y-1.5">
                     {popularCrops[cropType]?.length > 0 ? (
-                      popularCrops[cropType].map((crop, idx) => (
-                        <a href={`/ViewVariety?id=${crop.variety_id}`} key={crop.variety_id}
-                          className="flex items-center gap-3 p-2 rounded-lg transition-colors hover:bg-emerald-50/50 dark:hover:bg-emerald-900/20">
-                          <span className="text-xs font-bold w-5 text-center" style={{ color: 'var(--text-muted, #9ca3af)' }}>
+                      popularCrops[cropType].map((crop, idx) => {
+                        // Clean up display name: strip leading "Tomato - ", "Pepper - " etc.
+                        const displayName = crop.variety_name?.replace(/^(tomato|pepper|chili pepper|bell pepper)\s*[-–]\s*/i, '') || crop.variety_name || crop.plant_type_name;
+                        return (
+                        <div key={idx}
+                          className="flex items-center gap-3 p-2 rounded-lg">
+                          <span className="text-xs font-bold w-5 text-center flex-shrink-0" style={{ color: 'var(--text-muted, #9ca3af)' }}>
                             {idx === 0 ? '🥇' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : `#${idx + 1}`}
                           </span>
-                          <span className="flex-1 text-sm truncate" style={{ color: 'var(--text-primary, #111827)' }}>{crop.variety_name}</span>
+                          <span className="flex-1 text-sm truncate" style={{ color: 'var(--text-primary, #111827)' }}>{displayName}</span>
                           <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400">
-                            {crop.unique_users} growers
+                            {crop.unique_users} {crop.unique_users === 1 ? 'grower' : 'growers'}
                           </span>
-                        </a>
-                      ))
+                        </div>
+                        );
+                      })
                     ) : (
                       <p className="text-sm text-center py-4" style={{ color: 'var(--text-muted, #9ca3af)' }}>Not enough data yet</p>
                     )}
