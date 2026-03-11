@@ -67,6 +67,38 @@
     @apply bg-background text-foreground;
     overscroll-behavior-y: none;
     -webkit-overflow-scrolling: touch;
+    /* Prevent horizontal scroll on mobile */
+    overflow-x: hidden;
+    max-width: 100vw;
+  }
+
+  /* Ensure all pages are scrollable on mobile */
+  main {
+    min-height: 0;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Fix iOS input zoom (prevents zoom on focus for inputs < 16px) */
+  input, textarea, select {
+    font-size: max(16px, 1rem) !important;
+  }
+
+  /* Touch-friendly tap targets */
+  @media (max-width: 768px) {
+    a, button, [role="button"], [role="tab"] {
+      touch-action: manipulation;
+    }
+    
+    /* Prevent text size adjustment on orientation change */
+    html {
+      -webkit-text-size-adjust: 100%;
+    }
+
+    /* Better scrolling for horizontal overflow containers on mobile */
+    .overflow-x-auto {
+      -webkit-overflow-scrolling: touch;
+    }
   }
   
   /* Prevent text selection on interactive elements for better mobile UX */
