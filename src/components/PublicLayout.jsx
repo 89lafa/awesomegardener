@@ -17,14 +17,14 @@ const publicNav = [
   { name: 'Blog', icon: BookOpen, path: 'BlogList' },
   { name: 'Recipes', icon: ChefHat, path: 'Recipes' },
   { name: 'Pest Library', icon: Bug, path: 'PestLibrary' },
-  { name: 'Planting Guide', icon: Calendar, path: 'CalendarPlanner' },
-  { name: 'Companion Chart', icon: Grid3X3, path: 'CompanionPlanner' },
+  { name: 'Resources', icon: Lightbulb, path: 'Resources' },
 ];
 
 const appFeaturesNav = [
   { name: 'My Gardens', icon: Grid3X3, requiresAuth: true },
+  { name: 'Planting Calendar', icon: Calendar, requiresAuth: true, page: 'CalendarPlanner' },
+  { name: 'Companion Chart', icon: Sprout, requiresAuth: true, page: 'CompanionPlanner' },
   { name: 'Seed Stash', icon: Package, requiresAuth: true },
-  { name: 'Calendar', icon: Calendar, requiresAuth: true },
 ];
 
 export default function PublicLayout({ children }) {
@@ -118,15 +118,27 @@ export default function PublicLayout({ children }) {
                     Sign in to access
                   </p>
                   {appFeaturesNav.map(item => (
-                    <button
-                      key={item.name}
-                      onClick={handleLogin}
-                      className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium text-gray-500 hover:bg-gray-50"
-                    >
-                      <item.icon className="w-5 h-5" />
-                      {item.name}
-                      <Lock className="w-4 h-4 ml-auto" />
-                    </button>
+                    item.page ? (
+                      <Link
+                        key={item.name}
+                        to={createPageUrl(item.page)}
+                        onClick={() => setMobileMenuOpen(false)}
+                        className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-100"
+                      >
+                        <item.icon className="w-5 h-5" />
+                        {item.name}
+                      </Link>
+                    ) : (
+                      <button
+                        key={item.name}
+                        onClick={handleLogin}
+                        className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium text-gray-500 hover:bg-gray-50"
+                      >
+                        <item.icon className="w-5 h-5" />
+                        {item.name}
+                        <Lock className="w-4 h-4 ml-auto" />
+                      </button>
+                    )
                   ))}
                 </div>
               </div>

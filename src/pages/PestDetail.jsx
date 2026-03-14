@@ -53,19 +53,27 @@ export default function PestDetail() {
 
   const loadPest = async () => {
     try {
-      const [userData, results] = await Promise.all([
-        base44.auth.me(),
-        base44.entities.PestLibrary.filter({ id: pestId })
-      ]);
+      // Try to get user but don't fail if not authenticated
+      let userData = null;
+      try {
+        const isAuth = await base44.auth.isAuthenticated();
+        if (isAuth) userData = await base44.auth.me();
+      } catch {}
+      
       setUser(userData);
+      
+      const results = await base44.entities.PestLibrary.filter({ id: pestId });
       if (results.length > 0) {
         const p = results[0];
         setPest(p);
-        // Decode lifecycle → separate lifecycle text + confused_with array
         setDecoded(decodeLifecycle(p.lifecycle));
-        await base44.entities.PestLibrary.update(pestId, {
-          view_count: (p.view_count || 0) + 1
-        });
+        
+        // Only update view count if authenticated
+        if (userData) {
+          await base44.entities.PestLibrary.update(pestId, {
+            view_count: (p.view_count || 0) + 1
+          });
+        }
       }
     } catch (error) {
       console.error('Error loading pest:', error);

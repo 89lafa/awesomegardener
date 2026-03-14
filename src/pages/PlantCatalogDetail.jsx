@@ -246,21 +246,22 @@ export default function PlantCatalogDetail() {
     if (plantTypeId) localStorage.setItem(`pc_detail_view_${plantTypeId}`, viewMode);
   }, [viewMode, plantTypeId]);
 
-  // Load user + zone once
+  // Load user + zone once (silently fail if not authenticated)
   useEffect(() => {
     (async () => {
       try {
-        // Zone is saved on the user object via base44.auth.updateMe()
-        // ZoneMap.jsx saves to usda_zone_override (fallback: usda_zone)
-        const userData = await base44.auth.me();
-        setUser(userData);
-        const zone = userData?.usda_zone_override || userData?.usda_zone;
-        if (zone) {
-          setUserZone(parseZoneLabel(zone));
-          setUserZoneMinTemp(getZoneMinTemp(zone));
+        const isAuth = await base44.auth.isAuthenticated();
+        if (isAuth) {
+          const userData = await base44.auth.me();
+          setUser(userData);
+          const zone = userData?.usda_zone_override || userData?.usda_zone;
+          if (zone) {
+            setUserZone(parseZoneLabel(zone));
+            setUserZoneMinTemp(getZoneMinTemp(zone));
+          }
         }
       } catch (e) {
-        console.error('Error loading user/zone:', e);
+        console.log('No user auth - loading as guest');
       }
     })();
   }, []);
