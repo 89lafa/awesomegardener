@@ -3,21 +3,60 @@ import { Link } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
 import { base44 } from '@/api/base44Client';
 import { 
-  Sprout, 
-  Grid3X3, 
-  Package, 
-  Calendar, 
-  Share2, 
-  ArrowRight,
-  CheckCircle2,
-  TreeDeciduous,
-  Leaf
+  Sprout, Grid3X3, Package, Calendar, Share2, ArrowRight, CheckCircle2,
+  TreeDeciduous, Leaf, BookOpen, Bug, ChefHat, Lightbulb, Users, Sparkles
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
 import { motion } from 'framer-motion';
 import InstallPWAButton from '@/components/landing/InstallPWAButton';
 
-const features = [
+const publicFeatures = [
+  {
+    icon: Sprout,
+    title: 'Plant Catalog',
+    description: 'Browse 1,000+ plant varieties with detailed growing info',
+    link: 'PlantCatalog',
+    color: 'from-green-400 to-emerald-600'
+  },
+  {
+    icon: Users,
+    title: 'Community Gardens',
+    description: 'Get inspired by gardens from growers worldwide',
+    link: 'BrowseGardens',
+    color: 'from-blue-400 to-indigo-600'
+  },
+  {
+    icon: BookOpen,
+    title: 'Blog & Guides',
+    description: 'Learn from expert tips, tutorials, and growing guides',
+    link: 'BlogList',
+    color: 'from-purple-400 to-pink-600'
+  },
+  {
+    icon: ChefHat,
+    title: 'Garden Recipes',
+    description: 'Discover delicious recipes using your harvest',
+    link: 'Recipes',
+    color: 'from-orange-400 to-red-600'
+  },
+  {
+    icon: Bug,
+    title: 'Pest Library',
+    description: 'Identify and treat common garden pests & diseases',
+    link: 'PestLibrary',
+    color: 'from-amber-400 to-yellow-600'
+  },
+  {
+    icon: Lightbulb,
+    title: 'Resources',
+    description: 'Helpful tools, calculators, and reference guides',
+    link: 'Resources',
+    color: 'from-teal-400 to-cyan-600'
+  }
+];
+
+const appFeatures = [
   {
     icon: Grid3X3,
     title: 'Visual Garden Builder',
@@ -56,7 +95,7 @@ export default function Landing() {
   return (
     <div className="min-h-screen">
       {/* Header */}
-      <header className="fixed top-0 left-0 right-0 z-50 bg-white/80 backdrop-blur-md border-b border-gray-100">
+      <header className="fixed top-0 left-0 right-0 z-50 bg-white/95 backdrop-blur-md border-b border-gray-200 shadow-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
             <div className="flex items-center gap-3">
@@ -65,15 +104,18 @@ export default function Landing() {
               </div>
               <span className="font-bold text-xl text-gray-900">AwesomeGardener</span>
             </div>
-            <Button onClick={handleLogin} className="bg-emerald-600 hover:bg-emerald-700">
-              Sign In
-            </Button>
+            <div className="flex items-center gap-4">
+              <InstallPWAButton />
+              <Button onClick={handleLogin} className="bg-emerald-600 hover:bg-emerald-700">
+                Sign In / Sign Up
+              </Button>
+            </div>
           </div>
         </div>
       </header>
 
       {/* Hero Section */}
-      <section className="pt-32 pb-20 px-4 sm:px-6 lg:px-8 bg-gradient-to-b from-emerald-50/50 to-white">
+      <section className="pt-32 pb-20 px-4 sm:px-6 lg:px-8 bg-gradient-to-b from-emerald-50/50 via-green-50/30 to-white">
         <div className="max-w-7xl mx-auto">
           <div className="grid lg:grid-cols-2 gap-12 items-center">
             <motion.div
@@ -82,7 +124,7 @@ export default function Landing() {
               transition={{ duration: 0.6 }}
             >
               <div className="inline-flex items-center gap-2 px-4 py-2 bg-emerald-100 rounded-full text-emerald-700 text-sm font-medium mb-6">
-                <Leaf className="w-4 h-4" />
+                <Sparkles className="w-4 h-4" />
                 Free garden planning tool
               </div>
               <h1 className="text-5xl lg:text-6xl font-bold text-gray-900 leading-tight mb-6">
@@ -102,16 +144,6 @@ export default function Landing() {
                   Get Started Free
                   <ArrowRight className="w-5 h-5" />
                 </Button>
-                <InstallPWAButton />
-                <Link to={createPageUrl('Community')}>
-                  <Button 
-                    variant="outline" 
-                    size="lg"
-                    className="text-lg px-8 py-6 border-gray-300 w-full sm:w-auto"
-                  >
-                    Browse Public Gardens
-                  </Button>
-                </Link>
               </div>
             </motion.div>
 
@@ -131,7 +163,6 @@ export default function Landing() {
                   </div>
                 </div>
                 <div className="p-6">
-                  {/* Mock garden grid */}
                   <div className="grid grid-cols-6 gap-1 mb-4">
                     {Array(24).fill(0).map((_, i) => (
                       <div 
@@ -161,48 +192,67 @@ export default function Landing() {
                   </div>
                 </div>
               </div>
-              {/* Floating cards */}
-              <div className="absolute -left-4 -bottom-4 bg-white rounded-xl shadow-lg p-4 border border-gray-100">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-lg bg-emerald-100 flex items-center justify-center">
-                    <Calendar className="w-5 h-5 text-emerald-600" />
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium">Plant Today</p>
-                    <p className="text-xs text-gray-500">3 tasks due</p>
-                  </div>
-                </div>
-              </div>
-              <div className="absolute -right-4 top-20 bg-white rounded-xl shadow-lg p-4 border border-gray-100">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-lg bg-amber-100 flex items-center justify-center">
-                    <Package className="w-5 h-5 text-amber-600" />
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium">Seed Stash</p>
-                    <p className="text-xs text-gray-500">24 varieties</p>
-                  </div>
-                </div>
-              </div>
             </motion.div>
           </div>
         </div>
       </section>
 
-      {/* Features */}
+      {/* Explore Public Content */}
+      <section className="py-20 px-4 sm:px-6 lg:px-8 bg-gray-50">
+        <div className="max-w-7xl mx-auto">
+          <div className="text-center mb-12">
+            <h2 className="text-3xl lg:text-4xl font-bold text-gray-900 mb-4">
+              🌍 Explore without signing in
+            </h2>
+            <p className="text-xl text-gray-600">
+              Browse our free resources available to everyone
+            </p>
+          </div>
+
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {publicFeatures.map((feature, index) => (
+              <Link key={feature.title} to={createPageUrl(feature.link)}>
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.5, delay: index * 0.1 }}
+                  viewport={{ once: true }}
+                >
+                  <Card className="h-full hover:shadow-2xl transition-all hover:scale-105 duration-300 cursor-pointer border-0 overflow-hidden">
+                    <div className={`h-2 bg-gradient-to-r ${feature.color}`} />
+                    <CardContent className="p-6">
+                      <div className={`w-14 h-14 rounded-2xl bg-gradient-to-br ${feature.color} flex items-center justify-center mb-4 shadow-lg`}>
+                        <feature.icon className="w-7 h-7 text-white" />
+                      </div>
+                      <h3 className="text-xl font-bold text-gray-900 mb-2">{feature.title}</h3>
+                      <p className="text-gray-600 mb-4">{feature.description}</p>
+                      <div className="flex items-center text-emerald-600 font-medium">
+                        Explore Now
+                        <ArrowRight className="w-4 h-4 ml-1" />
+                      </div>
+                    </CardContent>
+                  </Card>
+                </motion.div>
+              </Link>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* App Features */}
       <section className="py-20 px-4 sm:px-6 lg:px-8">
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-16">
             <h2 className="text-3xl lg:text-4xl font-bold text-gray-900 mb-4">
-              Everything you need to grow
+              Create a free account to unlock
             </h2>
             <p className="text-xl text-gray-600 max-w-2xl mx-auto">
-              From planning to harvest, AwesomeGardener helps you every step of the way
+              Everything you need to plan, track, and grow your best garden ever
             </p>
           </div>
 
           <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
-            {features.map((feature, index) => (
+            {appFeatures.map((feature, index) => (
               <motion.div
                 key={feature.title}
                 initial={{ opacity: 0, y: 20 }}
