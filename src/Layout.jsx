@@ -5,6 +5,7 @@ import Sidebar from '@/components/layout/Sidebar';
 import TopBar from '@/components/layout/TopBar';
 import CollapsibleBottomNav from '@/components/layout/CollapsibleBottomNav';
 import QuickHelpWidget from '@/components/ai/QuickHelpWidget';
+import PublicLayout from '@/components/PublicLayout';
 import { cn } from '@/lib/utils';
 import { Loader2 } from 'lucide-react';
 import ErrorBoundary from '@/components/common/ErrorBoundary';
@@ -214,9 +215,9 @@ export default function Layout({ children, currentPageName }) {
     return <div className="min-h-screen" style={{ background: 'var(--bg-body)' }}>{children}</div>;
   }
 
-  // Public pages without sidebar
+  // Public pages get the beautiful public layout wrapper
   if (isPublicPage && !user) {
-    return <div className="min-h-screen" style={{ background: 'var(--bg-body)' }}>{children}</div>;
+    return <PublicLayout>{children}</PublicLayout>;
   }
 
   // Check if onboarding is needed (only after auth is fully resolved)
