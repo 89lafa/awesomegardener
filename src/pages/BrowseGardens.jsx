@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
 import { base44 } from '@/api/base44Client';
 import { 
-  Globe, Search, MapPin, ThumbsUp, Loader2, Sparkles, ArrowLeft, Heart
+  Globe, Search, MapPin, ThumbsUp, Loader2, Sparkles, ArrowLeft, Heart, ArrowRight
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
