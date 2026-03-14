@@ -7,8 +7,9 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
-import { Camera, Upload, Loader2, CheckCircle2, AlertTriangle, Leaf } from 'lucide-react';
+import { Camera, Upload, Loader2, CheckCircle2, AlertTriangle, Leaf, Database } from 'lucide-react';
 import { toast } from 'sonner';
+import { Checkbox } from '@/components/ui/checkbox';
 
 export default function DiagnosisModal({ open, onOpenChange, varietyId, plantTypeId, cropPlanId, plantContext }) {
   const [step, setStep] = useState('capture');
@@ -145,15 +146,15 @@ export default function DiagnosisModal({ open, onOpenChange, varietyId, plantTyp
             </div>
 
             <label className="flex items-center gap-3 p-3 bg-emerald-50 border border-emerald-200 rounded-lg cursor-pointer hover:bg-emerald-100 transition-colors">
-              <input
-                type="checkbox"
+              <Checkbox
                 checked={addToDatabase}
-                onChange={(e) => setAddToDatabase(e.target.checked)}
-                className="w-4 h-4 rounded border-emerald-300 text-emerald-600 focus:ring-emerald-500"
+                onCheckedChange={setAddToDatabase}
+                className="border-emerald-300 data-[state=checked]:bg-emerald-600"
               />
               <div className="flex-1">
-                <p className="text-sm font-medium text-emerald-900">
-                  📚 Add to Pest Library Database
+                <p className="text-sm font-medium text-emerald-900 flex items-center gap-2">
+                  <Database className="w-4 h-4" />
+                  Add to Pest Library Database
                 </p>
                 <p className="text-xs text-emerald-700">
                   Help grow our community database with your photo

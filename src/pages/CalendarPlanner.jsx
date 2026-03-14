@@ -33,6 +33,12 @@ export default function CalendarPlanner() {
 
   const loadData = async () => {
     try {
+      const isAuth = await base44.auth.isAuthenticated();
+      if (!isAuth) {
+        setLoading(false);
+        return;
+      }
+      
       const userData = await base44.auth.me();
       setUser(userData);
       
@@ -57,7 +63,6 @@ export default function CalendarPlanner() {
         base44.entities.PlantProfile.list('variety_name', 500)
       ]);
       
-      setUser(userData);
       setSeeds(seedsData);
       
       const profilesMap = {};
@@ -166,6 +171,12 @@ export default function CalendarPlanner() {
         <Loader2 className="w-8 h-8 animate-spin text-emerald-600" />
       </div>
     );
+  }
+
+  // Guest users get redirected to the "When to Plant" guide
+  if (!user) {
+    window.location.href = createPageUrl('GardeningBasics') + '#when-to-plant';
+    return null;
   }
 
   if (!user?.last_frost_date) {

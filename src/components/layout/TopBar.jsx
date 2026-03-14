@@ -91,27 +91,39 @@ export default function TopBar({ user, onMobileMenuToggle, onSidebarToggle, side
         paddingBottom: '1rem'
       }}
     >
-      {/* Sidebar Toggle OR Back Button */}
-      <div className="flex items-center gap-2">
-        {isChildPage ? (
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => navigate(-1)}
-            className="lg:hidden"
-          >
-            <ArrowLeft className="w-5 h-5" />
-          </Button>
-        ) : (
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={onMobileMenuToggle}
-            className="lg:hidden"
-          >
-            <Menu className="w-5 h-5" />
-          </Button>
-        )}
+      {/* Back + Menu Buttons */}
+      <div className="flex items-center gap-1">
+        {/* Always show back button on mobile */}
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={() => navigate(-1)}
+          className="lg:hidden"
+          title="Go back"
+        >
+          <ArrowLeft className="w-5 h-5" />
+        </Button>
+        
+        {/* Mobile menu */}
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={onMobileMenuToggle}
+          className="lg:hidden"
+        >
+          <Menu className="w-5 h-5" />
+        </Button>
+        
+        {/* Desktop sidebar toggle + back */}
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={() => navigate(-1)}
+          className="hidden lg:flex"
+          title="Go back"
+        >
+          <ArrowLeft className="w-5 h-5" />
+        </Button>
         <Button
           variant="ghost"
           size="icon"

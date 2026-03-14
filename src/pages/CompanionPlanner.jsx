@@ -67,7 +67,13 @@ export default function CompanionPlanner() {
 
   const loadData = async () => {
     try {
-      const userData = await base44.auth.me();
+      // Try to get user but don't fail if not authenticated
+      let userData = null;
+      try {
+        const isAuth = await base44.auth.isAuthenticated();
+        if (isAuth) userData = await base44.auth.me();
+      } catch {}
+      
       setUser(userData);
       
       const [typesData, rulesData] = await Promise.all([
