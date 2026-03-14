@@ -35,6 +35,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { toast } from 'sonner';
+import BackButton from '@/components/common/BackButton';
 
 export default function CompanionPlanner() {
   const [user, setUser] = useState(null);
@@ -245,8 +246,9 @@ Cucumber,Radish,Good Conditional,Radishes can deter cucumber beetles but compete
 
   return (
     <div className="space-y-6 max-w-5xl">
-      <div className="flex items-center justify-between">
-        <div>
+      <div className="flex items-center gap-3 mb-4">
+        <BackButton />
+        <div className="flex-1">
           <h1 className="text-2xl lg:text-3xl font-bold text-gray-900">Companion Planting</h1>
           <p className="text-gray-600 mt-1">
             {user?.role === 'admin' 
@@ -254,6 +256,8 @@ Cucumber,Radish,Good Conditional,Radishes can deter cucumber beetles but compete
               : 'View companion relationships • Rules are curated by admins'}
           </p>
         </div>
+      </div>
+      <div className="flex items-center justify-end">
         <div className="flex gap-2 flex-wrap">
           <Button
             onClick={() => setShowChartModal(true)}

@@ -39,6 +39,7 @@ import ErrorBoundary from '@/components/common/ErrorBoundary';
 import PlantingModal from '@/components/garden/PlantingModal';
 import { smartQuery } from '@/components/utils/smartQuery';
 import RateLimitBanner from '@/components/common/RateLimitBanner';
+import BackButton from '@/components/common/BackButton';
 
 // PAGE-LEVEL DATA CACHE: Shared across all SpaceCards on this page
 const PAGE_DATA_CACHE = {
@@ -744,6 +745,7 @@ export default function GardenPlanting() {
         <div className="flex flex-col gap-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
+              <BackButton />
               <Sprout className="w-6 h-6" style={{ color: 'var(--primary)' }} />
               {gardens.length > 1 ? (
                 <Select 

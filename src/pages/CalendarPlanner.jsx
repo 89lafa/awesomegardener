@@ -18,6 +18,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { format, addWeeks, addDays, isWithinInterval } from 'date-fns';
+import BackButton from '@/components/common/BackButton';
+import WhenToPlantChartModal from '@/components/calendar/WhenToPlantChartModal';
 
 export default function CalendarPlanner() {
   const [user, setUser] = useState(null);
@@ -25,7 +27,8 @@ export default function CalendarPlanner() {
   const [profiles, setProfiles] = useState({});
   const [plantings, setPlantings] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [viewMode, setViewMode] = useState('list'); // 'list' or 'calendar'
+  const [viewMode, setViewMode] = useState('list');
+  const [showWhenToPlantChart, setShowWhenToPlantChart] = useState(false);
 
   useEffect(() => {
     loadData();
@@ -233,14 +236,25 @@ export default function CalendarPlanner() {
 
   return (
     <div className="space-y-6 max-w-6xl">
-      <div className="flex items-center justify-between">
-        <div>
+      <div className="flex items-center gap-3 mb-4">
+        <BackButton />
+        <div className="flex-1">
           <h1 className="text-2xl lg:text-3xl font-bold text-gray-900">Planting Calendar</h1>
           <p className="text-gray-600 mt-1">
             Personalized schedule for Zone {user.usda_zone || 'Unknown'} • Last Frost: {user.last_frost_date ? format(new Date(user.last_frost_date), 'MMM d') : 'Not Set'}
           </p>
         </div>
+      </div>
+      <div className="flex items-center justify-end">
         <div className="flex gap-2">
+          <Button
+            onClick={() => setShowWhenToPlantChart(true)}
+            variant="outline"
+            className="gap-2 border-purple-400 text-purple-700 hover:bg-purple-50"
+          >
+            <CalendarDays className="w-4 h-4" />
+            When to Plant Guide
+          </Button>
           <div className="flex border rounded-lg">
             <Button
               variant={viewMode === 'list' ? 'default' : 'ghost'}
@@ -384,6 +398,11 @@ export default function CalendarPlanner() {
           </CardContent>
         </Card>
       )}
+      
+      <WhenToPlantChartModal 
+        open={showWhenToPlantChart} 
+        onOpenChange={setShowWhenToPlantChart}
+      />
     </div>
   );
 }

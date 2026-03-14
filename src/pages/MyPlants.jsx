@@ -18,6 +18,7 @@ import { format, differenceInDays } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { usePullToRefresh } from '@/components/utils/usePullToRefresh';
 import PullToRefreshIndicator from '@/components/common/PullToRefreshIndicator';
+import BackButton from '@/components/common/BackButton';
 
 // ─────────────────────────────────────────────────────────────────
 // Large fruiting plants — each instance keeps its OWN card
@@ -630,8 +631,9 @@ export default function MyPlants() {
       <div className="max-w-7xl mx-auto space-y-5">
 
         {/* ── Header ── */}
-        <div className="flex items-center justify-between gap-3 flex-wrap">
-          <div>
+        <div className="flex items-center gap-3 mb-4">
+          <BackButton />
+          <div className="flex-1">
             <h1 className="text-2xl font-bold flex items-center gap-2" style={{ color: 'var(--text-primary)' }}>
               <Sprout className="w-6 h-6 text-emerald-600" />
               My Garden Plants
@@ -641,6 +643,9 @@ export default function MyPlants() {
               {' '}({filteredRaw.length} total plant{filteredRaw.length !== 1 ? 's' : ''})
             </p>
           </div>
+        </div>
+        <div className="flex items-center justify-between gap-3 flex-wrap">
+          <div />
           <div className="flex items-center gap-2">
             {/* Garden selector */}
             {gardens.length > 1 && (
