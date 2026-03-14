@@ -47,14 +47,240 @@
  *
  * The mainPage value must match a key in the PAGES object exactly.
  */
+import AIAssistants from './pages/AIAssistants';
+import Achievements from './pages/Achievements';
+import AddIndoorPlant from './pages/AddIndoorPlant';
+import AddIndoorSpace from './pages/AddIndoorSpace';
+import AdminAchievements from './pages/AdminAchievements';
+import AdminAuditLog from './pages/AdminAuditLog';
+import AdminBarcodeEditor from './pages/AdminBarcodeEditor';
+import AdminBlogManager from './pages/AdminBlogManager';
+import AdminBulkEdit from './pages/AdminBulkEdit';
+import AdminChallenges from './pages/AdminChallenges';
+import AdminDataCleanup from './pages/AdminDataCleanup';
+import AdminDataImport from './pages/AdminDataImport';
+import AdminDataMaintenance from './pages/AdminDataMaintenance';
+import AdminDeduplicateVarieties from './pages/AdminDeduplicateVarieties';
+import AdminHub from './pages/AdminHub';
+import AdminIndoorPlants from './pages/AdminIndoorPlants';
+import AdminLog from './pages/AdminLog';
+import AdminPestLibrary from './pages/AdminPestLibrary';
+import AdminRecipeManager from './pages/AdminRecipeManager';
+import AdminRecipes from './pages/AdminRecipes';
+import AdminResources from './pages/AdminResources';
+import AdminUserActivity from './pages/AdminUserActivity';
+import AdminVarietyImport2 from './pages/AdminVarietyImport2';
+import BlogList from './pages/BlogList';
+import BlogPost from './pages/BlogPost';
+import BrowseCategoryConfig from './pages/BrowseCategoryConfig';
+import BrowseGardens from './pages/BrowseGardens';
+import Calendar from './pages/Calendar';
+import CalendarPlanner from './pages/CalendarPlanner';
+import CalendarTasks from './pages/CalendarTasks';
+import CalendarTasksKanban from './pages/CalendarTasksKanban';
+import Challenges from './pages/Challenges';
+import ChangeRequests from './pages/ChangeRequests';
+import Community from './pages/Community';
+import CommunityBoard from './pages/CommunityBoard';
+import CompanionPlanner from './pages/CompanionPlanner';
+import CompanionRuleImport from './pages/CompanionRuleImport';
+import CompanionRulesAudit from './pages/CompanionRulesAudit';
+import Dashboard from './pages/Dashboard';
+import DebugFeatures from './pages/DebugFeatures';
+import EditPlantType from './pages/EditPlantType';
+import EditVariety from './pages/EditVariety';
+import EditorReviewQueue from './pages/EditorReviewQueue';
+import FeatureRequests from './pages/FeatureRequests';
+import ForumAdmin from './pages/ForumAdmin';
+import ForumCategory from './pages/ForumCategory';
+import ForumTopic from './pages/ForumTopic';
+import GardenBuilder from './pages/GardenBuilder';
+import GardenCare from './pages/GardenCare';
+import GardenDiary from './pages/GardenDiary';
+import GardenExpenses from './pages/GardenExpenses';
+import GardenPlantDetail from './pages/GardenPlantDetail';
+import GardenPlanting from './pages/GardenPlanting';
+import GardeningBasics from './pages/GardeningBasics';
+import Gardens from './pages/Gardens';
+import GlobalSearch from './pages/GlobalSearch';
+import GrowLists from './pages/GrowLists';
+import GrowingProfile from './pages/GrowingProfile';
+import HarvestLog from './pages/HarvestLog';
+import ImageSubmissions from './pages/ImageSubmissions';
+import IndoorEnvironment from './pages/IndoorEnvironment';
+import IndoorGrowDetail from './pages/IndoorGrowDetail';
+import IndoorGrowSpaceDetail from './pages/IndoorGrowSpaceDetail';
+import IndoorGrowSpaces from './pages/IndoorGrowSpaces';
+import IndoorPlantDetail from './pages/IndoorPlantDetail';
+import IndoorPlantDetailV2 from './pages/IndoorPlantDetailV2';
+import IndoorPlants from './pages/IndoorPlants';
+import IndoorSpaceDetail from './pages/IndoorSpaceDetail';
+import IssuesLog from './pages/IssuesLog';
+import Landing from './pages/Landing';
+import Leaderboard from './pages/Leaderboard';
+import LeaderboardV2 from './pages/LeaderboardV2';
+import ManageFeatureRequests from './pages/ManageFeatureRequests';
+import ManageForumCategories from './pages/ManageForumCategories';
+import Messages from './pages/Messages';
+import MyGarden from './pages/MyGarden';
+import MyIndoorPlants from './pages/MyIndoorPlants';
+import MyPlants from './pages/MyPlants';
+import NeedToBuy from './pages/NeedToBuy';
+import Notifications from './pages/Notifications';
+import Onboarding from './pages/Onboarding';
+import PestDetail from './pages/PestDetail';
+import PestLibrary from './pages/PestLibrary';
+import PlantCatalog from './pages/PlantCatalog';
+import PlantCatalogBrowse from './pages/PlantCatalogBrowse';
+import PlantCatalogDetail from './pages/PlantCatalogDetail';
+import PlantCatalogV2 from './pages/PlantCatalogV2';
+import PlotBuilder from './pages/PlotBuilder';
+import Profile from './pages/Profile';
+import PublicGarden from './pages/PublicGarden';
+import PublicPlant from './pages/PublicPlant';
+import PublicSeed from './pages/PublicSeed';
+import ReadyToPlantSeedlings from './pages/ReadyToPlantSeedlings';
+import RecipeDetail from './pages/RecipeDetail';
+import Recipes from './pages/Recipes';
+import ResourceArticle from './pages/ResourceArticle';
+import Resources from './pages/Resources';
+import SeedInventory from './pages/SeedInventory';
+import SeedStash from './pages/SeedStash';
+import SeedStashDetail from './pages/SeedStashDetail';
+import SeedTrading from './pages/SeedTrading';
+import Settings from './pages/Settings';
+import ShipAudit from './pages/ShipAudit';
+import StreakCalendar from './pages/StreakCalendar';
+import SubcategoryMapping from './pages/SubcategoryMapping';
+import Tracking from './pages/Tracking';
+import TrayDetail from './pages/TrayDetail';
+import UserReports from './pages/UserReports';
+import Users from './pages/Users';
+import VarietyReviewQueue from './pages/VarietyReviewQueue';
+import ViewVariety from './pages/ViewVariety';
+import ZoneMap from './pages/ZoneMap';
 import PublicPlantCatalog from './pages/PublicPlantCatalog';
+import __Layout from './Layout.jsx';
 
 
 export const PAGES = {
+    "AIAssistants": AIAssistants,
+    "Achievements": Achievements,
+    "AddIndoorPlant": AddIndoorPlant,
+    "AddIndoorSpace": AddIndoorSpace,
+    "AdminAchievements": AdminAchievements,
+    "AdminAuditLog": AdminAuditLog,
+    "AdminBarcodeEditor": AdminBarcodeEditor,
+    "AdminBlogManager": AdminBlogManager,
+    "AdminBulkEdit": AdminBulkEdit,
+    "AdminChallenges": AdminChallenges,
+    "AdminDataCleanup": AdminDataCleanup,
+    "AdminDataImport": AdminDataImport,
+    "AdminDataMaintenance": AdminDataMaintenance,
+    "AdminDeduplicateVarieties": AdminDeduplicateVarieties,
+    "AdminHub": AdminHub,
+    "AdminIndoorPlants": AdminIndoorPlants,
+    "AdminLog": AdminLog,
+    "AdminPestLibrary": AdminPestLibrary,
+    "AdminRecipeManager": AdminRecipeManager,
+    "AdminRecipes": AdminRecipes,
+    "AdminResources": AdminResources,
+    "AdminUserActivity": AdminUserActivity,
+    "AdminVarietyImport2": AdminVarietyImport2,
+    "BlogList": BlogList,
+    "BlogPost": BlogPost,
+    "BrowseCategoryConfig": BrowseCategoryConfig,
+    "BrowseGardens": BrowseGardens,
+    "Calendar": Calendar,
+    "CalendarPlanner": CalendarPlanner,
+    "CalendarTasks": CalendarTasks,
+    "CalendarTasksKanban": CalendarTasksKanban,
+    "Challenges": Challenges,
+    "ChangeRequests": ChangeRequests,
+    "Community": Community,
+    "CommunityBoard": CommunityBoard,
+    "CompanionPlanner": CompanionPlanner,
+    "CompanionRuleImport": CompanionRuleImport,
+    "CompanionRulesAudit": CompanionRulesAudit,
+    "Dashboard": Dashboard,
+    "DebugFeatures": DebugFeatures,
+    "EditPlantType": EditPlantType,
+    "EditVariety": EditVariety,
+    "EditorReviewQueue": EditorReviewQueue,
+    "FeatureRequests": FeatureRequests,
+    "ForumAdmin": ForumAdmin,
+    "ForumCategory": ForumCategory,
+    "ForumTopic": ForumTopic,
+    "GardenBuilder": GardenBuilder,
+    "GardenCare": GardenCare,
+    "GardenDiary": GardenDiary,
+    "GardenExpenses": GardenExpenses,
+    "GardenPlantDetail": GardenPlantDetail,
+    "GardenPlanting": GardenPlanting,
+    "GardeningBasics": GardeningBasics,
+    "Gardens": Gardens,
+    "GlobalSearch": GlobalSearch,
+    "GrowLists": GrowLists,
+    "GrowingProfile": GrowingProfile,
+    "HarvestLog": HarvestLog,
+    "ImageSubmissions": ImageSubmissions,
+    "IndoorEnvironment": IndoorEnvironment,
+    "IndoorGrowDetail": IndoorGrowDetail,
+    "IndoorGrowSpaceDetail": IndoorGrowSpaceDetail,
+    "IndoorGrowSpaces": IndoorGrowSpaces,
+    "IndoorPlantDetail": IndoorPlantDetail,
+    "IndoorPlantDetailV2": IndoorPlantDetailV2,
+    "IndoorPlants": IndoorPlants,
+    "IndoorSpaceDetail": IndoorSpaceDetail,
+    "IssuesLog": IssuesLog,
+    "Landing": Landing,
+    "Leaderboard": Leaderboard,
+    "LeaderboardV2": LeaderboardV2,
+    "ManageFeatureRequests": ManageFeatureRequests,
+    "ManageForumCategories": ManageForumCategories,
+    "Messages": Messages,
+    "MyGarden": MyGarden,
+    "MyIndoorPlants": MyIndoorPlants,
+    "MyPlants": MyPlants,
+    "NeedToBuy": NeedToBuy,
+    "Notifications": Notifications,
+    "Onboarding": Onboarding,
+    "PestDetail": PestDetail,
+    "PestLibrary": PestLibrary,
+    "PlantCatalog": PlantCatalog,
+    "PlantCatalogBrowse": PlantCatalogBrowse,
+    "PlantCatalogDetail": PlantCatalogDetail,
+    "PlantCatalogV2": PlantCatalogV2,
+    "PlotBuilder": PlotBuilder,
+    "Profile": Profile,
+    "PublicGarden": PublicGarden,
+    "PublicPlant": PublicPlant,
+    "PublicSeed": PublicSeed,
+    "ReadyToPlantSeedlings": ReadyToPlantSeedlings,
+    "RecipeDetail": RecipeDetail,
+    "Recipes": Recipes,
+    "ResourceArticle": ResourceArticle,
+    "Resources": Resources,
+    "SeedInventory": SeedInventory,
+    "SeedStash": SeedStash,
+    "SeedStashDetail": SeedStashDetail,
+    "SeedTrading": SeedTrading,
+    "Settings": Settings,
+    "ShipAudit": ShipAudit,
+    "StreakCalendar": StreakCalendar,
+    "SubcategoryMapping": SubcategoryMapping,
+    "Tracking": Tracking,
+    "TrayDetail": TrayDetail,
+    "UserReports": UserReports,
+    "Users": Users,
+    "VarietyReviewQueue": VarietyReviewQueue,
+    "ViewVariety": ViewVariety,
+    "ZoneMap": ZoneMap,
     "PublicPlantCatalog": PublicPlantCatalog,
 }
 
 export const pagesConfig = {
     mainPage: "PublicPlantCatalog",
     Pages: PAGES,
+    Layout: __Layout,
 };

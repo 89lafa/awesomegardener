@@ -300,18 +300,20 @@ const [showPerennialOnly, setShowPerennialOnly] = useState(false);
     if (debouncedSearchQuery && !allVarietiesLoaded) loadAllVarieties();
   }, [debouncedSearchQuery, allVarietiesLoaded]);
 
-// Load zone from user object (same source as ZoneMap.jsx)
+// Load zone from user object (optional auth for public access)
 useEffect(() => {
   (async () => {
     try {
-      const userData = await base44.auth.me();
-      const zone = userData?.usda_zone_override || userData?.usda_zone;
-      if (zone) {
-        const minTemp = getZoneMinTemp(zone);
-        setUserZone(parseZoneLabel(zone));
-        setUserZoneMinTemp(minTemp !== null ? minTemp : null);
+      const isAuth = await base44.auth.isAuthenticated();
+      if (isAuth) {
+        const userData = await base44.auth.me();
+        const zone = userData?.usda_zone_override || userData?.usda_zone;
+        if (zone) {
+          const minTemp = getZoneMinTemp(zone);
+          setUserZone(parseZoneLabel(zone));
+          setUserZoneMinTemp(minTemp !== null ? minTemp : null);
+        }
       }
-
     } catch (e) {
       console.error('[PlantCatalog] zone load error:', e);
     }

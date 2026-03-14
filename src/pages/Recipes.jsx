@@ -35,13 +35,15 @@ export default function Recipes() {
 
   const loadRecipes = async () => {
     try {
-      const [allRecipes, userSaved] = await Promise.all([
-        base44.entities.Recipe.filter({}),
-        base44.entities.UserRecipeSave.filter({})
-      ]);
-
+      const allRecipes = await base44.entities.Recipe.filter({});
       setRecipes(allRecipes);
-      setSavedRecipes(userSaved);
+      
+      // Load saved recipes only if user is authenticated
+      const isAuth = await base44.auth.isAuthenticated();
+      if (isAuth) {
+        const userSaved = await base44.entities.UserRecipeSave.filter({});
+        setSavedRecipes(userSaved);
+      }
     } catch (error) {
       console.error('Error loading recipes:', error);
       toast.error('Failed to load recipes');
@@ -70,6 +72,11 @@ export default function Recipes() {
   };
 
   const toggleSave = async (recipeId) => {
+    if (!user) {
+      base44.auth.redirectToLogin();
+      return;
+    }
+    
     try {
       const existingSave = savedRecipes.find(s => s.recipe_id === recipeId);
       

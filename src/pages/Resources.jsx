@@ -48,12 +48,15 @@ export default function Resources() {
 
   const loadResources = async () => {
     try {
-      const user = await base44.auth.me();
-      const data = await base44.entities.VendorResource.filter({
-        created_by: user.email,
-        is_active: true
-      }, 'name');
-      setResources(data);
+      const isAuth = await base44.auth.isAuthenticated();
+      if (isAuth) {
+        const user = await base44.auth.me();
+        const data = await base44.entities.VendorResource.filter({
+          created_by: user.email,
+          is_active: true
+        }, 'name');
+        setResources(data);
+      }
     } catch (error) {
       console.error('Error loading resources:', error);
     } finally {
@@ -447,8 +450,8 @@ function ResourceArticles() {
   const loadArticles = async () => {
     try {
       const [resourcesData, pestsData] = await Promise.all([
-        base44.entities.Resource.filter({ is_published: true }),
-        base44.entities.PestLibrary.filter({ is_active: true })
+        base44.entities.Resource.filter({}),
+        base44.entities.PestLibrary.filter({})
       ]);
       setArticles(resourcesData);
       setPests(pestsData);
