@@ -97,18 +97,22 @@ setGardens(enriched);
   }
 
   return (
-    <div className="space-y-6 max-w-7xl">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl lg:text-3xl font-bold text-gray-900">Browse Gardens</h1>
-          <p className="text-gray-600 mt-1">Explore public gardens from the community</p>
-        </div>
+    <div className="min-h-screen bg-gradient-to-br from-green-50 via-white to-emerald-50">
+      <div className="max-w-7xl mx-auto px-4 py-8 space-y-8">
+      {/* Hero Header */}
+      <div className="text-center mb-8">
+        <h1 className="text-4xl lg:text-5xl font-bold text-gray-900 mb-4 flex items-center justify-center gap-3">
+          <Globe className="w-10 h-10 text-emerald-600" />
+          Community Gardens
+        </h1>
+        <p className="text-lg text-gray-600 max-w-2xl mx-auto">
+          Explore gardens shared by other gardeners • Get inspired • Share your own
+        </p>
       </div>
 
       {/* Filters */}
-      <Card>
-        <CardContent className="p-4">
+      <Card className="shadow-lg border-emerald-200">
+        <CardContent className="p-6">
           <div className="flex flex-wrap gap-4">
             <div className="flex-1 min-w-64">
               <div className="relative">
@@ -151,15 +155,21 @@ setGardens(enriched);
 
       {/* Gardens Grid */}
       {filteredGardens.length === 0 ? (
-        <Card className="py-16">
+        <Card className="py-20 shadow-xl border-emerald-200">
           <CardContent className="text-center">
-            <Globe className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">No Public Gardens Yet</h3>
-            <p className="text-gray-600">Be the first to make your garden public!</p>
+            <Globe className="w-20 h-20 text-emerald-200 mx-auto mb-6" />
+            <h3 className="text-2xl font-bold text-gray-900 mb-3">No Public Gardens Yet</h3>
+            <p className="text-gray-600 text-lg mb-6">Be the first to share your garden with the community!</p>
+            <Button 
+              onClick={() => window.location.href = createPageUrl('Landing')}
+              className="bg-emerald-600 hover:bg-emerald-700"
+            >
+              Create Free Account
+            </Button>
           </CardContent>
         </Card>
       ) : (
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
           {filteredGardens.map((garden) => {
             const owner = garden.owner;
             const ownerName = owner?.nickname || owner?.first_name || owner?.full_name || 'Gardener';
@@ -170,7 +180,7 @@ setGardens(enriched);
             
             return (
             <Link key={garden.id} to={createPageUrl('PublicGarden') + `?id=${garden.id}`}>
-              <Card className="hover:shadow-lg transition-shadow h-full">
+              <Card className="hover:shadow-xl transition-all hover:scale-[1.02] duration-300 h-full border-emerald-100">
                 <div className="aspect-video bg-gradient-to-br from-emerald-100 to-green-50 relative">
                   {garden.cover_image ? (
                     <img 
@@ -229,6 +239,7 @@ setGardens(enriched);
           })}
         </div>
       )}
+      </div>
     </div>
   );
 }

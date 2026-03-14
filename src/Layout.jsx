@@ -12,7 +12,13 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useLocation } from 'react-router-dom';
 
 // Public pages that don't require authentication
-const publicPages = ['Landing', 'PublicGarden', 'PublicPlant', 'Community', 'GardeningBasics', 'BrowseGardens'];
+const publicPages = [
+  'Landing', 'PublicGarden', 'PublicPlant', 'PublicPlantCatalog',
+  'PlantCatalog', 'BrowseGardens', 'BlogList', 'BlogPost', 
+  'PestLibrary', 'PestDetail', 'Recipes', 'RecipeDetail',
+  'Resources', 'ResourceArticle', 'CompanionPlanner',
+  'Community', 'GardeningBasics'
+];
 
 export default function Layout({ children, currentPageName }) {
   const location = useLocation();

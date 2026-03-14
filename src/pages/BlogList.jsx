@@ -46,10 +46,11 @@ export default function BlogList() {
   }
 
   return (
-    <div className="space-y-6 max-w-4xl mx-auto">
-      <div>
-        <h1 className="text-3xl font-bold">Blog & News</h1>
-        <p className="text-gray-600 mt-2">Updates, tips, and announcements from the AwesomeGardener team</p>
+    <div className="min-h-screen bg-gradient-to-br from-green-50 via-white to-emerald-50">
+      <div className="max-w-4xl mx-auto px-4 py-8 space-y-8">
+      <div className="text-center">
+        <h1 className="text-4xl lg:text-5xl font-bold text-gray-900 mb-4">📰 Blog & News</h1>
+        <p className="text-lg text-gray-600">Updates, tips, and announcements from the AwesomeGardener team</p>
       </div>
 
       <div className="relative">
@@ -65,7 +66,7 @@ export default function BlogList() {
       <div className="space-y-6">
         {filtered.map(post => (
           <Link key={post.id} to={createPageUrl('BlogPost') + `?id=${post.id}`}>
-            <Card className="hover:shadow-lg transition-shadow cursor-pointer">
+            <Card className="hover:shadow-xl transition-all hover:scale-[1.01] duration-300 cursor-pointer border-emerald-100">
               <CardContent className="p-6">
                 <div className="flex gap-6">
                   {post.hero_image && (
@@ -109,13 +110,14 @@ export default function BlogList() {
       </div>
 
       {filtered.length === 0 && (
-        <Card className="py-16">
+        <Card className="py-20 shadow-xl border-emerald-200">
           <CardContent className="text-center">
-            <h3 className="text-lg font-semibold mb-2">No posts found</h3>
-            <p className="text-gray-600">Check back later for updates!</p>
+            <h3 className="text-2xl font-bold mb-3">No posts found</h3>
+            <p className="text-gray-600 text-lg">Check back later for updates!</p>
           </CardContent>
         </Card>
       )}
+      </div>
     </div>
   );
 }
