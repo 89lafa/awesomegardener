@@ -15,10 +15,10 @@ import { useLocation } from 'react-router-dom';
 // Public pages that don't require authentication
 const publicPages = [
   'Landing', 'PublicGarden', 'PublicPlant', 'PublicPlantCatalog',
-  'PlantCatalog', 'BrowseGardens', 'BlogList', 'BlogPost', 
+  'PlantCatalog', 'PlantCatalogDetail', 'BrowseGardens', 'BlogList', 'BlogPost', 
   'PestLibrary', 'PestDetail', 'Recipes', 'RecipeDetail',
   'Resources', 'ResourceArticle', 'CompanionPlanner',
-  'Community', 'GardeningBasics'
+  'Community', 'GardeningBasics', 'CalendarPlanner'
 ];
 
 export default function Layout({ children, currentPageName }) {

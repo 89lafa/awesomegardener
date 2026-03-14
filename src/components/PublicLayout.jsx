@@ -17,7 +17,8 @@ const publicNav = [
   { name: 'Blog', icon: BookOpen, path: 'BlogList' },
   { name: 'Recipes', icon: ChefHat, path: 'Recipes' },
   { name: 'Pest Library', icon: Bug, path: 'PestLibrary' },
-  { name: 'Resources', icon: Lightbulb, path: 'Resources' },
+  { name: 'Planting Guide', icon: Calendar, path: 'CalendarPlanner' },
+  { name: 'Companion Chart', icon: Grid3X3, path: 'CompanionPlanner' },
 ];
 
 const appFeaturesNav = [
