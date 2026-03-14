@@ -375,7 +375,7 @@ useEffect(() => {
 
   const loadAllVarieties = useCallback(async () => {
     try {
-      const vars = await smartQuery(base44, 'Variety', { status: 'active' }, 'variety_name', 500);
+      const vars = await smartQuery(base44, 'Variety', { status: 'active' }, 'variety_name', 6000);
       setAllVarieties(vars);
       setAllVarietiesLoaded(true);
     } catch (error) {
@@ -395,10 +395,13 @@ useEffect(() => {
       const matchesSearch = !q
         || (type.common_name || '').toLowerCase().includes(q)
         || (type.scientific_name || '').toLowerCase().includes(q)
-        || (allVarietiesLoaded && allVarieties.some(
-            v => v.plant_type_id === type.id &&
-                 (v.variety_name || '').toLowerCase().includes(q)
-          ));
+        || (type.synonyms || []).some(syn => syn.toLowerCase().includes(q))
+        || (allVarietiesLoaded && allVarieties.some(v => {
+            if (v.plant_type_id !== type.id) return false;
+            return (v.variety_name || '').toLowerCase().includes(q) ||
+                   (v.synonyms || []).some(syn => syn.toLowerCase().includes(q)) ||
+                   (v.description || '').toLowerCase().includes(q);
+          }));
 
       const matchesCategory = selectedCategory === 'all'
         || type.category === selectedCategory

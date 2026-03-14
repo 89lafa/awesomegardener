@@ -20,11 +20,25 @@ const publicFeatures = [
     color: 'from-green-400 to-emerald-600'
   },
   {
+    icon: Calendar,
+    title: 'Planting Calendar',
+    description: 'See when to plant everything based on your frost dates',
+    link: 'CalendarPlanner',
+    color: 'from-indigo-400 to-purple-600'
+  },
+  {
     icon: Users,
     title: 'Community Gardens',
     description: 'Get inspired by gardens from growers worldwide',
     link: 'BrowseGardens',
-    color: 'from-blue-400 to-indigo-600'
+    color: 'from-blue-400 to-sky-600'
+  },
+  {
+    icon: Grid3X3,
+    title: 'Companion Planting',
+    description: 'Interactive chart showing which plants grow well together',
+    link: 'CompanionPlanner',
+    color: 'from-lime-400 to-green-600'
   },
   {
     icon: BookOpen,

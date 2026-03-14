@@ -16,6 +16,8 @@ export default function DiagnosisModal({ open, onOpenChange, varietyId, plantTyp
   const [analyzing, setAnalyzing] = useState(false);
   const [diagnosis, setDiagnosis] = useState(null);
   const [treatmentNotes, setTreatmentNotes] = useState('');
+  const [addToDatabase, setAddToDatabase] = useState(false);
+  const [photoUrl, setPhotoUrl] = useState(null);
 
   const handlePhotoUpload = async (file) => {
     if (!file) return;
@@ -23,6 +25,7 @@ export default function DiagnosisModal({ open, onOpenChange, varietyId, plantTyp
     setUploading(true);
     try {
       const { file_url } = await base44.integrations.Core.UploadFile({ file });
+      setPhotoUrl(file_url);
       
       setStep('analyzing');
       setAnalyzing(true);
@@ -71,10 +74,55 @@ export default function DiagnosisModal({ open, onOpenChange, varietyId, plantTyp
     return <Badge className={colors[severity] || colors.medium}>{severity?.toUpperCase()}</Badge>;
   };
 
+  const handleSaveToDatabase = async () => {
+    if (!diagnosis || !addToDatabase) return;
+    
+    try {
+      // Check if this pest/disease already exists
+      const existing = await base44.entities.PestLibrary.filter({
+        common_name: diagnosis.issue_name
+      });
+      
+      if (existing.length > 0) {
+        // Add photo to existing entry
+        const pest = existing[0];
+        const updatedPhotos = [...(pest.photos || []), photoUrl].filter(Boolean);
+        await base44.entities.PestLibrary.update(pest.id, {
+          photos: updatedPhotos
+        });
+        toast.success('Photo added to pest library!');
+      } else {
+        // Create new entry as "pending_review" for admin approval
+        const userData = await base44.auth.me();
+        await base44.entities.PestLibrary.create({
+          common_name: diagnosis.issue_name,
+          scientific_name: diagnosis.scientific_name || '',
+          category: diagnosis.category || 'disease',
+          appearance: diagnosis.diagnosis_description || '',
+          symptoms: diagnosis.symptoms_observed || [],
+          primary_photo_url: photoUrl,
+          photos: [photoUrl],
+          organic_treatments: diagnosis.organic_treatments || [],
+          chemical_treatments: diagnosis.chemical_treatments || [],
+          prevention_tips: diagnosis.prevention_tips || [],
+          severity_potential: diagnosis.severity || 'medium',
+          status: 'pending_review',
+          suggested_by: userData?.email || null
+        });
+        toast.success('New pest entry submitted for admin review!');
+      }
+    } catch (error) {
+      console.error('Error saving to database:', error);
+      toast.error('Failed to save to database');
+    }
+  };
+
   const resetModal = () => {
     setStep('capture');
     setDiagnosis(null);
     setTreatmentNotes('');
+    setAddToDatabase(false);
+    setPhotoUrl(null);
     onOpenChange(false);
   };
 
@@ -95,6 +143,23 @@ export default function DiagnosisModal({ open, onOpenChange, varietyId, plantTyp
                 📸 Upload a clear photo showing the problem area. Better photos = more accurate diagnosis!
               </p>
             </div>
+
+            <label className="flex items-center gap-3 p-3 bg-emerald-50 border border-emerald-200 rounded-lg cursor-pointer hover:bg-emerald-100 transition-colors">
+              <input
+                type="checkbox"
+                checked={addToDatabase}
+                onChange={(e) => setAddToDatabase(e.target.checked)}
+                className="w-4 h-4 rounded border-emerald-300 text-emerald-600 focus:ring-emerald-500"
+              />
+              <div className="flex-1">
+                <p className="text-sm font-medium text-emerald-900">
+                  📚 Add to Pest Library Database
+                </p>
+                <p className="text-xs text-emerald-700">
+                  Help grow our community database with your photo
+                </p>
+              </div>
+            </label>
 
             <div className="grid grid-cols-2 gap-4">
               <Button
@@ -237,7 +302,13 @@ export default function DiagnosisModal({ open, onOpenChange, varietyId, plantTyp
             </div>
 
             <div className="flex gap-2">
-              <Button onClick={resetModal} className="flex-1 bg-emerald-600 hover:bg-emerald-700">
+              <Button 
+                onClick={async () => {
+                  await handleSaveToDatabase();
+                  resetModal();
+                }} 
+                className="flex-1 bg-emerald-600 hover:bg-emerald-700"
+              >
                 Done
               </Button>
             </div>

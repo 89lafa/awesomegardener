@@ -5,7 +5,7 @@ import { base44 } from '@/api/base44Client';
 import { 
   Sprout, Menu, X, Home, BookOpen, Users, ChefHat, Bug, 
   Lightbulb, Grid3X3, Package, Calendar, LogIn, Sparkles,
-  Lock, ArrowRight
+  Lock, ArrowRight, Link as LinkIcon
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -13,11 +13,12 @@ import { Card, CardContent } from '@/components/ui/card';
 const publicNav = [
   { name: 'Home', icon: Home, path: 'Landing' },
   { name: 'Plant Catalog', icon: Sprout, path: 'PlantCatalog' },
-  { name: 'Community Gardens', icon: Users, path: 'BrowseGardens' },
+  { name: 'Planting Calendar', icon: Calendar, path: 'CalendarPlanner' },
+  { name: 'Companion Chart', icon: LinkIcon, path: 'CompanionPlanner' },
+  { name: 'Community', icon: Users, path: 'BrowseGardens' },
   { name: 'Blog', icon: BookOpen, path: 'BlogList' },
   { name: 'Recipes', icon: ChefHat, path: 'Recipes' },
   { name: 'Pest Library', icon: Bug, path: 'PestLibrary' },
-  { name: 'Resources', icon: Lightbulb, path: 'Resources' },
 ];
 
 const appFeaturesNav = [
